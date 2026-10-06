@@ -1,0 +1,67 @@
+/* services pages (v0.3) — only module-specific additions; shared classes live in app.css */
+
+/* category / service icon tint driven by inline --c */
+.svc .si,
+.svc-cat-ic { background: color-mix(in srgb, var(--c, var(--blue)) 12%, transparent); color: var(--c, var(--blue)); }
+.svc-cat-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+.svc-cat-ic.sm { width: 30px; height: 30px; border-radius: 9px; }
+.svc-meta { gap: 8px; margin-top: auto; align-items: center; }
+.svc-side { position: sticky; top: 80px; }
+.needs-row { display: flex; gap: 6px; align-items: flex-start; color: var(--text-2); }
+.needs-row svg { color: var(--green); flex: none; margin-top: 2px; }
+
+/* search field with leading icon */
+.search-field { position: relative; display: flex; align-items: center; max-width: 460px; width: 100%; }
+.search-field .sfi { position: absolute; left: 12px; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+.search-field .input { padding-left: 38px; width: 100%; }
+.search-field.sm { max-width: 280px; } .search-field.sm .sfi { left: 10px; } .search-field.sm .input { padding-left: 34px; }
+.search-field.grow { max-width: 440px; }
+
+/* stepper label (wraps the step name so it can hide on mobile) */
+.stepper .sp .sl { white-space: nowrap; }
+.daterange { gap: 8px; align-items: center; }
+.daterange .input { max-width: 200px; }
+.confirm-row { align-items: flex-start; gap: 8px; }
+.abs-list { max-height: 320px; overflow: auto; }
+.abs-item { cursor: pointer; align-items: flex-start; }
+.abs-item .dot { margin-top: 6px; }
+
+/* success screen extras */
+.success-steps { margin: 4px 0 6px; }
+.success-actions { justify-content: center; gap: 10px; }
+
+/* my-requests cards */
+.req-card { width: 100%; text-align: left; cursor: pointer; border: 1px solid var(--border); }
+.req-main { min-width: 220px; }
+.req-badges { gap: 6px; align-items: center; margin-left: auto; }
+.rprog-bar { display: flex; gap: 4px; }
+.rprog { height: 5px; flex: 1; max-width: 70px; border-radius: 5px; background: var(--border); }
+.rprog.done { background: var(--green); } .rprog.cur { background: var(--blue); }
+.req-thread { max-height: 420px; overflow: auto; }
+.reply-row { gap: 8px; }
+
+/* office queue table niceties */
+.mt-xs { margin-top: 4px; }
+.office-table tr[data-open] { cursor: pointer; }
+.sla-cell { min-width: 150px; }
+.sla-txt { color: var(--muted); } .sla-txt.over { color: var(--red); font-weight: 650; }
+.queue-filters { padding-bottom: 0; }
+.queue-body { padding: 12px 0 0; }
+.reg-actions .btn { margin-left: 4px; }
+
+/* ---------- mobile: collapse data tables into stacked cards (<= 560px, covers 390px) */
+@media (max-width: 560px) {
+  .svc-side { position: static; }
+  .stepper .sp .sl { display: none; }
+  .stepper .sp.on .sl { display: inline; }
+  .stepper { margin-bottom: 18px; }
+  .daterange .input { max-width: none; flex: 1; }
+
+  .office-table thead, .reg-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .office-table tr, .reg-table tr { display: block; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; padding: 6px 12px; background: var(--surface); }
+  .office-table td, .reg-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0; border: 0; text-align: right; }
+  .office-table td::before, .reg-table td::before { content: attr(data-l); font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: left; flex: none; }
+  .office-table td:last-child, .reg-table td:last-child { justify-content: flex-end; }
+  .office-table td:last-child::before, .reg-table td:last-child::before { content: ""; }
+  .reg-actions { white-space: normal; }
+}

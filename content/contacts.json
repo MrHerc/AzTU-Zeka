@@ -1,0 +1,44 @@
+{
+  "_note": "Official data from https://aztu.edu.az (schema.org JSON-LD and site navigation), checked 2026-10-02. Do not add unit-level phones or e-mails that are not published there.",
+  "name": {"az": "Azərbaycan Texniki Universiteti", "en": "Azerbaijan Technical University", "ru": "Азербайджанский технический университет"},
+  "address": {"az": "H. Cavid prospekti 25, Bakı AZ1073, Azərbaycan", "en": "25 H. Javid Avenue, Baku AZ1073, Azerbaijan", "ru": "проспект Г. Джавида, 25, Баку AZ1073, Азербайджан"},
+  "phone": "+994 12 539 13 48",
+  "phone_href": "tel:+994125391348",
+  "email": "info@aztu.edu.az",
+  "website": "https://aztu.edu.az",
+  "contact_page": "https://aztu.edu.az/elaqe",
+  "founded": 1950,
+  "map": {
+    "google": "https://www.google.com/maps/search/?api=1&query=Azerbaijan+Technical+University%2C+25+H.+Javid+Avenue%2C+Baku",
+    "osm": "https://www.openstreetmap.org/search?query=Azerbaijan%20Technical%20University%2C%20Baku"
+  },
+  "social": [
+    {"key": "facebook", "label": "Facebook", "url": "https://www.facebook.com/aztu.edu.az"},
+    {"key": "instagram", "label": "Instagram", "url": "https://www.instagram.com/aztu.edu.az/"},
+    {"key": "linkedin", "label": "LinkedIn", "url": "https://www.linkedin.com/school/azerbaijan-technical-university/"},
+    {"key": "youtube", "label": "YouTube", "url": "https://www.youtube.com/@aztu_official"},
+    {"key": "wikipedia", "label": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Azerbaijan_Technical_University"}
+  ],
+  "systems": [
+    {"key": "lms", "icon": "book", "url": "https://sso.aztu.edu.az",
+     "name": {"az": "LMS (vahid giriş)", "en": "LMS (single sign-on)", "ru": "LMS (единый вход)"},
+     "text": {"az": "Universitetin tədris idarəetmə sistemi", "en": "The university's learning management system", "ru": "Система управления обучением университета"}},
+    {"key": "plan", "icon": "chart", "url": "https://plan-report.aztu.edu.az",
+     "name": {"az": "Plan-Hesabat İnformasiya Sistemi", "en": "Plan & Report Information System", "ru": "Информационная система «План-Отчёт»"},
+     "text": {"az": "Planlaşdırma və hesabatlılıq", "en": "Planning and reporting", "ru": "Планирование и отчётность"}},
+    {"key": "proceedings", "icon": "flask", "url": "https://proceedings.aztu.edu.az",
+     "name": {"az": "Elmi Əsərlər (Proceedings)", "en": "Scientific Proceedings", "ru": "Научные труды (Proceedings)"},
+     "text": {"az": "Universitetin elmi jurnalı", "en": "The university's research journal", "ru": "Научный журнал университета"}},
+    {"key": "tour", "icon": "compass", "url": "https://aztu.edu.az/virtual-tour",
+     "name": {"az": "Virtual tur", "en": "Virtual tour", "ru": "Виртуальный тур"},
+     "text": {"az": "Kampusla onlayn tanışlıq", "en": "Explore the campus online", "ru": "Онлайн-знакомство с кампусом"}}
+  ],
+  "pages": [
+    {"key": "contact", "url": "https://aztu.edu.az/elaqe", "name": {"az": "Əlaqə səhifəsi", "en": "Contact page", "ru": "Страница контактов"}},
+    {"key": "news", "url": "https://aztu.edu.az/news", "name": {"az": "Xəbərlər", "en": "News", "ru": "Новости"}},
+    {"key": "announcements", "url": "https://aztu.edu.az/announcement", "name": {"az": "Elanlar", "en": "Announcements", "ru": "Объявления"}},
+    {"key": "faculties", "url": "https://aztu.edu.az/faculties", "name": {"az": "Fakültələr", "en": "Faculties", "ru": "Факультеты"}},
+    {"key": "international", "url": "https://aztu.edu.az/beynelxalq", "name": {"az": "Beynəlxalq əlaqələr", "en": "International relations", "ru": "Международные связи"}},
+    {"key": "research", "url": "https://aztu.edu.az/tedqiqat", "name": {"az": "Tədqiqat", "en": "Research", "ru": "Исследования"}}
+  ]
+}

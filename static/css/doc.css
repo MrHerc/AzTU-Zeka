@@ -1,0 +1,58 @@
+@font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap; src: url("/static/fonts/inter-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap; src: url("/static/fonts/inter-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20C0; }
+body { margin: 0; background: #e9edf4; font-family: Cambria, Georgia, "Times New Roman", serif; color: #121a3a; }
+.toolbar { display: flex; gap: 14px; justify-content: center; align-items: center; padding: 14px; font-family: Inter, "Segoe UI", sans-serif; }
+.toolbar button { padding: 9px 16px; border-radius: 10px; border: 0; background: #1a2355; color: #fff; font-weight: 600; cursor: pointer; font-size: 14px; font-family: inherit; }
+.toolbar a { color: #2b5aa8; font-size: 14px; }
+.revoked { max-width: 794px; margin: 0 auto 12px; padding: 10px 14px; border-radius: 10px; background: #fdecec; color: #a32a2e; font-family: Inter, sans-serif; font-size: 14px; }
+.paper { position: relative; overflow: hidden; width: 794px; min-height: 1060px; margin: 0 auto 40px; padding: 60px 70px; background: #fff;
+  box-shadow: 0 20px 50px -20px rgba(11, 19, 48, .35); box-sizing: border-box; }
+.paper::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 8px; background: linear-gradient(90deg, #1a2355 0 70%, #5a9bd3 70% 90%, #ee7c7e 90%); }
+.watermark { position: absolute; inset: 0; display: grid; place-items: center; font: 800 150px Inter, sans-serif; color: rgba(26, 35, 85, .045); transform: rotate(-28deg); pointer-events: none; letter-spacing: .1em; }
+.doc-head { display: flex; gap: 18px; align-items: center; padding-bottom: 18px; border-bottom: 2px solid #1a2355; }
+.crest { width: 64px; height: 64px; border-radius: 12px; flex: none; }
+.org { font: 750 16.5px Inter, sans-serif; letter-spacing: .05em; color: #1a2355; }
+.sub { color: #55607e; font: 13px Inter, sans-serif; margin-top: 3px; }
+.doc-meta { display: flex; justify-content: space-between; margin: 18px 0 28px; font: 13.5px Inter, sans-serif; color: #3a4463; }
+h1 { text-align: center; font-size: 21px; letter-spacing: .14em; margin: 10px 0 26px; color: #121a3a; }
+.doc-body { font-size: 16px; line-height: 1.85; text-align: justify; min-height: 360px; }
+.doc-body p { margin: 0 0 12px; text-indent: 36px; } .doc-body p.noindent { text-indent: 0; }
+.sem { font: 650 14px Inter, sans-serif; color: #1a2355; margin: 16px 0 6px; letter-spacing: 0; text-align: left; }
+.grades { width: 100%; border-collapse: collapse; margin: 6px 0 14px; font-size: 14px; }
+.grades th, .grades td { border: 1px solid #cfd6e4; padding: 6px 10px; text-align: left; } .grades th { background: #eef0f8; font-family: Inter, sans-serif; font-size: 12.5px; }
+.muted { color: #667089; font-size: 13px; } .copies { font: 13px Inter, sans-serif; color: #3a4463; }
+.sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 36px; }
+.role { font-weight: 700; margin-bottom: 8px; }
+.esign { display: inline-block; padding: 10px 14px; border: 2px solid #0e9f6e; border-radius: 10px; color: #0b6b4c; font: 600 13.5px Inter, sans-serif; }
+.esign span { font-weight: 400; font-size: 12.5px; color: #3a4463; }
+.qr { text-align: center; } .qr svg { display: block; width: 128px; height: 128px; }
+.qr small { display: block; font: 12px Inter, sans-serif; color: #55607e; margin-top: 4px; }
+.doc-foot { margin-top: 34px; padding-top: 12px; border-top: 1px solid #e3e7ef; font: 11.5px/1.6 Inter, sans-serif; color: #667089; }
+.cert { position: relative; width: 1000px; max-width: calc(100% - 32px); margin: 0 auto 40px; padding: 54px 70px; box-sizing: border-box; background: #fff; text-align: center;
+  border: 12px solid #1a2355; outline: 3px solid #5a9bd3; outline-offset: -22px; box-shadow: 0 20px 50px -20px rgba(11, 19, 48, .35); }
+.cert-logo { height: 120px; margin-bottom: 10px; }
+.cert-org { font: 600 14px Inter, sans-serif; color: #55607e; letter-spacing: .04em; }
+.cert h1 { font-size: 44px; letter-spacing: .2em; margin: 14px 0; color: #1a2355; }
+.cert-lead { font-size: 18px; color: #3a4463; margin: 8px 0; }
+.cert-name { font-size: 36px; font-style: italic; margin: 12px 0; color: #121a3a; border-bottom: 2px solid #ee7c7e; display: inline-block; padding: 0 24px 6px; }
+.cert-foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 36px; text-align: left; font: 14px/1.8 Inter, sans-serif; }
+.syllabus h1 { letter-spacing: .02em; font: 750 24px Inter, sans-serif; margin: 22px 0 14px; text-align: left; }
+.syllabus h3 { font: 700 15px Inter, sans-serif; color: #1a2355; margin: 22px 0 8px; border-left: 4px solid #ee7c7e; padding-left: 10px; }
+.syllabus p, .syllabus li { font-size: 15px; line-height: 1.7; } .syllabus .meta { width: 100%; border-collapse: collapse; font: 13.5px Inter, sans-serif; }
+.syllabus .meta th { text-align: left; color: #667089; font-weight: 500; padding: 7px 8px; width: 18%; border-bottom: 1px solid #e3e7ef; }
+.syllabus .meta td { padding: 7px 8px; font-weight: 600; border-bottom: 1px solid #e3e7ef; }
+.verify { max-width: 620px; margin: 40px auto; padding: 0 16px; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+.v-brand { display: flex; align-items: center; gap: 12px; color: #121a3a; margin-bottom: 18px; } .v-brand span { color: #667089; font-size: 13px; }
+.v-logo { width: 46px; height: 46px; border-radius: 10px; }
+.v-card { background: #fff; border-radius: 20px; padding: 30px; box-shadow: 0 20px 50px -24px rgba(11, 19, 48, .35); border-top: 6px solid #0e9f6e; }
+.v-card.bad { border-top-color: #d64045; }
+.v-icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 800; color: #fff; background: #0e9f6e; margin-bottom: 14px; }
+.v-card.bad .v-icon { background: #d64045; }
+.v-card h1 { text-align: left; letter-spacing: 0; font: 750 24px Inter, sans-serif; margin: 0 0 6px; } .v-card p { color: #55607e; margin: 0 0 18px; }
+.v-card table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.v-card th { text-align: left; color: #667089; font-weight: 500; padding: 9px 0; width: 42%; border-top: 1px solid #eef1f6; }
+.v-card td { padding: 9px 0; border-top: 1px solid #eef1f6; font-weight: 600; }
+.v-note { font-size: 12.5px; color: #667089; text-align: center; margin-top: 16px; }
+@media print { body { background: #fff; } .no-print { display: none !important; } .paper, .cert { box-shadow: none; margin: 0 auto; } }

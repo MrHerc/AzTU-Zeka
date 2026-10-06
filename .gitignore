@@ -1,0 +1,8 @@
+data/
+logs/
+config.json
+__pycache__/
+*.pyc
+.dev/
+# Təqdimat materialları (pitch/) yalnız lokal saxlanılır
+pitch/
