@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 
 from . import engine, store
-from .common import COOKIE, R, week_index
+from .common import R, session_cookie, week_index
 from .i18n import T3
 from .r_learning import course_insights
 from .r_services import office_summary
@@ -126,4 +126,4 @@ def admin_reset(req):
     req.db.close()
     req.db = None
     store.reseed()
-    return json_resp({"ok": True}, headers=[("Set-Cookie", f"{COOKIE}=; Max-Age=0; Path=/")])
+    return json_resp({"ok": True}, headers=[session_cookie(expire=True)])

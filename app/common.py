@@ -26,6 +26,14 @@ def _sid(req):
     return req.cookies.get(COOKIE) or req.headers.get("X-Session")
 
 
+def session_cookie(value: str = "", expire: bool = False) -> tuple:
+    """Session cookie header; Secure when the portal is published over HTTPS (run.py --public-url https://...)."""
+    attrs = "; Max-Age=0" if expire else ""
+    if BASE_URL["value"].startswith("https://"):
+        attrs += "; Secure"
+    return ("Set-Cookie", f"{COOKIE}={value}; HttpOnly; SameSite=Lax; Path=/{attrs}")
+
+
 def before(req, roles, auth):
     req.db = store.connect()
     sid = _sid(req)

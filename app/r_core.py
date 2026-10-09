@@ -7,7 +7,7 @@ import secrets
 import urllib.parse
 
 from . import engine, pdftext, store
-from .common import COOKIE, R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, _sid
+from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, _sid
 from .i18n import L, norm_lang, tr
 from .store import J, audit, iso, now, row, rows, setting
 from .web import HTTPError, Response, json_resp, redirect
@@ -21,7 +21,7 @@ def _login(c, role):
     sid = secrets.token_urlsafe(24)
     c.execute("INSERT INTO sessions(sid,user_id,created_at) VALUES(?,?,?)", (sid, u["id"], iso(now())))
     audit(c, u["id"], "login", "session", f"demo rol: {role}")
-    return u, sid, [("Set-Cookie", f"{COOKIE}={sid}; HttpOnly; SameSite=Lax; Path=/")]
+    return u, sid, [session_cookie(sid)]
 
 
 def unread(c, uid):
@@ -56,7 +56,7 @@ def demo_login_get(req):
 @R("POST", "/api/auth/logout")
 def logout(req):
     req.db.execute("DELETE FROM sessions WHERE sid=?", (_sid(req),))
-    return json_resp({"ok": True}, headers=[("Set-Cookie", f"{COOKIE}=; Max-Age=0; Path=/")])
+    return json_resp({"ok": True}, headers=[session_cookie(expire=True)])
 
 
 @R("POST", "/api/consent")

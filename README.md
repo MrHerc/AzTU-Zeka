@@ -9,8 +9,9 @@ və rəhbərlik paneli. Xarici paket tələb etmir — yalnız Python 3.10+ (std
 start_demo.bat                 # server + brauzer
 python run.py --port 5070      # və ya terminaldan
 python run.py --reset          # demo məlumatlarını sıfırdan yarat
+python run.py --public-url https://zeka.example.az   # serverdə: sənəd QR kodları bu ünvana yönəlir, sessiya kukisi Secure olur
 ```
-Ünvan: http://127.0.0.1:5070 (server yalnız bu kompüterdə dinləyir). Fonda: `scripts\start_demo.ps1`, dayandırmaq: `scripts\stop_demo.ps1`.
+Ünvan: http://127.0.0.1:5070 (server yalnız bu kompüterdə dinləyir; serverdə onu HTTPS və parol verən reverse proxy arxasında işlədin). Fonda: `scripts\start_demo.ps1`, dayandırmaq: `scripts\stop_demo.ps1`.
 Verilənlər bazası sxemi dəyişdikdə köhnə demo bazası avtomatik yenidən yaradılır.
 
 ## v0.3-də yeni
