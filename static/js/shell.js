@@ -190,7 +190,9 @@ export async function switchLang(code) {
   document.body.classList.add("lang-switching");
   const url = new URL(location.href);
   url.searchParams.delete("lang");
-  setTimeout(() => { location.replace(url.toString()); }, REDUCED ? 0 : 160);
+  const target = url.toString();
+  // location.replace() to the same address (only a #route) is an in-page fragment jump, not a reload: the page stayed dimmed.
+  setTimeout(() => { if (target === location.href) location.reload(); else location.replace(target); }, REDUCED ? 0 : 160);
 }
 
 function userMenu(host) {
