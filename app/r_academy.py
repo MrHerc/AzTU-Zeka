@@ -5,7 +5,7 @@ import html
 import json
 import re
 
-from . import engine, store
+from . import engine, refs, store
 from .common import R, course_access, ctx
 from .i18n import S_, T3
 
@@ -85,6 +85,7 @@ def module(req):
     m["prev"] = sib[i - 1]["id"] if i > 0 else None
     m["next"] = sib[i + 1]["id"] if i + 1 < len(sib) else None
     m["count"] = len(sib)
+    m["references"], m["references_checked"] = refs.for_module(m["track_key"], m["seq"]), refs.checked()
     return m
 
 

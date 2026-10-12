@@ -84,7 +84,7 @@
      "summary": "Yeddi istiqamət: AI, ingilis dilində tədris, sillabus, akademik ünsiyyət və sair.",
      "steps": ["Qısa özünüqiymətləndirmədən keçin — platforma sizə üç istiqamət tövsiyə edir.", "Hər modul qısa dərs, praktiki tapşırıq və yoxlama testindən ibarətdir.", "İstiqaməti bitirdikdə QR kodla doğrulanan sertifikat avtomatik verilir.", "Peşəkar inkişaf saatlarınız portfelinizdə toplanır."],
      "link": "/teacher/academy", "link_label": "Akademiyanı aç"},
-    {"id": "syllabus", "roles": ["teacher"], "icon": "file", "title": "AI sillabus köməkçisi", "tags": ["sillabus", "təlim nəticələri", "AKTS"],
+    {"id": "syllabus", "roles": ["teacher"], "icon": "file", "title": "Sillabus köməkçisi", "tags": ["sillabus", "təlim nəticələri", "AKTS"],
      "summary": "Materiallarınızdan sillabus layihəsi: nəticələr, plan, qiymətləndirmə, qaydalar.",
      "steps": ["Fənni seçin və layihə hazırla düyməsini basın.", "Təlim nəticələri, həftəlik plan, iş yükü və qaydalar materiallarınız əsasında hazırlanır.", "Hər bölməni redaktə edib yadda saxlayın.", "Hazır sillabusu çap edin və ya PDF kimi saxlayın."],
      "link": "/teacher/syllabus", "link_label": "Sillabus köməkçisini aç"},

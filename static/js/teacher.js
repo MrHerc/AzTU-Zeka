@@ -1,5 +1,5 @@
 import { api, html, raw, mount, on, md, ic, toast, modal, confirmBox, route, go, S, pageHead, badge, fmtDate, fmtDateTime, ago, ring, progress, loading, skelLines, empty,
-  failed, infoTip, greeting, QTYPE, cnt, num, sparkline, barChart, fileToB64, fmtSize, sleep, fmtDayLong, registerTour, t, esc, $, $$ } from "./core.js";
+  failed, infoTip, greeting, QTYPE, cnt, num, sparkline, barChart, fileToB64, fmtSize, sleep, fmtDayLong, registerTour, refCard, refList, t, esc, $, $$ } from "./core.js";
 import { chatView } from "./chat.js";
 import { stat, lessonRow, schedulePage } from "./student.js";
 import { achievementsTeaser } from "./achievements.js";
@@ -40,7 +40,7 @@ route("/teacher", async (el) => {
           ${main ? html`<a class="small" href="#/teacher/course/${main.id}?tab=insights">${t("Ətraflı")} ${ic("arrow", 13)}</a>` : ""}</div>
           <div class="card-b">${ins ? html`<div class="grid g-2">
             <div><div class="label mb-sm">${t("Ən çox soruşulan mövzular")}</div>
-              ${ins.top_topics.length ? ins.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small">${x.topic}</span>${progress((x.n / ins.top_topics[0].n) * 100)}<b class="right small">${num(x.n)}</b></div>`)
+              ${ins.top_topics.length ? ins.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.topic}">${x.topic}</span>${progress((x.n / ins.top_topics[0].n) * 100)}<b class="right small">${num(x.n)}</b></div>`)
                 : empty("message", t("Hələ sual yoxdur"), t("Tələbələr tutora sual verdikcə mövzular burada toplanacaq."))}</div>
             <div><div class="label mb-sm">${t("Həftəlik suallar")}</div>${sparkline(ins.weekly, "#2b5aa8", 260, 70)}
               <div class="row wrap mt"><span class="badge b-green">${t("{n}% faydalı", { n: ins.positive_rate ?? "—" })}</span><span class="badge b-amber">${t("Mənbəsiz: {n}%", { n: num(ins.no_source_rate, 1) })}</span></div>
@@ -103,7 +103,7 @@ route("/teacher/courses", async (el) => {
       <div class="row"><span class="course-ic" style="background:${c.color}">${c.code.split("-")[0]}</span>
         <div class="grow"><b class="course-full-t">${c.name}</b><span class="small muted">${c.code} · ${t("{n} tələbə", { n: c.students })}</span></div></div>
       <div class="row wrap mt small"><span class="badge b-blue">${t("{n} material", { n: c.materials })}</span>
-        ${c.tutor_locked ? html`<span class="badge b-amber">${ic("lock", 11)} ${t("tutor bağlı")}</span>` : html`<span class="badge b-green">${t("tutor aktiv")}</span>`}</div>
+        ${c.tutor_locked ? html`<span class="badge b-amber">${ic("lock", 11)} ${t("Tutor bağlı")}</span>` : html`<span class="badge b-green">${t("Tutor aktiv")}</span>`}</div>
       <div class="row mt wrap"><button class="btn btn-sm grow" data-go="/teacher/course/${c.id}">${t("Fənni idarə et")}</button>
         <button class="btn btn-sm btn-ai grow" data-go="/teacher/studio?course=${c.id}">${ic("wand", 14)} ${t("Test yarat")}</button></div></div></div>`)}</div>`
       : empty("book", t("Bu semestr üçün fənn yoxdur"), t("Sizə fənn təyin olunduqda burada görünəcək."))}`);
@@ -139,7 +139,7 @@ function materialsTab(tgt, c) {
     <div class="card" data-tour="mat-list"><div class="card-h"><h3>${ic("layers", 17)} ${t("Fənn materialları")}</h3><span class="small muted">${t("{n} material", { n: c.materials_list.length })}</span></div>
       ${c.materials_list.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Material")}</th><th>${t("Bölmə")}</th><th>${t("Anlayış")}</th><th>${t("Yüklənib")}</th><th></th></tr></thead><tbody>
       ${c.materials_list.map((m) => html`<tr class="click" data-view="${m.id}"><td><div class="row"><span class="stat-ic ic-blue" style="width:34px;height:34px">${ic("file", 16)}</span>
-        <div><b class="small">${m.title}</b><div class="tiny muted">${m.filename} · ${t("{n}K simvol", { n: num(Math.round(m.chars / 100) / 10, 1) })}</div></div></div></td>
+        <div><b class="small">${m.title}</b><div class="tiny muted">${m.filename} · ${t("{n}K simvol", { n: num(Math.round(m.chars / 100) / 10, 1) })}${m.refs ? html` · ${t("{n} əlavə mənbə", { n: m.refs })}` : ""}</div></div></div></td>
         <td>${num(m.chunk_count)}</td><td>${num(m.term_count)}</td><td class="small">${fmtDate(m.created_at)}</td>
         <td class="right nowrap"><button class="btn btn-sm" data-view="${m.id}">${ic("eye", 14)} ${t("Oxu")}</button>
           <button class="btn btn-sm btn-danger btn-icon" data-del="${m.id}" aria-label="${t("Sil")}">${ic("trash", 14)}</button></td></tr>`)}</tbody></table></div>`
@@ -151,7 +151,8 @@ function materialsTab(tgt, c) {
         <label class="dropzone" id="dz"><input type="file" id="file" accept="${FORMATS}" hidden><div style="color:var(--blue-700)">${ic("upload", 30)}</div>
           <b>${t("Faylı bura atın və ya seçin")}</b><div class="small muted mt-sm">${t("DOCX, PPTX, TXT, MD · maksimum {mb} MB", { mb: MAX_MB })}</div></label>
         <div id="proc" class="mt" aria-live="polite"></div></div></div>
-      <div class="notice ai">${ic("sparkles", 16)}<div><b>${t("Məsləhət")}:</b> ${t("Əsas anlayışları “Termin — tərif” formatında yazın — AI onlardan həm tutorda, həm də test generasiyasında istifadə edir.")}</div></div></div></div>`);
+      <div class="notice ai">${ic("sparkles", 16)}<div><b>${t("Məsləhət")}:</b> ${t("Əsas anlayışları “Termin — tərif” formatında yazın — AI onlardan həm tutorda, həm də test generasiyasında istifadə edir.")}</div></div>
+      ${refCard(c.references, c.references_checked, { note: t("Tələbələr bu siyahını fənn səhifəsində görür.") })}</div></div>`);
 
   const proc = $("#proc", tgt), file = $("#file", tgt), dz = $("#dz", tgt);
   const STEPS = [t("Fayl yüklənir"), t("Mətn çıxarılır"), t("Bölmələrə ayrılır"), t("Anlayışlar çıxarılır"), t("Axtarış indeksi qurulur")];
@@ -184,7 +185,8 @@ function materialsTab(tgt, c) {
     modal({ title: m.title, size: "lg", body: html`${m.glossary.length ? html`<div class="label mb-sm">${t("Çıxarılmış anlayışlar ({n})", { n: m.glossary.length })}</div>
         <div class="chips mb">${m.glossary.map((g) => html`<span class="badge b-navy" title="${g.definition}">${g.term}</span>`)}</div>` : ""}
       <div class="label mb-sm">${t("Bölmələr ({n}) — tutor bu hissələrə istinad edir", { n: m.chunks.length })}</div>
-      <div class="stack">${m.chunks.map((ch) => html`<div class="card pad"><b>${t("{n}.", { n: ch.seq + 1 })} ${ch.heading}</b><div class="mt-sm small">${md(ch.text)}</div></div>`)}</div>` });
+      <div class="stack">${m.chunks.map((ch) => html`<div class="card pad"><b>${t("{n}.", { n: ch.seq + 1 })} ${ch.heading}</b><div class="mt-sm small">${md(ch.text)}</div></div>`)}</div>
+      ${m.references && m.references.length ? html`<div class="label mt mb-sm">${t("Mövzu üzrə əlavə oxu")}</div>${refList(m.references)}` : ""}` });
   });
   on(tgt, "click", "[data-del]", (e, b) => { e.stopPropagation(); modal({ title: t("Materialı silmək?"), size: "sm", body: html`<p>${t("Material və onun bölmələri tutorun bilik bazasından silinəcək. Bu əməliyyat geri qaytarılmır.")}</p>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Sil"), cls: "btn-danger", onClick: async () => { await api.del(`/api/materials/${b.dataset.del}`); toast(t("Material silindi"), "ok"); go(`/teacher/course/${c.id}?tab=materials`); } }] }); });
@@ -197,7 +199,7 @@ function tutorTab(tgt, c) {
   mount(tgt, html`<div class="grid g-12"><div class="card" data-tour="modes"><div class="card-b stack">
       <div class="label">${t("Aktiv rejimlər")}</div>
       ${MODES.map(([k, l, dsc]) => html`<label class="row card pad switch-row"><span class="switch"><input type="checkbox" data-mode="${k}" ${c.modes.includes(k) ? "checked" : ""}><span></span></span>
-        <div class="grow"><b>${l}</b>${k === "socratic" ? html` <span class="badge b-navy">${t("tövsiyə olunur")}</span>` : ""}<div class="small muted">${dsc}</div></div></label>`)}
+        <div class="grow"><b>${l}</b>${k === "socratic" ? html` <span class="badge b-navy">${t("Tövsiyə olunur")}</span>` : ""}<div class="small muted">${dsc}</div></div></label>`)}
       <div class="field"><label class="label" for="rules">${t("Fənnə xas qaydalar")}</label>
         <textarea class="textarea" id="rules" placeholder="${t("Məsələn: Vahidləri həmişə SI sistemində göstər.")}">${c.tutor_rules}</textarea>
         <span class="hint">${t("LLM qoşulduqda tutor bu qaydalara əməl edir.")}</span></div>
@@ -206,7 +208,7 @@ function tutorTab(tgt, c) {
       <div class="row"><button class="btn btn-primary" id="save">${ic("check", 15)} ${t("Yadda saxla")}</button></div></div></div>
     <div class="stack"><div class="notice ai">${ic("shield", 16)}<div><b>${t("Qoruyucu qaydalar həmişə aktivdir:")}</b>
       <div class="small mt-sm">${[t("cavablar yalnız fənn materiallarına əsaslanır"), t("mənbəsiz fakt uydurulmur"), t("şəxsi məlumatlar maskalanır"), t("gündəlik limit: 50 sual")].map((x) => html`<div>· ${x}</div>`)}</div></div></div>
-      <div class="notice info">${ic("info", 16)}<div>${t("Məhdudiyyətsiz chatbot öyrənməyə zərər verə bilər; Sokratik və materiala bağlı tutor isə nəticəni əhəmiyyətli dərəcədə yaxşılaşdırır.")}</div></div></div></div>`);
+      <div class="notice info">${ic("info", 16)}<div>${t("Məhdudiyyətsiz söhbət botu öyrənməyə zərər verə bilər; Sokratik və materiala bağlı tutor isə nəticəni əhəmiyyətli dərəcədə yaxşılaşdırır.")}</div></div></div></div>`);
   $("#save", tgt).addEventListener("click", async () => {
     const modes = $$("[data-mode]", tgt).filter((x) => x.checked).map((x) => x.dataset.mode);
     if (!modes.length) return toast(t("Ən azı bir rejim seçin"), "err");
@@ -242,7 +244,7 @@ function insightsTab(tgt, c) {
         ${i.weekly.some((x) => x) ? barChart({ labels: i.weekly.map((_, k) => t("{n}-h", { n: k + 1 })), values: i.weekly, color: "#2b5aa8", label: t("Həftələr üzrə sual sayı") })
           : empty("chart", t("Hələ məlumat yoxdur"), t("Tələbə sualları toplandıqca qrafik burada görünəcək."))}</div></div>
       <div class="card"><div class="card-h"><h3>${t("Mövzular üzrə suallar")}</h3></div><div class="card-b">
-        ${i.top_topics.length ? i.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small">${x.topic}</span>${progress((x.n / i.top_topics[0].n) * 100)}<b class="right small">${num(x.n)}</b></div>`)
+        ${i.top_topics.length ? i.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.topic}">${x.topic}</span>${progress((x.n / i.top_topics[0].n) * 100)}<b class="right small">${num(x.n)}</b></div>`)
           : empty("message", t("Mövzu yoxdur"), t("Suallar toplandıqca ən çox soruşulan mövzular burada sıralanacaq."))}</div></div></div>
     <div class="card mt"><div class="card-h"><h3>${ic("alert", 17)} ${t("Materiallarda cavabı tapılmayan suallar")}</h3></div><div class="card-b">
       ${i.gaps.length ? html`<div class="list">${i.gaps.map((g) => html`<div class="list-item"><span class="stat-ic ic-amber" style="width:32px;height:32px">${ic("help", 15)}</span><div class="grow">${g}</div>
@@ -476,6 +478,7 @@ registerTour("teacher.course", { route: "/teacher/course/:id", roles: ["teacher"
   { sel: "[data-tour=tabs]", title: t("Bölmələr"), text: t("Material, tutor rejimləri, davamiyyət, analitika, texnoloji həllər və tutoru sınama.") },
   { sel: "[data-tour=mat-list]", title: t("Materiallar"), text: t("Tutor və test studiyası məhz bu materiallara əsaslanır.") },
   { sel: "[data-tour=upload]", title: t("Material yüklə"), text: t("Dəstəklənən formatlarda fayl yükləyin; AI onu bölmələrə ayırıb anlayışları çıxarır.") },
+  { sel: "[data-tour=refs]", title: t("Tövsiyə olunan mənbələr"), text: t("Fənn üçün yoxlanılmış açıq dərsliklər və kurslar. Tələbələr eyni siyahını görür.") },
 ] });
 registerTour("teacher.studio", { route: "/teacher/studio", roles: ["teacher"], title: t("Test studiyası"), group: t("Tədris"), icon: "wand", go: "/teacher/studio", steps: [
   { sel: "[data-tour=studio-tabs]", title: t("İş axını"), text: t("AI ilə yarat → sual bankı → testlər və nəticələr.") },

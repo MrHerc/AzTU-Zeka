@@ -166,8 +166,10 @@ def _compose(s: str, cat: dict):
 
 
 # User texts and course-material section headings are shown as written. A heading is course content and can share
-# its spelling with a UI string of another sense ("Giriş": introduction vs. "Log in").
-SKIP_KEYS = {"content", "question", "context", "username", "email", "heading"}
+# its spelling with a UI string of another sense ("Giriş": introduction vs. "Log in"). Reference titles, sections, authors and
+# publishers (content/references.json) are proper names in the language of the source. Their keys are unique to references:
+# "author" is NOT skipped, because message and news authors include translated personas ("İT administratoru").
+SKIP_KEYS = {"content", "question", "context", "username", "email", "heading", "work", "part", "authors", "publisher"}
 
 
 def canon(value, options):

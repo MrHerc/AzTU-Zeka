@@ -281,6 +281,21 @@ s, tl_en = call_lang(te, "GET", "/api/tools", "en")
 tones = {x["price_tone"] for x in tl_en.get("tools", [])} if s == 200 else set()
 check("X-Lang: tool price tone survives translation", tones == {"free", "paid", "other"}
       and any(x["price_tone"] == "free" and x["pricing"].startswith("Free") for x in tl_en["tools"]), tones)
+tool_keys = {x["key"] for x in tl_en.get("tools", [])} if s == 200 else set()
+check("tools: retired GitHub Classroom replaced by Classroom 50", "classroom50" in tool_keys and "github_classroom" not in tool_keys, sorted(tool_keys))
+# --- recommended sources (content/references.json): https only, titles never translated, shown on 3 surfaces
+s, cd_en = call_lang(st, "GET", "/api/courses/1", "en")
+crefs = cd_en.get("references", []) if s == 200 else []
+check("references: course page lists checked sources", len(crefs) >= 2 and cd_en.get("references_checked") and all(r["url"].startswith("https://") for r in crefs), crefs)
+check("references: titles stay in the source language", crefs and cd["references"] and crefs[0]["work"] == cd["references"][0]["work"] == "University Physics Volume 2"
+      and crefs[0]["kind"] == "book", crefs[:1])
+check("references: lecture rows show the further-reading count", s == 200 and all(m.get("refs", 0) >= 1 for m in cd_en["materials_list"] if m["filename"].startswith("elm-")),
+      [(m["filename"], m.get("refs")) for m in cd_en.get("materials_list", [])])
+mid = next(m["id"] for m in cd["materials_list"] if m["filename"] == "elm-1-om-qanunu.md")
+s, mat = call(st, "GET", f"/api/materials/{mid}")
+check("references: lecture viewer has further reading", s == 200 and any("Ohm" in r["part"] for r in mat.get("references", [])), mat.get("references") if s == 200 else mat)
+s, mod = call(te, "GET", "/api/academy/module/1")
+check("references: AI Akademiya module", s == 200 and mod.get("references") and mod["references"][0]["publisher"] == "UNESCO", mod.get("references") if s == 200 else mod)
 ec_en = next(t for t in svc_en["types"] if t["code"] == "enrollment_certificate")
 ec_az = next(t for t in svc["types"] if t["code"] == "enrollment_certificate")
 vals = {f["name"]: f["options"][0] for f in ec_en["fields"] if f["type"] in ("radio", "select")}
@@ -312,6 +327,9 @@ check("desk reply -> waiting", s == 200 and tk2["status"] == "waiting" and tk2["
 s, note = call(of, "POST", f"/api/support/tickets/{tk['id']}/messages", {"text": "Daxili: keş problemi", "internal": True})
 s, mine = call(st, "GET", f"/api/support/tickets/{tk['id']}")
 check("internal notes hidden from user", s == 200 and all(not m["internal"] for m in mine["thread"]) and len(mine["thread"]) == 1)
+s, t1_en = call_lang(st, "GET", "/api/support/tickets/1", "en")
+authors_en = {m["author"] for m in t1_en.get("thread", [])} if s == 200 else set()
+check("thread authors: personas translated (author is not a skipped key)", "IT administrator" in authors_en and "İT administratoru" not in authors_en, authors_en)
 check("badge: waiting ticket", call(st, "GET", "/api/badges")[1].get("support", 0) >= 1)
 s, tk3 = call(st, "POST", f"/api/support/tickets/{tk['id']}/messages", {"text": "Yenilədim, indi işləyir."})
 check("user reply -> in progress", s == 200 and tk3["status"] == "in_progress")
@@ -333,8 +351,11 @@ s, ach = call_lang(anon, "GET", "/api/achievements", "en")
 check("achievements (public, sourced)", s == 200 and len(ach["items"]) == 18 and len(ach["categories"]) == 6
       and all(x["sources"] and all(src["url"].startswith("https://") for src in x["sources"]) for x in ach["items"]), str(ach)[:200])
 check("achievements localized", s == 200 and not AZ_RX.search(ach["items"][0]["title"]), ach["items"][0]["title"])
+qs26 = next((x for x in ach["items"] if x["id"] == "qs-2026"), None) if s == 200 else None
+check("achievements: QS 2026 dated by its sources", qs26 and qs26["date"] == "2025-06-19" and len(qs26["sources"]) == 2, qs26)
 s, ct = call(anon, "GET", "/api/contact")
-check("official contacts", s == 200 and ct["phone"] == "+994 12 539 13 48" and ct["email"] == "info@aztu.edu.az" and len(ct["social"]) == 5)
+check("official contacts", s == 200 and ct["phone"] == "+994 12 539 13 48" and ct["email"] == "info@aztu.edu.az" and len(ct["social"]) == 4
+      and not any("youtube" in x["url"] for x in ct["social"]), ct.get("social") if s == 200 else ct)
 s, sr2 = call(st, "GET", "/api/search?q=GreenMetric")
 check("search finds achievements", s == 200 and any(r["link"].startswith("/achievements") for r in sr2["results"]), sr2)
 s, vp = call(client(), "GET", f"/verify/{r2['document']['verify_code']}?lang=en")

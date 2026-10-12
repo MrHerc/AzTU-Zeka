@@ -28,7 +28,7 @@ function newsCard(n) {
       <h3>${n.title}</h3><p>${n.summary}</p>
       <div class="news-meta">${n.event_start
         ? html`<span>${ic("calendar", 13)} ${fmtDayMonth(n.event_start)}, ${fmtTime(n.event_start)}</span><span>${ic("pin", 13)} ${n.location}</span>
-            ${n.registered ? html`<span class="badge b-green">${ic("check", 11)} ${t("qeydiyyatdasınız")}</span>`
+            ${n.registered ? html`<span class="badge b-green">${ic("check", 11)} ${t("Qeydiyyatdasınız")}</span>`
               : full ? html`<span class="badge b-amber">${t("Yer yoxdur")}</span>` : ""}`
         : html`<span>${ic("clock", 13)} ${ago(n.published_at)}</span>`}</div></div></a>`;
 }
@@ -41,7 +41,7 @@ function eventRow(n) {
       ${n.capacity ? html`<div class="tiny muted">${t("{a} / {b} yer", { a: n.registered_count, b: n.capacity })}</div>` : ""}</div>
     ${n.registration && !n.past ? html`<button class="btn btn-sm ${n.registered ? "" : "btn-accent"}" data-rsvp="${n.id}" ${full && !n.registered ? "disabled" : ""}>
       ${n.registered ? t("Ləğv et") : full ? t("Yer yoxdur") : t("Qeydiyyat")}</button>`
-      : n.past ? html`<span class="badge b-gray">${t("başa çatıb")}</span>` : ""}</div>`;
+      : n.past ? html`<span class="badge b-gray">${t("Başa çatıb")}</span>` : ""}</div>`;
 }
 
 const achievementsBanner = () => html`<a class="ach-banner" href="#/achievements">
@@ -169,13 +169,13 @@ route("/news/:id", async (el, p) => {
             <span>${ic("clock", 13)} ${fmtDateTime(n.published_at)}</span><span>·</span><span>${n.author}</span><span>·</span>
             <span>${ic("eye", 13)} ${t("{n} oxunma", { n: n.reads })}</span>
             <button class="btn btn-sm btn-ghost" id="save">${ic("star", 14)} ${n.saved ? t("Yadda saxlanılıb") : t("Yadda saxla")}</button>
-            <button class="btn btn-sm btn-ghost" id="share">${ic("copy", 14)} ${t("Linki paylaş")}</button>
+            <button class="btn btn-sm btn-ghost" id="share">${ic("copy", 14)} ${t("Keçidi kopyala")}</button>
             ${isStaff() ? html`<button class="btn btn-sm btn-ghost" data-go="/staff/news">${ic("edit", 14)} ${t("İdarə et")}</button>` : ""}</div>
           <p class="na-lead"><b>${n.summary}</b></p>
           ${n.body ? md(n.body) : html`<p class="muted">${t("Bu xəbər üçün ətraflı mətn əlavə edilməyib.")}</p>`}
         </article>
         <div class="stack news-side">
-          ${n.event_start ? html`<div class="card accent event-card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Tədbir")}</h3>${n.past ? html`<span class="badge b-gray">${t("başa çatıb")}</span>` : ""}</div>
+          ${n.event_start ? html`<div class="card accent event-card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Tədbir")}</h3>${n.past ? html`<span class="badge b-gray">${t("Başa çatıb")}</span>` : ""}</div>
             <div class="card-b stack">
               <div class="row event-when">${datebox(n.event_start)}<div><b>${fmtDayLong(n.event_start)}</b><div class="small muted">${fmtTime(n.event_start)} – ${fmtTime(n.event_end)}</div></div></div>
               <div class="row small">${ic("pin", 15)} ${n.location}</div>
@@ -346,7 +346,7 @@ registerTour("news.feed", { route: "/news", title: t("Xəbərlər və tədbirlə
   { sel: ".ach-banner", title: t("Nailiyyətlər"), text: t("Universitetin rəsmi uğurlarına keçin — reytinqlər, elm və tələbə qələbələri.") },
 ] });
 registerTour("news.detail", { route: "/news/:id", go: "/news/1", title: t("Xəbərin detalları"), group: t("Universitet"), icon: "news", steps: [
-  { sel: ".na-byline", title: t("Əməliyyatlar"), text: t("Xəbəri yadda saxlayın və ya linkini paylaşın.") },
+  { sel: ".na-byline", title: t("Əməliyyatlar"), text: t("Xəbəri yadda saxlayın və ya keçidini kopyalayın.") },
   { sel: ".na-lead", title: t("Xülasə"), text: t("Qısa məzmun və ardınca tam mətn.") },
   { sel: ".event-card", title: t("Tədbir"), text: t("Tədbir üçün qeydiyyatdan keçin və .ics faylı ilə təqviminizə əlavə edin.") },
 ] });

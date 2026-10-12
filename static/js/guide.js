@@ -31,7 +31,7 @@ route("/guide", async (el, p, q) => {
   if (tab === "tours") {
     const groups = [];
     for (const x of tours) { let gr = groups.find((y) => y.name === x.group); if (!gr) groups.push((gr = { name: x.group || t("Ümumi"), items: [] })); gr.items.push(x); }
-    mount(b, groups.length ? html`${groups.map((gr) => html`<h3 class="section-t">${gr.name}</h3><div class="grid g-auto">${gr.items.map((x) => html`<div class="tour-tile ${x.done ? "done" : ""}">
+    mount(b, groups.length ? html`${groups.map((gr) => html`<h3 class="section-t">${gr.name}</h3><div class="grid g-auto tour-grid">${gr.items.map((x) => html`<div class="tour-tile ${x.done ? "done" : ""}">
         <span class="stat-ic ${x.done ? "ic-green" : "ic-blue"}">${ic(x.done ? "check" : x.icon, 18)}</span>
         <div class="grow"><b>${x.title}</b><div class="tiny muted">${t("{n} addım", { n: x.steps })}${x.done ? " · " + t("tamamlanıb") : ""}</div></div>
         <button class="btn btn-sm ${x.done ? "" : "btn-primary"}" data-start="${x.key}" data-path="${x.route}">${x.done ? t("Təkrar") : t("Başla")}</button></div>`)}</div>`)}`

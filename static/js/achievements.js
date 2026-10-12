@@ -42,7 +42,7 @@ route("/achievements", async (el, p, q) => {
       { info: t("Bütün məlumatlar AzTU-nun rəsmi saytından (aztu.edu.az) və Elm və Təhsil Nazirliyinin saytından (edu.gov.az) götürülüb. Hər kartda orijinal xəbərə keçid var. Son yoxlama: {d}.", { d: fmtDate(a.checked) }) })}
     <section class="ach-hero" aria-label="${t("Əsas göstəricilər")}"><div class="ach-hero-in">
       <div class="ach-hero-t"><span class="eyebrow">${ic("trophy", 15)} ${t("Azərbaycan Texniki Universiteti")}</span>
-        <h2>${t("Mühəndislik təhsilində 75 illik ənənə, yeni nəslin texnoloji uğurları")}</h2>
+        <h2>${t("Mühəndislik təhsilində 75 ildən artıq ənənə, yeni nəslin texnoloji uğurları")}</h2>
         <p>${t("Seçilmiş nailiyyətlər rəsmi xəbərlər əsasında hazırlanıb. Hər birinin mənbəsini oxuya bilərsiniz.")}</p></div>
       <div class="ach-stats">${a.stats.map((s) => html`<div class="ach-stat"><div class="v">${s.format === "year" ? s.value : html`${s.prefix || ""}${cnt(s.value)}`}</div><div class="l">${s.label}</div></div>`)}</div></div></section>
     <div class="chips" role="group" aria-label="${t("Kateqoriyalar")}"><button class="chip on" data-fcat="all" aria-pressed="true">${t("Hamısı")} <span>${total}</span></button>

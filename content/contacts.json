@@ -16,7 +16,6 @@
     {"key": "facebook", "label": "Facebook", "url": "https://www.facebook.com/aztu.edu.az"},
     {"key": "instagram", "label": "Instagram", "url": "https://www.instagram.com/aztu.edu.az/"},
     {"key": "linkedin", "label": "LinkedIn", "url": "https://www.linkedin.com/school/azerbaijan-technical-university/"},
-    {"key": "youtube", "label": "YouTube", "url": "https://www.youtube.com/@aztu_official"},
     {"key": "wikipedia", "label": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Azerbaijan_Technical_University"}
   ],
   "systems": [

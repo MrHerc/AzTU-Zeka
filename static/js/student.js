@@ -1,5 +1,5 @@
 import { api, html, raw, mount, on, md, ic, toast, modal, route, go, S, pageHead, badge, fmtDate, fmtDateTime, fmtDayLong, ago, ring, progress, loading, empty,
-  failed, infoTip, greeting, QTYPE, cover, datebox, cnt, num, registerTour, openFile, openSyllabus, t, $, $$, esc, isoDay } from "./core.js";
+  failed, infoTip, greeting, QTYPE, cover, datebox, cnt, num, registerTour, openFile, openSyllabus, refCard, refList, t, $, $$, esc, isoDay } from "./core.js";
 import { chatView } from "./chat.js";
 import { achievementsTeaser } from "./achievements.js";
 
@@ -138,7 +138,7 @@ route("/student/course/:id", async (el, p) => {
       <div class="stack">
         <div class="card" data-tour="materials"><div class="card-h"><h3>${ic("layers", 17)} ${t("Mühazirə materialları")}</h3><span class="small muted">${t("{n} material", { n: c.materials_list.length })}</span></div>
           <div class="card-b list">${c.materials_list.length ? c.materials_list.map((m) => html`<div class="list-item click" data-mat="${m.id}"><span class="stat-ic ic-blue" style="width:36px;height:36px">${ic("file", 17)}</span>
-            <div class="grow"><b class="small">${m.title}</b><div class="tiny muted">${t("{n} bölmə", { n: m.chunk_count })} · ${t("{n} anlayış", { n: m.term_count })} · ${fmtDate(m.created_at)}</div></div>
+            <div class="grow"><b class="small">${m.title}</b><div class="tiny muted">${t("{n} bölmə", { n: m.chunk_count })} · ${t("{n} anlayış", { n: m.term_count })} · ${fmtDate(m.created_at)}${m.refs ? html` · ${t("{n} əlavə mənbə", { n: m.refs })}` : ""}</div></div>
             <button class="btn btn-sm">${ic("eye", 14)} ${t("Oxu")}</button></div>`)
             : empty("file", t("Hələ material yoxdur"), t("Müəllim material yüklədikcə burada görünəcək."))}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("quiz", 17)} ${t("Testlər")}</h3></div><div class="card-b list">
@@ -148,6 +148,7 @@ route("/student/course/:id", async (el, p) => {
             ${q.can_start ? html`<button class="btn btn-sm btn-primary" data-go="/student/quiz/${q.id}">${t("Başla")}</button>`
               : q.last_attempt ? html`<button class="btn btn-sm" data-go="/student/attempt/${q.last_attempt}">${t("Nəticə")}</button>` : html`<span class="badge b-gray">${t("Cəhd limiti bitib")}</span>`}</div>`)
             : empty("quiz", t("Hələ test yoxdur"), t("Müəllim test təyin etdikdə burada görünəcək."))}</div></div>
+        ${refCard(c.references, c.references_checked)}
       </div>
       <div class="stack">
         <div class="card" data-tour="attendance-card"><div class="card-h"><h3>${ic("calcheck", 17)} ${t("Davamiyyət")}</h3><a class="small" href="#/student/attendance">${t("Ətraflı")} ${ic("arrow", 13)}</a></div><div class="card-b">
@@ -166,7 +167,8 @@ route("/student/course/:id", async (el, p) => {
     let m;
     try { m = await api.get(`/api/materials/${b.dataset.mat}`); } catch (err) { return toast(err.message, "err"); }
     modal({ title: m.title, size: "lg", body: html`${m.glossary.length ? html`<div class="label mb-sm">${t("Əsas anlayışlar")}</div><div class="chips mb">${m.glossary.map((g) => html`<span class="badge b-navy" title="${g.definition}">${g.term}</span>`)}</div>` : ""}
-      <div class="stack">${m.chunks.map((ch) => html`<div class="card pad"><b>${ch.heading}</b><div class="mt-sm">${md(ch.text)}</div></div>`)}</div>`,
+      <div class="stack">${m.chunks.map((ch) => html`<div class="card pad"><b>${ch.heading}</b><div class="mt-sm">${md(ch.text)}</div></div>`)}</div>
+      ${m.references && m.references.length ? html`<div class="label mt mb-sm">${t("Mövzu üzrə əlavə oxu")}</div>${refList(m.references)}` : ""}`,
       actions: [{ label: t("Bağla") }, { html: `${ic("sparkles", 15).__html} ${esc(t("Bu mövzunu tutorla öyrən"))}`, cls: "btn-ai", onClick: () => go(`/student/tutor/${c.id}?q=${encodeURIComponent(m.title.split(". ").pop() + " mövzusunu izah et")}&mode=explain`) }] });
   });
 });
@@ -374,6 +376,7 @@ registerTour("student.courses", { route: "/student/courses", roles: ["student"],
 ] });
 registerTour("student.course", { route: "/student/course/:id", roles: ["student"], title: t("Fənn səhifəsi"), group: t("Təhsil"), icon: "book", go: "/student/course/1", steps: [
   { sel: "[data-tour=materials]", title: t("Materiallar"), text: t("Mühazirə materiallarını portal daxilində oxuyun; əsas anlayışlar da burada verilir.") },
+  { sel: "[data-tour=refs]", title: t("Tövsiyə olunan mənbələr"), text: t("Fənn üzrə açıq dərsliklər və onlayn kurslar. Keçidlər yeni pəncərədə açılır.") },
   { sel: "[data-tour=attendance-card]", title: t("Davamiyyət"), text: t("Fənn üzrə iştirakınız və icazə verilən qayıb həddi.") },
 ] });
 registerTour("student.tutor", { route: "/student/tutor/:cid?", roles: ["student"], title: t("AI tutor"), group: t("Təhsil"), icon: "sparkles", go: "/student/tutor/1", steps: [

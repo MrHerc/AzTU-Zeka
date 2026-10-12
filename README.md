@@ -21,6 +21,9 @@ Verilənlər bazası sxemi dəyişdikdə köhnə demo bazası avtomatik yenidən
 - **Dəstək və rəy** — dəstək sorğuları (kateqoriya, prioritet, icra müddəti, yazışma, daxili qeydlər, qiymətləndirmə), hər səhifədə rəy düyməsi,
   rəhbərlik üçün məmnuniyyət paneli (orta qiymət, NPS, bölmələr, şərhlər, CSV).
 - **AzTU-nun nailiyyətləri** — 18 real fakt, hər biri aztu.edu.az və ya edu.gov.az mənbəsinə keçidlə (`content/achievements.json`).
+- **Tövsiyə olunan mənbələr** — fənn səhifələrində, mühazirə baxışında və AI Akademiya modullarında açıq dərsliklər (OpenStax, MIT OCW),
+  rəsmi sənədləşmə və beynəlxalq rəhbər sənədlər (UNESCO, Avropa Komissiyası, QAA). Hər keçid açılıb yoxlanılıb; adlar mənbənin
+  dilində verilir və tərcümə olunmur (`content/references.json`, yoxlama tarixi faylın `checked` sahəsində).
 - **Əlaqə** — universitetin rəsmi ünvanı, telefonu, e-poçtu, xəritə keçidləri, rəsmi sistemlər və sosial şəbəkələr (`content/contacts.json`).
 - **Portal daxilində sənəd baxışı** — sənəd, sillabus və əlavələr modal pəncərədə açılır (çap/PDF, yükləmə, yeni pəncərə); PDF üçün mətn önizləməsi.
 - **Hamar keçidlər və animasiyalar**, skelet yükləmə, sayğaclar, qrafik animasiyaları (`prefers-reduced-motion` nəzərə alınır).
@@ -50,7 +53,7 @@ ingilis/rus dilində verilən kampus sualları Azərbaycan dilindəki qaydalarla
 (OpenAI-uyğun API, Azure OpenAI və ya Anthropic); LLM əlçatan olmasa, demo mühərrikə avtomatik qayıdır.
 
 ## Yoxlama
-`python tests\selftest.py` (backend + API, o cümlədən dil, dəstək, rəy, nailiyyətlər) — bazanı sıfırlayır, sonra serveri yenidən başladın.
+`python tests\selftest.py` (backend + API, o cümlədən dil, dəstək, rəy, nailiyyətlər, tövsiyə olunan mənbələr) — bazanı sıfırlayır, sonra serveri yenidən başladın.
 İnkişaf alətləri `.dev/tools/`: `jscheck.ps1`, `imports.py`, `dom.py` (bütün səhifələr, 3 dil, mobil), `shot.py`, `m390.py`.
 
 ## Məhdudiyyətlər (demo)

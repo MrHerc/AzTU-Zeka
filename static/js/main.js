@@ -59,9 +59,9 @@ async function loginPage(root) {
     </div>
     <div class="login-side"><div class="login-card">
       <h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
-      <button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("pilotda")}</span></button>
+      <button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("Pilotda")}</span></button>
       <div class="or">${t("demo rolları")}</div>
-      <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s}</span></div>${ic("arrow", 16)}</button>`)}</div>
+      <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
       <p class="small muted mt">${ic("shield", 13)} ${t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>
     </div></div></div>`);
   on(root, "click", "[data-role]", async (e, b) => {
@@ -265,6 +265,7 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("click", (e) => {
   if (e.target.closest("#retry-page")) { e.preventDefault(); render(); }
+  if (e.target.closest("#back-page")) { e.preventDefault(); if (history.length > 1) history.back(); else go(HOME[S.user.role]); }
   if (e.target.closest("[data-page-tour]")) { e.preventDefault(); if (!startPageTour()) toast(t("Bu səhifə üçün bələdçi hələ hazırlanmayıb")); }
 });
 window.addEventListener("zeka:badges", refreshBadges);

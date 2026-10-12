@@ -7,7 +7,7 @@ import random
 import re
 from datetime import date, datetime, timedelta
 
-from . import engine, store, tutor
+from . import engine, refs, store, tutor
 from .common import (R, check_limit, cite_list, course_access, history, holder, kb_cite_list, msg_out, q_load,
                      save_msg, search_chunks, usage, week_index)
 from .i18n import S, S_, T3
@@ -87,6 +87,9 @@ def course_detail(req):
                                                                          "JOIN tools t ON t.key=ct.tool_key WHERE ct.course_id=? ORDER BY t.seq", (co["id"],))]
     out["quizzes"] = [quiz_out(c, q, u["id"] if u["role"] == "student" else None)
                       for q in rows(c, "SELECT * FROM quizzes WHERE course_id=? AND published=1 ORDER BY id DESC", (co["id"],))]
+    out["references"], out["references_checked"] = refs.for_course(co["code"]), refs.checked()
+    for m in out["materials_list"]:
+        m["refs"] = len(refs.for_material(m["filename"]))
     if u["role"] in ("teacher", "admin", "leader"):
         out["insights"] = course_insights(c, co["id"])
     return out
@@ -100,6 +103,7 @@ def material_get(req):
     course_access(req, m["course_id"])
     m["chunks"] = rows(req.db, "SELECT id, seq, heading, text FROM chunks WHERE material_id=? ORDER BY seq", (m["id"],))
     m["glossary"] = [{"term": t, "definition": d} for t, d in engine.glossary(m["text"])]
+    m["references"], m["references_checked"] = refs.for_material(m["filename"]), refs.checked()
     return m
 
 

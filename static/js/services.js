@@ -45,7 +45,7 @@ function svcCard(x) {
     <b>${x.name}</b><span>${x.description}</span>
     <div class="row wrap tiny muted svc-meta">${ic("clock", 12)} ${slaLabel(x.sla_hours)}
       ${x.document ? html`<span class="badge b-green">${ic("qr", 11)} ${t("QR sənəd")}</span>` : ""}
-      ${x.attachments && x.attachments.required ? html`<span class="badge b-amber">${ic("clip", 11)} ${t("sənəd tələb olunur")}</span>` : ""}</div></button>`;
+      ${x.attachments && x.attachments.required ? html`<span class="badge b-amber">${ic("clip", 11)} ${t("Sənəd tələb olunur")}</span>` : ""}</div></button>`;
 }
 
 // ---------------------------------------------------------------- apply wizard
@@ -248,7 +248,7 @@ function reqRow(r) {
     <div class="grow req-main"><b>${r.type_name}</b><div class="small muted">${t("№ {id}", { id: r.id })} · ${fmtDateTime(r.created_at)}${r.summary ? " · " + r.summary : ""}</div>
       <div class="rprog-bar mt-sm">${raw(steps)}</div></div>
     <div class="row wrap req-badges">${r.files ? html`<span class="badge b-gray">${ic("clip", 11)} ${r.files}</span>` : ""}${r.messages ? html`<span class="badge b-gray">${ic("message", 11)} ${r.messages}</span>` : ""}
-      ${["ready", "rejected", "cancelled"].includes(r.status) ? "" : r.overdue ? html`<span class="badge b-red">${t("gecikir")}</span>`
+      ${["ready", "rejected", "cancelled"].includes(r.status) ? "" : r.overdue ? html`<span class="badge b-red">${t("Gecikir")}</span>`
         : r.hours_left != null && r.status !== "returned" ? html`<span class="badge b-gray">${ic("clock", 11)} ${t("~{n} saat", { n: Math.max(1, Math.round(r.hours_left)) })}</span>` : ""}
       ${badge(r.status)}</div></div></button>`;
 }

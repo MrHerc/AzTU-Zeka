@@ -104,6 +104,23 @@ def iso(dt: datetime) -> str:
     return dt.isoformat(timespec="seconds")
 
 
+# Demo data is generated relative to "now", so a plain "N hours ago" lands at night when the database is prepared in the morning
+# (requests filed at 01:35, news published at 04:35). These keep synthetic office activity within 09:00–17:59.
+def office_hours(dt: datetime, not_after: datetime | None = None) -> datetime:
+    """Same day, same minutes, hour folded into 09–17; moved back a day if that would be later than not_after."""
+    out = dt if 9 <= dt.hour < 18 else dt.replace(hour=9 + dt.hour % 9)
+    return out - timedelta(days=1) if not_after and out > not_after else out
+
+
+def next_office_time(dt: datetime) -> datetime:
+    """The same moment if it is within office hours, otherwise the next opening (09:xx) — never earlier than dt."""
+    if dt.hour < 9:
+        return dt.replace(hour=9)
+    if dt.hour >= 18:
+        return (dt + timedelta(days=1)).replace(hour=9)
+    return dt
+
+
 def connect() -> sqlite3.Connection:
     DATA.mkdir(exist_ok=True)
     c = sqlite3.connect(DB_PATH, timeout=15, check_same_thread=False)
@@ -151,7 +168,7 @@ def _txt(v):
 
 
 def notify(c, user_ids, kind, title, body="", link="", when=None, read=False):
-    t = iso(when or now())
+    t = iso(office_hours(when, now()) if when else now())       # explicit times come from the demo seed only
     for uid in ([user_ids] if isinstance(user_ids, int) else user_ids):
         c.execute("INSERT INTO notifications(user_id,kind,title,body,link,created_at,read_at) VALUES(?,?,?,?,?,?,?)",
                   (uid, kind, _txt(title), _txt(body), link, t, t if read else None))
@@ -567,7 +584,12 @@ def seed(c):
 
     def make_request(st, code, status, hours_ago, step=0, data=None, attach=False):
         rt = rtypes[code]
-        created = t0 - timedelta(hours=hours_ago)
+        created = office_hours(t0 - timedelta(hours=hours_ago), t0)
+        if status == "ready":                      # issued the same working day: filed in the morning, ready within a few hours
+            created = created.replace(hour=rng.randint(9, 11))
+            if created > t0:
+                created -= timedelta(days=1)
+        acted = min(next_office_time(created + timedelta(hours=2)), t0)          # the dean's office answers in office hours
         data = data or default_data(code, st)
         rid = c.execute("INSERT INTO requests(type_code,student_id,data,status,step,created_at,updated_at,due_at) VALUES(?,?,?,?,?,?,?,?)",
                         (code, st, json.dumps(data, ensure_ascii=False), status, step, iso(created), iso(created),
@@ -582,12 +604,12 @@ def seed(c):
         if status in ("in_progress", "returned", "rejected"):
             act = {"in_progress": "approved", "returned": "returned", "rejected": "rejected"}[status]
             note = {"returned": "Təqdim ediləcəyi qurumun adını dəqiqləşdirin.", "rejected": "Eyni məzmunlu arayış artıq verilib."}.get(status, rt["steps"][0])
-            c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, nigar, act, note, iso(created + timedelta(hours=2))))
+            c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, nigar, act, note, iso(acted)))
             if status == "returned":
                 c.execute("INSERT INTO request_messages(request_id,author_id,text,created_at) VALUES(?,?,?,?)",
-                          (rid, nigar, "Salam! Zəhmət olmasa, arayışın təqdim ediləcəyi qurumun tam adını yazın.", iso(created + timedelta(hours=2))))
+                          (rid, nigar, "Salam! Zəhmət olmasa, arayışın təqdim ediləcəyi qurumun tam adını yazın.", iso(acted)))
         if status == "ready":
-            issued = created + timedelta(hours=rng.uniform(2.5, 9))
+            issued = min(next_office_time(created + timedelta(hours=rng.uniform(2.5, 6))), t0)
             if rt.get("document"):
                 stu = row(c, "SELECT * FROM users WHERE id=?", (st,))
                 doc = issue_document(c, "request", st, rt["document"], {"type": code, **data, "student": stu["full_name"]}, nigar, rt["prefix"], rid, issued)
@@ -666,7 +688,7 @@ def seed(c):
             hh, mm = map(int, ev["time"].split(":"))
             start = datetime.combine(today + timedelta(days=ev["in_days"]), time(hh, mm))
             end = start + timedelta(hours=ev["duration_h"])
-        pub = t0 - timedelta(days=n["days_ago"], hours=rng.randint(1, 6))
+        pub = office_hours(t0 - timedelta(days=n["days_ago"], hours=rng.randint(1, 6)), t0)
         nid = c.execute("INSERT INTO news(kind,title,summary,body,cover,author_id,audience,pinned,important,published_at,event_start,event_end,"
                         "location,capacity,registration,tags) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (n["kind"], n["title"], n["summary"], n["body"], json.dumps(n["cover"]), uid["rektorluq"], n["audience"],

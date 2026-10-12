@@ -1,5 +1,5 @@
 import { api, html, raw, mount, on, md, ic, toast, modal, confirmBox, route, go, S, LANG, t, num, pageHead, fmtDate, ring, progress, loading, empty, failed,
-  infoTip, openDoc, openSyllabus, registerTour, esc, $, $$ } from "./core.js";
+  infoTip, openDoc, openSyllabus, registerTour, refCard, esc, $, $$ } from "./core.js";
 import { stat } from "./student.js";
 
 const LET = "ABCD";
@@ -13,7 +13,7 @@ function trackCard(tr, rec) {
   return html`<div class="track slide-up" data-go="/teacher/academy/track/${tr.key}" role="link" tabindex="0" aria-label="${esc(tr.title)}">
     <div class="track-top" style="background:linear-gradient(135deg, ${tr.color}, ${tr.color}cc)"><span class="ti">${ic(tr.icon, 20)}</span>
       <div class="grow"><b>${tr.title}</b><div class="tiny" style="opacity:.85">${t("{n} modul", { n: tr.total })} · ${t("{h} saat", { h: hrs(tr.minutes) })} · ${tr.level}</div></div>
-      ${rec ? html`<span class="badge" style="background:#fff;color:var(--coral-700)">${ic("star", 11)} ${t("tövsiyə")}</span>` : ""}</div>
+      ${rec ? html`<span class="badge" style="background:#fff;color:var(--coral-700)">${ic("star", 11)} ${t("Tövsiyə")}</span>` : ""}</div>
     <div class="track-b"><div class="small muted">${tr.summary}</div>
       <div class="row between small" style="margin-top:auto"><span class="muted">${t("{done}/{total} modul", { done: tr.done, total: tr.total })}</span><b>${t("{n}%", { n: tr.percent })}</b></div>
       ${progress(tr.percent, tr.percent === 100 ? "green" : "", t("İstiqamətin gedişatı"))}
@@ -125,6 +125,7 @@ route("/teacher/academy/module/:id", async (el, p) => {
         ${m.key_points.map((k) => html`<div class="row small top" style="margin-bottom:8px"><span style="color:var(--green)">${ic("check", 15)}</span>${k}</div>`)}</div></div>
       <div class="card brand-border" data-tour="task"><div class="card-b"><b class="row" style="gap:6px">${ic("target", 16)} ${t("Praktiki tapşırıq")}</b><p class="small">${m.task}</p>
         ${m.link ? html`<button class="btn btn-sm btn-primary" data-go="${m.link}">${t("Tapşırığa keç")} ${ic("chevron", 14)}</button>` : ""}</div></div>
+      ${refCard(m.references, m.references_checked)}
       <div class="notice info">${ic("award", 16)}<div>${t("İstiqamətin bütün modulları tamamlandıqda QR kodla doğrulanan sertifikat avtomatik verilir.")}</div></div></div></div>`);
   on(el, "click", "[data-say]", (e, b) => speak(b.dataset.say));
   on(el, "click", "[data-qi]", (e, b) => { const i = +b.dataset.qi; ans[i] = +b.dataset.oi; $$(`[data-qi="${i}"]`, el).forEach((x) => x.classList.toggle("sel", x === b)); });
@@ -156,7 +157,7 @@ route("/teacher/tools", async (el, p, q) => {
   const toolCard = (tool) => html`<div class="tool slide-up"><div class="row"><span class="tl" aria-hidden="true">${brandAbbr(tool.name)}</span>
       <div class="grow"><b>${tool.name}</b><div class="tiny muted">${tool.type} · ${tool.platform}</div></div></div>
     <div class="row wrap"><span class="badge ${priceCls(tool)}">${tool.pricing}</span>
-      ${tool.areas.some((x) => d.my_areas.includes(x)) ? html`<span class="badge b-coral">${ic("star", 11)} ${t("kafedranız üçün")}</span>` : ""}</div>
+      ${tool.areas.some((x) => d.my_areas.includes(x)) ? html`<span class="badge b-coral">${ic("star", 11)} ${t("Kafedranız üçün")}</span>` : ""}</div>
     <div class="small muted">${tool.summary}</div>
     <div class="row wrap" style="margin-top:auto"><button class="btn btn-sm btn-primary" data-tool="${tool.key}">${t("Ətraflı")}</button>
       ${tool.url ? html`<a class="btn btn-sm" href="${tool.url}" target="_blank" rel="noopener noreferrer">${ic("external", 13)} ${t("Rəsmi sayt")}</a>` : ""}</div></div>`;
@@ -219,13 +220,13 @@ route("/teacher/syllabus", async (el, p, q) => {
   const total = () => (s ? s.assessment.reduce((acc, x) => acc + (+x[1] || 0), 0) : 0);
   const draw = () => {
     const sum = total();
-    mount(el, html`${pageHead(t("AI sillabus köməkçisi"), t("Materiallarınız əsasında sillabus layihəsi — hər bölməni redaktə edə bilərsiniz."),
+    mount(el, html`${pageHead(t("Sillabus köməkçisi"), t("Materiallarınız əsasında sillabus layihəsi — hər bölməni redaktə edə bilərsiniz."),
         html`<label class="sr-only" for="cs">${t("Fənn")}</label><select class="select" id="cs" style="width:auto" aria-label="${t("Fənn")}">${cs.map((x) => html`<option value="${x.id}" ${x.id === co.id ? "selected" : ""}>${x.name}</option>`)}</select>
         <button class="btn btn-ai" id="gen">${ic("sparkles", 15)} ${s ? t("Yenidən hazırla") : t("Layihə hazırla")}</button>`,
         [[t("Əsas"), "/teacher"], [t("Sillabus köməkçisi")]],
         { info: t("Layihə təlim nəticələrini, həftəlik planı, iş yükünü, qiymətləndirməni və qaydaları əhatə edir. Qiymətləndirmə ballarının cəmi 100 olmalıdır. Çap görünüşü portalın daxilində açılır.") })}
       ${!s ? html`<div class="card">${empty("layers", t("Sillabus hazır deyil"), t("“Layihə hazırla” düyməsini seçin — AI materiallarınızdan ilkin variant hazırlayacaq."), { label: t("Layihə hazırla"), id: "gen-empty", icon: "sparkles" })}</div>` : html`
-      <div class="row between mb wrap" data-tour="actions"><span class="small muted">${saved.updated_at ? t("Son dəfə saxlanılıb: {d}", { d: fmtDate(saved.updated_at) }) : t("Hələ saxlanılmayıb")}${dirty ? html` · <span class="badge b-amber">${t("yadda saxlanılmamış dəyişikliklər")}</span>` : ""}</span>
+      <div class="row between mb wrap" data-tour="actions"><span class="small muted">${saved.updated_at ? t("Son dəfə saxlanılıb: {d}", { d: fmtDate(saved.updated_at) }) : t("Hələ saxlanılmayıb")}${dirty ? html` · <span class="badge b-amber">${t("Yadda saxlanılmamış dəyişikliklər")}</span>` : ""}</span>
         <div class="row wrap"><button class="btn" id="print">${ic("printer", 15)} ${t("Çap et")}</button><button class="btn btn-primary" id="save">${ic("check", 15)} ${t("Yadda saxla")}</button></div></div>
       <div class="grid g-12"><div class="stack">
         <div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Fənnin təsviri")}</h3></div><div class="card-b"><textarea class="textarea" data-k="description" aria-label="${t("Fənnin təsviri")}">${s.description}</textarea></div></div>
@@ -303,6 +304,7 @@ registerTour("teacher.academy.module", { route: "/teacher/academy/module/:id", g
   { sel: '[data-tour="phrases"]', title: t("Faydalı ifadələr"), text: t("İngilis dilində ifadələri səsləndirmə düyməsi ilə dinləyin.") },
   { sel: '[data-tour="quiz"]', title: t("Yoxlama testi"), text: t("Suallara cavab verin və modulu tamamlayın — nəticə dərhal göstərilir.") },
   { sel: '[data-tour="task"]', title: t("Praktiki tapşırıq"), text: t("Öyrəndiyinizi öz dərsinizdə tətbiq edin.") },
+  { sel: '[data-tour="refs"]', title: t("Tövsiyə olunan mənbələr"), text: t("Modulun mövzusu üzrə rəsmi sənədlər və metodik vəsaitlər.") },
 ] });
 registerTour("teacher.tools", { route: "/teacher/tools", roles: ["teacher"], title: t("Texnoloji həllər"), group: GROUP(), icon: "cpu", steps: [
   { sel: '[data-tour="filters"]', title: t("Filtrlər və axtarış"), text: t("Sahə üzrə süzün və ya alət adına görə axtarın. Ulduz kafedranız üçün tövsiyə olunan alətləri göstərir.") },

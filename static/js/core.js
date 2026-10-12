@@ -22,18 +22,22 @@ export function on(root, ev, sel, fn) {
 }
 
 // ---------------------------------------------------------------- api
+// Status of the most recent failed request: failed() shows "not found" with a way back instead of a pointless retry for a 404.
+let lastFailStatus = null;
 async function req(method, url, body) {
+  lastFailStatus = null;
   const opt = { method, headers: { "X-Lang": LANG }, credentials: "same-origin" };
   const sid = sessionStorage.getItem("zeka-sid");
   if (sid) opt.headers["X-Session"] = sid;
   if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
   let r;
-  try { r = await fetch(url, opt); } catch { const e = new Error(t("Serverlə əlaqə yoxdur. İnternet bağlantısını yoxlayın.")); e.status = 0; throw e; }
+  try { r = await fetch(url, opt); } catch { const e = new Error(t("Serverlə əlaqə yoxdur. İnternet bağlantısını yoxlayın.")); e.status = 0; lastFailStatus = 0; throw e; }
   let data = null;
   try { data = await r.json(); } catch { data = null; }
   if (!r.ok) {
     const err = new Error((data && data.error) || t("Xəta baş verdi ({status})", { status: r.status }));
     err.status = r.status;
+    lastFailStatus = r.status;
     if (r.status === 401 && !url.includes("/api/bootstrap")) { location.hash = "#/login"; }
     throw err;
   }
@@ -104,7 +108,18 @@ export function ago(s) {
 }
 export const initials = (n) => String(n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 export const avatar = (name, color, cls = "") => html`<span class="avatar ${cls}" style="background:${color || "#64748b"}" aria-hidden="true">${initials(name)}</span>`;
-export const num = (n, dec) => (n == null || n === "" || isNaN(n) ? "—" : Number(n).toLocaleString(locale(), dec == null ? {} : { minimumFractionDigits: dec, maximumFractionDigits: dec }));
+// Numbers follow the interface language, not the browser's locale data (Edge without Azerbaijani ICU data printed "88.6" next to
+// server-formatted "4,0"): az/ru "3 680" and "88,6" (non-breaking space, decimal comma), en "3,680" and "88.6". Negative sign: "−".
+const NUM_SEP = { az: ["\u00a0", ","], ru: ["\u00a0", ","], en: [",", "."] };
+export const num = (n, dec) => {
+  if (n == null || n === "" || isNaN(n)) return "—";
+  const v = Number(n);
+  const d = dec == null ? (String(Math.round(Math.abs(v) * 1000) / 1000).split(".")[1] || "").length : dec;
+  const [grp, point] = NUM_SEP[LANG] || NUM_SEP.az;
+  const [int, frac] = Math.abs(v).toFixed(d).split(".");
+  const neg = v < 0 && Number(Math.abs(v).toFixed(d)) !== 0;
+  return (neg ? "−" : "") + int.replace(/\B(?=(\d{3})+(?!\d))/g, grp) + (frac ? point + frac : "");
+};
 export const greeting = () => { const h = new Date().getHours(); return h < 12 ? t("Sabahınız xeyir") : h < 18 ? t("Günortanız xeyir") : t("Axşamınız xeyir"); };
 
 export const STATUS = {
@@ -196,11 +211,40 @@ export const spinner = (size = 16) => html`<span class="spinner" style="width:${
 export const empty = (ic_, title, text = "", action = null) => html`<div class="empty"><div class="ic">${raw(icon(ic_, 24))}</div><b>${title}</b>
   ${text ? html`<div class="small mt-sm">${text}</div>` : ""}
   ${action ? html`<div class="mt">${action.__html !== undefined ? action : html`<button class="btn ${action.cls || "btn-primary"} btn-sm" ${action.go ? raw(`data-go="${esc(action.go)}"`) : ""} ${action.id ? raw(`id="${esc(action.id)}"`) : ""}>${action.icon ? ic(action.icon, 15) : ""} ${action.label}</button>`}</div>` : ""}</div>`;
-// Error state with retry button (data-retry); the page re-renders on click.
-export const failed = (msg) => empty("alert", t("Məlumat yüklənmədi"), msg || "", { label: t("Yenidən cəhd et"), icon: "refresh", cls: "btn", id: "retry-page" });
+// Error state with retry button (data-retry); the page re-renders on click. A 404 (deleted request, old notification link) cannot be
+// fixed by retrying, so it gets a "not found" state with a way back (#back-page, handled in main.js).
+export const failed = (msg) => (lastFailStatus === 404
+  ? empty("compass", t("Tapılmadı"), msg || t("Keçid köhnəlmiş ola bilər."), { label: t("Geri qayıt"), icon: "back", cls: "btn", id: "back-page" })
+  : empty("alert", t("Məlumat yüklənmədi"), msg || "", { label: t("Yenidən cəhd et"), icon: "refresh", cls: "btn", id: "retry-page" }));
 
 // Secondary information behind an (i) button. Shows on hover, focus and tap.
 export const infoTip = (text, label = t("Ətraflı məlumat")) => raw(`<button type="button" class="info-tip" data-tip="${esc(text)}" aria-label="${esc(label + ": " + text)}">${icon("info", 15)}</button>`);
+
+// ---------------------------------------------------------------- references (verified external sources, content/references.json)
+// Titles and sections arrive in the language of the source; kind and lang are codes. One link per row: the whole row opens the
+// source in a new tab. The server only sends https links.
+const REF_KIND = {
+  book: ["book", t("Dərslik")], course: ["cap", t("Açıq kurs")], docs: ["file", t("Rəsmi sənədləşmə")], guide: ["compass", t("Metodik vəsait")],
+  policy: ["shield", t("Rəhbər sənəd")], article: ["flask", t("Elmi məqalə")], standard: ["scale", t("Standart")],
+  database: ["grid", t("Məlumat bazası")], org: ["building", t("Rəsmi qurum")],
+};
+export const refList = (refs) => html`<div class="ref-list">${(refs || []).map((r) => {
+  const [icn, kind] = REF_KIND[r.kind] || REF_KIND.docs;
+  const meta = [r.authors, r.publisher].filter(Boolean).join(" · ");
+  return html`<a class="ref-item" href="${r.url}" target="_blank" rel="noopener noreferrer">
+    <span class="stat-ic ic-navy ref-ic" aria-hidden="true">${ic(icn, 16)}</span>
+    <span class="ref-body"><span class="ref-t">${r.work}</span>${r.part ? html`<span class="ref-part">${r.part}</span>` : ""}
+      <span class="ref-meta">${meta ? html`<span class="tiny muted">${meta}</span>` : ""}<span class="badge b-gray">${kind}</span>${r.lang && r.lang !== LANG ? html`<span class="badge b-blue" title="${t("Mənbənin dili")}">${r.lang.toUpperCase()}</span>` : ""}</span></span>
+    <span class="ref-ext" aria-hidden="true">${ic("external", 15)}</span><span class="sr-only">${t("yeni pəncərədə açılır")}</span></a>`;
+})}</div>`;
+// Card for course pages and AI Akademiya modules; renders nothing when there are no references. checked = ISO date of the link check.
+export function refCard(refs, checked, { title = t("Tövsiyə olunan mənbələr"), note = "", tour = "refs" } = {}) {
+  if (!refs || !refs.length) return "";
+  return html`<div class="card" data-tour="${tour}"><div class="card-h"><h3>${ic("book", 17)} ${title}
+      ${infoTip(t("Bütün keçidlər {d} tarixində açılıb yoxlanılıb. Mənbələr öz dilində, əsasən ingilis dilində verilir.", { d: fmtDate(checked) }))}</h3>
+    <span class="small muted ref-count">${t("{n} mənbə", { n: refs.length })}</span></div>
+    <div class="card-b">${refList(refs)}${note ? html`<div class="tiny muted mt-sm">${note}</div>` : ""}</div></div>`;
+}
 
 // ---------------------------------------------------------------- icons (stroke)
 const P = {
@@ -532,7 +576,8 @@ function animateCount(el) {
   if (!isFinite(target) || REDUCED) return;
   const t0 = performance.now(), dur = Math.min(1400, 600 + Math.abs(target) * 6);
   const step = (now) => {
-    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    // rAF timestamps can be earlier than t0 (frame start vs call time): clamp, or the first frame shows a negative value.
+    const k = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - k, 3);
     el.textContent = pre + num(target * e, dec) + suf;
     if (k < 1) requestAnimationFrame(step);
   };

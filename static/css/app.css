@@ -903,3 +903,38 @@ table { max-width: 100%; }
    page sideways. Badges in horizontally scrolling tables, tabs and chip rows keep a single line. */
 .badge { white-space: normal; max-width: 100%; }
 .table-wrap .badge, .chips .badge, .tabs .badge, .seg .badge { white-space: nowrap; }
+
+/* ---------------------------------------------------------------- v0.3.1 polish
+   Filled coral buttons ("Soruş", "Qeydiyyat", "Test yarat") carried white text on #ee7c7e = 2.9:1, below WCAG AA (4.5:1).
+   The deeper brand coral keeps the accent and reads 4.6:1; the light coral stays for ink, dots and indicators. */
+.btn-accent { background: var(--coral-700); border-color: var(--coral-700); }
+.btn-accent:hover { background: #ad3c3f; border-color: #ad3c3f; }
+.nav-item .count, .icon-btn .pip, .datebox .m { background: var(--coral-700); }   /* small white digits/letters need the same 4.5:1 */
+/* Language switch never splits into two rows (mobile login showed "AZ EN" / "RU"); the university name wraps instead. */
+.lang-seg { flex: none; flex-wrap: nowrap; }
+.login-logo { min-width: 0; }
+.nw { white-space: nowrap; }
+.login-hero .foot b { white-space: nowrap; }
+/* Guide hub: three tiles per row on a laptop, so titles and "3 addım · tamamlanıb" stay on one line. */
+.tour-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.tour-tile .tiny { white-space: nowrap; }
+/* A status badge next to header buttons ("Yeni" on a request) was a faint pill on the page background. */
+.ph-actions .badge { padding: 6px 11px; font-size: 12.5px; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+
+/* Recommended sources (content/references.json): the whole row is one link to the source, opened in a new tab.
+   Long titles wrap inside the card instead of spilling over its edge. */
+.ref-list { display: flex; flex-direction: column; }
+.ref-count { white-space: nowrap; flex: none; }
+.ref-item { display: flex; align-items: flex-start; gap: 12px; padding: 11px 8px; margin: 0 -8px; border-radius: 10px; color: var(--text);
+  border-bottom: 1px solid var(--border); transition: background .15s ease; }
+.ref-item:last-child { border-bottom: 0; }
+.ref-item:hover, .ref-item:focus-visible { background: var(--surface-2); text-decoration: none; }
+.ref-item:hover .ref-t, .ref-item:focus-visible .ref-t { color: var(--link); text-decoration: underline; }
+.ref-ic { width: 34px; height: 34px; border-radius: 10px; }
+.ref-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.ref-t { font-weight: 600; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.ref-part { font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
+.ref-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.ref-ext { color: var(--faint); flex: none; margin-top: 8px; }
+.ref-item:hover .ref-ext, .ref-item:focus-visible .ref-ext { color: var(--link); }
+@media (prefers-reduced-motion: reduce) { .ref-item { transition: none; } }

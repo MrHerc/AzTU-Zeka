@@ -1,5 +1,5 @@
 {
-  "_note": "Real facts only. Every item is taken from the linked official source (AzTU news feed https://aztu.edu.az/feed.xml or the Ministry of Science and Education, edu.gov.az). Items without a date in the source keep date=null. Checked 2026-10-02.",
+  "_note": "Real facts only. Every item is taken from the linked official source (AzTU news feed https://aztu.edu.az/feed.xml or the Ministry of Science and Education, edu.gov.az). Items without a date in the source keep date=null. Checked 2026-10-02; QS 2026 band and date re-checked 2026-10-12 (edu.gov.az + QS press release of 19 June 2025).",
   "categories": [
     {"key": "rankings", "icon": "trend", "tone": "navy", "name": {"az": "Reytinqlər", "en": "Rankings", "ru": "Рейтинги"}},
     {"key": "research", "icon": "flask", "tone": "blue", "name": {"az": "Elm və tədqiqat", "en": "Research", "ru": "Наука"}},
@@ -25,13 +25,14 @@
       "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-azerbaycandan-the-dunya-reytinqine-daxil-olan-5-universitetden-biridir-267168"}]
     },
     {
-      "id": "qs-2026", "category": "rankings", "date": "2025-06", "icon": "trend", "tone": "navy", "featured": true,
+      "id": "qs-2026", "category": "rankings", "date": "2025-06-19", "icon": "trend", "tone": "navy", "featured": true,
       "highlight": {"az": "851–900", "en": "851–900", "ru": "851–900"},
       "title": {"az": "QS 2026: ilk dəfə dünyanın ən yaxşı 1000 universiteti sırasında", "en": "QS 2026: in the world's top 1,000 for the first time", "ru": "QS 2026: впервые в топ-1000 университетов мира"},
       "summary": {"az": "AzTU QS World University Rankings 2026 reytinqində 851–900 aralığında yer alaraq ilk dəfə dünyanın TOP-1000 universiteti sırasına daxil olub.",
                   "en": "AzTU entered the top 1,000 of the QS World University Rankings 2026 for the first time, placing in the 851–900 band.",
                   "ru": "АзТУ впервые вошёл в топ-1000 рейтинга QS World University Rankings 2026, заняв позицию в диапазоне 851–900."},
-      "sources": [{"name": "edu.gov.az", "lang": "en", "url": "https://edu.gov.az/en/printpage/22195"}]
+      "sources": [{"name": "edu.gov.az", "lang": "en", "url": "https://edu.gov.az/en/printpage/22195"},
+                  {"name": "QS · PR Newswire, 19.06.2025", "lang": "en", "url": "https://www.prnewswire.com/news-releases/asia-rises-mit-holds-top-spot-as-qs-reveals-2026-world-university-rankings-302485769.html"}]
     },
     {
       "id": "greenmetric-2026", "category": "rankings", "date": "2026-09-24", "icon": "globe", "tone": "green",

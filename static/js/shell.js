@@ -179,7 +179,7 @@ async function toggleNotifications(host) {
 
 function langMenu(host) {
   dropdown(host, "menu lang-dd", html`<div class="menu-label">${t("Interfeys dili")}</div>${LANGS.map((l) => html`<button class="menu-item" data-lang="${l.code}" lang="${l.code}">
-      <span class="lang-code">${l.short}</span> ${l.label}${l.code === LANG ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("seçilib"))}</span>`) : ""}</button>`)}
+      <span class="lang-code">${l.short}</span> ${l.label}${l.code === LANG ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Seçilib"))}</span>`) : ""}</button>`)}
     <div class="menu-sep"></div><div class="menu-note">${t("Fənn materialları və AI tutorun sitatları tədris dilində qalır.")}</div>`.__html);
   const dd = host.querySelector(".dropdown");
   if (dd) on(dd, "click", "[data-lang]", (e, b) => { closeDropdowns(); switchLang(b.dataset.lang); });
@@ -204,7 +204,7 @@ function userMenu(host) {
     <a class="menu-item" href="#/support">${ic("ticket", 16)} ${t("Dəstək xidməti")}</a>
     <button class="menu-item show-sm" id="um-theme">${ic(S.theme === "dark" ? "sun" : "moon", 16)} ${S.theme === "dark" ? t("Açıq tema") : t("Tünd tema")}</button>
     <div class="menu-sep"></div><div class="menu-label">${t("Demo: rolu dəyiş")}</div>
-    ${ROLES.map(([k, l, s, i]) => html`<button class="menu-item" data-switch="${k}">${ic(i, 16)} ${l}${k === u.role ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("aktiv"))}</span>`) : ""}</button>`)}
+    ${ROLES.map(([k, l, s, i]) => html`<button class="menu-item" data-switch="${k}">${ic(i, 16)} ${l}${k === u.role ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}
     <div class="menu-sep"></div><button class="menu-item danger" id="logout">${ic("logout", 16)} ${t("Çıxış")}</button>`.__html);
   if (!dd) return;
   on(dd, "click", "[data-switch]", (e, b) => { closeDropdowns(); if (b.dataset.switch !== S.user.role) switchRole(b.dataset.switch); });
@@ -291,7 +291,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "[" && !typing && !e.ctrlKey && !e.metaKey && S.user && !isMobile()) { const app = $("#app"); if (app) setCollapsed(app, !app.classList.contains("sb-collapsed")); }
 });
 
+// Detail pages light up the menu section they were opened from, not the role's home page ("/student/course/1" -> "Fənlərim").
+const NAV_ALIAS = [[/^\/student\/course\//, "/student/courses"], [/^\/student\/apply\//, "/student/services"],
+  [/^\/student\/(quiz|attempt)\//, "/student/quizzes"], [/^\/teacher\/course\//, "/teacher/courses"]];
 export function setActiveNav(path) {
+  const alias = NAV_ALIAS.find(([rx]) => rx.test(path));
+  if (alias) path = alias[1];
   let best = null;
   $$(".nav-item").forEach((a) => { const p = a.dataset.path; a.classList.remove("active"); a.removeAttribute("aria-current");
     if (path === p || path.startsWith(p + "/")) { if (!best || p.length > best.dataset.path.length) best = a; } });

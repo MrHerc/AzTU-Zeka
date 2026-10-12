@@ -86,7 +86,15 @@ def admin_status(req):
     return {"engine": engine.engine_info(), "llm": {"provider": cfg.get("provider", "—"), "model": cfg.get("model", "—"),
                                                     "base_url": cfg.get("base_url", "—"), "configured": cfg["enabled"]},
             "limits": setting(c, "limits", {}), "counts": {t: row(c, f"SELECT COUNT(*) n FROM {t}")["n"] for t in tables},
-            "db_path": str(store.DB_PATH), "uploads": str(store.UPLOADS)}
+            # Relative to the project folder: the UI must not reveal the host's absolute paths (user name, drive layout).
+            "db_path": _rel(store.DB_PATH), "uploads": _rel(store.UPLOADS)}
+
+
+def _rel(p):
+    try:
+        return p.resolve().relative_to(store.DATA.resolve().parent).as_posix()
+    except ValueError:
+        return p.name
 
 
 @R("PUT", "/api/admin/settings", roles=("admin",))

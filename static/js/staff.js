@@ -20,7 +20,8 @@ function kpiNumber(value) {
 }
 function kpiValue(value) {
   const k = kpiNumber(value);
-  return k ? cnt(k.n, { dec: k.dec, prefix: k.prefix, suffix: k.suffix }) : html`${value}`;
+  // The sign is rendered by the prefix ("−41%"), so the animated number itself must be unsigned — otherwise "−-41%".
+  return k ? cnt(Math.abs(k.n), { dec: k.dec, prefix: k.prefix, suffix: k.suffix }) : html`${value}`;
 }
 
 // ---------------------------------------------------------------- leadership dashboard
@@ -35,7 +36,7 @@ route("/leader", async (el) => {
       [[t("Rəhbərlik"), "/leader"], [t("Pilot idarə paneli")]],
       { info: t("Göstəricilər pilot məqsədilə sintetik məlumatlar əsasında hazırlanıb. Hədəflər universitetin rəqəmsallaşma proqramına uyğundur.") })}
     <div class="grid g-4" id="kpis">${a.kpis.map((k) => html`<div class="card kpi"><div class="kpi-top"><span class="kpi-l">${k.label}</span>
-      <span class="badge ${k.ok ? "b-green" : "b-amber"}">${k.ok ? t("hədəfdə") : t("icrada")}</span></div>
+      <span class="badge ${k.ok ? "b-green" : "b-amber"}">${k.ok ? t("Hədəfdə") : t("İcrada")}</span></div>
       <div class="row between"><span class="kpi-v">${kpiValue(k.value)}</span>${sparkline(k.series, COL[k.key], 96, 34)}</div>
       <span class="kpi-t">${t("Hədəf")}: ${k.target}</span></div>`)}</div>
 
@@ -44,7 +45,7 @@ route("/leader", async (el) => {
         <div class="row small"><span class="dot" style="background:#2b5aa8;box-shadow:none"></span>${t("Tələbələr")}
           <span class="dot" style="background:#1a2355;box-shadow:none;margin-left:8px"></span>${t("Müəllimlər")}</div></div>
         <div class="card-b">${lineChart({ labels: a.labels, series: [{ name: t("Tələbələr"), values: a.wau_students, color: "#2b5aa8" }, { name: t("Müəllimlər"), values: a.wau_teachers, color: "#1a2355" }],
-          suffix: "%", target: { value: 60, label: t("hədəf 60%") }, max: 100, label: t("Həftəlik aktiv istifadəçilər, %") })}</div></div>
+          suffix: "%", target: { value: 60, label: t("Hədəf 60%") }, max: 100, label: t("Həftəlik aktiv istifadəçilər, %") })}</div></div>
       <div class="card"><div class="card-h"><h3>${ic("sparkles", 17)} ${t("AI keyfiyyəti")}</h3>${infoTip(t("Mənbəli cavablar — AI-ın fənn materialına istinad etdiyi cavabların payı. Faydalı rəylər — tələbələrin müsbət qiymətləndirdiyi cavablar."))}</div>
         <div class="card-b">
           <div class="row" style="justify-content:space-around">${ring(a.ai.cited_rate, 112, "#2b5aa8", num(a.ai.cited_rate, 1) + "%")}${ring(a.ai.positive_rate || 0, 112, "#0e9f6e", a.ai.positive_rate == null ? "—" : a.ai.positive_rate + "%")}</div>
@@ -61,10 +62,10 @@ route("/leader", async (el) => {
 
     <div class="grid g-2 mt">
       <div class="card"><div class="card-h"><h3>${ic("message", 17)} ${t("Tutor sualları (həftəlik)")}</h3></div><div class="card-b">${barChart({ labels: a.labels, values: a.tutor_questions, color: "#2b5aa8", label: t("Tutor sualları, həftəlik") })}</div></div>
-      <div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Arayışın hazırlanma müddəti, saat")}</h3></div><div class="card-b">${lineChart({ labels: a.labels, series: [{ name: t("Saat"), values: a.request_hours, color: "#0e8aa8" }], target: { value: 24, label: t("icra müddəti 24 saat") }, label: t("Arayışın hazırlanma müddəti, saat") })}</div></div></div>
+      <div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Arayışın hazırlanma müddəti, saat")}</h3></div><div class="card-b">${lineChart({ labels: a.labels, series: [{ name: t("Saat"), values: a.request_hours, color: "#0e8aa8" }], target: { value: 24, label: t("İcra müddəti 24 saat") }, label: t("Arayışın hazırlanma müddəti, saat") })}</div></div></div>
 
     <div class="grid g-2 mt">
-      <div class="card"><div class="card-h"><h3>${ic("grid", 17)} ${t("E-xidmətlər üzrə müraciətlər")}</h3></div><div class="card-b">${a.requests_by_type.length ? a.requests_by_type.map((r) => html`<div class="bar-row"><span class="ellipsis small">${r.name}</span>
+      <div class="card"><div class="card-h"><h3>${ic("grid", 17)} ${t("E-xidmətlər üzrə müraciətlər")}</h3></div><div class="card-b">${a.requests_by_type.length ? a.requests_by_type.map((r) => html`<div class="bar-row"><span class="ellipsis small" title="${r.name}">${r.name}</span>
         ${progress((100 * r.n) / Math.max(1, a.requests_by_type[0].n))}<b class="right small">${cnt(r.n)}</b></div>`) : empty("grid", t("Hələ müraciət yoxdur"))}</div></div>
       <div class="card"><div class="card-h"><h3>${ic("news", 17)} ${t("Ən çox oxunan xəbərlər")}</h3><a class="small" href="#/staff/news">${t("İdarə et")} ${ic("arrow", 13)}</a></div>
         <div class="card-b list">${a.news.length ? a.news.map((n) => html`<a class="list-item click" href="#/news/${n.id}"><div class="grow"><b class="small">${n.title}</b></div>
