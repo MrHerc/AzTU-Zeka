@@ -36,6 +36,16 @@ for a, b in [("müqavimət", "müqavimətlərin"), ("dövr", "dövrlərdə"), ("
 check("pii mask", engine.mask_pii("FİN: 5ABC12D, tel +994 50 123 45 67")[1] == ["TELEFON", "FİN"])
 check("translit", engine.translit("Aysel Məmmədova") == "Aysel Mammadova" and engine.translit("Elçin Quliyev") == "Elchin Guliyev")
 
+# --- start-up output: Windows gives redirected output the ANSI code page (cp1251 here), which cannot encode "ə"
+import os  # noqa: E402
+import subprocess  # noqa: E402
+
+env = {k: v for k, v in os.environ.items() if k != "PYTHONUTF8"}
+env["PYTHONIOENCODING"] = "cp1251"
+p = subprocess.run([sys.executable, str(ROOT / "run.py"), "--help"], env=env, capture_output=True, timeout=120)
+check("run.py output into a cp1251 stream", p.returncode == 0 and "sıfırdan" in p.stdout.decode("utf-8", "replace"),
+      p.stderr.decode("utf-8", "replace")[-300:])
+
 from app import api, store, tutor  # noqa: E402
 
 store.init(reset=True)

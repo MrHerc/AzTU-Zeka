@@ -13,6 +13,11 @@ from app.web import make_server  # noqa: E402
 
 
 def main():
+    # Output redirected to a file or pipe gets the Windows ANSI code page (cp1251/cp1252), which has no "ə": the help text
+    # and the start banner then raise UnicodeEncodeError and the server dies at once. UTF-8 encodes every character.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     ap = argparse.ArgumentParser(description="AzTU Rəqəmsal Kampus (Zəka) — lokal demo")
     ap.add_argument("--port", type=int, default=5070)
     ap.add_argument("--reset", action="store_true", help="demo məlumatlarını sıfırdan yarat")
