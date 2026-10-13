@@ -23,8 +23,6 @@ services:
           type: web
           name: zeka-aztu
           property: host
-    # SQLite bazası və yüklənən fayllar restartlar arası qalsın deyə sabit disk.
-    disk:
-      name: zeka-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
+    # Pulsuz plan sabit disk dəstəkləmir. Baza (data/campus.db) hər restartda sıfırdan yaradılır:
+    # store.init() baza olmayanda demo məlumatları ilə avtomatik doldurur. Demo üçün bu, təmiz başlanğıc deməkdir.
+    # Qeyd: yüklənən fayllar və razılıq/bələdçi vəziyyəti də restartda sıfırlanır.
