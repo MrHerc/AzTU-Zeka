@@ -1,0 +1,28 @@
+{
+ "Tövsiyə olunan mənbələr": "Recommended sources",
+ "Modulun mövzusu üzrə rəsmi sənədlər və metodik vəsaitlər.": "Official guidance and teaching guides on the module topic.",
+ "Dərslik": "Textbook",
+ "Açıq kurs": "Open course",
+ "Rəsmi sənədləşmə": "Official documentation",
+ "Metodik vəsait": "Teaching guide",
+ "Rəhbər sənəd": "Guidance document",
+ "Elmi məqalə": "Research article",
+ "Standart": "Standard",
+ "Məlumat bazası": "Database",
+ "Rəsmi qurum": "Official body",
+ "Mənbənin dili": "Language of the source",
+ "yeni pəncərədə açılır": "opens in a new window",
+ "Bütün keçidlər {d} tarixində açılıb yoxlanılıb. Mənbələr öz dilində, əsasən ingilis dilində verilir.": "Every link was opened and checked on {d}. Sources are listed in their original language, mostly English.",
+ "{n} mənbə": {
+  "one": "{n} source",
+  "other": "{n} sources"
+ },
+ "{n} əlavə mənbə": {
+  "one": "{n} further source",
+  "other": "{n} further sources"
+ },
+ "Mövzu üzrə əlavə oxu": "Further reading on this topic",
+ "Fənn üzrə açıq dərsliklər və onlayn kurslar. Keçidlər yeni pəncərədə açılır.": "Open textbooks and online courses for this course. Links open in a new window.",
+ "Tələbələr bu siyahını fənn səhifəsində görür.": "Students see this list on the course page.",
+ "Fənn üçün yoxlanılmış açıq dərsliklər və kurslar. Tələbələr eyni siyahını görür.": "Checked open textbooks and courses for this course. Students see the same list."
+}

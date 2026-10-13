@@ -1,0 +1,10 @@
+data/
+logs/
+config.json
+__pycache__/
+*.pyc
+.dev/
+# Lokal alət ayarları (Kiro), repoya aid deyil
+.kiro/
+# Təqdimat materialları (pitch/) yalnız lokal saxlanılır
+pitch/

@@ -1,0 +1,10 @@
+{
+  "llm": {
+    "provider": "openai",
+    "base_url": "https://api.openai.com/v1",
+    "api_key": "",
+    "model": "gpt-4o-mini",
+    "timeout": 40,
+    "_providers": "openai (OpenAI-uyğun API) | azure (base_url=https://<resurs>.openai.azure.com, model=<deployment>) | anthropic (model=claude-...)"
+  }
+}

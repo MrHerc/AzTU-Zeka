@@ -1,0 +1,112 @@
+/* student pages (v0.3) — module styles only (app.css owns the base) */
+
+/* course mini cards (dashboard) */
+.course-mini { overflow: hidden; }
+.course-mini-b { padding: 14px; }
+.course-mini-t { font-size: 13.5px; line-height: 1.3; display: block; }
+
+/* course full cards (/student/courses) */
+.course-full-t { display: block; line-height: 1.3; }
+
+/* course icon size helpers */
+.course-ic.sm { width: 34px; height: 34px; }
+.course-ic.sm2 { width: 36px; height: 36px; font-size: 10px; }
+
+/* news rows on the dashboard */
+.news-row { flex-direction: row; align-items: stretch; }
+.news-row .news-cover { width: 84px; height: auto; flex: none; }
+.news-row .news-body { padding: 12px; }
+.news-row .news-body b { font-size: 13.5px; line-height: 1.35; }
+@media (max-width: 420px) { .news-row .news-cover { width: 64px; } }
+
+/* notice variant — tighter padding */
+.notice.tight { padding: 8px 10px; }
+
+/* quiz cards (/student/quizzes) */
+.quiz-card { overflow: hidden; }
+.quiz-title { font-size: 15.5px; margin: 12px 0 4px; }
+.quiz-meta { gap: 6px; }
+
+/* quiz player */
+.q-title { font-size: 20px; }
+.quiz-player .numans { max-width: 260px; }
+@media (max-width: 560px) {
+  .quiz-player .q-head { flex-wrap: wrap; gap: 10px; }
+  .q-title { font-size: 17px; }
+  .quiz-player .numans { max-width: none; width: 100%; }
+}
+
+/* attempt result layout */
+.result-card { align-self: start; }
+
+/* grades: let wide tables scroll instead of overflowing on mobile */
+@media (max-width: 720px) {
+  .week { gap: 10px; }
+}
+.wday-empty { padding: 10px 0; }
+
+
+/* chat (v0.3) — AI tutor & campus assistant; supplements app.css (does not override its base) */
+
+/* welcome: suggestion header above the suggestion chips */
+.welcome .suggest-head { margin: 18px 0 10px; font-size: 12.5px; font-weight: 650; color: var(--muted); letter-spacing: .01em; }
+.welcome .suggest-chips .chip { max-width: 100%; }
+.welcome .suggest-chips .chip span, .welcome .suggest-chips .chip { white-space: normal; text-align: left; }
+
+/* daily-usage counter */
+.usage { display: inline-flex; align-items: center; gap: 5px; }
+.usage.low { color: var(--amber-700, var(--amber)); font-weight: 600; }
+.usage.spent { color: var(--red); font-weight: 700; }
+
+/* inline send-error card with retry */
+.msg.chat-error .bubble { border-color: var(--red); background: var(--red-50); }
+.msg.chat-error .avatar.ai { background: var(--red); }
+
+/* locked tutor banner spacing */
+.chat-locked { align-items: flex-start; }
+
+/* source panel heading + skeleton */
+.src-view .src-heading { font-size: 15.5px; margin: 6px 0 10px; }
+.src-load .skeleton { border-radius: 8px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 400% 100%; animation: shimmer 1.4s infinite; }
+
+/* long code / formula blocks: scroll horizontally instead of breaking the layout */
+.chat .md pre, .src-view .md pre { overflow-x: auto; max-width: 100%; }
+.chat .md .formula, .src-view .md .formula { overflow-x: auto; max-width: 100%; }
+.chat .md pre code { white-space: pre; }
+
+/* ---- mobile (≤720 px): full-height chat, composer fixed above the bottom bar, citations as a sheet */
+@media (max-width: 720px) {
+  /* use the viewport so the chat fills the screen; app.css hides the side panel ≤1220px already */
+  .chat-wrap { height: auto; }
+  .chat {
+    height: auto;
+    min-height: calc(100dvh - 150px);
+    /* leave room for the fixed composer so the last message is never hidden behind it */
+  }
+  .chat-scroll { padding-bottom: 8px; }
+
+  /* composer pinned to the bottom, clearing the mobile bottom nav + safe area */
+  .chat .composer {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    z-index: 45;
+    background: color-mix(in srgb, var(--surface) 97%, transparent);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 -6px 18px -12px rgba(11, 19, 48, .35);
+  }
+  /* the composer is fixed, so pad the scroller's container to avoid content under it */
+  .chat-wrap { padding-bottom: 118px; }
+  .composer-foot { gap: 6px; }
+
+  /* citation sheet (opened as a modal on mobile — core.js already renders modals as bottom sheets here) */
+  .src-sheet .src-view { font-size: 14px; }
+  .src-sheet .src-view .md { color: var(--text-2); }
+}
+
+@media (max-width: 390px) {
+  .msg { gap: 8px; }
+  .bubble { padding: 10px 12px; }
+  .msg-actions button { padding: 4px; }
+  .chat-top { padding: 10px 12px; }
+}

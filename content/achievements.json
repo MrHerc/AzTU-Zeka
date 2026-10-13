@@ -1,0 +1,184 @@
+{
+  "_note": "Real facts only. Every item is taken from the linked official source (AzTU news feed https://aztu.edu.az/feed.xml or the Ministry of Science and Education, edu.gov.az). Items without a date in the source keep date=null. Checked 2026-10-02; QS 2026 band and date re-checked 2026-10-12 (edu.gov.az + QS press release of 19 June 2025).",
+  "categories": [
+    {"key": "rankings", "icon": "trend", "tone": "navy", "name": {"az": "Reytinqlər", "en": "Rankings", "ru": "Рейтинги"}},
+    {"key": "research", "icon": "flask", "tone": "blue", "name": {"az": "Elm və tədqiqat", "en": "Research", "ru": "Наука"}},
+    {"key": "students", "icon": "award", "tone": "coral", "name": {"az": "Tələbə uğurları", "en": "Student success", "ru": "Успехи студентов"}},
+    {"key": "innovation", "icon": "bolt", "tone": "violet", "name": {"az": "İnnovasiya", "en": "Innovation", "ru": "Инновации"}},
+    {"key": "partnerships", "icon": "globe", "tone": "teal", "name": {"az": "Əməkdaşlıq", "en": "Partnerships", "ru": "Сотрудничество"}},
+    {"key": "digital", "icon": "cpu", "tone": "green", "name": {"az": "Rəqəmsal transformasiya", "en": "Digital transformation", "ru": "Цифровая трансформация"}}
+  ],
+  "stats": [
+    {"value": 1950, "format": "year", "label": {"az": "təsis ili", "en": "founded", "ru": "год основания"}, "source": "https://aztu.edu.az"},
+    {"value": 5, "label": {"az": "THE WUR 2027-də yer alan 5 Azərbaycan universitetindən biri", "en": "one of 5 Azerbaijani universities in THE WUR 2027", "ru": "один из 5 вузов Азербайджана в THE WUR 2027"}, "prefix": "1 / ", "source": "https://aztu.edu.az/news/aztu-azerbaycandan-the-dunya-reytinqine-daxil-olan-5-universitetden-biridir-267168"},
+    {"value": 900, "prefix": "851–", "label": {"az": "QS 2026: ilk dəfə TOP-1000-də", "en": "QS 2026: first time in the top 1,000", "ru": "QS 2026: впервые в топ-1000"}, "source": "https://edu.gov.az/en/printpage/22195"},
+    {"value": 9, "label": {"az": "medal: ABŞ və Çindəki ixtira sərgiləri, avqust 2026", "en": "medals at invention fairs in the USA and China, Aug 2026", "ru": "медалей на выставках изобретений в США и Китае, авг. 2026"}, "source": "https://aztu.edu.az/news/aztu-telebeleri-abs-de-6-medal-ve-xususi-mukafat-qazandi-504344"}
+  ],
+  "items": [
+    {
+      "id": "the-wur-2027", "category": "rankings", "date": "2026-09-30", "icon": "trend", "tone": "navy", "featured": true,
+      "highlight": {"az": "THE WUR 2027", "en": "THE WUR 2027", "ru": "THE WUR 2027"},
+      "title": {"az": "THE dünya reytinqində Azərbaycandan 5 universitetdən biri", "en": "One of five Azerbaijani universities in the THE World University Rankings", "ru": "Один из пяти вузов Азербайджана в мировом рейтинге THE"},
+      "summary": {"az": "AzTU Times Higher Education (THE) World University Rankings 2027 reytinqində yenidən yer alıb. Universitet bu reytinqə daxil olan 5 Azərbaycan universitetindən biridir.",
+                  "en": "AzTU is listed again in the Times Higher Education (THE) World University Rankings 2027 and is one of the five universities from Azerbaijan included in the ranking.",
+                  "ru": "АзТУ вновь вошёл в рейтинг Times Higher Education (THE) World University Rankings 2027 и стал одним из пяти университетов Азербайджана, представленных в нём."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-azerbaycandan-the-dunya-reytinqine-daxil-olan-5-universitetden-biridir-267168"}]
+    },
+    {
+      "id": "qs-2026", "category": "rankings", "date": "2025-06-19", "icon": "trend", "tone": "navy", "featured": true,
+      "highlight": {"az": "851–900", "en": "851–900", "ru": "851–900"},
+      "title": {"az": "QS 2026: ilk dəfə dünyanın ən yaxşı 1000 universiteti sırasında", "en": "QS 2026: in the world's top 1,000 for the first time", "ru": "QS 2026: впервые в топ-1000 университетов мира"},
+      "summary": {"az": "AzTU QS World University Rankings 2026 reytinqində 851–900 aralığında yer alaraq ilk dəfə dünyanın TOP-1000 universiteti sırasına daxil olub.",
+                  "en": "AzTU entered the top 1,000 of the QS World University Rankings 2026 for the first time, placing in the 851–900 band.",
+                  "ru": "АзТУ впервые вошёл в топ-1000 рейтинга QS World University Rankings 2026, заняв позицию в диапазоне 851–900."},
+      "sources": [{"name": "edu.gov.az", "lang": "en", "url": "https://edu.gov.az/en/printpage/22195"},
+                  {"name": "QS · PR Newswire, 19.06.2025", "lang": "en", "url": "https://www.prnewswire.com/news-releases/asia-rises-mit-holds-top-spot-as-qs-reveals-2026-world-university-rankings-302485769.html"}]
+    },
+    {
+      "id": "greenmetric-2026", "category": "rankings", "date": "2026-09-24", "icon": "globe", "tone": "green",
+      "highlight": {"az": "Azərbaycanda 3-cü yer", "en": "3rd in Azerbaijan", "ru": "3-е место в Азербайджане"},
+      "title": {"az": "UI GreenMetric 2026: Azərbaycanda ilk üçlükdə", "en": "UI GreenMetric 2026: top three in Azerbaijan", "ru": "UI GreenMetric 2026: в тройке лучших в Азербайджане"},
+      "summary": {"az": "Dayanıqlı inkişaf və “yaşıl universitet” istiqamətindəki fəaliyyətinə görə AzTU UI GreenMetric World University Rankings 2026 reytinqində Azərbaycan universitetləri arasında 3-cü yeri tutub.",
+                  "en": "For its work on sustainability and the green-university agenda, AzTU ranked third among Azerbaijani universities in the UI GreenMetric World University Rankings 2026.",
+                  "ru": "Благодаря работе в области устойчивого развития и концепции «зелёного университета» АзТУ занял третье место среди вузов Азербайджана в рейтинге UI GreenMetric World University Rankings 2026."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-ui-greenmetric-world-university-rankings-2026da-azerbaycan-uzre-ilk-uclukde-212293"}]
+    },
+    {
+      "id": "q1-ai-ethics", "category": "research", "date": "2026-09-25", "icon": "flask", "tone": "blue", "featured": true,
+      "highlight": {"az": "Q1 · Springer Nature", "en": "Q1 · Springer Nature", "ru": "Q1 · Springer Nature"},
+      "title": {"az": "Süni intellekt üzrə araşdırma Q1 jurnalında dərc olunub", "en": "AI research published in a Q1 journal", "ru": "Исследование об ИИ опубликовано в журнале Q1"},
+      "summary": {"az": "Kibertəhlükəsizlik və Müdafiə Texnologiyaları İnstitutunun alimləri Hikmət Kərimov və Rahid Ələkbərli süni intellektin qərarvermədə hansı şərtlərlə səlahiyyət əldə edə biləcəyini araşdırıblar. Məqalə Springer Nature-un nəşr etdiyi Q1 kateqoriyalı “AI and Ethics” jurnalında çap olunub.",
+                  "en": "Hikmat Karimov and Rahid Alakbarli of the Institute of Cybersecurity and Defence Technologies studied the conditions under which AI could gain authority in decision-making. The article appeared in AI and Ethics, a Q1 journal published by Springer Nature.",
+                  "ru": "Учёные Института кибербезопасности и оборонных технологий Хикмет Керимов и Рахид Алекберли исследовали, при каких условиях ИИ может получить полномочия в принятии решений. Статья опубликована в журнале AI and Ethics (Springer Nature) категории Q1."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-alimlerinin-suni-intellektle-bagli-arasdirmasi-q1-jurnalinda-379434"}]
+    },
+    {
+      "id": "forensics-lab", "category": "innovation", "date": "2026-09-21", "icon": "shield", "tone": "violet", "featured": true,
+      "highlight": {"az": "Ölkədə ilk", "en": "A first in the country", "ru": "Впервые в стране"},
+      "title": {"az": "Ölkədə ilk Zərərvericilərin Analizi və Rəqəmsal Kriminalistika Laboratoriyası", "en": "The country's first Malware Analysis and Digital Forensics Laboratory", "ru": "Первая в стране лаборатория анализа вредоносных программ и цифровой криминалистики"},
+      "summary": {"az": "Xüsusi Rabitə və İnformasiya Təhlükəsizliyi Dövlət Xidmətinin (XRİTDX) AzTU-da yaratdığı laboratoriya istifadəyə verilib. Laboratoriya XRİTDX ilə AzTU arasında 2022-ci ildə imzalanmış Əməkdaşlıq haqqında Memorandum çərçivəsində qurulub.",
+                  "en": "A laboratory set up at AzTU by the State Service of Special Communication and Information Security (XRİTDX) has opened. It was created under the cooperation memorandum the service and AzTU signed in 2022.",
+                  "ru": "В АзТУ открылась лаборатория, созданная Государственной службой специальной связи и информационной безопасности (XRİTDX). Она создана в рамках меморандума о сотрудничестве, подписанного службой и АзТУ в 2022 году."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/olkede-ilk-defe-zerervericilerin-analizi-ve-reqemsal-kriminalistika-laboratoriyasi-istifadeye-verildi-852695"}]
+    },
+    {
+      "id": "az-uz-competition", "category": "research", "date": "2026-09-14", "icon": "award", "tone": "blue",
+      "highlight": {"az": "Azərbaycan–Özbəkistan", "en": "Azerbaijan–Uzbekistan", "ru": "Азербайджан–Узбекистан"},
+      "title": {"az": "Logistika və Nəqliyyat İnstitutunun layihəsi beynəlxalq elm müsabiqəsinin qalibi oldu", "en": "Logistics and Transport Institute project wins an international science competition", "ru": "Проект Института логистики и транспорта победил в международном научном конкурсе"},
+      "summary": {"az": "İnstitutun layihəsi Elm və Təhsil Nazirliyi yanında Elm və Ali Təhsil üzrə Dövlət Agentliyi ilə Özbəkistanın İnnovativ İnkişaf Agentliyinin keçirdiyi Azərbaycan–Özbəkistan birgə beynəlxalq elmi müsabiqəsində qalib gəlib.",
+                  "en": "The institute's project won the joint Azerbaijan–Uzbekistan international research competition held by Azerbaijan's State Agency for Science and Higher Education and Uzbekistan's Agency for Innovative Development.",
+                  "ru": "Проект института стал победителем совместного азербайджано-узбекского международного научного конкурса, проведённого Государственным агентством по науке и высшему образованию Азербайджана и Агентством инновационного развития Узбекистана."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-nun-logistika-ve-neqliyyat-institutunun-layihesi-beynelxalq-elm-musabiqesinin-qalibi-oldu-829047"}]
+    },
+    {
+      "id": "iei-2026-china", "category": "students", "date": "2026-08-28", "icon": "award", "tone": "coral", "featured": true,
+      "highlight": {"az": "2 qızıl · 1 gümüş", "en": "2 gold · 1 silver", "ru": "2 золота · 1 серебро"},
+      "title": {"az": "Çində 2 qızıl və 1 gümüş medal", "en": "Two gold medals and a silver in China", "ru": "Два золота и серебро в Китае"},
+      "summary": {"az": "AzTU tələbələri 21–23 avqust 2026-cı ildə Çinin Quançjou şəhərində keçirilən XII Beynəlxalq İxtiralar Sərgisində (IEI 2026) Azərbaycanı təmsil edərək 2 qızıl və 1 gümüş medal qazanıblar. Sərgidə 29 ölkədən 3700-dən çox ixtira və innovasiya layihəsi təqdim olunub.",
+                  "en": "AzTU students represented Azerbaijan at the 12th International Exhibition of Inventions (IEI 2026) in Guangzhou, China, on 21–23 August 2026 and won two gold medals and one silver. More than 3,700 inventions and innovation projects from 29 countries were presented.",
+                  "ru": "Студенты АзТУ представили Азербайджан на XII Международной выставке изобретений (IEI 2026) в Гуанчжоу (Китай) 21–23 августа 2026 года и завоевали две золотые и одну серебряную медаль. На выставке было представлено более 3700 изобретений и инновационных проектов из 29 стран."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-telebelerinden-cinde-yuksek-netice-2-qizil-1-gumus-medal-589335"},
+                  {"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/rektor-cinde-yuksek-netice-gosteren-aztu-telebeleri-ile-gorusub-246899"}]
+    },
+    {
+      "id": "sviif-2026-usa", "category": "students", "date": "2026-08-21", "icon": "award", "tone": "coral", "featured": true,
+      "highlight": {"az": "6 medal · Semi-Grand Prix", "en": "6 medals · Semi-Grand Prix", "ru": "6 медалей · Semi-Grand Prix"},
+      "title": {"az": "ABŞ-da 6 medal və xüsusi mükafat", "en": "Six medals and a special award in the USA", "ru": "Шесть медалей и специальная награда в США"},
+      "summary": {"az": "AzTU tələbələri 14–16 avqustda Kaliforniyada keçirilən Silicon Valley International Invention Festival (SVIIF 2026) müsabiqəsində 6 medal və “Semi-Grand Prix” xüsusi mükafatını qazanıblar. Azərbaycanı təmsil edən 8 layihədən 6-sı AzTU tələbələrinə məxsus olub.",
+                  "en": "At the Silicon Valley International Invention Festival (SVIIF 2026) in California on 14–16 August, AzTU students won six medals and the Semi-Grand Prix special award. Six of the eight projects representing Azerbaijan were by AzTU students.",
+                  "ru": "На Silicon Valley International Invention Festival (SVIIF 2026), прошедшем 14–16 августа в Калифорнии, студенты АзТУ завоевали шесть медалей и специальную награду Semi-Grand Prix. Шесть из восьми проектов, представлявших Азербайджан, принадлежали студентам АзТУ."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-telebeleri-abs-de-6-medal-ve-xususi-mukafat-qazandi-504344"}]
+    },
+    {
+      "id": "e-diplomas", "category": "digital", "date": "2026-07-31", "icon": "idcard", "tone": "green", "featured": true,
+      "highlight": {"az": "Elektron diplom", "en": "E-diploma", "ru": "Электронный диплом"},
+      "title": {"az": "Elektron diplomların verilməsinə başlanılıb", "en": "Electronic diplomas launched", "ru": "Начата выдача электронных дипломов"},
+      "summary": {"az": "30 iyul 2026-cı ildə AzTU-da elektron diplomların verilməsinə başlanılıb, ilk diplomları rektor imzalayıb. Elektron diplomlar 2025/2026-cı tədris ilinin məzunlarına verilir.",
+                  "en": "On 30 July 2026 AzTU began issuing electronic diplomas, and the rector signed the first ones. They are issued to graduates of the 2025/2026 academic year.",
+                  "ru": "30 июля 2026 года в АзТУ началась выдача электронных дипломов; первые дипломы подписал ректор. Они выдаются выпускникам 2025/2026 учебного года."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-da-elektron-diplomlarin-verilmesine-baslanildi-rektor-ilk-diplomlari-imzaladi-783692"}]
+    },
+    {
+      "id": "adex-2026-projects", "category": "innovation", "date": "2026-09-30", "icon": "bolt", "tone": "violet",
+      "highlight": {"az": "ADEX 2026", "en": "ADEX 2026", "ru": "ADEX 2026"},
+      "title": {"az": "ADEX 2026 sərgisində innovativ layihələr", "en": "Innovative projects at ADEX 2026", "ru": "Инновационные проекты на ADEX 2026"},
+      "summary": {"az": "AzTU 6-cı Azərbaycan Beynəlxalq Müdafiə Sərgisində (ADEX 2026) öz stendi ilə təmsil olunub. Stenddə tələbələrin hazırladığı mühəndislik və texnoloji layihələr, həmçinin müdafiə sənayesi üzrə startaplar nümayiş etdirilib.",
+                  "en": "AzTU had its own stand at ADEX 2026, the 6th Azerbaijan International Defence Exhibition, showing engineering and technology projects built by students as well as defence-industry start-ups.",
+                  "ru": "АзТУ был представлен собственным стендом на 6-й Азербайджанской международной оборонной выставке ADEX 2026, где показал инженерные и технологические проекты студентов, а также стартапы в сфере оборонной промышленности."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/adex-2026-sergisinde-aztu-nun-innovativ-layiheleri-numayis-olunur-605068"}]
+    },
+    {
+      "id": "adex-2026-sessions", "category": "partnerships", "date": "2026-10-02", "icon": "megaphone", "tone": "teal",
+      "highlight": {"az": "2 sessiya", "en": "2 sessions", "ru": "2 сессии"},
+      "title": {"az": "ADEX 2026 çərçivəsində AzTU-nun təşkil etdiyi sessiyalar", "en": "Sessions organised by AzTU at ADEX 2026", "ru": "Сессии, организованные АзТУ на ADEX 2026"},
+      "summary": {"az": "Rektor Vilayət Vəliyevin moderatorluğu ilə “Bilikdən texnologiyaya: universitet–müdafiə sənayesi əməkdaşlığının gələcəyi” akademik sessiyası keçirilib. 1 oktyabrda isə Müdafiə Sənayesi Nazirliyinin ev sahibliyi və AzTU-nun təşkilatçılığı ilə “Müasir müdafiə sənayesi: innovativ texnologiyalar və inkişaf perspektivləri” panel sessiyası təşkil olunub.",
+                  "en": "Rector Vilayat Valiyev moderated the academic session “From knowledge to technology: the future of university–defence industry cooperation”. On 1 October, the panel session “Modern defence industry: innovative technologies and development prospects” was hosted by the Ministry of Defence Industry and organised by AzTU.",
+                  "ru": "Ректор Вилаят Велиев модерировал академическую сессию «От знаний к технологиям: будущее сотрудничества университетов и оборонной промышленности». 1 октября прошла панельная сессия «Современная оборонная промышленность: инновационные технологии и перспективы развития», принимающей стороной которой выступило Министерство оборонной промышленности, а организатором — АзТУ."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-nun-teskilatciligi-ile-adex-2026da-akademik-sessiya-kecirilib-929762"},
+                  {"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/adex-2026da-aztu-nun-teskilatciligi-ile-texnologiya-sessiyasi-kecirilib-383719"}]
+    },
+    {
+      "id": "rwth-aachen", "category": "partnerships", "date": "2026-08-31", "icon": "globe", "tone": "teal",
+      "highlight": {"az": "RWTH Aachen", "en": "RWTH Aachen", "ru": "RWTH Aachen"},
+      "title": {"az": "Aaxen Texniki Universiteti ilə əməkdaşlıq genişlənir", "en": "Expanding cooperation with RWTH Aachen University", "ru": "Расширение сотрудничества с Ахенским техническим университетом"},
+      "summary": {"az": "Rektor Vilayət Vəliyevin rəhbərlik etdiyi nümayəndə heyəti Almaniyaya səfəri çərçivəsində Aaxen Texniki Universitetində (RWTH Aachen University) əməkdaşlığın genişləndirilməsinə dair bir sıra görüşlər keçirib.",
+                  "en": "During a visit to Germany, a delegation led by Rector Vilayat Valiyev held a series of meetings at RWTH Aachen University on expanding cooperation.",
+                  "ru": "В ходе визита в Германию делегация во главе с ректором Вилаятом Велиевым провела в Ахенском техническом университете (RWTH Aachen University) ряд встреч по расширению сотрудничества."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-almaniyanin-aaxen-texniki-universiteti-ile-emekdasligini-genislendirir-889960"}]
+    },
+    {
+      "id": "mdu-agreement", "category": "partnerships", "date": "2026-09-23", "icon": "briefcase", "tone": "teal",
+      "highlight": {"az": "5 illik müqavilə", "en": "5-year agreement", "ru": "Договор на 5 лет"},
+      "title": {"az": "Mingəçevir Dövlət Universiteti ilə əməkdaşlıq müqaviləsi", "en": "Cooperation agreement with Mingachevir State University", "ru": "Договор о сотрудничестве с Мингячевирским государственным университетом"},
+      "summary": {"az": "23 sentyabrda AzTU ilə Mingəçevir Dövlət Universiteti (MDU) arasında beş il müddətinə əməkdaşlıq müqaviləsi imzalanıb. Müqavilə təhsil, elm, innovasiya və texnologiya transferi sahələrində əməkdaşlığı, birgə mütəxəssis hazırlığını və elmi-tədqiqat fəaliyyətinin inkişafını nəzərdə tutur.",
+                  "en": "On 23 September AzTU and Mingachevir State University (MDU) signed a five-year cooperation agreement covering education, research, innovation and technology transfer, joint training of specialists and the development of research.",
+                  "ru": "23 сентября АзТУ и Мингячевирский государственный университет (МДУ) подписали договор о сотрудничестве сроком на пять лет. Он охватывает образование, науку, инновации и трансфер технологий, совместную подготовку специалистов и развитие научных исследований."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-ile-mdu-arasinda-emekdasliq-haqqinda-muqavile-imzalanib-631867"}]
+    },
+    {
+      "id": "gcgw-2026", "category": "research", "date": "2026-09-02", "icon": "globe", "tone": "blue",
+      "highlight": {"az": "30 ölkə · ~200 alim", "en": "30 countries · ~200 scientists", "ru": "30 стран · ~200 учёных"},
+      "title": {"az": "14-cü Qlobal İstiləşmə üzrə Beynəlxalq Konfransa ev sahibliyi", "en": "Host of the 14th International Conference on Global Warming", "ru": "АзТУ принимает 14-ю Международную конференцию по глобальному потеплению"},
+      "summary": {"az": "AzTU və Türkiyənin Yıldız Texniki Universitetinin birgə təşkil etdiyi üç günlük GCGW-2026 konfransında 30 ölkədən 200-ə yaxın alim, tədqiqatçı və ekspert iştirak edir.",
+                  "en": "The three-day GCGW-2026 conference, co-organised by AzTU and Yıldız Technical University (Türkiye), brings together nearly 200 scientists, researchers and experts from 30 countries.",
+                  "ru": "Трёхдневная конференция GCGW-2026, организованная совместно АзТУ и Техническим университетом Йылдыз (Турция), собрала около 200 учёных, исследователей и экспертов из 30 стран."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-14-cu-qlobal-istilesme-uzre-beynelxalq-konfransa-ev-sahibliyi-edir-801073"}]
+    },
+    {
+      "id": "state-programme-masters", "category": "students", "date": "2026-08-05", "icon": "cap", "tone": "coral",
+      "highlight": {"az": "Birmingem · Warwick · Edinburq", "en": "Birmingham · Warwick · Edinburgh", "ru": "Бирмингем · Уорик · Эдинбург"},
+      "title": {"az": "Məzunlar Dövlət Proqramı ilə Böyük Britaniyada magistratura təhsili alacaq", "en": "Graduates to study for master's degrees in the UK under the State Programme", "ru": "Выпускники продолжат обучение в магистратуре Великобритании по Государственной программе"},
+      "summary": {"az": "İnformasiya texnologiyaları və telekommunikasiya fakültəsinin məzunları Fidan Heydərova və Nihat Zəkəryə, Energetika fakültəsinin məzunu Toğrul Hacıyev Dövlət Proqramının qalibi olublar. Onlar 2026/2027-ci tədris ilində Birmingem, Warwick və Edinburq universitetlərində təhsil alacaqlar.",
+                  "en": "Graduates Fidan Heydarova and Nihat Zakarya (Faculty of Information Technology and Telecommunications) and Toghrul Hajiyev (Faculty of Energy) won places under the State Programme. In 2026/2027 they will study at the universities of Birmingham, Warwick and Edinburgh.",
+                  "ru": "Выпускники факультета информационных технологий и телекоммуникаций Фидан Гейдарова и Нихат Зекерья, а также выпускник энергетического факультета Тогрул Гаджиев стали победителями Государственной программы. В 2026/2027 учебном году они будут учиться в университетах Бирмингема, Уорика и Эдинбурга."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-mezunlari-dovlet-proqrami-cercivesinde-xarici-universitetlerde-magistratura-tehsili-alacaqlar-144061"}]
+    },
+    {
+      "id": "turkic-programme", "category": "partnerships", "date": "2026-09-21", "icon": "users", "tone": "teal",
+      "highlight": {"az": "7 ölkə", "en": "7 countries", "ru": "7 стран"},
+      "title": {"az": "Türk Dünyası Ali Təhsil Sistemində Ortaqlıq Sertifikat Proqramında təmsilçilik", "en": "Taking part in the Turkic World Higher Education Partnership Certificate Programme", "ru": "Участие в сертификационной программе партнёрства в высшем образовании тюркского мира"},
+      "summary": {"az": "AzTU Türkiyə Mədəniyyət və Turizm Nazirliyinin Xaricdə Yaşayan Türklər və Qohum Topluluqlar İdarəsinin (YTB) təşkil etdiyi proqramda təmsil olunub. Proqramda Azərbaycan, Qazaxıstan, Qırğızıstan, Özbəkistan, Türkmənistan, Şimali Kipr Türk Respublikası və Macarıstanın ali təhsil və elm qurumlarının rəhbərləri və mütəxəssisləri iştirak ediblər.",
+                  "en": "AzTU took part in the programme organised by the Presidency for Turks Abroad and Related Communities (YTB) of Türkiye's Ministry of Culture and Tourism. Leaders and experts from higher-education and research institutions of Azerbaijan, Kazakhstan, Kyrgyzstan, Uzbekistan, Turkmenistan, the Turkish Republic of Northern Cyprus and Hungary attended.",
+                  "ru": "АзТУ принял участие в программе, организованной Управлением по делам турок за рубежом и родственных сообществ (YTB) Министерства культуры и туризма Турции. В ней участвовали руководители и специалисты вузов и научных учреждений Азербайджана, Казахстана, Кыргызстана, Узбекистана, Туркменистана, Турецкой Республики Северного Кипра и Венгрии."},
+      "sources": [{"name": "aztu.edu.az", "lang": "az", "url": "https://aztu.edu.az/news/aztu-turk-dunyasi-ali-tehsil-sisteminde-ortaqliq-sertifikat-proqraminda-temsil-olunub-663884"}]
+    },
+    {
+      "id": "code-academy", "category": "digital", "date": null, "icon": "cpu", "tone": "green",
+      "highlight": {"az": "İlk tətbiq AzTU-da", "en": "First launched at AzTU", "ru": "Впервые — в АзТУ"},
+      "title": {"az": "Code Academy layihəsi ilk dəfə AzTU-da həyata keçirilib", "en": "The Code Academy project started at AzTU", "ru": "Проект Code Academy впервые реализован в АзТУ"},
+      "summary": {"az": "Nazirliyin məlumatına görə, AzTU, Təhsil Nazirliyi və Code Academy-nin birgə layihəsi ilk dəfə AzTU-da tətbiq olunub, sonra ona digər universitetlər də qoşulub. İnformasiya texnologiyaları üzrə 3-cü və 4-cü kurs tələbələri 4 ay ərzində proqramlaşdırma, sistem və şəbəkə administrasiyası üzrə təlim keçiblər.",
+                  "en": "According to the Ministry, the joint project of AzTU, the Ministry of Education and Code Academy was first implemented at AzTU before other universities joined. Third- and fourth-year IT students trained for four months in programming, system administration and network administration.",
+                  "ru": "По данным министерства, совместный проект АзТУ, Министерства образования и Code Academy впервые был реализован в АзТУ, после чего к нему присоединились другие вузы. Студенты 3–4 курсов IT-направлений в течение четырёх месяцев обучались программированию, системному и сетевому администрированию."},
+      "sources": [{"name": "edu.gov.az", "lang": "en", "url": "https://edu.gov.az/en/printpage/18048"}]
+    },
+    {
+      "id": "bayraktar-honorary", "category": "partnerships", "date": null, "icon": "star", "tone": "navy",
+      "highlight": {"az": "Ən gənc fəxri doktor", "en": "Youngest honorary doctor", "ru": "Самый молодой почётный доктор"},
+      "title": {"az": "Səlcuq Bayraktara AzTU-nun fəxri doktoru adı verilib", "en": "Selçuk Bayraktar named an Honorary Doctor of AzTU", "ru": "Сельчук Байрактар стал почётным доктором АзТУ"},
+      "summary": {"az": "Baykar şirkətinin texnoloji rəhbəri Səlcuq Bayraktara AzTU-nun fəxri doktoru adı təqdim olunub. Rektorun sözlərinə görə, bu ada indiyədək cəmi 15 nəfər layiq görülüb və Səlcuq Bayraktar onların ən gəncidir.",
+                  "en": "Baykar's chief technology officer Selçuk Bayraktar received the title of Honorary Doctor of AzTU. According to the rector, only 15 people have received the title so far, and he is the youngest of them.",
+                  "ru": "Технологическому руководителю компании Baykar Сельчуку Байрактару присвоено звание почётного доктора АзТУ. По словам ректора, этого звания удостоены лишь 15 человек, и Байрактар — самый молодой из них."},
+      "sources": [{"name": "edu.gov.az", "lang": "en", "url": "https://edu.gov.az/en/printpage/18421"}]
+    }
+  ]
+}

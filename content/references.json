@@ -1,0 +1,203 @@
+{
+ "_note": "Real, openly accessible sources only. Every URL was opened from the university network on the 'checked' date (HTTP 200, page title and section checked). Titles and section names are given in the language of the source and are never translated. Keys: courses by course code, materials by file name, AI Akademiya modules by '<track>/<module number>'. kind: book, course, docs, guide, policy, article, standard, database, org.",
+ "checked": "2026-10-12",
+ "courses": {
+  "ELM-2105": [
+   {"work": "University Physics Volume 2", "part": "Ch. 9 Current and Resistance · Ch. 10 Direct-Current Circuits · Ch. 15 Alternating-Current Circuits", "publisher": "OpenStax, Rice University", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/preface"},
+   {"work": "6.002 Circuits and Electronics (Spring 2007)", "publisher": "MIT OpenCourseWare", "kind": "course", "lang": "en", "url": "https://ocw.mit.edu/courses/6-002-circuits-and-electronics-spring-2007/"}
+  ],
+  "KOMP-1102": [
+   {"work": "The Python Tutorial", "publisher": "Python Software Foundation", "kind": "docs", "lang": "en", "url": "https://docs.python.org/3/tutorial/index.html"},
+   {"work": "Think Python, 3rd edition", "authors": "Allen B. Downey", "publisher": "Green Tea Press", "kind": "book", "lang": "en", "url": "https://allendowney.github.io/ThinkPython/"},
+   {"work": "6.0001 Introduction to Computer Science and Programming in Python (Fall 2016)", "publisher": "MIT OpenCourseWare", "kind": "course", "lang": "en", "url": "https://ocw.mit.edu/courses/6-0001-introduction-to-computer-science-and-programming-in-python-fall-2016/"}
+  ],
+  "RİY-1101": [
+   {"work": "Calculus Volume 1", "part": "Ch. 2 Limits · Ch. 3 Derivatives · Ch. 5 Integration", "publisher": "OpenStax, Rice University", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/preface"},
+   {"work": "18.01SC Single Variable Calculus (Fall 2010)", "publisher": "MIT OpenCourseWare", "kind": "course", "lang": "en", "url": "https://ocw.mit.edu/courses/18-01sc-single-variable-calculus-fall-2010/"}
+  ],
+  "FİZ-1103": [
+   {"work": "University Physics Volume 1", "part": "Ch. 3 Motion Along a Straight Line · Ch. 5 Newton's Laws of Motion · Ch. 6 Applications of Newton's Laws", "publisher": "OpenStax, Rice University", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-1/pages/preface"},
+   {"work": "8.01SC Classical Mechanics (Fall 2016)", "publisher": "MIT OpenCourseWare", "kind": "course", "lang": "en", "url": "https://ocw.mit.edu/courses/8-01sc-classical-mechanics-fall-2016/"}
+  ],
+  "QRF-1104": [
+   {"work": "Engineering Graphics and Design", "authors": "Matthew Ford", "publisher": "University of Washington Tacoma · Pressbooks", "kind": "book", "lang": "en", "url": "https://uw.pressbooks.pub/enggraphics/"},
+   {"work": "Onshape Learning Center", "publisher": "Onshape", "kind": "course", "lang": "en", "url": "https://learn.onshape.com/"}
+  ],
+  "İNG-1105": [
+   {"work": "Academic Phrasebank", "authors": "John Morley", "publisher": "The University of Manchester", "kind": "guide", "lang": "en", "url": "https://www.phrasebank.manchester.ac.uk/"},
+   {"work": "The International System of Units (SI Brochure)", "publisher": "BIPM", "kind": "standard", "lang": "en", "url": "https://www.bipm.org/en/publications/si-brochure"}
+  ]
+ },
+ "materials": {
+  "elm-1-om-qanunu.md": [
+   {"work": "University Physics Volume 2", "part": "9.4 Ohm's Law", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/9-4-ohms-law"},
+   {"work": "University Physics Volume 2", "part": "9.5 Electrical Energy and Power", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/9-5-electrical-energy-and-power"}
+  ],
+  "elm-2-kirxhof.md": [
+   {"work": "University Physics Volume 2", "part": "10.2 Resistors in Series and Parallel", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/10-2-resistors-in-series-and-parallel"},
+   {"work": "University Physics Volume 2", "part": "10.3 Kirchhoff's Rules", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/10-3-kirchhoffs-rules"}
+  ],
+  "elm-3-rc.md": [
+   {"work": "University Physics Volume 2", "part": "10.5 RC Circuits", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/10-5-rc-circuits"}
+  ],
+  "elm-4-ac.md": [
+   {"work": "University Physics Volume 2", "part": "15.2 Simple AC Circuits", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/15-2-simple-ac-circuits"},
+   {"work": "University Physics Volume 2", "part": "15.3 RLC Series Circuits with AC", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-2/pages/15-3-rlc-series-circuits-with-ac"}
+  ],
+  "py-1-deyisenler.md": [
+   {"work": "The Python Tutorial", "part": "3. An Informal Introduction to Python", "publisher": "Python Software Foundation", "kind": "docs", "lang": "en", "url": "https://docs.python.org/3/tutorial/introduction.html"},
+   {"work": "The Python Tutorial", "part": "4.1. if Statements", "publisher": "Python Software Foundation", "kind": "docs", "lang": "en", "url": "https://docs.python.org/3/tutorial/controlflow.html#if-statements"}
+  ],
+  "py-2-dovrler.md": [
+   {"work": "The Python Tutorial", "part": "4. More Control Flow Tools", "publisher": "Python Software Foundation", "kind": "docs", "lang": "en", "url": "https://docs.python.org/3/tutorial/controlflow.html"},
+   {"work": "The Python Tutorial", "part": "5.1. More on Lists", "publisher": "Python Software Foundation", "kind": "docs", "lang": "en", "url": "https://docs.python.org/3/tutorial/datastructures.html#more-on-lists"}
+  ],
+  "py-3-lugetler.md": [
+   {"work": "The Python Tutorial", "part": "5.5. Dictionaries", "publisher": "Python Software Foundation", "kind": "docs", "lang": "en", "url": "https://docs.python.org/3/tutorial/datastructures.html#dictionaries"},
+   {"work": "The Python Tutorial", "part": "7.2. Reading and writing files", "publisher": "Python Software Foundation", "kind": "docs", "lang": "en", "url": "https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files"}
+  ],
+  "riy-1-limit.md": [
+   {"work": "Calculus Volume 1", "part": "2.2 The Limit of a Function", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/2-2-the-limit-of-a-function"},
+   {"work": "Calculus Volume 1", "part": "2.4 Continuity", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/2-4-continuity"}
+  ],
+  "riy-2-toreme.md": [
+   {"work": "Calculus Volume 1", "part": "3.1 Defining the Derivative", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/3-1-defining-the-derivative"},
+   {"work": "Calculus Volume 1", "part": "3.3 Differentiation Rules", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/3-3-differentiation-rules"},
+   {"work": "Calculus Volume 1", "part": "3.6 The Chain Rule", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/3-6-the-chain-rule"}
+  ],
+  "riy-3-inteqral.md": [
+   {"work": "Calculus Volume 1", "part": "4.10 Antiderivatives", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/4-10-antiderivatives"},
+   {"work": "Calculus Volume 1", "part": "5.2 The Definite Integral", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/5-2-the-definite-integral"},
+   {"work": "Calculus Volume 1", "part": "5.3 The Fundamental Theorem of Calculus", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/calculus-volume-1/pages/5-3-the-fundamental-theorem-of-calculus"}
+  ],
+  "fiz-1-kinematika.md": [
+   {"work": "University Physics Volume 1", "part": "Ch. 3 Motion Along a Straight Line", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-1/pages/3-introduction"},
+   {"work": "University Physics Volume 1", "part": "3.5 Free Fall", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-1/pages/3-5-free-fall"}
+  ],
+  "fiz-2-nyuton.md": [
+   {"work": "University Physics Volume 1", "part": "Ch. 5 Newton's Laws of Motion", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-1/pages/5-introduction"},
+   {"work": "University Physics Volume 1", "part": "6.2 Friction", "publisher": "OpenStax", "kind": "book", "lang": "en", "url": "https://openstax.org/books/university-physics-volume-1/pages/6-2-friction"}
+  ],
+  "qrf-1-proyeksiya.md": [
+   {"work": "Engineering Graphics and Design", "part": "1. Orthographic Projection", "publisher": "University of Washington Tacoma · Pressbooks", "kind": "book", "lang": "en", "url": "https://uw.pressbooks.pub/enggraphics/chapter/orthographic-projection/"},
+   {"work": "Engineering Graphics and Design", "part": "2. Multiview Layout and Orientation", "publisher": "University of Washington Tacoma · Pressbooks", "kind": "book", "lang": "en", "url": "https://uw.pressbooks.pub/enggraphics/chapter/multiview-drawing/"},
+   {"work": "Engineering Graphics and Design", "part": "4. Section Views", "publisher": "University of Washington Tacoma · Pressbooks", "kind": "book", "lang": "en", "url": "https://uw.pressbooks.pub/enggraphics/chapter/section-views/"}
+  ],
+  "qrf-2-olculer.md": [
+   {"work": "Engineering Graphics and Design", "part": "7. Dimensioning Standards", "publisher": "University of Washington Tacoma · Pressbooks", "kind": "book", "lang": "en", "url": "https://uw.pressbooks.pub/enggraphics/chapter/dimensioning-standards-2/"},
+   {"work": "Onshape Learning Center", "publisher": "Onshape", "kind": "course", "lang": "en", "url": "https://learn.onshape.com/"}
+  ],
+  "eng-1-components.md": [
+   {"work": "Academic Phrasebank", "part": "Defining terms", "publisher": "The University of Manchester", "kind": "guide", "lang": "en", "url": "https://www.phrasebank.manchester.ac.uk/writing-definitions/"},
+   {"work": "Academic Phrasebank", "part": "Classifying and listing", "publisher": "The University of Manchester", "kind": "guide", "lang": "en", "url": "https://www.phrasebank.manchester.ac.uk/classifying-and-listing/"}
+  ],
+  "eng-2-measurements.md": [
+   {"work": "Guide for the Use of the International System of Units (SI)", "part": "NIST Special Publication 811", "publisher": "NIST", "kind": "policy", "lang": "en", "url": "https://www.nist.gov/pml/special-publication-811"},
+   {"work": "Engineering Graphics and Design", "part": "8. Conventional Tolerancing", "publisher": "University of Washington Tacoma · Pressbooks", "kind": "book", "lang": "en", "url": "https://uw.pressbooks.pub/enggraphics/chapter/conventional-tolerancing/"},
+   {"work": "Academic Phrasebank", "part": "Describing quantities", "publisher": "The University of Manchester", "kind": "guide", "lang": "en", "url": "https://www.phrasebank.manchester.ac.uk/describing-quantities/"}
+  ]
+ },
+ "academy": {
+  "ai/1": [
+   {"work": "Guidance for generative AI in education and research", "publisher": "UNESCO", "kind": "policy", "lang": "en", "url": "https://www.unesco.org/en/articles/guidance-generative-ai-education-and-research"}
+  ],
+  "ai/2": [
+   {"work": "AI competency framework for teachers", "publisher": "UNESCO", "kind": "policy", "lang": "en", "url": "https://www.unesco.org/en/articles/ai-competency-framework-teachers"}
+  ],
+  "ai/3": [
+   {"work": "Reconsidering assessment for the ChatGPT era: QAA advice on developing sustainable assessment strategies", "publisher": "QAA (UK)", "kind": "policy", "lang": "en", "url": "https://www.qaa.ac.uk/docs/qaa/members/reconsidering-assessment-for-the-chat-gpt-era.pdf"},
+   {"work": "Understanding Item Analyses", "publisher": "University of Washington", "kind": "guide", "lang": "en", "url": "https://www.washington.edu/assessment/scanning-scoring/scoring/reports/item-analysis/"}
+  ],
+  "ai/4": [
+   {"work": "ENAI Recommendations on the ethical use of Artificial Intelligence in Education", "publisher": "International Journal for Educational Integrity, 2023", "kind": "article", "lang": "en", "url": "https://link.springer.com/article/10.1007/s40979-023-00133-4"}
+  ],
+  "ai/5": [
+   {"work": "Ethical guidelines on the use of artificial intelligence (AI) and data in teaching and learning for educators", "publisher": "European Commission, 2022", "kind": "policy", "lang": "en", "url": "https://op.europa.eu/en/publication-detail/-/publication/d81a0d54-5348-11ed-92ed-01aa75ed71a1/language-en"},
+   {"work": "Ethics of Artificial Intelligence", "publisher": "UNESCO", "kind": "policy", "lang": "en", "url": "https://www.unesco.org/en/artificial-intelligence/recommendation-ethics"}
+  ],
+  "ai/6": [
+   {"work": "STACK: online assessment for mathematics and STEM", "publisher": "STACK project (open source)", "kind": "docs", "lang": "en", "url": "https://stack-assessment.org/"}
+  ],
+  "emi/1": [
+   {"work": "Academic Phrasebank", "part": "Introducing work", "publisher": "The University of Manchester", "kind": "guide", "lang": "en", "url": "https://www.phrasebank.manchester.ac.uk/introducing-work/"},
+   {"work": "Academic Phrasebank", "part": "Signalling transition", "publisher": "The University of Manchester", "kind": "guide", "lang": "en", "url": "https://www.phrasebank.manchester.ac.uk/signalling-transition/"}
+  ],
+  "emi/2": [
+   {"work": "Plain language guide series", "publisher": "Digital.gov", "kind": "guide", "lang": "en", "url": "https://digital.gov/guides/plain-language"},
+   {"work": "Academic Phrasebank", "part": "Giving examples", "publisher": "The University of Manchester", "kind": "guide", "lang": "en", "url": "https://www.phrasebank.manchester.ac.uk/giving-examples/"}
+  ],
+  "emi/3": [
+   {"work": "Asking Questions: Six Types", "publisher": "University of Waterloo, Centre for Teaching Excellence", "kind": "guide", "lang": "en", "url": "https://uwaterloo.ca/centre-for-teaching-excellence/catalogs/tip-sheets/asking-questions-six-types"}
+  ],
+  "emi/4": [
+   {"work": "Email Etiquette", "publisher": "Purdue OWL, Purdue University", "kind": "guide", "lang": "en", "url": "https://owl.purdue.edu/owl/general_writing/academic_writing/email_etiquette.html"}
+  ],
+  "syllabus/1": [
+   {"work": "Bloom's Taxonomy", "publisher": "Iowa State University, CELT", "kind": "guide", "lang": "en", "url": "https://celt.iastate.edu/prepare-and-teach/design-your-course/blooms-taxonomy/"}
+  ],
+  "syllabus/2": [
+   {"work": "ECTS users' guide 2015", "publisher": "European Commission", "kind": "policy", "lang": "en", "url": "https://op.europa.eu/en/publication-detail/-/publication/da7467e6-8450-11e5-b8b7-01aa75ed71a1"},
+   {"work": "European Credit Transfer and Accumulation System (ECTS)", "publisher": "European Education Area", "kind": "policy", "lang": "en", "url": "https://education.ec.europa.eu/education-levels/higher-education/inclusive-and-connected-higher-education/european-credit-transfer-and-accumulation-system"}
+  ],
+  "syllabus/3": [
+   {"work": "Rubrics", "publisher": "Carnegie Mellon University, Eberly Center", "kind": "guide", "lang": "en", "url": "https://www.cmu.edu/teaching/designteach/teach/rubrics.html"}
+  ],
+  "syllabus/4": [
+   {"work": "Write or Revise Your Syllabus", "publisher": "Carnegie Mellon University, Eberly Center", "kind": "guide", "lang": "en", "url": "https://www.cmu.edu/teaching/designteach/syllabus/index.html"}
+  ],
+  "communication/1": [
+   {"work": "Giving Feedback", "publisher": "UCLA Teaching & Learning Center", "kind": "guide", "lang": "en", "url": "https://teaching.ucla.edu/resources/teaching-guides/giving-feedback/"},
+   {"work": "Receiving and Giving Effective Feedback", "publisher": "University of Waterloo, Centre for Teaching Excellence", "kind": "guide", "lang": "en", "url": "https://uwaterloo.ca/centre-for-teaching-excellence/catalogs/tip-sheets/receiving-and-giving-effective-feedback"}
+  ],
+  "communication/2": [
+   {"work": "The introduction, methods, results, and discussion (IMRAD) structure: a fifty-year survey", "authors": "L. B. Sollaci, M. G. Pereira", "publisher": "Journal of the Medical Library Association, 2004 · PubMed Central", "kind": "article", "lang": "en", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC442179/"},
+   {"work": "Scientific (IMRaD) Research Reports", "publisher": "George Mason University, The Writing Center", "kind": "guide", "lang": "en", "url": "https://writingcenter.gmu.edu/writing-resources/imrad/writing-an-imrad-report"}
+  ],
+  "communication/3": [
+   {"work": "CommKit: Slideshow", "publisher": "MIT Communication Lab · Broad Institute of MIT and Harvard", "kind": "guide", "lang": "en", "url": "https://mitcommlab.mit.edu/broad/commkit/slideshow/"}
+  ],
+  "communication/4": [
+   {"work": "Effective emails – top tips for staff when emailing students", "publisher": "Oxford Brookes University", "kind": "guide", "lang": "en", "url": "https://telsupport.brookes.ac.uk/articles/effective-emails-top-tips-for-staff-when-emailing-students/"}
+  ],
+  "pedagogy/1": [
+   {"work": "Active Learning", "publisher": "Cornell University, Center for Teaching Innovation", "kind": "guide", "lang": "en", "url": "https://teaching.cornell.edu/teaching-resources/active-collaborative-learning/active-learning"},
+   {"work": "Active learning increases student performance in science, engineering, and mathematics", "authors": "S. Freeman et al.", "publisher": "PNAS, 2014 · PubMed Central", "kind": "article", "lang": "en", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4060654/"}
+  ],
+  "pedagogy/2": [
+   {"work": "Flipping the Classroom", "publisher": "Cornell University, Center for Teaching Innovation", "kind": "guide", "lang": "en", "url": "https://teaching.cornell.edu/teaching-resources/active-collaborative-learning/flipping-classroom"}
+  ],
+  "pedagogy/3": [
+   {"work": "Worldwide CDIO Initiative", "publisher": "CDIO", "kind": "org", "lang": "en", "url": "https://cdio.org/"},
+   {"work": "CDIO Standards 3.0 – Updates to the Core CDIO Standards", "authors": "J. Malmqvist et al.", "publisher": "16th International CDIO Conference, 2020 · Chalmers", "kind": "article", "lang": "en", "url": "https://research.chalmers.se/publication/535190/file/535190_Fulltext.pdf"}
+  ],
+  "research/1": [
+   {"work": "Think. Check. Submit.", "publisher": "thinkchecksubmit.org", "kind": "guide", "lang": "en", "url": "https://thinkchecksubmit.org/"},
+   {"work": "Web of Science Master Journal List", "publisher": "Clarivate", "kind": "database", "lang": "en", "url": "https://mjl.clarivate.com/home"}
+  ],
+  "research/2": [
+   {"work": "Azərbaycan Elm Fondu", "part": "Qrant müsabiqələri", "publisher": "aef.gov.az", "kind": "org", "lang": "az", "url": "https://www.aef.gov.az/"},
+   {"work": "Horizon Europe", "publisher": "European Commission", "kind": "org", "lang": "en", "url": "https://research-and-innovation.ec.europa.eu/funding/funding-opportunities/funding-programmes-and-open-calls/horizon-europe_en"}
+  ],
+  "research/3": [
+   {"work": "ICMJE Recommendations", "publisher": "International Committee of Medical Journal Editors", "kind": "policy", "lang": "en", "url": "https://www.icmje.org/recommendations/"},
+   {"work": "Artificial Intelligence (AI): editorial policy", "publisher": "Nature Portfolio", "kind": "policy", "lang": "en", "url": "https://www.nature.com/nature-portfolio/editorial-policies/ai"},
+   {"work": "The European Code of Conduct for Research Integrity", "publisher": "ALLEA, 2023", "kind": "policy", "lang": "en", "url": "https://allea.org/code-of-conduct/"},
+   {"work": "Zotero: The Basics", "publisher": "Zotero Documentation", "kind": "docs", "lang": "en", "url": "https://www.zotero.org/support/quick_start_guide"}
+  ],
+  "edtech/1": [
+   {"work": "Teaching with PhET", "publisher": "PhET Interactive Simulations, University of Colorado Boulder", "kind": "guide", "lang": "en", "url": "https://phet.colorado.edu/en/teaching-resources/teaching-with-phet"}
+  ],
+  "edtech/2": [
+   {"work": "CodeRunner", "publisher": "coderunner.org.nz (Moodle question type)", "kind": "docs", "lang": "en", "url": "https://coderunner.org.nz/"},
+   {"work": "Classroom 50: Teacher Guide", "publisher": "Fifty Foundation · GitHub", "kind": "docs", "lang": "en", "url": "https://github.com/foundation50/classroom50/wiki/Teacher-Guide"}
+  ],
+  "edtech/3": [
+   {"work": "GeoGebra Community Resources", "publisher": "GeoGebra", "kind": "database", "lang": "en", "url": "https://www.geogebra.org/materials"},
+   {"work": "Project Jupyter Documentation", "publisher": "Project Jupyter", "kind": "docs", "lang": "en", "url": "https://docs.jupyter.org/en/latest/"}
+  ],
+  "edtech/4": [
+   {"work": "Onshape Learning Center", "publisher": "Onshape", "kind": "course", "lang": "en", "url": "https://learn.onshape.com/"},
+   {"work": "Engineering Graphics and Design", "authors": "Matthew Ford", "publisher": "University of Washington Tacoma · Pressbooks", "kind": "book", "lang": "en", "url": "https://uw.pressbooks.pub/enggraphics/"}
+  ]
+ }
+}

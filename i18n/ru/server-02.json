@@ -1,0 +1,21 @@
+{
+ "(sağ ol|təşəkkür|thank|спасибо|благодарю)": "(спасибо|благодарю|thank you|thank|спасибо)",
+ "arayış": "справка",
+ "akademik məzuniyyət": "академический отпуск",
+ "təqaüd": "стипендия",
+ "qayıb üzrlü": "пропуск по уважительной причине",
+ "həkim arayışı": "медицинская справка",
+ "imtahanın vaxtının dəyişdirilməsi": "перенос экзамена",
+ "tələbə bileti": "студенческий билет",
+ "təhsil haqqı": "плата за обучение",
+ "qiymətləndirmə bal": "баллы оценивания",
+ "davamiyyət": "посещаемость",
+ "köçürmə": "перевод",
+ "icazə": "разрешение",
+ "Fayl çox böyükdür (maks. 30 MB)": "Файл слишком большой (макс. 30 МБ)",
+ "JSON obyekt olmalıdır": "JSON должен быть объектом",
+ "Yanlış JSON": "Некорректный JSON",
+ "Content-Type application/json olmalıdır": "Content-Type должен быть application/json",
+ "Daxili server xətası": "Внутренняя ошибка сервера",
+ "Metod dəstəklənmir": "Метод не поддерживается"
+}

@@ -1,0 +1,21 @@
+{
+ "(sağ ol|təşəkkür|thank|спасибо|благодарю)": "(thanks|thank you|thank|спасибо|благодарю)",
+ "arayış": "certificate",
+ "akademik məzuniyyət": "academic leave",
+ "təqaüd": "scholarship",
+ "qayıb üzrlü": "excused absence",
+ "həkim arayışı": "medical certificate",
+ "imtahanın vaxtının dəyişdirilməsi": "rescheduling an exam",
+ "tələbə bileti": "student ID card",
+ "təhsil haqqı": "tuition fee",
+ "qiymətləndirmə bal": "assessment points",
+ "davamiyyət": "attendance",
+ "köçürmə": "transfer",
+ "icazə": "permission",
+ "Fayl çox böyükdür (maks. 30 MB)": "File is too large (max. 30 MB)",
+ "JSON obyekt olmalıdır": "JSON must be an object",
+ "Yanlış JSON": "Invalid JSON",
+ "Content-Type application/json olmalıdır": "Content-Type must be application/json",
+ "Daxili server xətası": "Internal server error",
+ "Metod dəstəklənmir": "Method not supported"
+}
