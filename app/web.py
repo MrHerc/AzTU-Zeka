@@ -113,7 +113,7 @@ SECURITY_HEADERS = [
 ]
 
 
-def make_server(port: int, router: Router, static_dir: Path, before, after, log=print):
+def make_server(port: int, router: Router, static_dir: Path, before, after, log=print, host: str = "127.0.0.1"):
     static_dir = static_dir.resolve()
 
     class Handler(BaseHTTPRequestHandler):
@@ -190,6 +190,6 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
         def do_DELETE(self):
             self._dispatch("DELETE")
 
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = ThreadingHTTPServer((host, port), Handler)
     srv.daemon_threads = True
     return srv

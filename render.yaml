@@ -1,0 +1,30 @@
+# Render Blueprint — AzTU Rəqəmsal Kampus (Zəka) demo
+# Render-də: New + → Blueprint → bu reponu seç. render.yaml avtomatik oxunur.
+# App yalnız Python standart kitabxanasından istifadə edir, əlavə paket (requirements.txt) yoxdur.
+services:
+  - type: web
+    name: zeka-aztu
+    runtime: python
+    plan: free
+    region: frankfurt            # Azərbaycana ən yaxın pulsuz region
+    branch: main
+    # Əlavə asılılıq yoxdur; pip-i yeniləmək kifayətdir.
+    buildCommand: "python -m pip install --upgrade pip"
+    # Render $PORT verir; serveri 0.0.0.0-da dinlədirik ki, xaricdən əlçatan olsun.
+    startCommand: "python run.py --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      # QR kodları və sənəd keçidləri bu ünvana yönəlsin. Render xidmətin öz xarici hostunu avtomatik doldurur
+      # (məs. zeka-aztu.onrender.com); run.py onun qarşısına https:// əlavə edir.
+      - key: PUBLIC_URL
+        fromService:
+          type: web
+          name: zeka-aztu
+          property: host
+    # SQLite bazası və yüklənən fayllar restartlar arası qalsın deyə sabit disk.
+    disk:
+      name: zeka-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
