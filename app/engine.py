@@ -18,11 +18,13 @@ import os
 import random
 import re
 import threading
+import urllib.parse
 import urllib.request
 import zipfile
 from collections import Counter
 from pathlib import Path
-from xml.etree import ElementTree as ET
+# bandit B405: see _xml(): DTDs are refused before parsing
+from xml.etree import ElementTree as ET  # nosec B405
 
 from .i18n import S_
 
@@ -214,8 +216,35 @@ def glossary(md: str) -> list[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------- extraction
+# Office files are untrusted ZIP archives: members are read with a size cap (zip bombs) and XML with a DTD is refused
+# (entity expansion). ElementTree never resolves external entities, so with no DTD there is nothing to expand.
+MAX_MEMBER = 20 * 1024 * 1024
+MAX_ARCHIVE = 60 * 1024 * 1024
+MAX_SLIDES = 400
+_BAD_OFFICE = "Fayldan mətn çıxarmaq mümkün olmadı"
+
+
+def _zip_read(z: zipfile.ZipFile, name: str, budget: list) -> bytes:
+    info = z.getinfo(name)
+    if info.file_size > MAX_MEMBER:
+        raise ValueError(_BAD_OFFICE)
+    with z.open(info) as f:
+        data = f.read(MAX_MEMBER + 1)
+    budget[0] -= len(data)
+    if len(data) > MAX_MEMBER or budget[0] < 0:
+        raise ValueError(_BAD_OFFICE)
+    return data
+
+
+def _xml(data: bytes):
+    if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
+        raise ValueError(_BAD_OFFICE)
+    # bandit B314: DTDs rejected above; ElementTree does not fetch external entities
+    return ET.fromstring(data)  # nosec B314
+
+
 def _xml_text(data: bytes, para_tag: str, text_tag: str) -> list[str]:
-    root = ET.fromstring(data)
+    root = _xml(data)
     paras = []
     for p in root.iter():
         if p.tag.endswith("}" + para_tag):
@@ -236,8 +265,8 @@ def extract_text(filename: str, data: bytes) -> str:
                 continue
     if ext == ".docx":
         with zipfile.ZipFile(io.BytesIO(data)) as z:
-            xml = z.read("word/document.xml")
-        root = ET.fromstring(xml)
+            xml = _zip_read(z, "word/document.xml", [MAX_ARCHIVE])
+        root = _xml(xml)
         lines = []
         for p in root.iter():
             if not p.tag.endswith("}p"):
@@ -262,10 +291,10 @@ def extract_text(filename: str, data: bytes) -> str:
             names = sorted(
                 (n for n in z.namelist() if re.match(r"ppt/slides/slide\d+\.xml$", n)),
                 key=lambda n: int(re.findall(r"\d+", n)[-1]),
-            )
-            out = []
+            )[:MAX_SLIDES]
+            out, budget = [], [MAX_ARCHIVE]
             for i, n in enumerate(names, 1):
-                paras = _xml_text(z.read(n), "p", "t")
+                paras = _xml_text(_zip_read(z, n, budget), "p", "t")
                 if not paras:
                     continue
                 out.append(f"## Slayd {i}: {paras[0]}")
@@ -340,9 +369,13 @@ def llm_chat(system: str, messages: list[dict], max_tokens: int = 900) -> str:
         body = {"model": c["model"], "messages": [{"role": "system", "content": system}] + messages,
                 "max_tokens": max_tokens, "temperature": 0.3}
         headers = {"Authorization": f"Bearer {c['api_key']}"}
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme != "https" and not (parts.scheme == "http" and parts.hostname in ("127.0.0.1", "localhost", "::1")):
+        raise RuntimeError("LLM ünvanı https:// ilə başlamalıdır (http:// yalnız lokal model serveri üçün)")
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                  headers={"Content-Type": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    # bandit B310: scheme restricted to https (or local http) above
+    with urllib.request.urlopen(req, timeout=timeout) as r:  # nosec B310
         data = json.loads(r.read().decode("utf-8"))
     if provider == "anthropic":
         return "".join(p.get("text", "") for p in data.get("content", []))
