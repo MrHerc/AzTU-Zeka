@@ -109,8 +109,13 @@ def admin_settings(req):
     if "retention_days" in b:
         lim["retention_days"] = max(30, min(int(b["retention_days"]), 3650))
     store.set_setting(req.db, "limits", lim)
-    audit(req.db, req.user["id"], "settings_update", "settings", json.dumps(lim))
+    purged = store.purge_expired(req.db)
+    audit(req.db, req.user["id"], "settings_update", "settings", json.dumps(lim) + (f" · {purged} köhnə mesaj silindi" if purged else ""))
     return lim
+
+
+def cfg_key() -> str:
+    return engine.llm_config().get("api_key") or "\0"
 
 
 @R("POST", "/api/admin/test-llm", roles=("admin",))
@@ -121,7 +126,7 @@ def admin_test_llm(req):
         out = engine.llm_chat("Qısa cavab ver.", [{"role": "user", "content": "Salam! Bir sözlə cavab ver: hazırsan?"}], 20)
         return {"ok": True, "message": T3("Bağlantı uğurludur: {out}", out=out[:80])}
     except Exception as ex:
-        return {"ok": False, "message": T3("Bağlantı alınmadı: {err}: {detail}", err=type(ex).__name__, detail=str(ex)[:160])}
+        return {"ok": False, "message": T3("Bağlantı alınmadı: {err}: {detail}", err=type(ex).__name__, detail=str(ex)[:160].replace(cfg_key(), "***"))}
 
 
 @R("GET", "/api/admin/audit", roles=("admin", "leader"))

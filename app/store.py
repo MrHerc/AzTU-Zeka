@@ -747,14 +747,25 @@ def init(reset: bool = False):
         seed(c)
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         c.commit()
+    purge_expired(c)
+    c.commit()
     build_indexes(c)
     c.close()
+
+
+def purge_expired(c) -> int:
+    """Enforce the chat retention period (settings.limits.retention_days): older AI conversations are deleted."""
+    days = (setting(c, "limits", {}) or {}).get("retention_days")
+    if not isinstance(days, int) or days < 1:
+        return 0
+    return c.execute("DELETE FROM messages WHERE created_at<?", (iso(now() - timedelta(days=days)),)).rowcount
 
 
 def reseed():
     c = connect()
     for t in [r["name"] for r in rows(c, "SELECT name FROM sqlite_master WHERE type='table'")]:
-        c.execute(f'DELETE FROM "{t}"')
+        # bandit B608: table names from sqlite_master
+        c.execute(f'DELETE FROM "{t}"')  # nosec B608
     seed(c)
     c.commit()
     build_indexes(c)
