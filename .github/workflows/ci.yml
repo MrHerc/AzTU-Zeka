@@ -36,10 +36,10 @@ jobs:
       - name: JavaScript syntax check
         run: for f in static/js/*.js; do node --check "$f"; done
       - name: Translation catalogue is complete and built
+        # Compares parsed JSON: the extractor's key order differs between Python versions, the content must not.
         run: |
           python tools/i18n.py stats
-          python tools/i18n.py build
-          git diff --exit-code -- app/locales static/locales
+          python -m pytest -q -p no:cacheprovider tests/unit/test_i18n_catalog.py
 
   test:
     name: Tests (Python ${{ matrix.python }}, ${{ matrix.os }})
