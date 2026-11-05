@@ -370,6 +370,177 @@ s, sr2 = call(st, "GET", "/api/search?q=GreenMetric")
 check("search finds achievements", s == 200 and any(r["link"].startswith("/achievements") for r in sr2["results"]), sr2)
 s, vp = call(client(), "GET", f"/verify/{r2['document']['verify_code']}?lang=en")
 check("verify page in English", s == 200 and "valid" in vp.lower(), vp[:200])
+# --- security regression tests (docs/SECURITY_REVIEW.md)
+import socket  # noqa: E402
+from app import security  # noqa: E402
+from app.r_learning import _masked_history  # noqa: E402
+
+
+def raw_http(payload: bytes, wait=3.0) -> bytes:
+    """Send raw bytes, return everything the server writes until it closes or goes quiet."""
+    sk = socket.create_connection(("127.0.0.1", port), timeout=wait)
+    sk.sendall(payload)
+    out = b""
+    try:
+        while True:
+            chunk = sk.recv(65536)
+            if not chunk:
+                break
+            out += chunk
+    except socket.timeout:
+        pass
+    sk.close()
+    return out
+
+
+def headers_of(op, path):
+    try:
+        with op.open(urllib.request.Request(base + path), timeout=30) as r:
+            return r.status, {k.lower(): v for k, v in r.headers.items()}
+    except urllib.error.HTTPError as e:
+        return e.code, {k.lower(): v for k, v in e.headers.items()}
+
+
+s, h = headers_of(st, "/api/me")
+check("sec: CSP frame-ancestors/base-uri/object-src", "frame-ancestors 'self'" in h.get("content-security-policy", "")
+      and "object-src 'none'" in h["content-security-policy"] and "base-uri 'none'" in h["content-security-policy"], h)
+check("sec: X-Frame-Options + nosniff", h.get("x-frame-options") == "SAMEORIGIN" and h.get("x-content-type-options") == "nosniff", h)
+check("sec: API responses not cached", h.get("cache-control") == "no-store", h.get("cache-control"))
+check("sec: no Python version in Server header", "python" not in h.get("server", "").lower(), h.get("server"))
+s, h = headers_of(client(), "/static/js/core.js")
+check("sec: static files keep their cache policy", s == 200 and h.get("cache-control") == "no-cache", h.get("cache-control"))
+
+# CRLF injection / open redirect in the GET demo login (next=)
+for nxt in ("/x%0d%0aSet-Cookie:%20pwned=1", "/%09/evil.example", "//evil.example", "/\\evil.example", "https://evil.example"):
+    resp = raw_http(f"GET /demo/login?role=student&next={nxt} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n".encode())
+    head = resp.split(b"\r\n\r\n", 1)[0].decode("latin-1")
+    loc = next((ln.split(":", 1)[1].strip() for ln in head.split("\r\n") if ln.lower().startswith("location:")), "")
+    check(f"sec: demo login next={nxt!r} stays on site", head.startswith("HTTP/1.1 302") and "pwned" not in head and loc == "/", head[:300])
+resp = raw_http(b"GET /demo/login?role=student&next=/%23/student/services HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+check("sec: demo login keeps a valid in-app next", b"Location: /#/student/services" in resp, resp[:300])
+
+# CSRF: cross-site browser requests with cookies are refused; same-origin ones work
+cs = client()
+call(cs, "POST", "/api/auth/demo", {"role": "student"})
+
+
+def post_h(op, path, hdrs, body=b"{}"):
+    rq = urllib.request.Request(base + path, data=body, method="POST", headers={"Content-Type": "application/json", **hdrs})
+    try:
+        with op.open(rq, timeout=30) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        return e.code
+
+
+check("sec: CSRF Sec-Fetch-Site cross-site refused", post_h(cs, "/api/notifications/read", {"Sec-Fetch-Site": "cross-site"}) == 403)
+check("sec: CSRF same-site (sibling subdomain) refused", post_h(cs, "/api/notifications/read", {"Sec-Fetch-Site": "same-site"}) == 403)
+check("sec: CSRF foreign Origin refused", post_h(cs, "/api/notifications/read", {"Origin": "https://evil.example"}) == 403)
+check("sec: CSRF Origin null refused", post_h(cs, "/api/notifications/read", {"Origin": "null"}) == 403)
+check("sec: same-origin request allowed", post_h(cs, "/api/notifications/read", {"Sec-Fetch-Site": "same-origin", "Origin": base}) == 200)
+check("sec: same-origin by Origin header allowed", post_h(cs, "/api/notifications/read", {"Origin": base}) == 200)
+check("sec: simple-request content type refused", post_h(cs, "/api/notifications/read", {"Content-Type": "text/plain; x=application/json"}) == 415)
+
+# Request smuggling / desync guards
+resp = raw_http(b"POST /api/feedback HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json\r\n\r\n2\r\n{}\r\n0\r\n\r\n")
+check("sec: chunked request bodies refused", resp.startswith(b"HTTP/1.1 501") and resp.count(b"HTTP/1.1 ") == 1, resp[:200])
+resp = raw_http(b"POST /api/feedback HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: -5\r\nContent-Type: application/json\r\n\r\n")
+check("sec: negative Content-Length refused", resp.startswith(b"HTTP/1.1 400"), resp[:200])
+resp = raw_http(b"POST /api/feedback HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 2\r\nContent-Length: 40\r\nContent-Type: application/json\r\n\r\n{}")
+check("sec: conflicting Content-Length refused", resp.startswith(b"HTTP/1.1 400"), resp[:200])
+resp = raw_http(b"POST /api/feedback HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 99999999\r\nContent-Type: application/json\r\n\r\n")
+check("sec: oversized body refused before reading", resp.startswith(b"HTTP/1.1 413"), resp[:200])
+smuggled = b"GET /api/contact HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
+resp = raw_http(b"POST /api/feedback HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: "
+                + str(len(smuggled)).encode() + b"\r\n\r\n" + smuggled)
+check("sec: unread body is not parsed as a second request", resp.startswith(b"HTTP/1.1 401") and resp.count(b"HTTP/1.1 ") == 1, resp[:300])
+
+# Malformed input is a 400, not a 500 with a traceback in the log
+check("sec: bad ids -> 400", call(cs, "POST", "/api/notifications/read", {"ids": ["x"]})[0] == 400)
+
+# Session lifetime: an expired session is no longer accepted
+xc = client()
+xs = call(xc, "POST", "/api/auth/demo", {"role": "student"})[1]["token"]
+check("sec: fresh session works", call(xc, "GET", "/api/me")[0] == 200)
+db = store.connect()
+db.execute("UPDATE sessions SET created_at=? WHERE sid=?", ("2000-01-01T00:00:00", xs))
+db.commit()
+db.close()
+check("sec: expired session rejected", call(xc, "GET", "/api/me")[0] == 401)
+
+# Demo access code (ZEKA_ACCESS_CODE)
+security.LIMITS["login"].reset()
+security.LIMITS["login_fail"].reset()
+security.CFG.access_code = "zeka-test-code-7"
+gate = client()
+check("sec: bootstrap announces the access code", call(gate, "GET", "/api/bootstrap")[1]["app"]["access_required"] is True)
+check("sec: login without code refused", call(gate, "POST", "/api/auth/demo", {"role": "admin"})[0] == 403)
+check("sec: login with wrong code refused", call(gate, "POST", "/api/auth/demo", {"role": "admin", "code": "guess"})[0] == 403)
+check("sec: GET demo login without code refused", call(client(), "GET", "/demo/login?role=admin")[0] == 403)
+check("sec: login with the code works", call(gate, "POST", "/api/auth/demo", {"role": "student", "code": "zeka-test-code-7"})[0] == 200)
+check("sec: role switch inside a session needs no code", call(gate, "POST", "/api/auth/demo", {"role": "teacher"})[0] == 200)
+security.LIMITS["login_fail"].reset()      # the failures above came from the same address
+brute = client()
+codes = [call(brute, "POST", "/api/auth/demo", {"role": "admin", "code": f"x{i}"})[0] for i in range(12)]
+check("sec: access-code guessing is throttled", codes[:10] == [403] * 10 and codes[-1] == 429, codes)
+check("sec: throttled client blocked even with the right code",
+      call(brute, "POST", "/api/auth/demo", {"role": "admin", "code": "zeka-test-code-7"})[0] == 429)
+security.CFG.access_code = ""
+security.LIMITS["login"].reset()
+security.LIMITS["login_fail"].reset()
+
+# Stored HTML injection in the printable syllabus
+s, tcs = call(te, "GET", "/api/courses")
+tcid = tcs[0]["id"]
+s, syl = call(te, "POST", f"/api/syllabus/{tcid}/generate", {"weeks": 15})
+evil = "<script>alert(1)</script><img src=x onerror=alert(2)>"
+syl["plan"][0]["week"] = evil
+syl["assessment"][0][1] = evil
+syl["workload"]["total"] = evil
+syl["course"]["credits"] = evil
+syl["description"] = evil
+check("sec: syllabus save", call(te, "PUT", f"/api/syllabus/{tcid}", {"data": syl})[0] == 200)
+s, page = call(te, "GET", f"/syllabus/{tcid}")
+check("sec: syllabus page escapes saved data", s == 200 and "<script>" not in page and "<img src=x" not in page and "&lt;script&gt;" in page, page[:200])
+check("sec: syllabus shape validated", call(te, "PUT", f"/api/syllabus/{tcid}", {"data": {"course": "x"}})[0] == 400)
+
+# AI Academy: a failed attempt does not reveal the answer key
+s, acad = call(te, "GET", "/api/academy")
+mod = next(m for tr_ in acad["tracks"] for m in tr_["modules"])
+s, md = call(te, "GET", f"/api/academy/module/{mod['id']}")
+s, res = call(te, "POST", f"/api/academy/module/{mod['id']}/complete", {"answers": [-1] * len(md["quiz"])})
+check("sec: academy key hidden after a failed attempt", s == 200 and not res["passed"] and all(x is None for x in res["correct"]), res)
+
+# Quiz time limit is enforced by the server
+qst = client()
+call(qst, "POST", "/api/auth/demo", {"role": "student"})
+s, qz = call(qst, "GET", "/api/quizzes")
+open_q = next((q for q in qz if q.get("can_start")), None)
+if open_q:
+    s, stt = call(qst, "POST", f"/api/quizzes/{open_q['id']}/start")
+    db = store.connect()
+    db.execute("UPDATE attempts SET started_at=? WHERE id=?", ("2000-01-01T00:00:00", stt["attempt_id"]))
+    db.commit()
+    db.close()
+    full = {str(q["id"]): 0 for q in stt["questions"]}
+    s, late = call(qst, "POST", f"/api/attempts/{stt['attempt_id']}/submit", {"answers": full})
+    check("sec: late quiz answers are not graded", s == 200 and late["score"] == 0 and all(d["given"] == "—" for d in late["details"]), late)
+else:
+    check("sec: quiz available for late-submit test", False, qz)
+
+# Privacy: consent is recorded as choices; earlier chat turns are masked before an external LLM call
+call(qst, "POST", "/api/consent", {"ai": True, "external": False, "junk": "x" * 5000})
+s, me2 = call(qst, "GET", "/api/me")
+check("sec: consent choices stored (no arbitrary payload)", me2["prefs"].get("consent") == {"ai": True, "external": False}, me2["prefs"])
+hm = _masked_history([{"role": "user", "content": "Mənim nömrəm +994 50 123 45 67"}, {"role": "assistant", "content": "ok"}], True)
+check("sec: history masked for the LLM", "+994" not in hm[0]["content"] and hm[1]["content"] == "ok", hm)
+
+# Helpers
+check("sec: safe_next", security.safe_next("/#/student") == "/#/student" and security.safe_next("//evil") == "/"
+      and security.safe_next("/\tx") == "/" and security.safe_next("/a\r\nb") == "/" and security.safe_next("javascript:alert(1)") == "/")
+lim = security.RateLimiter(3, 60)
+check("sec: rate limiter", [lim.hit("k") for _ in range(4)] == [True, True, True, False] and lim.hit("other"))
+
 srv.shutdown()
 print("\nRESULT:", "ALL PASSED" if not fails else f"{len(fails)} FAILED: {fails}")
 sys.exit(1 if fails else 0)

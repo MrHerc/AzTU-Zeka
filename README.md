@@ -11,7 +11,23 @@ python run.py --port 5070      # və ya terminaldan
 python run.py --reset          # demo məlumatlarını sıfırdan yarat
 python run.py --public-url https://zeka.example.az   # serverdə: sənəd QR kodları bu ünvana yönəlir, sessiya kukisi Secure olur
 ```
-Ünvan: http://127.0.0.1:5070 (server yalnız bu kompüterdə dinləyir; serverdə onu HTTPS və parol verən reverse proxy arxasında işlədin). Fonda: `scripts\start_demo.ps1`, dayandırmaq: `scripts\stop_demo.ps1`.
+Ünvan: http://127.0.0.1:5070 (server yalnız bu kompüterdə dinləyir). Fonda: `scripts\start_demo.ps1`, dayandırmaq: `scripts\stop_demo.ps1`.
+
+### Serverdə (şəbəkəyə açıq) işə salmaq
+Demo girişi parolsuzdur, ona görə şəbəkədən əlçatan hostda ortaq **giriş kodu** məcburidir — kod olmadan `run.py` başlamır:
+```
+ZEKA_ACCESS_CODE="uzun-təsadüfi-kod" python run.py --host 0.0.0.0 --public-url https://zeka.example.az
+```
+| Mühit dəyişəni | Mənası |
+|---|---|
+| `ZEKA_ACCESS_CODE` | Demoya giriş kodu (Render-də `render.yaml` avtomatik yaradır; Dashboard → Environment) |
+| `ZEKA_SESSION_HOURS` | Sessiyanın ömrü, saat (susmaya görə 12) |
+| `ZEKA_PROXY_HOPS` | Qarşıdakı etibarlı proksi sayı, X-Forwarded-For üçün (Render: 1) |
+| `ZEKA_ACCESS_LOG` | Sorğu jurnalı stdout-a (açıq hostda susmaya görə aktivdir) |
+| `ZEKA_ALLOW_OPEN_DEMO=1` | Kodsuz açıq demo — tövsiyə olunmur |
+| `AZTU_LLM_API_KEY` və s. | LLM açarı yalnız mühit dəyişənində və ya `config.json`-da (repoya düşmür) |
+
+Təhlükəsizlik yoxlaması və açıq məsələlər: [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md), zəiflik bildirmək: [SECURITY.md](SECURITY.md).
 Verilənlər bazası sxemi dəyişdikdə köhnə demo bazası avtomatik yenidən yaradılır.
 
 ## v0.3-də yeni
@@ -53,7 +69,7 @@ ingilis/rus dilində verilən kampus sualları Azərbaycan dilindəki qaydalarla
 (OpenAI-uyğun API, Azure OpenAI və ya Anthropic); LLM əlçatan olmasa, demo mühərrikə avtomatik qayıdır.
 
 ## Yoxlama
-`python tests\selftest.py` (backend + API, o cümlədən dil, dəstək, rəy, nailiyyətlər, tövsiyə olunan mənbələr) — bazanı sıfırlayır, sonra serveri yenidən başladın.
+`python tests\selftest.py` (backend + API, o cümlədən dil, dəstək, rəy, nailiyyətlər, tövsiyə olunan mənbələr və təhlükəsizlik reqressiya testləri) — bazanı sıfırlayır, sonra serveri yenidən başladın.
 İnkişaf alətləri `.dev/tools/`: `jscheck.ps1`, `imports.py`, `dom.py` (bütün səhifələr, 3 dil, mobil), `shot.py`, `m390.py`.
 
 ## Məhdudiyyətlər (demo)

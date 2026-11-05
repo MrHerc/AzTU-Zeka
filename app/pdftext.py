@@ -3,27 +3,38 @@
 Supports: FlateDecode streams, object streams (PDF 1.5+), ToUnicode CMaps (bfchar / bfrange),
 simple and Type0 (2-byte) fonts, Tj / TJ / ' / " operators and basic line/page breaks.
 It is intentionally small: when a PDF cannot be decoded the caller falls back to "download the original".
+
+Uploaded PDFs are untrusted input. ``extract_pages_isolated`` runs the parser in a child process with a wall-clock
+timeout and (on POSIX) CPU and memory limits, so a hostile file cannot pin a server thread or exhaust memory;
+decompression is capped per stream (decompression bombs).
 """
 from __future__ import annotations
 
+import bisect
+import json
 import re
+import subprocess
+import sys
+import threading
 import zlib
 
-_OBJ = re.compile(rb"(\d+)\s+(\d+)\s+obj\b(.*?)\bendobj", re.S)
-_REF = re.compile(rb"(\d+)\s+0\s+R")
+_OBJ_HEAD = re.compile(rb"(\d{1,10})\s{1,8}\d{1,5}\s{1,8}obj\b")
+_ENDOBJ = re.compile(rb"\bendobj")
+_REF = re.compile(rb"(\d{1,10})\s+0\s+R")
 _STREAM = re.compile(rb"stream\r?\n(.*)\r?\n?endstream", re.S)
+MAX_STREAM = 8 * 1024 * 1024        # decoded bytes kept per stream
+CHILD_TIMEOUT = 15                  # seconds for one isolated extraction
+CHILD_MEMORY = 384 * 1024 * 1024    # address-space limit of the child process (POSIX)
+_SLOTS = threading.BoundedSemaphore(2)
 
 
 def _inflate(data: bytes) -> bytes:
     for trim in (data, data.rstrip(b"\r\n")):
         try:
-            return zlib.decompress(trim)
+            return zlib.decompressobj().decompress(trim, MAX_STREAM)
         except zlib.error:
-            pass
-    try:
-        return zlib.decompressobj().decompress(data)
-    except zlib.error:
-        return b""
+            continue
+    return b""
 
 
 def _split(body: bytes):
@@ -42,8 +53,18 @@ def _split(body: bytes):
 class _Doc:
     def __init__(self, raw: bytes):
         self.objs: dict[int, bytes] = {}
-        for m in _OBJ.finditer(raw):
-            self.objs[int(m.group(1))] = m.group(3)
+        # Linear scan: each object header is paired with the next "endobj" (a lazy regex over the whole file is quadratic
+        # on hostile input with many headers and no terminators).
+        ends = [m.start() for m in _ENDOBJ.finditer(raw)]
+        last = 0
+        for m in _OBJ_HEAD.finditer(raw):
+            if m.start() < last:
+                continue
+            i = bisect.bisect_left(ends, m.end())
+            if i == len(ends):
+                break
+            self.objs[int(m.group(1))] = raw[m.end():ends[i]]
+            last = ends[i] + 6
         for num, body in list(self.objs.items()):
             if b"/ObjStm" in body[:400]:
                 head, data = _split(body)
@@ -233,3 +254,38 @@ def extract_pages(raw: bytes, max_pages: int = 30) -> list[str]:
         page_text = re.sub(r"[ \t]+\n", "\n", "\n".join(text)).strip()
         out.append(re.sub(r"\n{3,}", "\n\n", page_text))
     return out
+
+
+def extract_pages_isolated(raw: bytes, max_pages: int = 30, timeout: float = CHILD_TIMEOUT) -> list[str]:
+    """extract_pages() in a separate interpreter; [] when the file cannot be parsed in time or the server is busy."""
+    if not raw.startswith(b"%PDF"):
+        return []
+    if not _SLOTS.acquire(timeout=5):
+        return []
+    try:
+        # bandit B603: fixed argv, no shell
+        p = subprocess.run([sys.executable, "-I", __file__, str(int(max_pages))], input=raw, capture_output=True,  # nosec B603
+                           timeout=timeout, check=False)
+        if p.returncode != 0:
+            return []
+        out = json.loads(p.stdout.decode("utf-8"))
+        return [str(x) for x in out][:max_pages] if isinstance(out, list) else []
+    except (subprocess.SubprocessError, OSError, ValueError):
+        return []
+    finally:
+        _SLOTS.release()
+
+
+def _child_main():
+    try:
+        import resource
+        resource.setrlimit(resource.RLIMIT_AS, (CHILD_MEMORY, CHILD_MEMORY))
+        resource.setrlimit(resource.RLIMIT_CPU, (CHILD_TIMEOUT, CHILD_TIMEOUT + 1))
+    except (ImportError, ValueError, OSError):      # Windows has no resource module; the parent's timeout still applies
+        pass
+    pages = extract_pages(sys.stdin.buffer.read(), int(sys.argv[1]) if len(sys.argv) > 1 else 30)
+    sys.stdout.write(json.dumps(pages))       # ASCII-only: safe on any console code page
+
+
+if __name__ == "__main__":
+    _child_main()
