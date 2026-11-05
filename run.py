@@ -13,6 +13,19 @@ from app import api, store  # noqa: E402
 from app.web import make_server  # noqa: E402
 
 
+def normalize_public_url(value: str) -> str:
+    """Scheme + host (+ port) of the public address, without a trailing slash; "" when not set.
+
+    Render supplies PUBLIC_URL as a bare host (e.g. zeka-aztu.onrender.com); its external endpoint is always HTTPS.
+    """
+    public = (value or "").strip().rstrip("/")
+    if public and not re.match(r"https?://", public):
+        public = "https://" + public
+    if public and not re.fullmatch(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?", public):
+        raise ValueError("--public-url yalnız sxem və hostdan ibarət olmalıdır, məs. https://zeka.example.az")
+    return public
+
+
 def main():
     # Output redirected to a file or pipe gets the Windows ANSI code page (cp1251/cp1252), which has no "ə": the help text
     # and the start banner then raise UnicodeEncodeError and the server dies at once. UTF-8 encodes every character.
@@ -27,12 +40,10 @@ def main():
     ap.add_argument("--public-url", default=os.environ.get("PUBLIC_URL", ""), metavar="URL",
                     help="serverdə portalın ictimai ünvanı (məs. https://zeka.example.az): sənədlərin QR kodları bu ünvana yönəlir")
     args = ap.parse_args()
-    public = args.public_url.strip().rstrip("/")
-    # Render supplies PUBLIC_URL as a bare host (e.g. zeka-aztu.onrender.com); its external endpoint is always HTTPS.
-    if public and not re.match(r"https?://", public):
-        public = "https://" + public
-    if public and not re.fullmatch(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?", public):
-        ap.error("--public-url yalnız sxem və hostdan ibarət olmalıdır, məs. https://zeka.example.az")
+    try:
+        public = normalize_public_url(args.public_url)
+    except ValueError as ex:
+        ap.error(str(ex))
     store.init(reset=args.reset)
     api.BASE_URL["value"] = public or f"http://127.0.0.1:{args.port}"
     log_dir = ROOT / "logs"

@@ -107,7 +107,7 @@ def split_sentences(md: str) -> list[str]:
 
 
 def formulas(md: str) -> list[str]:
-    return [l[1:].strip() for l in md.splitlines() if l.strip().startswith(">")]
+    return [ln[1:].strip() for ln in md.splitlines() if ln.strip().startswith(">")]
 
 
 def code_blocks(md: str) -> list[str]:
@@ -170,7 +170,9 @@ INDEX = {"chunks": BM25(), "campus": BM25(), "questions": BM25()}
 
 # ---------------------------------------------------------------- chunking
 def chunk_markdown(md: str, max_chars: int = 1100) -> list[tuple[str, str]]:
-    sections, heading, buf = [], "Giriş", []
+    sections: list[tuple[str, str]] = []
+    heading = "Giriş"
+    buf: list[str] = []
     title = None
     for line in md.splitlines():
         if line.startswith("# ") and title is None:
@@ -238,7 +240,7 @@ def extract_text(filename: str, data: bytes) -> str:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             xml = z.read("word/document.xml")
         root = ET.fromstring(xml)
-        lines = []
+        lines: list[str] = []
         for p in root.iter():
             if not p.tag.endswith("}p"):
                 continue
@@ -442,6 +444,7 @@ def grade(q: dict, value) -> tuple[bool | None, str]:
     """Return (correct, normalized display of given answer). correct None = cannot parse."""
     qt = q["qtype"]
     if qt == "mcq":
+        idx: int | None
         if isinstance(value, int):
             idx = value
         else:
@@ -452,7 +455,7 @@ def grade(q: dict, value) -> tuple[bool | None, str]:
                 for i, o in enumerate(q["options"]):
                     if fold(o) == fold(s):
                         idx = i
-        if idx is None or idx >= len(q["options"]):
+        if idx is None or not 0 <= idx < len(q["options"]):     # a negative index would silently pick the last option
             return None, str(value)
         return idx == int(q["answer"]), LETTERS[idx]
     if qt == "tf":
@@ -460,9 +463,14 @@ def grade(q: dict, value) -> tuple[bool | None, str]:
             v = value
         else:
             f = fold(str(value))
-            if re.search(r"(dogru|duz|beli|true|\bhe\b)", f):
-                v = True
-            elif re.search(r"(yanlis|sehv|xeyr|false|deyil)", f):
+            pos = re.search(r"(dogru|duz|beli|true|\bhe\b)", f)
+            neg = re.search(r"(yanlis|sehv|xeyr|false)", f)
+            negated = re.search(r"\b(deyil|not)\b", f)        # "doğru deyil" = false, "yanlış deyil" = true
+            if pos and not neg:
+                v = not negated
+            elif neg and not pos:
+                v = bool(negated)
+            elif negated:
                 v = False
             else:
                 return None, str(value)
@@ -590,9 +598,9 @@ def _numeric_templates(rng: random.Random):
                 f"İbtidai funksiya F(x) = {_fmt(k / 2)}x²; F({b}) − F(0) = {_fmt(k * b * b / 2)}.", "Nyuton–Leybnis düsturu")
 
     def scale():
-        m, l = rng.choice([2, 5, 10, 20, 50]), rng.choice([12, 15, 24, 40, 60])
-        return (f"1:{m} miqyasında çəkilmiş çertyojda xəttin uzunluğu {l} mm-dir. Həqiqi uzunluğu millimetrlə tapın.",
-                l * m, "mm", f"Həqiqi ölçü = {l} × {m} = {l * m} mm.", "Miqyas")
+        m, length = rng.choice([2, 5, 10, 20, 50]), rng.choice([12, 15, 24, 40, 60])
+        return (f"1:{m} miqyasında çəkilmiş çertyojda xəttin uzunluğu {length} mm-dir. Həqiqi uzunluğu millimetrlə tapın.",
+                length * m, "mm", f"Həqiqi ölçü = {length} × {m} = {length * m} mm.", "Miqyas")
 
     def py_dict():
         keys = rng.sample(["ad", "qrup", "bal", "kurs", "fakultə"], 3)
@@ -651,7 +659,8 @@ def generate_questions(chunks: list[dict], course_glossary: list[tuple[str, str]
                                     "chunk_id": src["id"]})
     for k in pool:
         rng.shuffle(pool[k])
-    out, seen = [], set()
+    out: list[dict] = []
+    seen: set[str] = set()
     order = [t for t in ("numeric", "mcq", "tf") if t in types]
     while len(out) < count and any(pool[t] for t in order):
         for t in order:

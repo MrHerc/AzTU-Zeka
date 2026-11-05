@@ -7,7 +7,7 @@ import threading
 from datetime import datetime, timedelta
 
 from . import engine, store
-from .i18n import E, L
+from .i18n import E
 from .store import J, iso, now, row, rows, setting
 from .web import HTTPError, Router
 

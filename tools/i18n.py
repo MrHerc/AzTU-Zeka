@@ -271,7 +271,7 @@ def py_scan(path: Path):
                     keys.append((target.value, node.lineno))
                     marked.add(id(target))
                 elif isinstance(target, ast.JoinedStr):
-                    raws.append(("f-string in " + fn, ast.get_source_segment(src, target)[:120], node.lineno))
+                    raws.append(("f-string in " + fn, (ast.get_source_segment(src, target) or "")[:120], node.lineno))
                     marked.add(id(target))
     implicit = path.name.startswith("r_") or path.name in ("common.py", "docs.py", "support.py", "tutor.py", "web.py")
     for node in ast.walk(tree):
@@ -283,10 +283,11 @@ def py_scan(path: Path):
             for v in node.values:
                 marked.add(id(v))
         elif isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in marked and id(node) not in doc_nodes and implicit:
-            v = node.value
-            if AZ_LETTERS.search(v) and len(v) < 400 and v.count("\n") < 4 and not re.match(r"\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|WITH)\b", v, re.I) \
-                    and "\\b" not in v and "(?" not in v and not v.startswith(("/", "<")):
-                keys.append((v, getattr(node, "lineno", 0)))  # implicit: translated by exact match in responses
+            text = node.value
+            if AZ_LETTERS.search(text) and len(text) < 400 and text.count("\n") < 4 \
+                    and not re.match(r"\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|WITH)\b", text, re.I) \
+                    and "\\b" not in text and "(?" not in text and not text.startswith(("/", "<")):
+                keys.append((text, getattr(node, "lineno", 0)))  # implicit: translated by exact match in responses
     return keys, raws
 
 
@@ -493,7 +494,9 @@ def build():
         (ROOT / "app" / "locales").mkdir(parents=True, exist_ok=True)
         (ROOT / "static" / "locales" / f"{lg}.json").write_text(json.dumps(static, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         (ROOT / "app" / "locales" / f"{lg}.json").write_text(json.dumps(app, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-        cov = lambda d: f"{sum(1 for k in d if k in tr)}/{len(d)}"  # noqa: E731
+        def cov(d, tr=tr):
+            return f"{sum(1 for k in d if k in tr)}/{len(d)}"
+
         print(f"{lg}: ui {cov(ui)}  server {cov(server)}  content {cov(content)}  problems: {bad}")
 
 

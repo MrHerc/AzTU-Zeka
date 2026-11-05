@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import date, datetime, timedelta
 
 from . import docs, store
@@ -22,7 +23,7 @@ def type_out(t):
 
 
 def get_type(c, code):
-    t = row(c, "SELECT * FROM request_types WHERE code=?", (code,))
+    t = row(c, "SELECT * FROM request_types WHERE code=?", (code,)) if isinstance(code, str) else None
     if not t:
         raise HTTPError(400, "Müraciət növü tapılmadı")
     return type_out(t)
@@ -41,7 +42,7 @@ def _date(v, label):
     try:
         return date.fromisoformat(str(v)[:10])
     except ValueError:
-        raise HTTPError(400, E("“{label}”: tarix düzgün deyil", label=label))
+        raise HTTPError(400, E("“{label}”: tarix düzgün deyil", label=label)) from None
 
 
 def _visible(f, data):
@@ -50,15 +51,14 @@ def _visible(f, data):
 
 
 def validate(c, u, rt, raw: dict) -> dict:
-    data = {}
+    data: dict = {}
     enrolled = {r["course_id"] for r in rows(c, "SELECT course_id FROM enrollments WHERE user_id=?", (u["id"],))}
     for f in rt["fields"]:
         if f["type"] in ("radio", "select"):
-            v = str(raw.get(f["name"], "") or "").strip()
-            v = canon(v, f["options"])
-            if v and v not in f["options"]:
+            choice = canon(str(raw.get(f["name"], "") or "").strip(), f["options"])
+            if choice and choice not in f["options"]:
                 raise HTTPError(400, E("“{label}” üçün yanlış seçim", label=f["label"]))
-            data[f["name"]] = v or ("" if f.get("required") else f["options"][0])
+            data[f["name"]] = choice or ("" if f.get("required") else f["options"][0])
     for f in rt["fields"]:
         name, typ, req_ = f["name"], f["type"], f.get("required") and _visible(f, {**raw, **data})
         v = raw.get(name)
@@ -70,6 +70,8 @@ def validate(c, u, rt, raw: dict) -> dict:
             data[name] = ""
             continue
         if typ in ("text", "textarea"):
+            if isinstance(v, (list, dict)):
+                raise HTTPError(400, E("Yanlış dəyər: {field}", field=name))
             v = str(v or "").strip()[:3000]
             if req_ and not v:
                 raise HTTPError(400, E("“{label}” sahəsi mütləqdir", label=f["label"]))
@@ -83,6 +85,8 @@ def validate(c, u, rt, raw: dict) -> dict:
             try:
                 n = float(str(v).replace(",", "."))
             except ValueError:
+                n = math.nan
+            if not math.isfinite(n):
                 raise HTTPError(400, E("“{label}”: rəqəm daxil edin", label=f["label"]))
             if ("min" in f and n < f["min"]) or ("max" in f and n > f["max"]):
                 raise HTTPError(400, E("“{label}”: {lo}–{hi} aralığında olmalıdır", label=f["label"], lo=f.get("min"), hi=f.get("max")))
@@ -95,13 +99,13 @@ def validate(c, u, rt, raw: dict) -> dict:
                 continue
             data[name] = _date(v, f["label"]).isoformat()
         elif typ == "daterange":
-            v = v or {}
-            if not v.get("from") or not v.get("to"):
+            rng: dict = v if isinstance(v, dict) else {}
+            if not rng.get("from") or not rng.get("to"):
                 if req_:
                     raise HTTPError(400, E("“{label}”: başlanğıc və son tarixi seçin", label=f["label"]))
                 data[name] = {}
                 continue
-            d1, d2 = _date(v["from"], f["label"]), _date(v["to"], f["label"])
+            d1, d2 = _date(rng["from"], f["label"]), _date(rng["to"], f["label"])
             if d2 < d1:
                 raise HTTPError(400, E("“{label}”: son tarix başlanğıcdan əvvəl ola bilməz", label=f["label"]))
             if f.get("future") and d1 < now().date():
@@ -113,8 +117,8 @@ def validate(c, u, rt, raw: dict) -> dict:
             data[name] = {"from": d1.isoformat(), "to": d2.isoformat()}
         elif typ == "course":
             try:
-                cid = int(v)
-            except (TypeError, ValueError):
+                cid = int(v)  # type: ignore[arg-type]   # any JSON value; non-numbers fall through to 0
+            except (TypeError, ValueError, OverflowError):
                 cid = 0
             if cid not in enrolled:
                 if req_:
@@ -123,12 +127,14 @@ def validate(c, u, rt, raw: dict) -> dict:
                 continue
             data[name] = cid
         elif typ == "courses":
-            ids = sorted({int(x) for x in (v or []) if str(x).isdigit() and int(x) in enrolled})
+            given: list = v if isinstance(v, list) else []
+            ids = sorted({int(x) for x in given if str(x).isascii() and str(x).isdigit() and int(x) in enrolled})
             if req_ and not ids:
                 raise HTTPError(400, E("“{label}”: ən azı bir fənn seçin", label=f["label"]))
             data[name] = ids
         elif typ == "absences":
-            ids = sorted({int(x) for x in (v or []) if str(x).isdigit()})
+            picked: list = v if isinstance(v, list) else []
+            ids = sorted({int(x) for x in picked if str(x).isascii() and str(x).isdigit()})
             period = data.get("period") or {}
             ok = {r["lesson_id"] for r in rows(c, "SELECT a.lesson_id FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE a.user_id=? "
                                                   "AND a.status='absent' AND l.day>=? AND l.day<=?",
@@ -254,12 +260,12 @@ def create_request(req):
     c, u = req.db, req.user
     b = req.json()
     rt = get_type(c, b.get("type_code"))
-    data = validate(c, u, rt, b.get("data") or {})
+    data = validate(c, u, rt, b.obj("data"))
     t = now()
     rid = c.execute("INSERT INTO requests(type_code,student_id,data,status,step,created_at,updated_at,due_at) VALUES(?,?,?,?,0,?,?,?)",
                     (rt["code"], u["id"], json.dumps(data, ensure_ascii=False), "submitted", iso(t), iso(t),
                      iso(t + timedelta(hours=rt["sla_hours"])))).lastrowid
-    attach_files(c, u, rt, b.get("files"), rid)
+    attach_files(c, u, rt, b.ids("files", 10), rid)
     c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, u["id"], "submitted", "", iso(t)))
     notify(c, office_ids(c), "request", T3("Yeni müraciət: {type}", type=rt["name"]), f"{u['full_name']} · № {rid}", f"/office/request/{rid}")
     audit(c, u["id"], "request_create", "request", f"#{rid} {rt['name']}")
@@ -286,7 +292,7 @@ def get_request(req):
 def post_message(req):
     c, u = req.db, req.user
     r = _req_for(req, req.params["id"])
-    text = (req.json().get("text") or "").strip()[:2000]
+    text = req.json().text("text", 2000)
     if not text:
         raise HTTPError(400, "Mesaj boşdur")
     c.execute("INSERT INTO request_messages(request_id,author_id,text,created_at) VALUES(?,?,?,?)", (r["id"], u["id"], text, iso(now())))
@@ -306,9 +312,9 @@ def resubmit(req):
         raise HTTPError(409, "Yalnız düzəlişə qaytarılmış müraciət yenidən göndərilə bilər")
     rt = get_type(c, r["type_code"])
     b = req.json()
-    data = validate(c, u, rt, {**(J(r["data"], {}) or {}), **(b.get("data") or {})})
+    data = validate(c, u, rt, {**(J(r["data"], {}) or {}), **b.obj("data")})
     existing = row(c, "SELECT COUNT(*) n FROM files WHERE request_id=?", (r["id"],))["n"]
-    attach_files(c, u, rt, b.get("files"), r["id"], existing)
+    attach_files(c, u, rt, b.ids("files", 10), r["id"], existing)
     c.execute("UPDATE requests SET data=?, status='submitted', step=0, updated_at=? WHERE id=?", (json.dumps(data, ensure_ascii=False), iso(now()), r["id"]))
     c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], "resubmitted", "", iso(now())))
     notify(c, office_ids(c), "request", T3("Müraciət yenidən göndərildi (№ {id})", id=r["id"]), T3("{name} · {service}", name=u["full_name"], service=rt["name"]), f"/office/request/{r['id']}")
@@ -357,7 +363,7 @@ def request_action(req):
     c, u = req.db, req.user
     r = _req_for(req, req.params["id"])
     b = req.json()
-    action, note = b.get("action"), (b.get("note") or "").strip()[:1500]
+    action, note = b.get("action"), b.text("note", 1500)
     rt = get_type(c, r["type_code"])
     steps = rt["steps"]
     if r["status"] in DONE:
@@ -448,9 +454,11 @@ def documents(req):
 
 @R("POST", "/api/documents/{id:int}/revoke", roles=("office", "admin"))
 def revoke(req):
-    reason = (req.json().get("reason") or "").strip()
+    reason = req.json().text("reason")
     if not reason:
         raise HTTPError(400, "Ləğv səbəbini yazın")
+    if not row(req.db, "SELECT 1 FROM documents WHERE id=?", (req.params["id"],)):
+        raise HTTPError(404, "Sənəd tapılmadı")
     req.db.execute("UPDATE documents SET status='revoked', revoked_reason=?, revoked_at=? WHERE id=?", (reason[:500], iso(now()), req.params["id"]))
     audit(req.db, req.user["id"], "document_revoke", "document", f"#{req.params['id']}: {reason[:80]}")
     return {"ok": True}

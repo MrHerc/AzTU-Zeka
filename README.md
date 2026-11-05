@@ -52,8 +52,18 @@ Susmaya görə **oflayn demo mühərrik**: Azərbaycan dilinə uyğun axtarış 
 ingilis/rus dilində verilən kampus sualları Azərbaycan dilindəki qaydalarla əlaqələndirilir. Real LLM üçün `config.example.json` → `config.json`
 (OpenAI-uyğun API, Azure OpenAI və ya Anthropic); LLM əlçatan olmasa, demo mühərrikə avtomatik qayıdır.
 
-## Yoxlama
-`python tests\selftest.py` (backend + API, o cümlədən dil, dəstək, rəy, nailiyyətlər, tövsiyə olunan mənbələr) — bazanı sıfırlayır, sonra serveri yenidən başladın.
+## Yoxlama (testlər və CI)
+Avtomatlaşdırılmış testlər pytest ilə yazılıb (`tests/unit` — modullar, `tests/integration` — real HTTP server üzərindən bütün əsas ssenarilər).
+Testlər müvəqqəti qovluqda təzə demo bazası yaradır: `data/` qovluğuna toxunmur, LLM-ə müraciət etmir.
+```
+python -m pip install -r requirements-dev.txt   # yalnız inkişaf alətləri; tətbiqin özü xarici paket tələb etmir
+python -m pytest                                # bütün testlər (~1 dəq)
+python -m pytest tests/unit -q                  # yalnız unit testlər
+ruff check . && mypy                            # lint və tip yoxlaması
+python tools/i18n.py build                      # tərcümə kataloqunu yenilə (CI dəyişiklik qalmamasını yoxlayır)
+```
+GitHub Actions (`.github/workflows/ci.yml`) hər push və pull request-də ruff, mypy, JS sintaksis yoxlaması, tərcümə kataloqu
+yoxlaması və testləri işə salır (Python 3.10–3.13, Linux və Windows). Dəyişikliklər `CHANGELOG.md`-də qeyd olunur.
 İnkişaf alətləri `.dev/tools/`: `jscheck.ps1`, `imports.py`, `dom.py` (bütün səhifələr, 3 dil, mobil), `shot.py`, `m390.py`.
 
 ## Məhdudiyyətlər (demo)
