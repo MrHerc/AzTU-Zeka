@@ -500,8 +500,8 @@ def build_plan(c, prof: dict, course: dict, kind: str = "plan", note: str = "", 
             steps.append({"kind": "quiz", "title": T3("Məşq testini həll edin"), "text": T3("Fənn üzrə ilk məşq testini həll edin — nəticə fərdi tövsiyələr üçün istifadə olunur."),
                           "link": "/student/quizzes", "done": False})
     due = when + timedelta(days=14 if kind in ("plan", "consult") else 7)
-    titles = {"plan": "Fərdi dəstək planı · {course}", "consult": "Konsultasiya və məşq · {course}", "nudge": "Fənnə qayıdış · {course}",
-              "office": "Davamiyyət üzrə dəstək · {course}"}
+    titles = {"plan": S_("Fərdi dəstək planı · {course}"), "consult": S_("Konsultasiya və məşq · {course}"), "nudge": S_("Fənnə qayıdış · {course}"),
+              "office": S_("Davamiyyət üzrə dəstək · {course}")}
     return {"kind": kind, "title": T3(titles[kind], course=course["name"]), "topics": topics, "topics_source": source, "steps": steps,
             "due_at": iso(due), "note": (note or "").strip()[:600], "cc_office": bool((prof.get("recommendation") or {}).get("cc_office")) or kind == "office"}
 
