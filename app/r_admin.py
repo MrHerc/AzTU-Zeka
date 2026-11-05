@@ -65,6 +65,8 @@ def analytics(req):
         insights.append({"level": "warn", "text": T3("Müəllimlərin {n}%-i AI Akademiyada ən azı 3 modulu keçib (hədəf 80%). Kafedralar üzrə təlim sessiyası planlaşdırın.", n=acad)})
     if summary["overdue"]:
         insights.append({"level": "warn", "text": T3("{n} müraciətin icra müddəti keçib — tədris hissəsinə xatırlatma göndərilib.", n=summary["overdue"])})
+    from .r_radar import leader_insight
+    insights.insert(0, leader_insight(c))
     insights.append({"level": "good", "text": T3("Kağız ərizələrin 100%-i onlayn xidmətlərə keçirilib: 13 e-xidmət, orta icra müddəti 24 saatdan azdır.")})
     return {"labels": LABELS, "wau_students": wau_s, "wau_teachers": wau_t, "tutor_questions": q_weeks, "request_hours": req_h,
             "kpis": kpis, "courses": cs, "insights": insights, "office": summary, "requests_by_type": req_by_type, "news": news,
