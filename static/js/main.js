@@ -12,6 +12,8 @@ import "./staff.js";
 import "./guide.js";
 import "./support.js";
 import "./achievements.js";
+import "./radar.js";
+import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;
 { const sk = document.getElementById("skip-link"); if (sk) sk.textContent = t("Əsas məzmuna keç"); }
@@ -61,6 +63,8 @@ async function loginPage(root) {
       <h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
       <button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("Pilotda")}</span></button>
       <div class="or">${t("demo rolları")}</div>
+      ${demoButton()}
+      <div class="or">${t("və ya rol seçin")}</div>
       <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
       <p class="small muted mt">${ic("shield", 13)} ${t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>
     </div></div></div>`);

@@ -228,6 +228,17 @@ def student_plan_step(req):
     return iv_out(c, iv, for_student=True)
 
 
+@R("GET", "/api/demo/storyline", auth=False)
+def demo_storyline(req):
+    """Ids the 3-minute presenter needs (only the synthetic demo storyline students; no personal data)."""
+    from .radar_seed import DEMO_STUDENTS
+    c = req.db
+    ids = {r["username"]: r["id"] for r in rows(c, f"SELECT id, username FROM users WHERE role='student' AND synthetic=1 AND username IN "
+                                                   f"({','.join('?' * len(DEMO_STUDENTS))})", DEMO_STUDENTS)}
+    co = row(c, "SELECT id FROM courses WHERE code='ELM-2105'")
+    return {"students": ids, "course_id": co["id"] if co else None}
+
+
 def badge_count(c, u) -> int | None:
     if u["role"] not in ("teacher", "office", "leader"):
         return None

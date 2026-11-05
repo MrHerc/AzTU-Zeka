@@ -16,41 +16,42 @@ const UNI_STAFF = [t("Universitet"), [["trophy", t("Nailiyyətlər"), "/achievem
 export const NAV = {
   student: [[t("Əsas"), [["home", t("Əsas səhifə"), "/student"], ["calendar", t("Dərs cədvəli"), "/student/schedule"]]],
             [t("Təhsil"), [["book", t("Fənlərim"), "/student/courses"], ["sparkles", t("AI tutor"), "/student/tutor"], ["quiz", t("Testlər"), "/student/quizzes"],
-                           ["calcheck", t("Davamiyyət"), "/student/attendance", "absences"], ["target", t("Qiymətlərim"), "/student/grades"]]],
+                           ["calcheck", t("Davamiyyət"), "/student/attendance", "absences"], ["target", t("Qiymətlərim"), "/student/grades"],
+                           ["heart", t("Dəstək planım"), "/student/plan", "plan"]]],
             [t("Xidmətlər"), [["grid", t("E-xidmətlər"), "/student/services"], ["inbox", t("Müraciətlərim"), "/student/requests", "requests"], ["help", t("Kampus köməkçisi"), "/student/campus"]]],
             UNI, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["ticket", t("Dəstək"), "/support", "support"]]]],
   teacher: [[t("Əsas"), [["home", t("Əsas səhifə"), "/teacher"], ["calendar", t("Dərs cədvəli"), "/teacher/schedule"]]],
-            [t("Tədris"), [["book", t("Fənlərim"), "/teacher/courses"], ["wand", t("Test studiyası"), "/teacher/studio"], ["inbox", t("Tələbə sualları"), "/teacher/questions", "questions"]]],
+            [t("Tədris"), [["activity", t("Zəka Radar"), "/radar", "radar"], ["book", t("Fənlərim"), "/teacher/courses"], ["wand", t("Test studiyası"), "/teacher/studio"], ["inbox", t("Tələbə sualları"), "/teacher/questions", "questions"]]],
             [t("Peşəkar inkişaf"), [["cap", t("AI Akademiya"), "/teacher/academy"], ["cpu", t("Texnoloji həllər"), "/teacher/tools"], ["layers", t("Sillabus köməkçisi"), "/teacher/syllabus"]]],
             UNI, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["ticket", t("Dəstək"), "/support", "support"]]]],
-  office: [[t("Dekanlıq"), [["inbox", t("Müraciətlər"), "/office", "office"], ["qr", t("Sənəd reyestri"), "/office/registry"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"]]],
+  office: [[t("Dekanlıq"), [["inbox", t("Müraciətlər"), "/office", "office"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["qr", t("Sənəd reyestri"), "/office/registry"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"]]],
            [t("Kommunikasiya"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["news", t("Xəbər lenti"), "/news"]]],
            UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
-  leader: [[t("Rəhbərlik"), [["chart", t("Pilot paneli"), "/leader"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["inbox", t("E-xidmətlər"), "/office", "office"], ["qr", t("Sənəd reyestri"), "/office/registry"]]],
+  leader: [[t("Rəhbərlik"), [["chart", t("Pilot paneli"), "/leader"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["inbox", t("E-xidmətlər"), "/office", "office"], ["qr", t("Sənəd reyestri"), "/office/registry"]]],
            [t("Kommunikasiya"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["news", t("Xəbər lenti"), "/news"]]],
            UNI_STAFF, [t("Nəzarət"), [["list", t("Audit jurnalı"), "/admin/audit"]]], [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["ticket", t("Dəstək"), "/support", "support"]]]],
-  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
+  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["activity", t("Zəka Radar"), "/radar"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
           [t("Məzmun"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["inbox", t("Müraciətlər"), "/office", "office"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
 };
 // Mobile bottom bar: 4 primary destinations per role (+ menu)
 const BOTTOM = {
   student: [["home", t("Əsas"), "/student"], ["calendar", t("Cədvəl"), "/student/schedule"], ["sparkles", t("Tutor"), "/student/tutor"], ["grid", t("Xidmətlər"), "/student/services"]],
-  teacher: [["home", t("Əsas"), "/teacher"], ["book", t("Fənlər"), "/teacher/courses"], ["wand", t("Studiya"), "/teacher/studio"], ["cap", t("Akademiya"), "/teacher/academy"]],
+  teacher: [["home", t("Əsas"), "/teacher"], ["activity", t("Radar"), "/radar"], ["book", t("Fənlər"), "/teacher/courses"], ["wand", t("Studiya"), "/teacher/studio"]],
   office: [["inbox", t("Müraciətlər"), "/office"], ["qr", t("Reyestr"), "/office/registry"], ["ticket", t("Dəstək"), "/staff/support"], ["news", t("Xəbərlər"), "/news"]],
-  leader: [["chart", t("Panel"), "/leader"], ["smile", t("Rəylər"), "/staff/feedback"], ["inbox", t("Xidmətlər"), "/office"], ["news", t("Xəbərlər"), "/news"]],
+  leader: [["chart", t("Panel"), "/leader"], ["activity", t("Radar"), "/radar"], ["smile", t("Rəylər"), "/staff/feedback"], ["inbox", t("Xidmətlər"), "/office"]],
   admin: [["sliders", t("Panel"), "/admin"], ["ticket", t("Dəstək"), "/staff/support"], ["list", t("Audit"), "/admin/audit"], ["megaphone", t("Xəbərlər"), "/staff/news"]],
 };
 const QUICK = {
   student: [["file", t("Arayış sifariş et"), "/student/services?new=enrollment_certificate"], ["heart", t("Qayıbı üzrlü et (həkim arayışı)"), "/student/services?new=absence_excuse"],
             ["calcheck", t("Dərslərdən icazə istə"), "/student/services?new=leave_permission"], ["sparkles", t("AI tutora sual ver"), "/student/tutor"], ["ticket", t("Dəstəyə yaz"), "/support?tab=new"]],
-  teacher: [["wand", t("AI ilə test yarat"), "/teacher/studio"], ["upload", t("Material yüklə"), "/teacher/courses"], ["layers", t("Sillabus hazırla"), "/teacher/syllabus"], ["cap", t("Akademiyada davam et"), "/teacher/academy"]],
+  teacher: [["activity", t("Zəka Radar: riskli tələbələr"), "/radar"], ["wand", t("AI ilə test yarat"), "/teacher/studio"], ["upload", t("Material yüklə"), "/teacher/courses"], ["layers", t("Sillabus hazırla"), "/teacher/syllabus"], ["cap", t("Akademiyada davam et"), "/teacher/academy"]],
   office: [["inbox", t("Yeni müraciətlər"), "/office"], ["megaphone", t("Xəbər dərc et"), "/staff/news?new=1"], ["qr", t("Sənədi yoxla"), "/office/registry"], ["ticket", t("Dəstək sorğuları"), "/staff/support"]],
   leader: [["chart", t("Pilot paneli"), "/leader"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["megaphone", t("Xəbər dərc et"), "/staff/news?new=1"]],
   admin: [["sliders", t("LLM tənzimləmələri"), "/admin"], ["list", t("Audit jurnalı"), "/admin/audit"], ["ticket", t("Dəstək sorğuları"), "/staff/support"]],
 };
 const N_ICON = { request: ["inbox", "ic-blue"], attendance: ["calcheck", "ic-green"], news: ["news", "ic-coral"], event: ["calendar", "ic-coral"], quiz: ["quiz", "ic-navy"],
   question: ["help", "ic-amber"], answer: ["message", "ic-green"], message: ["message", "ic-blue"], academy: ["cap", "ic-violet"], sla: ["alert", "ic-red"],
-  report: ["chart", "ic-amber"], exam: ["clock", "ic-amber"], support: ["ticket", "ic-blue"] };
+  report: ["chart", "ic-amber"], exam: ["clock", "ic-amber"], support: ["ticket", "ic-blue"], plan: ["heart", "ic-violet"], radar: ["activity", "ic-red"] };
 export const notifIcon = (kind) => N_ICON[kind] || ["bell", "ic-navy"];
 let badgeTimer = null;
 const isMobile = () => window.matchMedia("(max-width: 980px)").matches;
@@ -203,6 +204,7 @@ function userMenu(host) {
     <a class="menu-item" href="#/notifications">${ic("bell", 16)} ${t("Bildirişlər")}</a>
     <a class="menu-item" href="#/support">${ic("ticket", 16)} ${t("Dəstək xidməti")}</a>
     <button class="menu-item show-sm" id="um-theme">${ic(S.theme === "dark" ? "sun" : "moon", 16)} ${S.theme === "dark" ? t("Açıq tema") : t("Tünd tema")}</button>
+    <button class="menu-item" data-demo-start>${ic("play", 16)} ${t("3 dəqiqəlik demo ssenarisi")}</button>
     <div class="menu-sep"></div><div class="menu-label">${t("Demo: rolu dəyiş")}</div>
     ${ROLES.map(([k, l, s, i]) => html`<button class="menu-item" data-switch="${k}">${ic(i, 16)} ${l}${k === u.role ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}
     <div class="menu-sep"></div><button class="menu-item danger" id="logout">${ic("logout", 16)} ${t("Çıxış")}</button>`.__html);

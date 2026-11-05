@@ -112,6 +112,7 @@ def badges(req):
     if u["role"] == "student":
         out["requests"] = row(c, "SELECT COUNT(*) n FROM requests WHERE student_id=? AND status IN ('submitted','in_progress','returned')", (u["id"],))["n"]
         out["absences"] = row(c, "SELECT COUNT(*) n FROM attendance WHERE user_id=? AND status='absent'", (u["id"],))["n"]
+        out["plan"] = row(c, "SELECT COUNT(*) n FROM interventions WHERE student_id=? AND status='open'", (u["id"],))["n"]
     elif u["role"] == "teacher":
         out["questions"] = row(c, "SELECT COUNT(*) n FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id WHERE co.teacher_id=? AND tq.status='open'", (u["id"],))["n"]
     else:

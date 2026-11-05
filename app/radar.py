@@ -211,6 +211,7 @@ def _concept(frame: Frame, sid: int, cid: int, as_of: datetime) -> dict:
     since = as_of - timedelta(days=28)
     asks: dict[str, int] = {}
     wrong: dict[str, int] = {}
+    right: dict[str, float] = {}
     for ts, role, meta in frame.msgs.get((sid, cid), []):
         if role != "assistant" or not ts or not (since < ts <= as_of):
             continue
@@ -220,19 +221,25 @@ def _concept(frame: Frame, sid: int, cid: int, as_of: datetime) -> dict:
         if meta.get("mode") == "practice":
             if meta.get("graded") and meta.get("correct") is False:
                 wrong[topic] = wrong.get(topic, 0) + 1
+            elif meta.get("graded") and meta.get("correct"):
+                right[topic] = right.get(topic, 0) + 1.5
         else:
             asks[topic] = asks.get(topic, 0) + 1
     for ts, _p, details, _title in frame.attempts.get((sid, cid), []):
         if not ts or not (since < ts <= as_of):
             continue
         for d in details:
-            if d.get("correct"):
-                continue
             topic = d.get("topic") or frame.qtopic.get(d.get("qid"))
-            if topic:
+            if not topic:
+                continue
+            if d.get("correct"):
+                right[topic] = right.get(topic, 0) + 0.6
+            else:
                 wrong[topic] = wrong.get(topic, 0) + 1
-    gaps = [{"topic": tp, "asks": asks.get(tp, 0), "wrong": wrong.get(tp, 0), "score": round(0.6 * asks.get(tp, 0) + 1.2 * wrong.get(tp, 0), 2)}
+    gaps = [{"topic": tp, "asks": asks.get(tp, 0), "wrong": wrong.get(tp, 0),
+             "score": round(max(0.0, 0.6 * asks.get(tp, 0) + 1.2 * wrong.get(tp, 0) - right.get(tp, 0)), 2)}
             for tp in set(asks) | set(wrong)]
+    gaps = [g for g in gaps if g["score"] > 0]
     gaps.sort(key=lambda g: (-g["score"], g["topic"]))
     top = gaps[0]["score"] if gaps else 0.0
     value = clamp(top / 6) * 0.8 + (0.2 if sum(1 for g in gaps if g["score"] >= 2.4) >= 2 else 0.0)
@@ -555,11 +562,12 @@ def impact(c, an: Analysis, course_ids=None) -> dict:
         delta = round(p["score"] - (iv["risk_before"] or 0), 1)
         improved = delta <= -10 or LEVEL_RANK[p["level"]] < LEVEL_RANK.get(iv["level_before"] or "ok", 0)
         plan = J(iv["plan"], {}) or {}
-        items.append({"id": iv["id"], "student_id": iv["student_id"], "student": iv["student"], "course_id": iv["course_id"], "code": iv["code"],
+        fresh = (now() - datetime.fromisoformat(iv["created_at"])).days < 7
+        items.append({"id": iv["id"], "student_id": iv["student_id"], "student": iv["student"], "course_id": iv["course_id"], "code": iv["code"], "fresh": fresh,
                       "course": iv["course"], "color": iv["color"], "kind": iv["kind"], "status": iv["status"], "created_at": iv["created_at"],
                       "risk_before": iv["risk_before"], "level_before": iv["level_before"], "risk_now": p["score"], "level_now": p["level"],
                       "delta": delta, "improved": improved, "progress": plan_progress(plan)})
-    aged = [x for x in items if (now() - datetime.fromisoformat(x["created_at"])).days >= 7]
+    aged = [x for x in items if not x["fresh"]]
     return {"plans": len(items), "open": sum(1 for x in items if x["status"] == "open"), "completed": sum(1 for x in items if x["status"] == "completed"),
             "measured": len(aged), "improved": sum(1 for x in aged if x["improved"]),
             "avg_delta": round(sum(x["delta"] for x in aged) / len(aged), 1) if aged else None, "items": items[:12]}
