@@ -1,0 +1,4 @@
+# Development / CI tools only. The application runs on the Python 3.10+ standard library alone.
+pytest>=8,<10
+ruff==0.16.9
+mypy==2.3.1
