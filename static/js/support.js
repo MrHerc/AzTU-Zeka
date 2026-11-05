@@ -267,8 +267,10 @@ route("/staff/feedback", async (el) => {
         <div class="progress sm mt-sm"><span style="width:${(a.avg / 5) * 100}%"></span></div></div><span class="small bold">${num(a.avg, 1)}</span><span class="tiny muted">(${a.n})</span></div>`)}</div></div>
     </div>`);
   on(el, "click", "#csv", () => {
-    const rows = [["area", "score", "comment", "created_at"], ...f.recent.map((r) => [r.area, r.score, (r.comment || "").replace(/"/g, '""'), r.created_at])];
-    const csv = rows.map((r) => r.map((x) => `"${x}"`).join(",")).join("\n");
+    // Cells are quoted and quotes doubled; a leading = + - @ or control character is prefixed with ' so spreadsheets never run it as a formula.
+    const cell = (x) => { let v = String(x ?? ""); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return `"${v.replace(/"/g, '""')}"`; };
+    const rows = [["area", "score", "comment", "created_at"], ...f.recent.map((r) => [r.area, r.score, r.comment || "", r.created_at])];
+    const csv = rows.map((r) => r.map(cell).join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv" })); a.download = "zeka-feedback.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
 });
