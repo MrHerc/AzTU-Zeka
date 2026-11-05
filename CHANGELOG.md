@@ -31,7 +31,9 @@ All notable changes to the Zəka demo are recorded here. The format follows
   could crash them (`int(float("inf"))`); they are now rejected as “Invalid JSON”.
 - **Route parameters were percent-decoded twice** (`/verify/%2541` matched code `A`), and a non-ASCII digit such as
   `/verify/²` crashed the router with a 500.
-- **English enrolment certificates printed wrong ordinals** (“1th-year”, “3th-year”); they now read 1st, 2nd, 3rd, 4th.
+- **Certificates printed wrong ordinals for the year of study.** English read “1th-year” / “3th-year”; Azerbaijani
+  (enrolment certificate and academic-leave order) wrote “3-ci kurs” / “4-cü” as “-ci” for every year, ignoring
+  vowel harmony. They now read 1st/2nd/3rd/4th and 1-ci/2-ci/3-cü/4-cü.
 - **Multiple-choice grading accepted a negative option index** (−1 was graded and shown as option D).
 - **28 API endpoints crashed with HTTP 500 on wrongly typed input** — a text where a number belongs (event capacity
   “50 nəfər”, quiz time limit, syllabus weeks, admin limits, ratings), a list or object where text belongs (tutor

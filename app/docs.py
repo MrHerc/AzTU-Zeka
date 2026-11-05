@@ -26,6 +26,21 @@ def ordinal(n: int) -> str:
     return f"{n}{suffix}"
 
 
+_AZ_ORD_UNITS = {1: "ci", 2: "ci", 3: "cü", 4: "cü", 5: "ci", 6: "cı", 7: "ci", 8: "ci", 9: "cu"}
+_AZ_ORD_TENS = {1: "cu", 2: "ci", 3: "cu", 4: "cı", 5: "ci", 6: "cı", 7: "ci", 8: "ci", 9: "cı"}
+
+
+def az_ordinal(n: int) -> str:
+    """Azerbaijani ordinal with vowel harmony: 1-ci, 3-cü, 6-cı, 9-cu, 10-cu, 40-cı, 100-cü."""
+    if n % 10:
+        suffix = _AZ_ORD_UNITS[n % 10]
+    elif n % 100:
+        suffix = _AZ_ORD_TENS[n % 100 // 10]
+    else:
+        suffix = "cü" if n % 1000 else "ci"          # yüzüncü, mininci
+    return f"{n}-{suffix}"
+
+
 def dmy(iso_ts: str, with_time: bool = False) -> str:
     dt = datetime.fromisoformat(iso_ts)
     return dt.strftime("%d.%m.%Y %H:%M" if with_time else "%d.%m.%Y")
@@ -87,7 +102,7 @@ def enrollment_body(holder, data, ctx, en):
     }.get(purpose, "")
     other = f" Təyinatı: {e(data.get('purpose_other'))}." if purpose == "Digər" and data.get("purpose_other") else ""
     return (f"Verilir ona ki, <b>{e(full)}</b> həqiqətən {e(uni['name'])}nin {e(fac['name'])}nin <b>“{e(sp['name'])}”</b> ixtisası üzrə "
-            f"<b>{yr}-ci kurs</b> tələbəsidir (qrup: {e(holder.get('group') or '—')}, tələbə bileti № {e(holder.get('student_no') or '—')}).</p>"
+            f"<b>{az_ordinal(int(yr))} kurs</b> tələbəsidir (qrup: {e(holder.get('group') or '—')}, tələbə bileti № {e(holder.get('student_no') or '—')}).</p>"
             f"<p>Təhsil forması: əyani; təhsil pilləsi: {e(sp['level'].lower())}; qəbul ili: {adm}. {extra}</p>"
             f"<p>Arayış {e(place)} təqdim edilmək üçün verilir.{other}{(' Qurum: ' + e(org) + '.') if org else ''}")
 
@@ -119,7 +134,7 @@ def leave_body(holder, data, ctx, doc):
     sp = ctx["specialty"]
     full = f"{holder['full_name']} {holder.get('patronymic') or ''}".strip()
     return (f"Rektorun {dmy(doc['issued_at'])} tarixli əmrindən çıxarış:</p>"
-            f"<p>“{e(sp['name'])}” ixtisası üzrə {holder.get('year') or 2}-ci kurs tələbəsi (qrup {e(holder.get('group') or '—')}) "
+            f"<p>“{e(sp['name'])}” ixtisası üzrə {az_ordinal(int(holder.get('year') or 2))} kurs tələbəsi (qrup {e(holder.get('group') or '—')}) "
             f"<b>{e(full)}</b> {e((data.get('reason') or '').lower())} səbəbindən {e(data.get('start') or '')}ndən başlayaraq "
             f"{e(data.get('period') or '')} müddətinə akademik məzuniyyətə buraxılsın.</p>"
             f"<p>Akademik məzuniyyət müddətində tələbənin statusu saxlanılır; təhsilin bərpası üçün müddət bitməzdən əvvəl dekanlığa müraciət edilməlidir.")
