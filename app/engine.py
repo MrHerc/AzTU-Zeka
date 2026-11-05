@@ -460,9 +460,14 @@ def grade(q: dict, value) -> tuple[bool | None, str]:
             v = value
         else:
             f = fold(str(value))
-            if re.search(r"(dogru|duz|beli|true|\bhe\b)", f):
-                v = True
-            elif re.search(r"(yanlis|sehv|xeyr|false|deyil)", f):
+            pos = re.search(r"(dogru|duz|beli|true|\bhe\b)", f)
+            neg = re.search(r"(yanlis|sehv|xeyr|false)", f)
+            negated = re.search(r"\b(deyil|not)\b", f)        # "doğru deyil" = false, "yanlış deyil" = true
+            if pos and not neg:
+                v = not negated
+            elif neg and not pos:
+                v = bool(negated)
+            elif negated:
                 v = False
             else:
                 return None, str(value)
