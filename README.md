@@ -32,7 +32,7 @@ Zəka covers these processes in one application built around four rules that are
 
 1. **Grounded AI.** The tutor answers only from material the teacher uploaded for that course, and every answer carries a numbered citation that opens the source passage. If nothing relevant is found, the tutor says so and offers to forward the question to the teacher.
 2. **The teacher stays in control.** Teachers choose which tutor modes are allowed, add rules the AI must follow, lock the tutor during a test, and approve every generated question before it can appear in a test.
-3. **Privacy by default.** E-mail addresses, phone numbers, card numbers and personal identification numbers are masked before a question reaches any AI engine. Medical attachments are visible only to the student and the dean's office. Every document view, issue and revocation is written to an audit log.
+3. **Privacy by default.** E-mail addresses, phone numbers, card numbers and personal identification numbers are masked by default before a question reaches the AI engine or an external provider. Uploaded attachments such as medical certificates are visible only to the student, the dean's office and the administrator. Every file view, document issue and document revocation is written to an audit log.
 4. **No dependency on an AI vendor.** An offline engine answers from the material with no external service. An OpenAI-compatible, Azure OpenAI or Anthropic model can be switched on with a configuration file, and the system falls back to the offline engine automatically when the provider is unreachable.
 
 | Area | What version 0.3 does |
@@ -51,7 +51,7 @@ Zəka covers these processes in one application built around four rules that are
 - **AI tutor** for each course. Socratic mode gives one hint at a time and escalates over three steps instead of giving the solution; a request such as "just give me the answer" (in Azerbaijani, English or Russian) is recognised and declined. Explain mode summarises the topic with citations and ends with a self-check question. Practice mode asks approved questions and grades typed answers.
 - **Campus assistant** that answers questions about certificates, attendance, grading, scholarships, dormitories and similar rules from a knowledge base. A question asked in English or Russian is matched to the Azerbaijani rule text, and the answer includes a button that opens the relevant request form.
 - **E-services**: order an enrolment certificate or transcript, excuse an absence with a medical certificate, request leave for a competition, reschedule an exam, apply for academic leave, appeal a grade, request an individual study plan, instalment payments, a social scholarship, a dormitory place, a replacement student card, or file a free-form application. Each request has a form with validation, attachments, a status timeline, a message thread with the dean's office, and resubmission after a return.
-- **Attendance and grades**: attendance per course against the 25% absence limit, with one-click excusal of a selected absence; current semester components and past-semester transcripts.
+- **Attendance and grades**: attendance per course against the 25% absence limit, with a shortcut from the absences to the excuse request with the dates filled in; current semester components and past-semester transcripts.
 - **Tests** with time limits, attempt limits, explanations and a source citation for every question.
 - **News and events** with registration (capacity-aware), bookmarks and calendar export in iCalendar format.
 - **Notifications**, global search across services, news, courses, materials and guides, guided tours on every page, support tickets and a feedback button on every page.
@@ -129,7 +129,7 @@ The full description, including the data model, the document and verification fl
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Language | Python 3.10 or newer, standard library only | Verified with the test suite on Python 3.13; the Render blueprint pins 3.12.6 |
+| Language | Python 3.10 or newer, standard library only | Test suite passes on Python 3.11 and 3.13; the Render blueprint pins 3.12.6 |
 | HTTP server | `http.server.ThreadingHTTPServer` with a small router | HTTP/1.1, one thread per request, security headers on every response |
 | Storage | SQLite in WAL mode | 40 tables, schema version check with automatic reseed, uploads stored by content hash |
 | Search and AI | In-memory BM25 with Azerbaijani-aware tokenisation and stemming | Three indexes; rule-based answer composition and question generation |
@@ -227,7 +227,7 @@ This is a demonstration build, not a production system.
 - Login is by demo role without a password. Single sign-on with the university account is listed as planned in the code but not implemented.
 - All people, courses, grades, requests, tickets and feedback are synthetic and regenerated with a fixed random seed. The achievements and contact details are real and sourced from the university's official site.
 - Issued documents carry a DEMO watermark and have no legal validity.
-- Some series on the leadership dashboard are fixed illustrative values rather than computed from data: weekly active students and teachers, the test preparation time reduction, the satisfaction trend, the learning gain and the cost per student. The values that are computed from data are the tutor question counts, citation rate, academy completion, request processing time, attendance, test averages, feedback scores and NPS.
+- Some values on the leadership dashboard are fixed illustrative numbers rather than computed from data: weekly active students and teachers, the test preparation time reduction, the satisfaction score and trend, the learning gain, the cost per student, and the earlier weeks of the request time, citation and academy series. Computed from data are the tutor question counts, the current citation rate, academy completion and request processing time, attendance, test averages, and the feedback scores and NPS on the feedback dashboard.
 - Sessions do not expire. The administrator settings for data retention and the default tutor mode are stored but not enforced in this version.
 - The server is a single process with SQLite and in-memory indexes; it is sized for a department pilot, not for a whole university.
 - Consent cannot be withdrawn in the demo; the profile page explains what the pilot behaviour will be.

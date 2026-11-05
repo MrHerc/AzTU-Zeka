@@ -422,6 +422,7 @@ The suite resets the database, so a running server should be restarted after it.
 - `limits.retention_days` and `limits.socratic_default` are stored by the administrator settings but not read anywhere else.
 - There is no CSRF token. The mitigations in place are the `SameSite=Lax` cookie, which browsers do not send on cross-site POST requests, and the rule that API calls with a body must use `Content-Type: application/json`, which plain HTML forms cannot send.
 - The only rate limit is the daily message limit for students on the tutor and the campus assistant.
+- The time limit of a test is enforced by the browser only; the server does not check the deadline when an attempt is submitted.
 - Several leadership dashboard series are illustrative (see section 15).
 - Consent cannot be withdrawn; the profile page describes the planned behaviour.
 - The Render free plan has no disk, so uploads, consent and tour state are lost on restart.
