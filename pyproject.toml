@@ -27,7 +27,8 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 # Parametric quiz templates set up several physics quantities on one line (R = …; I = …; U = I * R).
-"app/engine.py" = ["E702"]
+# and name them as in physics (R, I, U), which E741 flags as ambiguous.
+"app/engine.py" = ["E702", "E741"]
 
 [tool.mypy]
 python_version = "3.10"

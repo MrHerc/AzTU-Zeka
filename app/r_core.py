@@ -9,7 +9,7 @@ import urllib.parse
 
 from . import engine, pdftext, store
 from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, _sid
-from .i18n import L, norm_lang, tr
+from .i18n import norm_lang, tr
 from .store import J, audit, iso, now, row, rows, setting
 from .web import HTTPError, Response, json_resp, redirect
 

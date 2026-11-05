@@ -55,11 +55,10 @@ def validate(c, u, rt, raw: dict) -> dict:
     enrolled = {r["course_id"] for r in rows(c, "SELECT course_id FROM enrollments WHERE user_id=?", (u["id"],))}
     for f in rt["fields"]:
         if f["type"] in ("radio", "select"):
-            v = str(raw.get(f["name"], "") or "").strip()
-            v = canon(v, f["options"])
-            if v and v not in f["options"]:
+            choice = canon(str(raw.get(f["name"], "") or "").strip(), f["options"])
+            if choice and choice not in f["options"]:
                 raise HTTPError(400, E("“{label}” üçün yanlış seçim", label=f["label"]))
-            data[f["name"]] = v or ("" if f.get("required") else f["options"][0])
+            data[f["name"]] = choice or ("" if f.get("required") else f["options"][0])
     for f in rt["fields"]:
         name, typ, req_ = f["name"], f["type"], f.get("required") and _visible(f, {**raw, **data})
         v = raw.get(name)
@@ -100,13 +99,13 @@ def validate(c, u, rt, raw: dict) -> dict:
                 continue
             data[name] = _date(v, f["label"]).isoformat()
         elif typ == "daterange":
-            v = v if isinstance(v, dict) else {}
-            if not v.get("from") or not v.get("to"):
+            rng: dict = v if isinstance(v, dict) else {}
+            if not rng.get("from") or not rng.get("to"):
                 if req_:
                     raise HTTPError(400, E("“{label}”: başlanğıc və son tarixi seçin", label=f["label"]))
                 data[name] = {}
                 continue
-            d1, d2 = _date(v["from"], f["label"]), _date(v["to"], f["label"])
+            d1, d2 = _date(rng["from"], f["label"]), _date(rng["to"], f["label"])
             if d2 < d1:
                 raise HTTPError(400, E("“{label}”: son tarix başlanğıcdan əvvəl ola bilməz", label=f["label"]))
             if f.get("future") and d1 < now().date():
@@ -118,8 +117,8 @@ def validate(c, u, rt, raw: dict) -> dict:
             data[name] = {"from": d1.isoformat(), "to": d2.isoformat()}
         elif typ == "course":
             try:
-                cid = int(v)
-            except (TypeError, ValueError):
+                cid = int(v)  # type: ignore[arg-type]   # any JSON value; non-numbers fall through to 0
+            except (TypeError, ValueError, OverflowError):
                 cid = 0
             if cid not in enrolled:
                 if req_:
@@ -128,12 +127,14 @@ def validate(c, u, rt, raw: dict) -> dict:
                 continue
             data[name] = cid
         elif typ == "courses":
-            ids = sorted({int(x) for x in (v if isinstance(v, list) else []) if str(x).isascii() and str(x).isdigit() and int(x) in enrolled})
+            given: list = v if isinstance(v, list) else []
+            ids = sorted({int(x) for x in given if str(x).isascii() and str(x).isdigit() and int(x) in enrolled})
             if req_ and not ids:
                 raise HTTPError(400, E("“{label}”: ən azı bir fənn seçin", label=f["label"]))
             data[name] = ids
         elif typ == "absences":
-            ids = sorted({int(x) for x in (v if isinstance(v, list) else []) if str(x).isascii() and str(x).isdigit()})
+            picked: list = v if isinstance(v, list) else []
+            ids = sorted({int(x) for x in picked if str(x).isascii() and str(x).isdigit()})
             period = data.get("period") or {}
             ok = {r["lesson_id"] for r in rows(c, "SELECT a.lesson_id FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE a.user_id=? "
                                                   "AND a.status='absent' AND l.day>=? AND l.day<=?",

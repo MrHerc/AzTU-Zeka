@@ -44,13 +44,13 @@ class _Doc:
         self.objs: dict[int, bytes] = {}
         for m in _OBJ.finditer(raw):
             self.objs[int(m.group(1))] = m.group(3)
-        for num, body in list(self.objs.items()):
+        for body in list(self.objs.values()):
             if b"/ObjStm" in body[:400]:
                 head, data = _split(body)
                 if not data:
                     continue
-                n = int((re.search(rb"/N\s+(\d+)", head) or [0, b"0"])[1])
-                first = int((re.search(rb"/First\s+(\d+)", head) or [0, b"0"])[1])
+                mn, mf = re.search(rb"/N\s+(\d+)", head), re.search(rb"/First\s+(\d+)", head)
+                n, first = (int(mn.group(1)) if mn else 0), (int(mf.group(1)) if mf else 0)
                 nums = data[:first].split()
                 for i in range(n):
                     try:
@@ -69,7 +69,8 @@ class _Doc:
 
 
 def _cmap(data: bytes) -> tuple[dict[int, str], int]:
-    out, width = {}, 1
+    out: dict[int, str] = {}
+    width = 1
 
     def hexval(h):
         return int(h, 16) if h else 0
@@ -130,14 +131,15 @@ _TOK = re.compile(rb"\((?:\\.|[^\\()]|\((?:\\.|[^\\()])*\))*\)|<[0-9A-Fa-f\s]*>|
 def _fonts(doc: _Doc, page: bytes) -> dict[bytes, tuple[dict, int]]:
     res = doc.deref((re.search(rb"/Resources\s*(\d+\s+0\s+R|<<.*>>)", page, re.S) or [b"", b""])[1]) if b"/Resources" in page else b""
     fm = re.search(rb"/Font\s*(\d+\s+0\s+R|<<(.*?)>>)", res, re.S)
-    fonts = {}
+    fonts: dict[bytes, tuple[dict[int, str], int]] = {}
     if not fm:
         return fonts
     fdict = doc.deref(fm.group(1)) if fm.group(1).strip().endswith(b"R") and not fm.group(1).startswith(b"<<") else fm.group(1)
     for name, ref in re.findall(rb"/([^\s/<>\[\]]+)\s+(\d+)\s+0\s+R", fdict):
         fobj = doc.get(ref)
         tu = re.search(rb"/ToUnicode\s+(\d+)\s+0\s+R", fobj)
-        cmap, width = ({}, 2 if b"/Type0" in fobj else 1)
+        cmap: dict[int, str] = {}
+        width = 2 if b"/Type0" in fobj else 1
         if tu:
             _, data = _split(doc.get(tu.group(1)))
             if data:
@@ -147,8 +149,9 @@ def _fonts(doc: _Doc, page: bytes) -> dict[bytes, tuple[dict, int]]:
     return fonts
 
 
-def _decode(raw: bytes, font) -> str:
-    cmap, width = font or ({}, 1)
+def _decode(raw: bytes, font: tuple[dict[int, str], int] | None) -> str:
+    empty: dict[int, str] = {}
+    cmap, width = font or (empty, 1)
     if not cmap:
         if width == 2:
             return raw.decode("utf-16-be", "ignore")
@@ -161,8 +164,10 @@ def _decode(raw: bytes, font) -> str:
 
 
 def _content_text(data: bytes, fonts) -> str:
-    lines, cur, font, last_y = [], [], None, None
-    stack = []
+    lines: list[str] = []
+    cur: list[str] = []
+    font, last_y = None, None
+    stack: list[bytes] = []
 
     def flush():
         if cur:
@@ -208,7 +213,7 @@ def _content_text(data: bytes, fonts) -> str:
             pass
         stack.clear()
     flush()
-    dedup = []
+    dedup: list[str] = []
     for line in lines:
         if not dedup or line != dedup[-1] or not line:
             dedup.append(line)

@@ -175,7 +175,10 @@ class QR:
     def _draw_format(self, mask):
         n = self.size
         bits = _format_bits(mask)
-        g = lambda i: (bits >> i) & 1 == 1
+
+        def g(i):
+            return (bits >> i) & 1 == 1
+
         for i in range(6):
             self._set_func(8, i, g(i))
         self._set_func(8, 7, g(6))

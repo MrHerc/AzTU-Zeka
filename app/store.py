@@ -219,7 +219,7 @@ def demo_pdf(lines: list[str]) -> bytes:
     """Tiny valid one-page PDF (ASCII text) used for synthetic attachments."""
     def esc(s):
         return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-    content = "BT /F1 13 Tf 64 770 Td " + " ".join(f"({esc(l)}) Tj 0 -22 Td" for l in lines) + " ET"
+    content = "BT /F1 13 Tf 64 770 Td " + " ".join(f"({esc(line)}) Tj 0 -22 Td" for line in lines) + " ET"
     objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
@@ -463,7 +463,7 @@ def seed(c):
     att = []
     for st in students:
         p_abs = 0.035 if st == uid["aysel"] else rng.choice([0.02, 0.04, 0.06, 0.09, 0.14])
-        for lid, day, cid in lessons:
+        for lid, day, _cid in lessons:
             if st == uid["aysel"]:
                 status = "absent" if day in sick else ("late" if lid % 23 == 0 else "present")
             else:
@@ -475,7 +475,7 @@ def seed(c):
     gr = []
     for st in students:
         skill = rng.uniform(0.62, 0.97) if st != uid["aysel"] else 0.9
-        for code, cid in course_ids.items():
+        for cid in course_ids.values():
             gr.append((st, cid, "Sərbəst iş 1", round(min(5, max(2, rng.gauss(5 * skill, 0.6))), 1), 5, iso(t0 - timedelta(days=4))))
             gr.append((st, cid, "Laboratoriya / məşğələ", round(min(10, max(4, rng.gauss(10 * skill, 1.1))), 1), 10, iso(t0 - timedelta(days=2))))
     c.executemany("INSERT INTO grades(user_id,course_id,component,score,max,updated_at) VALUES(?,?,?,?,?,?)", gr)
@@ -517,7 +517,7 @@ def seed(c):
     for title, pattern in s["demo_attempts"]:
         qz = row(c, "SELECT * FROM quizzes WHERE id=?", (quiz_ids[title],))
         details = []
-        for qid, ok in zip(json.loads(qz["question_ids"]), pattern):
+        for qid, ok in zip(json.loads(qz["question_ids"]), pattern, strict=False):     # lengths: tests/unit/test_content.py
             details.append({"qid": qid, "correct": ok, "topic": row(c, "SELECT topic FROM questions WHERE id=?", (qid,))["topic"]})
         day = t0 - timedelta(days=3, hours=qz["id"])
         c.execute("INSERT INTO attempts(quiz_id,user_id,answers,details,score,max_score,started_at,finished_at) VALUES(?,?,?,?,?,?,?,?)",

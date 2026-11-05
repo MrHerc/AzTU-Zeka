@@ -100,7 +100,7 @@ def test_campus_kb_actions_point_to_real_services(seed):
     codes = {rt["code"] for rt in seed["request_types"]}
     entries = store._parse_kb((CONTENT / "campus_kb.md").read_text(encoding="utf-8"))
     assert len(entries) >= 10
-    for heading, text, req, label, source in entries:
+    for heading, text, req, _label, source in entries:
         assert heading and len(text) > 40 and source
         assert req is None or req in codes, (heading, req)
 

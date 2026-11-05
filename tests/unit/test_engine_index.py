@@ -139,7 +139,7 @@ def _pptx(slides):
 
 
 def test_extract_text_markdown_and_txt_with_bom_and_legacy_encoding():
-    assert engine.extract_text("a.md", "﻿# Salam\n".encode("utf-8")) == "# Salam\n"
+    assert engine.extract_text("a.md", "﻿# Salam\n".encode()) == "# Salam\n"
     assert engine.extract_text("a.txt", "Güç ölçüsü, ağır iş".encode("cp1254")) == "Güç ölçüsü, ağır iş"   # not valid UTF-8
 
 

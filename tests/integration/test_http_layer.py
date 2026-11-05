@@ -19,7 +19,7 @@ def raw_exchange(server, payload: bytes, timeout=3.0) -> bytes:
             if not chunk:
                 break
             data += chunk
-    except (TimeoutError, socket.timeout):
+    except TimeoutError:
         pass
     finally:
         s.close()
