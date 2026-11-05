@@ -170,7 +170,8 @@ def news_create(req):
     c, u = req.db, req.user
     f = _news_fields(req.json())
     cols = list(f) + ["author_id", "published_at"]
-    nid = c.execute(f"INSERT INTO news({','.join(cols)}) VALUES({','.join('?' * len(cols))})", (*f.values(), u["id"], iso(now()))).lastrowid
+    # bandit B608: column names from _news_fields()
+    nid = c.execute(f"INSERT INTO news({','.join(cols)}) VALUES({','.join('?' * len(cols))})", (*f.values(), u["id"], iso(now()))).lastrowid  # nosec B608
     _broadcast(c, nid, f)
     audit(c, u["id"], "news_publish", "news", f["title"][:80])
     return news_out(c, row(c, "SELECT * FROM news WHERE id=?", (nid,)), u["id"], full=True)
@@ -183,7 +184,8 @@ def news_update(req):
     if not n:
         raise HTTPError(404, "Xəbər tapılmadı")
     f = _news_fields(req.json())
-    c.execute(f"UPDATE news SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), n["id"]))
+    # bandit B608: column names from _news_fields()
+    c.execute(f"UPDATE news SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), n["id"]))  # nosec B608
     if n["status"] == "draft":
         _broadcast(c, n["id"], f)
     audit(c, u["id"], "news_update", "news", f["title"][:80])
@@ -194,7 +196,8 @@ def news_update(req):
 def news_delete(req):
     c = req.db
     for t in ("news_rsvp", "news_saved", "news_reads"):
-        c.execute(f"DELETE FROM {t} WHERE news_id=?", (req.params["id"],))
+        # bandit B608: table names are constants
+        c.execute(f"DELETE FROM {t} WHERE news_id=?", (req.params["id"],))  # nosec B608
     c.execute("DELETE FROM news WHERE id=?", (req.params["id"],))
     audit(c, req.user["id"], "news_delete", "news", f"#{req.params['id']}")
     return {"ok": True}
