@@ -452,7 +452,7 @@ def grade(q: dict, value) -> tuple[bool | None, str]:
                 for i, o in enumerate(q["options"]):
                     if fold(o) == fold(s):
                         idx = i
-        if idx is None or idx >= len(q["options"]):
+        if idx is None or not 0 <= idx < len(q["options"]):     # a negative index would silently pick the last option
             return None, str(value)
         return idx == int(q["answer"]), LETTERS[idx]
     if qt == "tf":

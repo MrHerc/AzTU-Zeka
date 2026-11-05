@@ -155,3 +155,9 @@ def test_generate_questions_uses_course_glossary_for_distractors():
     for q in gen:
         assert q["qtype"] == "mcq"
         assert re.search(r"Yalnız termin|hansı anlayışa aiddir", q["text"])
+
+
+def test_grade_mcq_rejects_negative_index():
+    # regression: -1 passed the "< len(options)" check and was graded (and shown) as option D
+    assert engine.grade(MCQ, -1) == (None, "-1")
+    assert engine.grade({**MCQ, "answer": 3}, -1)[0] is None

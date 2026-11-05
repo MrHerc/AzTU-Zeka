@@ -20,6 +20,12 @@ PLACE_EN = {"Hərbi komissarlıq": "the military commissariat", "Dövlət Sosial
 FUND_EN = {"Dövlət sifarişi": "state-funded", "Ödənişli": "tuition-paying"}
 
 
+def ordinal(n: int) -> str:
+    """English ordinal: 1st, 2nd, 3rd, 4th … 11th, 12th, 13th, 21st."""
+    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
 def dmy(iso_ts: str, with_time: bool = False) -> str:
     dt = datetime.fromisoformat(iso_ts)
     return dt.strftime("%d.%m.%Y %H:%M" if with_time else "%d.%m.%Y")
@@ -63,7 +69,7 @@ def enrollment_body(holder, data, ctx, en):
     if en:
         name = translit(f"{holder['full_name']}")
         place = PLACE_EN.get(purpose) or (data.get("purpose_other") or "the requesting organisation")
-        txt = (f"This is to certify that <b>{e(name)}</b> is a full-time {yr}{'nd' if yr == 2 else 'th'}-year student of the "
+        txt = (f"This is to certify that <b>{e(name)}</b> is a full-time {ordinal(int(yr))}-year student of the "
                f"{e(sp['level_en'])} programme in <b>{e(sp['name_en'])}</b>, {e(fac['name_en'])}, {e(uni['name_en'])} "
                f"(group {e(holder.get('group') or '—')}, student ID {e(holder.get('student_no') or '—')}).</p>"
                f"<p>Period of study: {adm}–{adm + sp['years']}. Mode of study: full-time. Basis of study: "
