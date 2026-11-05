@@ -50,7 +50,7 @@
 - UX polish: skeletons, empty/error states, page tours, mobile layout, dark mode, keyboard focus management, reduced-motion support.
 - Reproducibility: deterministic seed (`random.Random(42)`), self-test that exercises the whole API surface.
 
-**Estimated distance to an investor-ready MVP** (see Roadmap): ~90 days with 2–3 engineers, *provided* the AzTU relationship (SSO, registry data, brand permission) is secured in the first 30 days. The riskiest items are organisational (university access, legal validity of e-documents, IP/brand rights), not technical.
+**Estimated distance to an investor-ready MVP** (see [`docs/ROADMAP.md`](ROADMAP.md)): ~90 days with 2.5 engineers (~32–36 engineer-weeks), *provided* the AzTU relationship (SSO, registry data, brand permission) is secured in the first 30 days. The riskiest items are organisational (university access, legal validity of e-documents, IP/brand rights), not technical.
 
 ---
 
@@ -276,7 +276,7 @@ Users/sessions/groups; courses/enrollments/timetable/lessons/attendance/grades; 
 4. LLM provider strategy and data residency (student questions leaving the country vs. a local/EU-hosted model).
 5. Unit economics: real LLM cost per active student (the `$0.42` in the dashboard is a placeholder).
 
-**Effort to investor-ready MVP (engineering only):** ~26–32 engineer-weeks over 90 days with 2–3 engineers (details, sequencing and exit criteria in [`docs/ROADMAP.md`](ROADMAP.md)).
+**Effort to investor-ready MVP (engineering only):** ~32–36 engineer-weeks over 90 days with 2.5 engineers (details, sequencing and exit criteria in [`docs/ROADMAP.md`](ROADMAP.md)).
 
 ---
 
