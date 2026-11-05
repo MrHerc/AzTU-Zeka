@@ -14,8 +14,17 @@ services:
     startCommand: "python run.py --host 0.0.0.0 --port $PORT"
     healthCheckPath: /
     envVars:
+      # Yalnız major.minor: Render hər deploy-da ən son patch buraxılışını götürür və CPython təhlükəsizlik düzəlişləri avtomatik gəlir.
+      # (Əvvəl 3.12.6 sabitlənmişdi. App yalnız stdlib istifadə edir, ona görə yeganə runtime asılılığı Python-un özüdür.)
       - key: PYTHON_VERSION
-        value: "3.12.6"
+        value: "3.13"
+      # Demo girişi parolsuzdur: ictimai serverdə ziyarətçi əvvəlcə bu ortaq kodu daxil edir. Render təsadüfi dəyər yaradır;
+      # kodu Dashboard → Environment bölməsində görmək və ya yadda qalan dəyərlə əvəz etmək olar. Kod olmadan run.py başlamır.
+      - key: ZEKA_ACCESS_CODE
+        generateValue: true
+      # Render-in proksisi X-Forwarded-For başlığına müştərinin IP ünvanını əlavə edir (sürət limitləri üçün).
+      - key: ZEKA_PROXY_HOPS
+        value: "1"
       # QR kodları və sənəd keçidləri bu ünvana yönəlsin. Render xidmətin öz xarici hostunu avtomatik doldurur
       # (məs. zeka-aztu.onrender.com); run.py onun qarşısına https:// əlavə edir.
       - key: PUBLIC_URL
