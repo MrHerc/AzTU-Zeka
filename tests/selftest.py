@@ -370,6 +370,71 @@ s, sr2 = call(st, "GET", "/api/search?q=GreenMetric")
 check("search finds achievements", s == 200 and any(r["link"].startswith("/achievements") for r in sr2["results"]), sr2)
 s, vp = call(client(), "GET", f"/verify/{r2['document']['verify_code']}?lang=en")
 check("verify page in English", s == 200 and "valid" in vp.lower(), vp[:200])
+
+# --- Zəka Radar: explainable early warning, support plans, privacy and roles
+from app import radar  # noqa: E402
+
+story = call(client(), "GET", "/api/demo/storyline")[1]
+MID, LID = story["students"]["murad"], story["students"]["lale"]
+s, rd = call(te, "GET", "/api/radar")
+check("radar: teacher sees own course", s == 200 and rd["scope"]["selected"] == 1 and rd["counts"]["students"] == 120, rd.get("counts") if s == 200 else rd)
+check("radar: Murad ranked first, high risk, with a reason", s == 200 and rd["rows"][0]["id"] == MID and rd["rows"][0]["level"] == "high" and rd["rows"][0]["why"],
+      rd["rows"][:1] if s == 200 else rd)
+lv = {r["id"]: r["level"] for r in rd.get("rows", [])}
+check("radar: storylines (Elnur and Nərmin watch, Lalə ok)", lv.get(story["students"]["elnur"]) == "watch" and lv.get(story["students"]["nermin"]) == "watch"
+      and lv.get(LID) == "ok", {k: lv.get(v) for k, v in story["students"].items()})
+check("radar: realistic cohort (few high, some watch)", 1 <= rd["counts"]["high"] <= 6 and 4 <= rd["counts"]["watch"] <= 25, rd["counts"])
+check("radar: earlier plans measured as improved", rd["impact"]["measured"] >= 2 and rd["impact"]["improved"] == rd["impact"]["measured"] and rd["impact"]["avg_delta"] < 0, rd["impact"])
+check("radar: weekly trend + cohort gaps", len(rd["trend"]) >= 2 and rd["gaps"] and rd["gaps"][0]["chunk_id"], rd.get("trend"))
+s, pr = call(te, "GET", f"/api/radar/student/{MID}?course=1")
+p_ = pr.get("profile", {}) if s == 200 else {}
+check("radar: score is the sum of its drivers", s == 200 and abs(sum(d["points"] for d in p_["drivers"]) - p_["score"]) < 0.2 and all(d["evidence"] for d in p_["drivers"][:3]), p_)
+check("radar: recommendation is a plan and copies the dean's office", p_.get("recommendation", {}).get("kind") == "plan" and p_["recommendation"]["cc_office"], p_.get("recommendation"))
+check("radar: profile history and lessons", s == 200 and pr["history"][-1]["score"] == p_["score"] and pr["lessons"] and pr["cohort"]["rank"] == 1)
+s, lp = call(te, "GET", f"/api/radar/student/{LID}?course=1")
+check("radar: excused absences never count", s == 200 and lp["profile"]["level"] == "ok" and lp["profile"]["drivers"] and
+      any("üzrlü" in e for d in lp["profile"]["drivers"] for e in d["evidence"]) and next(d for d in lp["profile"]["drivers"] if d["key"] == "attendance")["points"] == 0)
+s, pv = call(te, "POST", f"/api/radar/student/{MID}/plan", {"course_id": 1, "preview": True})
+kinds = [x["kind"] for x in pv["plan"]["steps"]] if s == 200 else []
+check("radar: plan preview cites the lecture", s == 200 and kinds[:2] == ["read", "practice"] and "attend" in kinds and pv["plan"]["steps"][0]["cites"]
+      and pv["plan"]["topics"][0] == "Kirxhofun birinci qanunu", pv if s == 200 else pv)
+check("radar: preview does not create a plan", call(te, "GET", "/api/radar")[1]["impact"]["plans"] == rd["impact"]["plans"])
+le2 = client()
+call(le2, "POST", "/api/auth/demo", {"role": "leader"})
+check("radar: leadership reads, cannot send plans", call(le2, "GET", "/api/radar")[0] == 200 and call(le2, "POST", f"/api/radar/student/{MID}/plan", {"course_id": 1})[0] == 403)
+check("radar: students cannot open the radar", call(st, "GET", "/api/radar")[0] == 403 and call(st, "GET", f"/api/radar/student/{MID}")[0] == 403)
+s, cp = call(te, "POST", f"/api/radar/student/{MID}/plan", {"course_id": 1, "kind": "plan", "note": "Birlikdə bərpa edək."})
+check("radar: plan sent", s == 200 and cp["intervention"]["status"] == "open" and cp["intervention"]["progress"]["total"] >= 4, cp)
+check("radar: one open plan per student and course", call(te, "POST", f"/api/radar/student/{MID}/plan", {"course_id": 1})[0] == 409)
+s, onotes = call(of, "GET", "/api/notifications")
+check("radar: dean's office copied on attendance", any("Radar" in n["title"] for n in onotes["items"]), [n["title"] for n in onotes["items"]][:4])
+mu = client()
+s, _ = call(mu, "POST", "/api/auth/demo", {"role": "student", "user": "murad"})
+s, mp = call(mu, "GET", "/api/student/plans")
+it = mp["items"][0] if s == 200 and mp["items"] else {}
+check("radar: student sees the plan, never a risk score", it.get("id") == cp.get("id") and "risk_before" not in it and "drivers" not in it and it.get("note"), it)
+check("radar: student badge", call(mu, "GET", "/api/badges")[1].get("plan") == 1)
+step0 = it["plan"]["steps"][0]
+s, ans = call(mu, "POST", "/api/tutor/1/ask", {"message": step0["topic"] + " mövzusunu izah et", "mode": "explain"})
+s, mp2 = call(mu, "GET", f"/api/student/plans/{it['id']}")
+check("radar: step ticks itself from tutor activity", s == 200 and mp2["plan"]["steps"][0]["done"] and mp2["plan"]["steps"][0]["auto"], mp2["plan"]["steps"][0] if s == 200 else mp2)
+s, mp3 = call(mu, "POST", f"/api/student/plans/{it['id']}/steps", {"index": len(it["plan"]["steps"]) - 1, "done": True})
+check("radar: manual step toggle", s == 200 and mp3["plan"]["steps"][-1]["done"] and mp3["progress"]["done"] == 2, mp3.get("progress") if s == 200 else mp3)
+check("radar: plans are private to their student", call(st, "GET", f"/api/student/plans/{it['id']}")[0] == 404)
+for i in range(len(mp3["plan"]["steps"])):
+    call(mu, "POST", f"/api/student/plans/{it['id']}/steps", {"index": i, "done": True})
+s, done_ = call(mu, "GET", f"/api/student/plans/{it['id']}")
+s, tn2 = call(te, "GET", "/api/notifications")
+check("radar: completed plan closes and tells the teacher", done_["status"] == "completed" and any("tamamladı" in n["title"] for n in tn2["items"]), done_.get("status"))
+s, en_pr = call_lang(te, "GET", f"/api/radar/student/{MID}?course=1", "en")
+check("radar: explanations translated", s == 200 and en_pr["profile"]["drivers"][0]["label"] in ("Attendance", "Assessment", "Concept gap")
+      and not AZ_RX.search(en_pr["profile"]["drivers"][0]["evidence"][0]), en_pr["profile"]["drivers"][0] if s == 200 else en_pr)
+fr = radar.Frame(store.connect(), [1])
+early = radar.profile(fr, MID, 1, fr.semester_start + timedelta(days=3))
+check("radar: no alarm from too little data", early["level"] == "ok" and early["confidence"] == "low", early["score"])
+s, an2 = call(le, "GET", "/api/analytics")
+check("radar: leadership insight", s == 200 and any(i.get("link") == "/radar" for i in an2["insights"]))
+
 srv.shutdown()
 print("\nRESULT:", "ALL PASSED" if not fails else f"{len(fails)} FAILED: {fails}")
 sys.exit(1 if fails else 0)

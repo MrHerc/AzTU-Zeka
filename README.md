@@ -4,6 +4,16 @@ by **Safarov Industries**. Lokal demo: AI tutor, kampus köməkçisi, Test studi
 davamiyyət və qiymətlər, xəbərlər və tədbirlər, müəllimlər üçün AI Akademiya, dəstək xidməti və rəylər, AzTU-nun real nailiyyətləri
 və rəhbərlik paneli. Xarici paket tələb etmir — yalnız Python 3.10+ (stdlib) və müasir brauzer.
 
+## 3 dəqiqəlik demo: Zəka Radar
+Ən güclü nümayiş — **Zəka Radar**: risk altındakı tələbəni həftələr əvvəl tapır, səbəbini izah edir, müəllimə bir kliklə
+mühazirəyə istinad edən dəstək planı göndərməyə imkan verir və nəticəni ölçür. Bir əmrlə:
+```
+docker compose up --build      # → http://localhost:5070/?demo=1
+./demo.sh                      # macOS / Linux
+demo.bat                       # Windows
+```
+Ssenari, danışıq mətni və problemlərin həlli: **[docs/DEMO.md](docs/DEMO.md)**.
+
 ## İşə salmaq
 ```
 start_demo.bat                 # server + brauzer
@@ -13,6 +23,15 @@ python run.py --public-url https://zeka.example.az   # serverdə: sənəd QR kod
 ```
 Ünvan: http://127.0.0.1:5070 (server yalnız bu kompüterdə dinləyir; serverdə onu HTTPS və parol verən reverse proxy arxasında işlədin). Fonda: `scripts\start_demo.ps1`, dayandırmaq: `scripts\stop_demo.ps1`.
 Verilənlər bazası sxemi dəyişdikdə köhnə demo bazası avtomatik yenidən yaradılır.
+
+## Zəka Radar (erkən xəbərdarlıq)
+- **İzah olunan risk balı** (0–100) hər tələbə × fənn üçün: davamiyyət 30 · qiymətləndirmə 30 · anlayış boşluğu 25 · aktivlik 15.
+  Hər bal faktlarla göstərilir; üzrlü qayıblar sayılmır; az məlumatla həyəcan qaldırılmır.
+- **Dəstək planı** bir kliklə: mövzular boşluqlardan seçilir, hər addım mühazirənin konkret hissəsinə və məşq suallarına
+  istinad edir; müəllim baxır və göndərir. Tələbə risk balını görmür, addımlar tutordakı real fəaliyyətdən avtomatik qeyd olunur.
+- **Rəhbərlik və dekanlıq**: bütün fənlər üzrə risk, həftəlik dinamika, qrup üzrə anlayış boşluqları, planların təsiri;
+  davamiyyət siqnalı güclü olduqda dekanlıq avtomatik xəbərdar edilir.
+- **Məxfilik**: tutor söhbətlərinin mətni oxunmur (yalnız mövzu və say), profilə baxışlar və planlar audit jurnalına yazılır.
 
 ## v0.3-də yeni
 - **Üç dil** — Azərbaycan, ingilis, rus (yuxarı paneldəki dil düyməsi; seçim profildə saxlanılır). Server cavabları, xəta mesajları,
@@ -53,7 +72,7 @@ ingilis/rus dilində verilən kampus sualları Azərbaycan dilindəki qaydalarla
 (OpenAI-uyğun API, Azure OpenAI və ya Anthropic); LLM əlçatan olmasa, demo mühərrikə avtomatik qayıdır.
 
 ## Yoxlama
-`python tests\selftest.py` (backend + API, o cümlədən dil, dəstək, rəy, nailiyyətlər, tövsiyə olunan mənbələr) — bazanı sıfırlayır, sonra serveri yenidən başladın.
+`python tests\selftest.py` (backend + API, o cümlədən dil, dəstək, rəy, nailiyyətlər, tövsiyə olunan mənbələr, Zəka Radar) — bazanı sıfırlayır, sonra serveri yenidən başladın.
 İnkişaf alətləri `.dev/tools/`: `jscheck.ps1`, `imports.py`, `dom.py` (bütün səhifələr, 3 dil, mobil), `shot.py`, `m390.py`.
 
 ## Məhdudiyyətlər (demo)
