@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from . import docs, store
 from .common import R, STAFF, ctx, holder, make_key
 from .i18n import E, T3, canon
+from .security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows
 from .web import HTTPError, html_resp
 
@@ -332,7 +333,8 @@ def _apply_outcome(c, r, rt, data, actor):
     if rt["code"] == "absence_excuse":
         ids = data.get("absences") or []
         if ids:
-            c.execute(f"UPDATE attendance SET status='excused', request_id=? WHERE user_id=? AND status='absent' AND lesson_id IN ({','.join('?' * len(ids))})",
+            # bandit B608: placeholders only
+            c.execute(f"UPDATE attendance SET status='excused', request_id=? WHERE user_id=? AND status='absent' AND lesson_id IN ({','.join('?' * len(ids))})",  # nosec B608
                       (r["id"], r["student_id"], *ids))
             by_teacher = {}
             for x in rows(c, f"SELECT l.day, co.teacher_id, co.name FROM lessons l JOIN courses co ON co.id=l.course_id WHERE l.id IN ({','.join('?' * len(ids))})", tuple(ids)):
@@ -462,6 +464,8 @@ def _doc_allowed(req, d):
 
 @R("POST", "/api/documents/{id:int}/link")
 def doc_link(req):
+    if not LIMITS["link"].hit(f"u{req.user['id']}"):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     d = row(req.db, "SELECT id, holder_id FROM documents WHERE id=?", (req.params["id"],))
     if not d or not _doc_allowed(req, d):
         raise HTTPError(404, "Sənəd tapılmadı")
@@ -488,5 +492,7 @@ def doc_page(req):
 @R("GET", "/verify/{code}", auth=False)
 def verify_page(req):
     c = req.db
+    if not LIMITS["verify"].hit(req.ip):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     d = row(c, "SELECT * FROM documents WHERE verify_code=?", (str(req.params["code"]).upper(),))
     return html_resp(docs.render_verify(d, holder(c, d["holder_id"]) if d else None, ctx(c), req.lang))

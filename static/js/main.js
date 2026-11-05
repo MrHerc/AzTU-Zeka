@@ -61,13 +61,16 @@ async function loginPage(root) {
       <h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
       <button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("Pilotda")}</span></button>
       <div class="or">${t("demo rolları")}</div>
+      ${S.app.access_required ? html`<div class="field mb"><label class="label" for="access-code">${t("Demo giriş kodu")}</label>
+        <input class="input" id="access-code" type="password" autocomplete="off" spellcheck="false" placeholder="${t("Təşkilatçının verdiyi kodu daxil edin")}"></div>` : ""}
       <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
-      <p class="small muted mt">${ic("shield", 13)} ${t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>
+      <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>
     </div></div></div>`);
   on(root, "click", "[data-role]", async (e, b) => {
     b.classList.add("loading");
     try {
-      const r = await api.post("/api/auth/demo", { role: b.dataset.role });
+      const code = $("#access-code", root);
+      const r = await api.post("/api/auth/demo", { role: b.dataset.role, code: code ? code.value : "" });
       sessionStorage.setItem("zeka-sid", r.token);
       S.user = r.user;
       go(r.home);

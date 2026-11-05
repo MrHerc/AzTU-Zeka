@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from . import engine, store
 from .i18n import E, L
+from .security import CFG
 from .store import J, iso, now, row, rows, setting
 from .web import HTTPError, Router
 
@@ -26,9 +27,14 @@ def _sid(req):
     return req.cookies.get(COOKIE) or req.headers.get("X-Session")
 
 
+def session_cutoff() -> str:
+    """Sessions created before this moment have expired (absolute lifetime, ZEKA_SESSION_HOURS)."""
+    return iso(now() - timedelta(hours=CFG.session_hours))
+
+
 def session_cookie(value: str = "", expire: bool = False) -> tuple:
     """Session cookie header; Secure when the portal is published over HTTPS (run.py --public-url https://...)."""
-    attrs = "; Max-Age=0" if expire else ""
+    attrs = "; Max-Age=0" if expire else f"; Max-Age={CFG.session_hours * 3600}"
     if BASE_URL["value"].startswith("https://"):
         attrs += "; Secure"
     return ("Set-Cookie", f"{COOKIE}={value}; HttpOnly; SameSite=Lax; Path=/{attrs}")
@@ -38,7 +44,8 @@ def before(req, roles, auth):
     req.db = store.connect()
     sid = _sid(req)
     if sid:
-        req.user = row(req.db, "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.sid=?", (sid,))
+        req.user = row(req.db, "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.sid=? AND s.created_at>=?",
+                       (sid, session_cutoff()))
     if not req.user and req.path.startswith(("/doc/", "/api/files/", "/syllabus/")) and req.query.get("k"):
         req.user = _key_user(req)
     if auth and not req.user:
