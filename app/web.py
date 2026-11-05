@@ -149,6 +149,9 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
         sys_version = ""            # do not advertise the Python version
         timeout = 30                # idle/slow clients cannot hold a worker thread forever
 
+        def version_string(self):
+            return self.server_version
+
         def log_message(self, fmt, *args):
             pass
 
