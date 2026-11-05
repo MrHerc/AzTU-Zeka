@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import secrets
 import urllib.parse
 
@@ -13,9 +14,14 @@ from .store import J, audit, iso, now, row, rows, setting
 from .web import HTTPError, Response, json_resp, redirect
 
 
+# Same-site path only: printable ASCII without spaces or control characters (a browser drops TAB/LF from a URL, so
+# "/\t/evil.example" would become the protocol-relative "//evil.example"; CR/LF would also split the Location header).
+_SAFE_NEXT = re.compile(r"/(?![/\\])[\x21-\x7e]*")
+
+
 def _login(c, role):
     logins = setting(c, "demo_logins")
-    if role not in logins:
+    if not isinstance(role, str) or role not in logins:
         raise HTTPError(400, "Naməlum rol")
     u = row(c, "SELECT * FROM users WHERE username=?", (logins[role],))
     sid = secrets.token_urlsafe(24)
@@ -48,7 +54,7 @@ def demo_login(req):
 def demo_login_get(req):
     u, _, headers = _login(req.db, req.query.get("role", "student"))
     nxt = req.query.get("next") or "/#" + ROLE_HOME[u["role"]]
-    if not nxt.startswith("/") or nxt.startswith("//") or "\\" in nxt:
+    if not _SAFE_NEXT.fullmatch(nxt) or "\\" in nxt:
         nxt = "/"
     return redirect(nxt, headers)
 
@@ -132,7 +138,7 @@ def notifications_read(req):
     if b.get("all"):
         c.execute("UPDATE notifications SET read_at=? WHERE user_id=? AND read_at IS NULL", (iso(now()), u["id"]))
     else:
-        ids = [int(i) for i in (b.get("ids") or [])][:100]
+        ids = b.ids("ids", 100)
         if ids:
             c.execute(f"UPDATE notifications SET read_at=? WHERE user_id=? AND id IN ({','.join('?' * len(ids))})", (iso(now()), u["id"], *ids))
     return {"unread": unread(c, u["id"])}
@@ -226,13 +232,13 @@ def search(req):
 def upload_file(req):
     b = req.json()
     try:
-        data = base64.b64decode(b.get("content_b64") or "", validate=False)
+        data = base64.b64decode(b.text("content_b64"), validate=False)
     except ValueError:
-        raise HTTPError(400, "Fayl oxunmadı")
+        raise HTTPError(400, "Fayl oxunmadı") from None
     try:
-        f = store.save_file(req.db, req.user["id"], (b.get("filename") or "fayl")[:160], data, b.get("accept") or "doc")
+        f = store.save_file(req.db, req.user["id"], b.text("filename", 160) or "fayl", data, b.text("accept") or "doc")
     except ValueError as ex:
-        raise HTTPError(400, str(ex))
+        raise HTTPError(400, str(ex)) from None
     return {k: f[k] for k in ("id", "filename", "mime", "size")}
 
 

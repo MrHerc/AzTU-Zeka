@@ -38,6 +38,12 @@ def _ticket_for(req, tid):
     return t
 
 
+def _code(b, key, vocab, default=None):
+    """A vocabulary code from the body; anything that is not one of the known string codes gives ``default``."""
+    v = b.get(key)
+    return v if isinstance(v, str) and v in vocab else default
+
+
 def _desk_ids(c):
     return [r["id"] for r in rows(c, "SELECT id FROM users WHERE role IN ('office','admin') AND synthetic=0")]
 
@@ -86,20 +92,20 @@ def tickets(req):
 def ticket_create(req):
     c, u = req.db, req.user
     b = req.json()
-    cat = b.get("category") if b.get("category") in support.CODES["category"] else "other"
-    prio = b.get("priority") if b.get("priority") in support.CODES["priority"] else "normal"
-    subject = (b.get("subject") or "").strip()[:140]
-    body = (b.get("body") or "").strip()[:4000]
+    cat = _code(b, "category", support.CODES["category"], "other")
+    prio = _code(b, "priority", support.CODES["priority"], "normal")
+    subject = b.text("subject", 140)
+    body = b.text("body", 4000)
     if len(subject) < 4:
         raise HTTPError(400, "Mövzunu qısa şəkildə yazın (ən azı 4 simvol)")
     if len(body) < 10:
         raise HTTPError(400, "Problemi bir-iki cümlə ilə təsvir edin")
     t = iso(now())
     tid = c.execute("INSERT INTO support_tickets(user_id,category,priority,subject,body,page,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
-                    (u["id"], cat, prio, subject, body, str(b.get("page") or "")[:200], "open", t, t)).lastrowid
-    fid = b.get("file_id")
+                    (u["id"], cat, prio, subject, body, b.text("page", 200), "open", t, t)).lastrowid
+    fid = b.integer("file_id")
     if fid:
-        f = row(c, "SELECT id FROM files WHERE id=? AND owner_id=? AND request_id IS NULL", (int(fid), u["id"]))
+        f = row(c, "SELECT id FROM files WHERE id=? AND owner_id=? AND request_id IS NULL", (fid, u["id"]))
         if f:
             c.execute("INSERT INTO support_messages(ticket_id,author_id,text,internal,file_id,created_at) VALUES(?,?,?,?,?,?)",
                       (tid, u["id"], "", 0, f["id"], t))
@@ -133,7 +139,7 @@ def ticket_reply(req):
     c, u = req.db, req.user
     t = _ticket_for(req, req.params["id"])
     b = req.json()
-    text = (b.get("text") or "").strip()[:4000]
+    text = b.text("text", 4000)
     staff = u["role"] in DESK
     if not text:
         raise HTTPError(400, "Mesaj boşdur")
@@ -166,10 +172,10 @@ def ticket_status(req):
     ts = iso(now())
     if b.get("assign") == "me":
         c.execute("UPDATE support_tickets SET assignee_id=?, updated_at=? WHERE id=?", (u["id"], ts, t["id"]))
-    if b.get("priority") in support.CODES["priority"]:
+    if _code(b, "priority", support.CODES["priority"]):
         c.execute("UPDATE support_tickets SET priority=?, updated_at=? WHERE id=?", (b["priority"], ts, t["id"]))
     if st:
-        if st not in support.CODES["status"]:
+        if _code(b, "status", support.CODES["status"]) is None:
             raise HTTPError(400, "Naməlum status")
         c.execute("UPDATE support_tickets SET status=?, updated_at=?, closed_at=?, assignee_id=COALESCE(assignee_id, ?) WHERE id=?",
                   (st, ts, ts if st in ("resolved", "closed") else None, u["id"], t["id"]))
@@ -185,7 +191,7 @@ def ticket_status(req):
 def ticket_rate(req):
     c, u = req.db, req.user
     t = _ticket_for(req, req.params["id"])
-    r = int(req.json().get("rating") or 0)
+    r = req.json().integer("rating", 0)
     if t["user_id"] != u["id"] or t["status"] not in ("resolved", "closed"):
         raise HTTPError(409, "Yalnız həll olunmuş sorğunu qiymətləndirmək olar")
     if not 1 <= r <= 5:
@@ -237,9 +243,9 @@ def feedback_create(req):
         raise HTTPError(400, "Qiymət seçin")
     nps = b.get("nps")
     nps = int(nps) if isinstance(nps, (int, float)) and 0 <= int(nps) <= 10 else None
-    area = b.get("area") if b.get("area") in support.CODES["area"] else "overall"
+    area = _code(b, "area", support.CODES["area"], "overall")
     c.execute("INSERT INTO feedback(user_id,role,area,score,nps,comment,page,lang,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-              (u["id"], u["role"], area, score, nps, (b.get("comment") or "").strip()[:2000], str(b.get("page") or "")[:200], req.lang, iso(now())))
+              (u["id"], u["role"], area, score, nps, b.text("comment", 2000), b.text("page", 200), req.lang, iso(now())))
     audit(c, u["id"], "feedback", "feedback", f"{area}:{score}")
     return {"ok": True}
 

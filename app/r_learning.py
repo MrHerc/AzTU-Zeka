@@ -3,14 +3,15 @@ from __future__ import annotations
 
 import base64
 import json
+import math
 import random
 import re
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 
 from . import engine, refs, store, tutor
-from .common import (R, check_limit, cite_list, course_access, history, holder, kb_cite_list, msg_out, q_load,
+from .common import (R, check_limit, cite_list, course_access, history, kb_cite_list, msg_out, q_load,
                      save_msg, search_chunks, usage, week_index)
-from .i18n import S, S_, T3
+from .i18n import E, S, S_, T3
 from .store import J, audit, iso, notify, now, row, rows, setting
 from .web import HTTPError
 
@@ -305,7 +306,7 @@ def tutor_ask(req):
     c, u = req.db, req.user
     course = course_access(req, req.params["cid"])
     body = req.json()
-    msg = (body.get("message") or "").strip()[:2000]
+    msg = body.text("message", 2000)
     if not msg:
         raise HTTPError(400, "Sual boşdur")
     if course["tutor_locked"] and u["role"] == "student":
@@ -345,7 +346,7 @@ def tutor_clear(req):
 
 @R("POST", "/api/messages/{id:int}/rate")
 def rate(req):
-    r = int(req.json().get("rating") or 0)
+    r = req.json().integer("rating", 0)
     req.db.execute("UPDATE messages SET rating=? WHERE id=? AND user_id=?", (r if r in (1, -1) else None, req.params["id"], req.user["id"]))
     return {"ok": True}
 
@@ -355,11 +356,11 @@ def forward(req):
     c = req.db
     course = course_access(req, req.params["cid"])
     b = req.json()
-    q = (b.get("question") or "").strip()
+    q = b.text("question", 2000)
     if not q:
         raise HTTPError(400, "Sual boşdur")
     c.execute("INSERT INTO teacher_questions(course_id,student_id,anonymous,question,context,status,created_at) VALUES(?,?,?,?,?,'open',?)",
-              (course["id"], req.user["id"], 1 if b.get("anonymous") else 0, q[:2000], (b.get("context") or "")[:1500], iso(now())))
+              (course["id"], req.user["id"], 1 if b.get("anonymous") else 0, q, b.text("context", 1500), iso(now())))
     notify(c, course["teacher_id"], "question", "Yeni tələbə sualı", T3("{course}: {text}", course=course["name"], text=q[:90]), "/teacher/questions")
     audit(c, req.user["id"], "forward_question", "course", course["code"])
     return {"ok": True}
@@ -374,7 +375,7 @@ def campus_history(req):
 @R("POST", "/api/campus/ask")
 def campus_ask(req):
     c, u = req.db, req.user
-    msg = (req.json().get("message") or "").strip()[:1500]
+    msg = req.json().text("message", 1500)
     if not msg:
         raise HTTPError(400, "Sual boşdur")
     used, lim = check_limit(c, u)
@@ -452,7 +453,7 @@ def attempt_submit(req):
     if a["finished_at"]:
         return attempt_result(c, a)
     qz = row(c, "SELECT * FROM quizzes WHERE id=?", (a["quiz_id"],))
-    answers = req.json().get("answers") or {}
+    answers = req.json().obj("answers")
     details, score = [], 0
     for qid in J(qz["question_ids"], []):
         q = q_load(c, qid)
@@ -534,22 +535,22 @@ def upload_material(req):
     c = req.db
     co = course_access(req, req.params["id"])
     b = req.json()
-    name = (b.get("filename") or "material.txt")[:200]
+    name = b.text("filename", 200) or "material.txt"
     try:
-        data = base64.b64decode(b.get("content_b64") or "", validate=False)
+        data = base64.b64decode(b.text("content_b64"), validate=False)
     except ValueError:
-        raise HTTPError(400, "Fayl oxunmadı")
+        raise HTTPError(400, "Fayl oxunmadı") from None
     if not data:
         raise HTTPError(400, "Fayl boşdur")
     try:
         text = engine.extract_text(name, data)
     except ValueError as ex:
-        raise HTTPError(400, str(ex))
+        raise HTTPError(400, str(ex)) from None
     except Exception:
-        raise HTTPError(400, "Fayldan mətn çıxarmaq mümkün olmadı")
+        raise HTTPError(400, "Fayldan mətn çıxarmaq mümkün olmadı") from None
     if len(text.strip()) < 40:
         raise HTTPError(400, "Fayldan kifayət qədər mətn çıxarılmadı")
-    title = (b.get("title") or re.sub(r"\.[^.]+$", "", name)).strip()[:200]
+    title = (b.text("title") or re.sub(r"\.[^.]+$", "", name)).strip()[:200]
     if not text.lstrip().startswith("#"):
         text = f"# {title}\n\n" + text
     info = store.add_material(c, co["id"], title, name, text, req.user["id"])
@@ -572,9 +573,9 @@ def material_delete(req):
 def tutor_settings(req):
     co = course_access(req, req.params["id"])
     b = req.json()
-    modes = [m for m in b.get("modes", []) if m in tutor.MODES] or ["socratic"]
+    modes = [m for m in b.array("modes") if isinstance(m, str) and m in tutor.MODES] or ["socratic"]
     req.db.execute("UPDATE courses SET tutor_modes=?, tutor_rules=?, tutor_locked=? WHERE id=?",
-                   (json.dumps(modes), (b.get("rules") or "")[:2000], 1 if b.get("locked") else 0, co["id"]))
+                   (json.dumps(modes), b.text("rules", 2000), 1 if b.get("locked") else 0, co["id"]))
     audit(req.db, req.user["id"], "tutor_settings", "course", co["code"])
     return course_detail(req)
 
@@ -592,7 +593,7 @@ def teacher_questions(req):
 @R("POST", "/api/teacher/questions/{id:int}/answer", roles=("teacher",))
 def answer_question(req):
     c = req.db
-    a = (req.json().get("answer") or "").strip()
+    a = req.json().text("answer")
     if not a:
         raise HTTPError(400, "Cavab boşdur")
     q = row(c, "SELECT tq.*, co.name course FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id WHERE tq.id=? AND co.teacher_id=?",
@@ -619,11 +620,12 @@ def q_out(c, q):
 def studio_generate(req):
     c, u = req.db, req.user
     b = req.json()
-    co = course_access(req, int(b.get("course_id") or 0))
-    count = max(1, min(int(b.get("count") or 6), 15))
-    types = [t for t in (b.get("types") or ["mcq", "tf", "numeric"]) if t in ("mcq", "tf", "numeric")] or ["mcq"]
-    if b.get("material_id"):
-        chunks = rows(c, "SELECT id, heading, text FROM chunks WHERE material_id=? AND course_id=? ORDER BY seq", (int(b["material_id"]), co["id"]))
+    co = course_access(req, b.integer("course_id", 0))
+    count = b.integer("count", 6, 1, 15)
+    types = [t for t in (b.array("types") or ["mcq", "tf", "numeric"]) if t in ("mcq", "tf", "numeric")] or ["mcq"]
+    material_id = b.integer("material_id")
+    if material_id:
+        chunks = rows(c, "SELECT id, heading, text FROM chunks WHERE material_id=? AND course_id=? ORDER BY seq", (material_id, co["id"]))
     else:
         chunks = rows(c, "SELECT id, heading, text FROM chunks WHERE course_id=? ORDER BY material_id, seq", (co["id"],))
     if not chunks:
@@ -649,7 +651,7 @@ def studio_generate(req):
 
 @R("GET", "/api/questions", roles=("teacher",))
 def questions(req):
-    co = course_access(req, int(req.query.get("course_id") or 0))
+    co = course_access(req, req.qint("course_id", 0))
     st = req.query.get("status")
     sql = "SELECT * FROM questions WHERE course_id=?" + (" AND status=?" if st else "") + " ORDER BY status='approved', id DESC"
     return [q_out(req.db, q) for q in rows(req.db, sql, (co["id"], st) if st else (co["id"],))]
@@ -662,10 +664,13 @@ def question_update(req):
     course_access(req, q["course_id"])
     b = req.json()
     fields = {k: str(b[k])[:3000] for k in ("text", "explanation", "topic", "bloom", "difficulty", "unit") if k in b}
+    options = [str(o)[:300] for o in b.array("options")][:6] if "options" in b else q["options"]
+    answer = b["answer"] if "answer" in b else q["answer"]
+    _check_answer(q["qtype"], options, answer)
     if "options" in b:
-        fields["options"] = json.dumps([str(o)[:300] for o in b["options"]][:6], ensure_ascii=False)
+        fields["options"] = json.dumps(options, ensure_ascii=False)
     if "answer" in b:
-        fields["answer"] = json.dumps(b["answer"])
+        fields["answer"] = json.dumps(answer)
     if b.get("status") in ("draft", "approved"):
         fields["status"] = b["status"]
     if fields:
@@ -673,6 +678,21 @@ def question_update(req):
     nq = row(c, "SELECT * FROM questions WHERE id=?", (q["id"],))
     store.index_question(nq)
     return q_out(c, nq)
+
+
+def _check_answer(qtype, options, answer):
+    """A stored answer must be gradable: an edited question with an answer outside its options broke every quiz submit."""
+    if qtype == "mcq":
+        ok = isinstance(answer, int) and not isinstance(answer, bool) and len(options) >= 2 and 0 <= answer < len(options)
+    elif qtype == "tf":
+        ok = isinstance(answer, bool)
+    else:
+        try:
+            ok = not isinstance(answer, bool) and math.isfinite(float(answer))
+        except (TypeError, ValueError):
+            ok = False
+    if not ok:
+        raise HTTPError(400, E("Yanlış dəyər: {field}", field="answer"))
 
 
 @R("DELETE", "/api/questions/{id:int}", roles=("teacher",))
@@ -701,18 +721,18 @@ def teacher_quizzes(req):
 def quiz_create(req):
     c = req.db
     b = req.json()
-    co = course_access(req, int(b.get("course_id") or 0))
-    ids = [int(i) for i in b.get("question_ids") or []]
+    co = course_access(req, b.integer("course_id", 0))
+    ids = list(dict.fromkeys(b.ids("question_ids", 200)))
     if not ids:
         raise HTTPError(400, "Ən azı bir sual seçin")
     ok = {r["id"] for r in rows(c, f"SELECT id FROM questions WHERE course_id=? AND status='approved' AND id IN ({','.join('?' * len(ids))})", (co["id"], *ids))}
     if len(ok) != len(ids):
         raise HTTPError(400, "Yalnız təsdiqlənmiş suallar testə əlavə oluna bilər")
-    title = (b.get("title") or "Yeni test").strip()[:200]
+    title = b.text("title", 200) or "Yeni test"
     kind = "graded" if b.get("kind") == "graded" else "practice"
     qid = c.execute("INSERT INTO quizzes(course_id,title,kind,question_ids,time_limit,attempts,show_explanations,created_at) VALUES(?,?,?,?,?,?,?,?)",
-                    (co["id"], title, kind, json.dumps(ids), max(1, min(int(b.get("time_limit") or 15), 180)),
-                     max(1, min(int(b.get("attempts") or (3 if kind == "practice" else 1)), 10)), 1, iso(now()))).lastrowid
+                    (co["id"], title, kind, json.dumps(ids), b.integer("time_limit", 15, 1, 180),
+                     b.integer("attempts", 3 if kind == "practice" else 1, 1, 10), 1, iso(now()))).lastrowid
     studs = [r["user_id"] for r in rows(c, "SELECT user_id FROM enrollments WHERE course_id=?", (co["id"],))]
     notify(c, studs, "quiz", T3("Yeni test: {title}", title=title), T3("{course} · {n} sual", course=co["name"], n=len(ids)), "/student/quizzes")
     audit(c, req.user["id"], "quiz_publish", "quiz", title)

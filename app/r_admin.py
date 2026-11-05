@@ -46,7 +46,9 @@ def analytics(req):
     students = row(c, "SELECT COUNT(*) n FROM users WHERE role='student'")["n"]
     wau_s, wau_t = [28, 39, 47, 53, 57, 60, 62, 64], [35, 48, 57, 63, 68, 71, 74, 76]
     req_h = [26.0, 19.5, 14.2, 11.0, 8.6, 7.1, 6.0, summary["avg_hours"] or 5.4]
-    pct = lambda v: f"{v:.1f}%".replace(".", ",")
+    def pct(v):
+        return f"{v:.1f}%".replace(".", ",")
+
     kpis = [
         {"key": "wau", "label": "Həftəlik aktiv tələbələr", "value": f"{wau_s[-1]}%", "target": "≥ 60%", "ok": True, "series": wau_s},
         {"key": "teachers", "label": "Aktiv müəllimlər", "value": f"{wau_t[-1]}%", "target": "≥ 70%", "ok": True, "series": wau_t},
@@ -102,12 +104,12 @@ def admin_settings(req):
     b = req.json()
     lim = setting(req.db, "limits", {})
     if "daily_messages" in b:
-        lim["daily_messages"] = max(5, min(int(b["daily_messages"]), 500))
+        lim["daily_messages"] = b.integer("daily_messages", lim.get("daily_messages", 50), 5, 500)
     for k in ("pii_masking", "socratic_default"):
         if k in b:
             lim[k] = bool(b[k])
     if "retention_days" in b:
-        lim["retention_days"] = max(30, min(int(b["retention_days"]), 3650))
+        lim["retention_days"] = b.integer("retention_days", lim.get("retention_days", 180), 30, 3650)
     store.set_setting(req.db, "limits", lim)
     audit(req.db, req.user["id"], "settings_update", "settings", json.dumps(lim))
     return lim

@@ -33,4 +33,26 @@ All notable changes to the Zəka demo are recorded here. The format follows
   `/verify/²` crashed the router with a 500.
 - **English enrolment certificates printed wrong ordinals** (“1th-year”, “3th-year”); they now read 1st, 2nd, 3rd, 4th.
 - **Multiple-choice grading accepted a negative option index** (−1 was graded and shown as option D).
+- **28 API endpoints crashed with HTTP 500 on wrongly typed input** — a text where a number belongs (event capacity
+  “50 nəfər”, quiz time limit, syllabus weeks, admin limits, ratings), a list or object where text belongs (tutor
+  message, ticket subject, comment, document revocation reason), non-numeric ids (notifications, attachments, quiz
+  questions) or an unknown vocabulary value (ticket category/priority/status, feedback area). Handlers now read the
+  body through typed accessors and answer a translated 400 (“Invalid value: …”). Nested e-service form data with the
+  wrong shape (e.g. a date range sent as a string) is handled the same way.
+- **Open redirect and response-header injection in `/demo/login?next=`.** A path such as `/\t/evil.example` passed
+  the “starts with one slash” check but browsers drop the TAB and follow `//evil.example`; CR/LF in `next` was
+  written into the `Location` header (header injection), and a non-Latin-1 character crashed the response.
+  Only printable-ASCII same-site paths are accepted now.
+- **Syllabus page: stored HTML injection.** Week numbers, credits, workload hours and assessment points from the
+  teacher-edited syllabus were inserted into the printable page without escaping. All values are escaped now.
+- **Syllabus save accepted incomplete data.** Only the `course` key was checked, so a partial object was stored and
+  then broke both the editor and the printable page. The full structure is validated; an invalid saved syllabus is
+  regenerated for display.
+- **Printable syllabus of an unknown course answered 500** for leaders and administrators (no course-access check
+  for those roles, then `None["id"]`); it is a 404 now.
+- **Editing a question could break every quiz that used it.** An updated multiple-choice answer outside the option
+  list (or a non-boolean true/false answer) was stored, and every student's quiz submission then crashed in
+  `answer_display`. Question updates now validate the answer against the question type and options.
+- **Revoking a non-existent document reported success** and wrote an audit entry; it is a 404 now.
+- **Quiz creation stored duplicate question ids** when the same question was selected twice; duplicates are dropped.
 
