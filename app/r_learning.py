@@ -11,8 +11,29 @@ from . import engine, refs, store, tutor
 from .common import (R, check_limit, cite_list, course_access, history, holder, kb_cite_list, msg_out, q_load,
                      save_msg, search_chunks, usage, week_index)
 from .i18n import S, S_, T3
+from .security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows, setting
 from .web import HTTPError
+
+QUIZ_GRACE = timedelta(minutes=2)       # network / clock slack after a quiz time limit
+
+
+def _ai_quota(u):
+    if not LIMITS["ai"].hit(f"u{u['id']}"):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
+
+
+def external_ai_allowed(u) -> bool:
+    """Students' questions go to an external LLM only after the optional "external AI service" consent."""
+    if u["role"] != "student":
+        return True
+    return bool(((J(u.get("prefs"), {}) or {}).get("consent") or {}).get("external"))
+
+
+def _masked_history(hist, enabled):
+    if not enabled:
+        return hist
+    return [{**m, "content": engine.mask_pii(m["content"])[0]} if m["role"] == "user" else m for m in hist]
 
 WEEKDAYS = ["", S_("Bazar ertəsi"), S_("Çərşənbə axşamı"), S_("Çərşənbə"), S_("Cümə axşamı"), S_("Cümə"), S_("Şənbə"), S_("Bazar")]
 SEM_WEEKS = 15
@@ -313,7 +334,9 @@ def tutor_ask(req):
     modes = J(course["tutor_modes"], ["socratic"])
     mode = body.get("mode") if body.get("mode") in modes else modes[0]
     used, lim = check_limit(c, u)
-    masked, pii = engine.mask_pii(msg) if setting(c, "limits", {}).get("pii_masking", True) else (msg, [])
+    _ai_quota(u)
+    masking = setting(c, "limits", {}).get("pii_masking", True)
+    masked, pii = engine.mask_pii(msg) if masking else (msg, [])
     hist = history(c, u["id"], course["id"], "tutor", 12)
     note = None
     if mode == "practice":
@@ -322,10 +345,13 @@ def tutor_ask(req):
         hits = search_chunks(course["id"], masked)
         result = None
         if engine.llm_config()["enabled"] and hits and hits[0]["score"] >= 1.2:
-            try:
-                result = tutor.llm_tutor(mode, masked, hits, hist, course, req.lang)
-            except Exception as ex:  # network/proxy/auth errors -> offline engine
-                note = T3("LLM əlçatan olmadı ({err}); demo mühərrik istifadə edildi.", err=type(ex).__name__)
+            if not external_ai_allowed(u):
+                note = T3("Xarici AI xidmətinə razılıq verilmədiyi üçün demo mühərrik istifadə edildi.")
+            else:
+                try:   # earlier turns are stored as typed; they are masked again before leaving the platform
+                    result = tutor.llm_tutor(mode, masked, hits, _masked_history(hist, masking), course, req.lang)
+                except Exception as ex:  # network/proxy/auth errors -> offline engine
+                    note = T3("LLM əlçatan olmadı ({err}); demo mühərrik istifadə edildi.", err=type(ex).__name__)
         if result is None:
             result = tutor.compose_tutor(mode, masked, hits, hist, course, req.lang)
     um = save_msg(c, u["id"], course["id"], "tutor", "user", msg, meta={"mode": mode, "pii": pii})
@@ -378,6 +404,7 @@ def campus_ask(req):
     if not msg:
         raise HTTPError(400, "Sual boşdur")
     used, lim = check_limit(c, u)
+    _ai_quota(u)
     masked, pii = engine.mask_pii(msg)
     result = tutor.compose_campus(masked, engine.INDEX["campus"].search(tutor.expand_query(masked), k=3), req.lang)
     um = save_msg(c, u["id"], None, "campus", "user", msg, meta={"pii": pii})
@@ -453,6 +480,11 @@ def attempt_submit(req):
         return attempt_result(c, a)
     qz = row(c, "SELECT * FROM quizzes WHERE id=?", (a["quiz_id"],))
     answers = req.json().get("answers") or {}
+    if not isinstance(answers, dict):
+        raise HTTPError(400, "Sorğu məlumatı düzgün deyil")
+    late = now() > datetime.fromisoformat(a["started_at"]) + timedelta(minutes=qz["time_limit"] or 0) + QUIZ_GRACE
+    if late:        # the time limit is enforced here, not only by the browser timer: late answers are not graded
+        answers = {}
     details, score = [], 0
     for qid in J(qz["question_ids"], []):
         q = q_load(c, qid)
@@ -465,7 +497,7 @@ def attempt_submit(req):
                         "answer": engine.answer_display(q), "explanation": q["explanation"], "topic": q["topic"], "source": cite[0] if cite else None})
     c.execute("UPDATE attempts SET answers=?, details=?, score=?, finished_at=? WHERE id=?",
               (json.dumps(answers), json.dumps(details, ensure_ascii=False), score, iso(now()), a["id"]))
-    audit(c, u["id"], "quiz_submit", "quiz", f"{qz['title']}: {score}/{len(details)}")
+    audit(c, u["id"], "quiz_submit", "quiz", f"{qz['title']}: {score}/{len(details)}" + (" (vaxt bitib)" if late else ""))
     return attempt_result(c, row(c, "SELECT * FROM attempts WHERE id=?", (a["id"],)))
 
 
@@ -533,6 +565,8 @@ def teacher_home(req):
 def upload_material(req):
     c = req.db
     co = course_access(req, req.params["id"])
+    if not LIMITS["upload"].hit(f"u{req.user['id']}"):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     b = req.json()
     name = (b.get("filename") or "material.txt")[:200]
     try:
@@ -541,6 +575,8 @@ def upload_material(req):
         raise HTTPError(400, "Fayl oxunmadı")
     if not data:
         raise HTTPError(400, "Fayl boşdur")
+    if len(data) > store.MAX_FILE:
+        raise HTTPError(413, "Fayl 10 MB-dan böyükdür")
     try:
         text = engine.extract_text(name, data)
     except ValueError as ex:
@@ -618,6 +654,7 @@ def q_out(c, q):
 @R("POST", "/api/studio/generate", roles=("teacher",))
 def studio_generate(req):
     c, u = req.db, req.user
+    _ai_quota(u)
     b = req.json()
     co = course_access(req, int(b.get("course_id") or 0))
     count = max(1, min(int(b.get("count") or 6), 15))
@@ -669,7 +706,8 @@ def question_update(req):
     if b.get("status") in ("draft", "approved"):
         fields["status"] = b["status"]
     if fields:
-        c.execute(f"UPDATE questions SET {', '.join(k + '=?' for k in fields)} WHERE id=?", (*fields.values(), q["id"]))
+        # bandit B608: column names from a fixed whitelist
+        c.execute(f"UPDATE questions SET {', '.join(k + '=?' for k in fields)} WHERE id=?", (*fields.values(), q["id"]))  # nosec B608
     nq = row(c, "SELECT * FROM questions WHERE id=?", (q["id"],))
     store.index_question(nq)
     return q_out(c, nq)
