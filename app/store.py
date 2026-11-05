@@ -731,12 +731,13 @@ SCHEMA_VERSION = 3
 def init(reset: bool = False):
     DATA.mkdir(exist_ok=True)
     if not reset and DB_PATH.exists():
+        probe = sqlite3.connect(DB_PATH)
         try:
-            probe = sqlite3.connect(DB_PATH)
             reset = probe.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION
-            probe.close()
-        except sqlite3.Error:
+        except sqlite3.Error:            # not a database: rebuild it
             reset = True
+        finally:
+            probe.close()                # an open handle would make the unlink() below fail on Windows
     if reset and DB_PATH.exists():
         for p in (DB_PATH, DB_PATH.with_suffix(".db-wal"), DB_PATH.with_suffix(".db-shm")):
             if p.exists():

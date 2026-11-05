@@ -55,4 +55,6 @@ All notable changes to the Zəka demo are recorded here. The format follows
   `answer_display`. Question updates now validate the answer against the question type and options.
 - **Revoking a non-existent document reported success** and wrote an audit entry; it is a 404 now.
 - **Quiz creation stored duplicate question ids** when the same question was selected twice; duplicates are dropped.
+- **A corrupt database file stopped the server from starting on Windows.** `store.init()` left the probe connection
+  open when the file was not a valid SQLite database, so deleting and rebuilding it failed with “file in use”.
 

@@ -6,6 +6,11 @@ minversion = "8.0"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra --strict-markers"
+# An unclosed SQLite connection (reported by Python 3.13+) or socket fails the test instead of passing silently.
+filterwarnings = [
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]
 markers = [
     "slow: tests that spawn a subprocess (run.py start-up checks)",
 ]

@@ -90,23 +90,28 @@ def test_demo_login_redirect_only_to_safe_local_paths(app_db, nxt, expected):
     import urllib.parse
 
     conn = http.client.HTTPConnection("127.0.0.1", app_db.port, timeout=5)
-    conn.request("GET", "/demo/login?role=student&next=" + urllib.parse.quote(nxt, safe=""))
-    r = conn.getresponse()
-    r.read()
-    assert r.status == 302
-    assert r.getheader("Location") == expected
-    assert all("attacker" not in v for k, v in r.getheaders() if k.lower() == "set-cookie")
-    conn.close()
+    try:
+        conn.request("GET", "/demo/login?role=student&next=" + urllib.parse.quote(nxt, safe=""))
+        r = conn.getresponse()
+        r.read()
+        assert r.status == 302
+        assert r.getheader("Location") == expected
+        assert all("attacker" not in v for k, v in r.getheaders() if k.lower() == "set-cookie")
+    finally:
+        conn.close()
 
 
 def test_demo_login_default_redirect_goes_to_the_role_home(app_db):
     import http.client
 
     conn = http.client.HTTPConnection("127.0.0.1", app_db.port, timeout=5)
-    conn.request("GET", "/demo/login?role=office")
-    r = conn.getresponse()
-    r.read()
-    assert r.status == 302 and r.getheader("Location") == "/#/office" and "zeka_sid=" in r.getheader("Set-Cookie")
+    try:
+        conn.request("GET", "/demo/login?role=office")
+        r = conn.getresponse()
+        r.read()
+        assert r.status == 302 and r.getheader("Location") == "/#/office" and "zeka_sid=" in r.getheader("Set-Cookie")
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------- syllabus page escaping
