@@ -240,3 +240,25 @@ def test_init_replaces_a_corrupt_database_file():
         assert c.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 100
     finally:
         c.close()
+
+
+# ---------------------------------------------------------------- the real course materials
+@pytest.mark.parametrize("query, heading", [
+    ("paralel birləşmədə müqavimət", "Paralel"), ("effektiv qiymət nədir", "Effektiv"), ("used to used for", "Describing function"),
+    ("Kirxhofun birinci qanunu", "Kirxhof"), ("range funksiyası", "for"),
+])
+def test_retrieval_finds_the_right_section(db, query, heading):
+    hits = engine.INDEX["chunks"].search(query, k=3)
+    assert hits and heading in hits[0]["heading"], [h["heading"] for h in hits]
+
+
+@pytest.mark.parametrize("course_id", range(1, 7))
+def test_question_generation_on_every_course(db, course_id):
+    chunks = store.rows(db, "SELECT id, heading, text FROM chunks WHERE course_id=?", (course_id,))
+    gl = [g for m in store.rows(db, "SELECT text FROM materials WHERE course_id=?", (course_id,)) for g in engine.glossary(m["text"])]
+    gen = engine.generate_questions(chunks, gl, 8, ("mcq", "tf", "numeric"), seed=course_id)
+    assert len(gen) >= 6, [g["qtype"] for g in gen]
+    for g in gen:
+        assert engine.grade(g, g["answer"] if g["qtype"] != "mcq" else int(g["answer"]))[0] is True, g
+    if course_id == 6:                                   # English for engineers: no maths templates
+        assert not any("lim (x→0)" in g["text"] for g in gen)
