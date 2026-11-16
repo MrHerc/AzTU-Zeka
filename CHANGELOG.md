@@ -18,13 +18,13 @@ All notable changes to the Zəka demo are recorded here. The format follows
   (“not false”) counted as *false*. Negation now flips the word it follows (`engine.grade`).
 - **Keep-alive connections broke after a rejected request.** When a POST/PUT was refused before its body was read
   (401 expired session, 403, 404, 405, 415), the body stayed in the socket and the browser's *next* request on the
-  same connection failed with “400 Bad request syntax”. Unread bodies up to 1 MB are now discarded; larger ones close
-  the connection (`Connection: close`).
+  same connection failed with “400 Bad request syntax”. A request whose body was not read now closes the connection
+  (`Connection: close`).
 - **`HEAD` requests answered 501.** The response writer already left out the body for `HEAD`, but no `do_HEAD`
   existed, so uptime monitors and health checks using `HEAD` saw the portal as down.
 - **Invalid `Content-Length` crashed or hung a server thread.** A non-numeric value answered 500; a negative value
   reached `rfile.read(-1)` and blocked the thread until the client disconnected. Both are now a 400. Connections also
-  time out after 120 s of inactivity instead of holding a thread forever.
+  time out after 30 s of inactivity instead of holding a thread forever.
 - **Database connections leaked on 401/403.** The connection opened for the request was not closed when
   authentication or the role check failed (Python 3.13 reports this as a `ResourceWarning`).
 - **Non-standard JSON constants were accepted.** `NaN` / `Infinity` in a request body reached handlers as floats and
