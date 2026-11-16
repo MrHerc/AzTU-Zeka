@@ -14,7 +14,7 @@ from .store import J, audit, iso, now, row, rows, setting
 from .web import HTTPError, Response, json_resp, redirect
 
 
-def _login(req, role, code):
+def _login(req, role, code, user=None):
     """Password-less demo login. With ZEKA_ACCESS_CODE set, a new visitor must present the shared code;
     a visitor who already holds a valid session may switch roles (the demo's role menu) without it."""
     c = req.db
@@ -31,6 +31,10 @@ def _login(req, role, code):
     if not isinstance(role, str) or role not in logins:
         raise HTTPError(400, "Naməlum rol")
     u = row(c, "SELECT * FROM users WHERE username=?", (logins[role],))
+    if user and role == "student":              # demo storylines (Zəka Radar): sign in as one of the synthetic students
+        u = row(c, "SELECT * FROM users WHERE username=? AND role='student'", (str(user)[:40],))
+        if not u:
+            raise HTTPError(404, "Tələbə tapılmadı")
     old = _sid(req)
     if old:                                   # role switch: the previous session ends (no parallel sessions per browser)
         c.execute("DELETE FROM sessions WHERE sid=?", (old,))
@@ -59,13 +63,13 @@ def bootstrap(req):
 @R("POST", "/api/auth/demo", auth=False)
 def demo_login(req):
     b = req.json()
-    u, sid, headers = _login(req, b.get("role"), b.get("code"))
+    u, sid, headers = _login(req, b.get("role"), b.get("code"), b.get("user"))
     return json_resp({"user": pub_user(u), "home": ROLE_HOME[u["role"]], "token": sid}, headers=headers)
 
 
 @R("GET", "/demo/login", auth=False)
 def demo_login_get(req):
-    u, _, headers = _login(req, req.query.get("role", "student"), req.query.get("code"))
+    u, _, headers = _login(req, req.query.get("role", "student"), req.query.get("code"), req.query.get("user"))
     return redirect(safe_next(req.query.get("next") or "/#" + ROLE_HOME[u["role"]]), headers)
 
 
@@ -127,10 +131,15 @@ def badges(req):
     if u["role"] == "student":
         out["requests"] = row(c, "SELECT COUNT(*) n FROM requests WHERE student_id=? AND status IN ('submitted','in_progress','returned')", (u["id"],))["n"]
         out["absences"] = row(c, "SELECT COUNT(*) n FROM attendance WHERE user_id=? AND status='absent'", (u["id"],))["n"]
+        out["plan"] = row(c, "SELECT COUNT(*) n FROM interventions WHERE student_id=? AND status='open'", (u["id"],))["n"]
     elif u["role"] == "teacher":
         out["questions"] = row(c, "SELECT COUNT(*) n FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id WHERE co.teacher_id=? AND tq.status='open'", (u["id"],))["n"]
     else:
         out["office"] = row(c, "SELECT COUNT(*) n FROM requests WHERE status='submitted'")["n"]
+    from .r_radar import badge_count
+    rb = badge_count(c, u)
+    if rb is not None:
+        out["radar"] = rb
     if u["role"] in ("office", "admin"):
         out["support"] = row(c, "SELECT COUNT(*) n FROM support_tickets WHERE status='open'")["n"]
     else:

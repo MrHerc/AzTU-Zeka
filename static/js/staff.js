@@ -4,6 +4,7 @@ import { stat } from "./student.js";
 import { HOME } from "./shell.js";
 import { feedbackSummaryCard } from "./support.js";
 import { achievementsTeaser } from "./achievements.js";
+import { radarLeaderCard } from "./radar.js";
 
 const COL = { wau: "#2b5aa8", teachers: "#1a2355", prep: "#0e9f6e", doc: "#0e8aa8", cite: "#5a9bd3", sat: "#c27803", academy: "#ee7c7e", gain: "#0e9f6e" };
 // Pull the leading number out of a server-formatted KPI value ("64%", "−41%", "4,4 / 5", "5,4 saat") so it can count up; keep the rest as suffix.
@@ -39,6 +40,7 @@ route("/leader", async (el) => {
       <span class="badge ${k.ok ? "b-green" : "b-amber"}">${k.ok ? t("Hədəfdə") : t("İcrada")}</span></div>
       <div class="row between"><span class="kpi-v">${kpiValue(k.value)}</span>${sparkline(k.series, COL[k.key], 96, 34)}</div>
       <span class="kpi-t">${t("Hədəf")}: ${k.target}</span></div>`)}</div>
+    <div id="leader-radar-slot"></div>
 
     <div class="grid g-12 mt">
       <div class="card"><div class="card-h"><h3>${ic("users", 17)} ${t("Həftəlik aktiv istifadəçilər")}</h3>
@@ -78,10 +80,11 @@ route("/leader", async (el) => {
           <td>${c.attendance == null ? "—" : c.attendance + "%"}</td><td>${c.positive_rate == null ? "—" : c.positive_rate + "%"}</td>
           <td>${c.no_source_rate > 5 ? html`<span class="badge b-amber">${num(c.no_source_rate, 1)}%</span>` : html`${num(c.no_source_rate, 1)}%`}</td></tr>`)}</tbody></table></div></div>
       <div class="card" id="insights"><div class="card-h"><h3>${ic("bell", 17)} ${t("Diqqət tələb edənlər")}</h3></div><div class="card-b stack">
-        ${a.insights.length ? a.insights.map((i) => html`<div class="notice ${i.level === "good" ? "ok" : "warn"}">${ic(i.level === "good" ? "trend" : "alert", 16)}<div>${i.text}</div></div>`) : empty("check", t("Diqqət tələb edən məsələ yoxdur"))}</div></div></div>
+        ${a.insights.length ? a.insights.map((i) => html`<div class="notice ${i.level === "good" ? "ok" : "warn"}">${ic(i.level === "good" ? "trend" : "alert", 16)}<div>${i.text}${i.link ? html` <a href="#${i.link}">${t("Aç")} ${ic("arrow", 12)}</a>` : ""}</div></div>`) : empty("check", t("Diqqət tələb edən məsələ yoxdur"))}</div></div></div>
 
     <div class="grid g-2 mt" id="leader-extra"></div>`);
   $("#print", el).addEventListener("click", () => window.print());
+  radarLeaderCard($("#leader-radar-slot", el));
   // Async cross-module cards (feedback summary + achievements teaser)
   Promise.all([feedbackSummaryCard(true), achievementsTeaser(3)]).then(([fb, ach]) => {
     const box = $("#leader-extra", el);

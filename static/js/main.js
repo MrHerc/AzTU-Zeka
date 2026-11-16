@@ -12,6 +12,8 @@ import "./staff.js";
 import "./guide.js";
 import "./support.js";
 import "./achievements.js";
+import "./radar.js";
+import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;
 { const sk = document.getElementById("skip-link"); if (sk) sk.textContent = t("Əsas məzmuna keç"); }
@@ -63,6 +65,8 @@ async function loginPage(root) {
       <div class="or">${t("demo rolları")}</div>
       ${S.app.access_required ? html`<div class="field mb"><label class="label" for="access-code">${t("Demo giriş kodu")}</label>
         <input class="input" id="access-code" type="password" autocomplete="off" spellcheck="false" placeholder="${t("Təşkilatçının verdiyi kodu daxil edin")}"></div>` : ""}
+      ${demoButton()}
+      <div class="or">${t("və ya rol seçin")}</div>
       <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
       <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>
     </div></div></div>`);

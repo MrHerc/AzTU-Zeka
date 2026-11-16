@@ -4,6 +4,7 @@ import { chatView } from "./chat.js";
 import { stat, lessonRow, schedulePage } from "./student.js";
 import { achievementsTeaser } from "./achievements.js";
 import { refreshBadges } from "./shell.js";
+import { radarTeacherAlert } from "./radar.js";
 
 const LET = "ABCD";
 const crumbsT = (...c) => [[t("Əsas"), "/teacher"], ...c];
@@ -25,6 +26,7 @@ route("/teacher", async (el) => {
       <h2 class="mt-sm">${t("{greet}, {name} müəllim", { greet: greeting(), name: first })}</h2><p>${d.user.title}</p></div>
       <div class="row wrap"><button class="btn btn-accent" data-go="/teacher/studio">${ic("wand", 16)} ${t("Test yarat")}</button>
         <button class="btn btn-hero-ghost" data-go="/teacher/syllabus">${ic("layers", 16)} ${t("Sillabus")}</button></div></div></div>
+    <div id="radar-slot"></div>
 
     <div class="grid g-4 mt" data-tour="stats">
       ${stat("message", "ic-blue", ins ? cnt(ins.this_week) : "—", t("Tutora sual (bu həftə)"))}
@@ -87,6 +89,7 @@ route("/teacher", async (el) => {
           <a href="#/teacher/studio?tab=bank">${t("Yoxla")} ${ic("arrow", 13)}</a></div></div>` : ""}
       </div></div>`);
   achievementsTeaser(3).then((h) => { const box = $("#ach-teaser", el); if (box && h) mount(box, h); else if (box) box.remove(); });
+  radarTeacherAlert($("#radar-slot", el));
 });
 
 route("/teacher/schedule", (el) => schedulePage(el, "teacher"));

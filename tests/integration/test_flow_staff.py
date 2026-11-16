@@ -165,7 +165,8 @@ def test_tool_price_tone_survives_translation(teacher):
 
 def test_notifications_and_achievements_are_localised(app_db):
     t = app_db.client("teacher", lang="en")
-    assert all(not AZ_LETTERS.search(n["title"]) for n in t.get("/api/notifications").json["items"][:5])
+    # the product name "Zəka" is never translated (i18n/BRIEF.md): "Zəka Radar: students who need attention"
+    assert all(not AZ_LETTERS.search(n["title"].replace("Zəka", "")) for n in t.get("/api/notifications").json["items"][:5])
     ach = app_db.client().get("/api/achievements", lang="en").json
     assert not AZ_LETTERS.search(ach["items"][0]["title"])
     qs = next(x for x in ach["items"] if x["id"] == "qs-2026")

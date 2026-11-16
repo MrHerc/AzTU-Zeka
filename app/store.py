@@ -87,6 +87,11 @@ CREATE TABLE IF NOT EXISTS support_messages(id INTEGER PRIMARY KEY, ticket_id IN
   file_id INT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS feedback(id INTEGER PRIMARY KEY, user_id INT, role TEXT, area TEXT, score INT, nps INT, comment TEXT,
   page TEXT, lang TEXT, created_at TEXT, synthetic INT DEFAULT 0);
+CREATE TABLE IF NOT EXISTS interventions(id INTEGER PRIMARY KEY, student_id INT, course_id INT, created_by INT, kind TEXT, status TEXT,
+  plan TEXT, risk_before REAL, level_before TEXT, drivers TEXT, note TEXT, created_at TEXT, updated_at TEXT, due_at TEXT, closed_at TEXT,
+  synthetic INT DEFAULT 0);
+CREATE TABLE IF NOT EXISTS risk_snapshots(week_start TEXT, course_id INT, high INT, watch INT, ok INT, students INT);
+CREATE INDEX IF NOT EXISTS idx_iv_student ON interventions(student_id, course_id, status);
 CREATE INDEX IF NOT EXISTS idx_ticket_user ON support_tickets(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_msg_user ON messages(user_id, channel, course_id);
 CREATE INDEX IF NOT EXISTS idx_msg_course ON messages(course_id, channel, role);
@@ -722,10 +727,12 @@ def seed(c):
     notify(c, uid["rektorluq"], "report", T3("Həftəlik pilot hesabatı hazırdır"), T3("Göstəricilərin {n}-si hədəfdədir", n=7), "/leader", t0 - timedelta(hours=8))
     from . import support
     support.seed(c, uid, t0)
+    from . import radar_seed
+    radar_seed.seed(c, t0)
     audit(c, None, "seed", "system", "Demo məlumatları yaradıldı")
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def init(reset: bool = False):

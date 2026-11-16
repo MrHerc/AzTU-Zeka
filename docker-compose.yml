@@ -1,0 +1,20 @@
+# One command:  docker compose up --build   →  http://localhost:5070/?demo=1  (3-minute Zəka Radar demo)
+services:
+  zeka:
+    build: .
+    image: zeka-aztu-demo:latest
+    ports:
+      # Published on this computer only: the demo login is password-less.
+      - "127.0.0.1:5070:5070"
+    environment:
+      # QR codes on issued documents point here; change it when the demo runs on a public host
+      PUBLIC_URL: "http://localhost:5070"
+      # Inside the container the server listens on 0.0.0.0, which run.py only accepts with an access code. The port above is
+      # reachable from this computer alone, so the local demo runs without one. For a host that others can reach, remove
+      # this line, publish the port and set ZEKA_ACCESS_CODE (visitors enter it on the login page).
+      ZEKA_ALLOW_OPEN_DEMO: "1"
+      # Optional real LLM (otherwise the offline engine answers; the demo does not need it):
+      # AZTU_LLM_PROVIDER: anthropic
+      # AZTU_LLM_MODEL: claude-sonnet-5-5
+      # AZTU_LLM_API_KEY: ${AZTU_LLM_API_KEY}
+    restart: unless-stopped
