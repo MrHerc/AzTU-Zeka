@@ -114,7 +114,9 @@ def news_ics(req):
     n = _get(req, req.params["id"])
     if not n["event_start"]:
         raise HTTPError(400, "Bu xəbər tədbir deyil")
-    fmt = lambda s: datetime.fromisoformat(s).strftime("%Y%m%dT%H%M%S")
+    def fmt(s):
+        return datetime.fromisoformat(s).strftime("%Y%m%dT%H%M%S")
+
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     ics = "\r\n".join(["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//AzTU//Zeka demo//AZ", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
                        f"UID:news-{n['id']}@zeka-demo.local", f"DTSTAMP:{stamp}", f"DTSTART;TZID=Asia/Baku:{fmt(n['event_start'])}",
@@ -132,11 +134,11 @@ def news_manage(req):
 
 
 def _news_fields(b):
-    title = (b.get("title") or "").strip()
+    title = b.text("title")
     if len(title) < 5:
         raise HTTPError(400, "Başlıq ən azı 5 simvol olmalıdır")
     kind = b.get("kind") if b.get("kind") in KINDS else "news"
-    f = {"kind": kind, "title": title[:200], "summary": (b.get("summary") or "").strip()[:400], "body": (b.get("body") or "").strip()[:8000],
+    f = {"kind": kind, "title": title[:200], "summary": b.text("summary", 400), "body": b.text("body", 8000),
          "audience": b.get("audience") if b.get("audience") in ("all", "students", "teachers") else "all",
          "pinned": 1 if b.get("pinned") else 0, "important": 1 if b.get("important") else 0,
          "cover": json.dumps({"icon": str(b.get("icon") or "news")[:20], "tone": b.get("tone") if b.get("tone") in TONES else "navy"}),
@@ -146,12 +148,12 @@ def _news_fields(b):
         raise HTTPError(400, "Qısa məzmunu yazın")
     if b.get("event_start"):
         try:
-            st = datetime.fromisoformat(b["event_start"])
+            st = datetime.fromisoformat(b.text("event_start"))
         except ValueError:
-            raise HTTPError(400, "Tədbirin tarixi düzgün deyil")
-        dur = max(0.5, min(float(b.get("duration_h") or 2), 72))
-        f.update({"event_start": iso(st), "event_end": iso(st + timedelta(hours=dur)), "location": (b.get("location") or "").strip()[:200],
-                  "capacity": max(0, int(b.get("capacity") or 0)), "registration": 1 if b.get("registration") else 0})
+            raise HTTPError(400, "Tədbirin tarixi düzgün deyil") from None
+        dur = b.number("duration_h", 2, 0.5, 72)
+        f.update({"event_start": iso(st), "event_end": iso(st + timedelta(hours=dur)), "location": b.text("location", 200),
+                  "capacity": b.integer("capacity", 0, 0, 100000), "registration": 1 if b.get("registration") else 0})
     else:
         f.update({"event_start": None, "event_end": None, "location": None, "capacity": None, "registration": 0})
     return f

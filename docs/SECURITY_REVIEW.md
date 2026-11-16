@@ -258,7 +258,7 @@ the log rotates at 5 MB. Public hosts get a one-line access log on stdout (clien
 | `.github/dependabot.yml` | Weekly grouped updates for the pinned actions and scanner versions. |
 | `.gitleaks.toml` | Default rules plus an allowlist for two known non-secrets: the test fixture code and the verification-code alphabet. |
 | `SECURITY.md` | Private vulnerability reporting through GitHub, and deployment rules. |
-| `tests/selftest.py` | 43 new security regression checks. The self-test now runs 179 checks, all passing. |
+| `tests/integration/test_security_review.py` | 43 security regression checks (written for `tests/selftest.py`, moved to pytest when that script was replaced). |
 
 ## Owner actions
 
