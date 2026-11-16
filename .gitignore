@@ -8,3 +8,5 @@ __pycache__/
 .kiro/
 # Təqdimat materialları (pitch/) yalnız lokal saxlanılır
 pitch/
+# Agentlərin müvəqqəti iş qovluqları (git worktree), repoya aid deyil
+.claude/worktrees/
