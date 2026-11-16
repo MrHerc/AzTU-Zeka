@@ -1,0 +1,322 @@
+<title>Zəka vahid hesabat</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column (max 78ch) with a sticky section index on wide screens; tables and diagrams may run wider inside their own scrollers. */
+:root {
+  --bg: #f4f6fa; --surface: #ffffff; --surface-2: #eef1f6; --border: #dfe4ee;
+  --text: #121a3a; --text-2: #3a4463; --muted: #667089;
+  --navy: #1a2355; --blue: #2b5aa8; --blue-soft: #e4eefa; --coral: #c94b4e; --coral-soft: #fdeff0;
+  --green: #0b7d57; --green-soft: #e3f5ee; --amber: #9a5f02; --amber-soft: #fff3da; --red: #b9333a; --red-soft: #fdecec;
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Code", Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1024; --surface: #121a35; --surface-2: #1a2444; --border: #2a3760;
+    --text: #e8ecf8; --text-2: #c7cfe4; --muted: #98a3c2;
+    --navy: #c9d3f5; --blue: #8fbde8; --blue-soft: #16294b; --coral: #f29a9c; --coral-soft: #3a1c26;
+    --green: #5fd3a6; --green-soft: #0d2b22; --amber: #f0bf5c; --amber-soft: #2f2410; --red: #f08a8f; --red-soft: #35161b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1024; --surface: #121a35; --surface-2: #1a2444; --border: #2a3760;
+  --text: #e8ecf8; --text-2: #c7cfe4; --muted: #98a3c2;
+  --navy: #c9d3f5; --blue: #8fbde8; --blue-soft: #16294b; --coral: #f29a9c; --coral-soft: #3a1c26;
+  --green: #5fd3a6; --green-soft: #0d2b22; --amber: #f0bf5c; --amber-soft: #2f2410; --red: #f08a8f; --red-soft: #35161b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15.5px; line-height: 1.62;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 72px; }
+.page { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; }
+@media (min-width: 1040px) { .page { grid-template-columns: 208px minmax(0, 1fr); } }
+nav.toc { display: none; }
+@media (min-width: 1040px) {
+  nav.toc { display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; font-size: 13px; }
+  nav.toc a { display: block; padding: 5px 10px; color: var(--muted); text-decoration: none; border-left: 2px solid var(--border); }
+  nav.toc a:hover, nav.toc a:focus-visible { color: var(--text); border-left-color: var(--blue); }
+  nav.toc .toc-h { font-weight: 600; color: var(--text-2); padding: 0 10px 8px; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
+}
+main { min-width: 0; display: flex; flex-direction: column; gap: 44px; }
+header.top { display: flex; flex-direction: column; gap: 10px; padding-bottom: 22px; border-bottom: 1px solid var(--border); }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); }
+h1 { font-size: clamp(28px, 4.4vw, 40px); line-height: 1.12; letter-spacing: -.02em; margin: 0; color: var(--navy); text-wrap: balance; }
+h2 { font-size: 23px; line-height: 1.22; letter-spacing: -.015em; margin: 0 0 4px; color: var(--navy); text-wrap: balance; }
+h3 { font-size: 16.5px; line-height: 1.3; margin: 0; color: var(--text); }
+p { margin: 0; max-width: 78ch; }
+.lede { font-size: 17.5px; color: var(--text-2); max-width: 70ch; }
+.meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; scroll-margin-top: 20px; }
+.stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+ul, ol { margin: 0; padding-left: 22px; max-width: 78ch; display: flex; flex-direction: column; gap: 6px; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+a { color: var(--blue); }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+.verdict { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.verdict p { max-width: 82ch; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.fact { padding: 14px 16px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; margin: 0 -1px -1px 0; }
+.fact b { font-size: 22px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.fact span { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+th { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--surface-2); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .sub { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; line-height: 1.5; }
+.p-red { background: var(--red-soft); color: var(--red); } .p-amber { background: var(--amber-soft); color: var(--amber); }
+.p-green { background: var(--green-soft); color: var(--green); } .p-blue { background: var(--blue-soft); color: var(--blue); }
+.p-grey { background: var(--surface-2); color: var(--text-2); }
+.note { border-left: 3px solid var(--blue); background: var(--blue-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 14.5px; }
+.note.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+.note.risk { border-left-color: var(--red); background: var(--red-soft); }
+.note p { max-width: 84ch; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card p, .card li { font-size: 14.5px; }
+.card .tag { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+figure .scroll { padding: 14px; }
+figure svg { display: block; max-width: 100%; height: auto; color: var(--text); }
+figcaption { font-size: 13px; color: var(--muted); max-width: 84ch; }
+pre.tree { margin: 0; padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; font-family: var(--mono); font-size: 12.8px; line-height: 1.6; color: var(--text-2); }
+pre.tree b { color: var(--navy); font-weight: 600; }
+.lane { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.lane > div { padding: 12px 14px; border-bottom: 1px solid var(--border); min-width: 0; }
+.lane > div:nth-last-child(-n+2) { border-bottom: 0; }
+.lane .when { font-family: var(--mono); font-size: 12.5px; color: var(--muted); background: var(--surface-2); font-variant-numeric: tabular-nums; }
+.lane .what { display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
+.lane .what b { color: var(--text); }
+.lane .what span { color: var(--text-2); }
+.lane .what .accept { color: var(--muted); font-size: 13px; }
+.gate { background: var(--navy); color: var(--bg); border-radius: 10px; padding: 12px 16px; font-weight: 600; font-size: 14.5px; }
+.src { font-size: 12.5px; color: var(--muted); }
+.src a { color: var(--muted); }
+@media (max-width: 560px) { .lane { grid-template-columns: 66px minmax(0, 1fr); } th, td { padding: 9px 10px; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="page">
+<nav class="toc" aria-label="Bölmələr">
+  <div class="toc-h">Bölmələr</div>
+  <a href="#netice">1. Qısa nəticə</a>
+  <a href="#bugun">2. Bu gün nə var</a>
+  <a href="#hesabatlar">3. Beş hesabatın cəmi</a>
+  <a href="#olcme">4. Yük ölçməsi</a>
+  <a href="#bosluqlar">5. Real dünya boşluqları</a>
+  <a href="#konsepsiya">6. Məhsul konsepsiyası</a>
+  <a href="#arxitektura">7. Arxitektura</a>
+  <a href="#workflow">8. Workflow-lar</a>
+  <a href="#nist">9. NIST xəritəsi</a>
+  <a href="#plan">10. 72 saatlıq plan</a>
+  <a href="#hedler">11. 72 saatda olmayanlar</a>
+  <a href="#qerarlar">12. Sənin qərarların</a>
+  <a href="#yoxlanmayib">13. Yoxlanmayanlar</a>
+</nav>
+
+<main>
+<header class="top">
+  <div class="eyebrow">Zəka · AzTU Rəqəmsal Kampus</div>
+  <h1>Vahid hesabat və 72 saatlıq plan</h1>
+  <p class="lede">Demodan universitetə satılan məhsula keçid. Kod, beş əvvəlki hesabat, yük ölçməsi və bazar araşdırması bir sənəddə.</p>
+  <div class="meta"><span>16 noyabr 2026</span><span>Baza: <code>main @ a59ef1f</code></span><span>Mənbə: kod, PR #1–#5, 4 araşdırma xətti, öz ölçmələrim</span></div>
+</header>
+
+<section id="netice">
+  <h2>1. Qısa nəticə</h2>
+  <div class="verdict">
+    <p><b>Zəka bu gün güclü demodur, məhsul deyil.</b> Domen dərinliyi, üç dil və interfeys realdır. Real giriş, qalıcı məlumat, etibarlı imtahan və yükə davam yoxdur.</p>
+    <p><b>Beş əvvəlki iş bu problemlərin bir hissəsini həll edib.</b> Heç biri <code>main</code>-ə birləşdirilməyib. İkisi bir-biri ilə toqquşur. Birləşdirmə planın ilk addımıdır.</p>
+    <p><b>AzTU-ya "daha bir LMS" satılmaz.</b> Universitetin artıq LMS-i, SSO-su, Microsoft 365 və Copilot-u, saytında AI köməkçisi var. Satılan şey mövcud sistemlərin üstündə vahid qatdır və akkreditasiya hesabatında yazılmış boşluqlardır.</p>
+    <p><b>72 saatda real hədəf bir fakültə üçün pilot buraxılışıdır.</b> Real hesablar, itməyən məlumat, SEB ilə imtahan rejimi, otaq tapan köməkçi, sillabus. Bütün universitet, hüquqi qüvvəli sənəd və AzTU SSO-su 72 saata sığmır. Səbəb kod deyil, universitetdən asılı addımlardır.</p>
+    <p><b>Fərqləndirən ideya: icra olunan sillabus.</b> Sillabus PDF kimi qalmır, fənni konfiqurasiya edir və akkreditasiya üçün sübut zənciri yaradır. Bölmə 6-da açılır.</p>
+  </div>
+</section>
+
+<section id="bugun">
+  <h2>2. Bu gün nə var</h2>
+  <p>Baza <code>main</code> budağıdır. Rəqəmlər audit hesabatından götürülüb, test nəticəsini özüm təkrar işlətdim.</p>
+  <div class="facts">
+    <div class="fact"><b>5</b><span>rol: tələbə, müəllim, dekanlıq, rəhbərlik, admin</span></div>
+    <div class="fact"><b>107</b><span>API marşrutu, 6-sı girişsiz</span></div>
+    <div class="fact"><b>40</b><span>SQLite cədvəli, xarici açar yoxdur</span></div>
+    <div class="fact"><b>3 489</b><span>tərcümə sətri, AZ / EN / RU, 100%</span></div>
+    <div class="fact"><b>136</b><span>yoxlama <code>main</code>-də, hamısı keçir</span></div>
+    <div class="fact"><b>0</b><span>xarici asılılıq: yalnız Python stdlib və sadə JS</span></div>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="tag">Güclü tərəf</div>
+      <ul>
+        <li>Real iş axınları: müraciət, SLA, sənəd verilməsi və ləğvi, dəstək masası.</li>
+        <li>Azərbaycan dilinə uyğun axtarış: kök ayırma, BM25, hər cavabda mənbə.</li>
+        <li>Kodda intizam: parametrli SQL, hər yerdə escape, CSP, fayl tipinin baytla yoxlanması.</li>
+        <li>İnterfeys: mobil, tünd rejim, bələdçi turlar, klaviatura fokusları.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="tag">Demo olan hissə</div>
+      <ul>
+        <li>Parolsuz giriş. Admin rolu da daxildir.</li>
+        <li>Bütün istifadəçi, qiymət, davamiyyət sintetikdir.</li>
+        <li>AI susmaya görə qayda əsaslı mühərrikdir. LLM yolu sınanmayıb.</li>
+        <li>Rəhbərlik panelində bəzi rəqəmlər kodda sabit yazılıb.</li>
+        <li>Sənədlərdə "DEMO" nişanı var, hüquqi qüvvə yoxdur.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="hesabatlar">
+  <h2>3. Beş hesabatın cəmi</h2>
+  <p>Beş budaq 5 noyabrda açılıb. Hamısı açıq PR-dır. Hər birinin sənədini və dəyişikliyini oxudum.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>PR</th><th>Nə verir</th><th>Kod dəyişir?</th><th>Açıq qalan</th></tr></thead>
+    <tbody>
+      <tr><td><b>#1</b> Audit və yol xəritəsi</td><td>47 tapıntı: 2 kritik, 12 yüksək, 19 orta, 14 aşağı. 30/60/90 günlük plan, təxminən 36 mühəndis-həftə.<span class="sub">docs/AUDIT.md, docs/ROADMAP.md</span></td><td>Xeyr</td><td>Heç bir tapıntı bu PR-da düzəldilmir.</td></tr>
+      <tr><td><b>#2</b> README və sənədlər</td><td>İngiliscə README, arxitektura, 107 marşrutun API təsviri. Nümunələr işləyən serverdən götürülüb.</td><td>Xeyr</td><td>README digər PR-larla toqquşur.</td></tr>
+      <tr><td><b>#3</b> Təhlükəsizlik</td><td>1 kritik, 5 yüksək, 8 orta, 9 aşağı tapıntı. Kritik, yüksək və orta kodda düzəldilib: giriş kodu, CSRF, sorğu qarışması, fayl bombası, sessiya müddəti, razılıq, saxlama müddəti.<span class="sub">179 yoxlama, təhlükəsizlik CI-ı, Dependabot</span></td><td>Bəli, 33 fayl</td><td>Zip faylının tarixçədən silinməsi sənin force-push-unu tələb edir. Üç aşağı səviyyəli qərar açıqdır.</td></tr>
+      <tr><td><b>#4</b> Zəka Radar</td><td>İzah olunan erkən xəbərdarlıq, müəllimin dəstək planı, 3 dəqiqəlik təqdimat rejimi, Dockerfile və compose.</td><td>Bəli, 33 fayl</td><td>Model sintetik məlumatda qurulub. Real məlumatda yoxlanmayıb.</td></tr>
+      <tr><td><b>#5</b> Testlər və CI</td><td>639 test, 18 düzəliş, ruff, mypy, GitHub Actions. Python 3.10–3.13 və Windows.</td><td>Bəli, 57 fayl</td><td>Tələbə birdəfəlik testi təslim etmədən yenidən aça bilir. Bu düzəldilməyib.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Birləşdirmə sınağı</h3>
+  <p>Budaqları müvəqqəti iş qovluğunda birləşdirib baxdım. Heç nə yazılmadı.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Sıra</th><th>Budaq</th><th>Nəticə</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>#3 təhlükəsizlik</td><td><span class="pill p-green">Təmiz</span></td></tr>
+      <tr><td class="num">2</td><td>#5 testlər</td><td><span class="pill p-amber">12 fayl, təxminən 20 parça</span> <code>app/web.py</code>, <code>app/r_core.py</code>, <code>app/r_academy.py</code></td></tr>
+      <tr><td class="num">3</td><td>#4 Radar</td><td><span class="pill p-amber">8 fayl, təxminən 11 parça</span> <code>app/r_core.py</code>, tərcümə kataloqları</td></tr>
+      <tr><td class="num">4</td><td>#2 sənədlər</td><td><span class="pill p-amber">Yalnız README</span></td></tr>
+      <tr><td class="num">5</td><td>#1 audit</td><td><span class="pill p-green">Təmiz</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><p><b>Üç tələ.</b> Birincisi, 21 fayl CRLF sətir sonu ilə saxlanıb, #3 və #4 bəzilərini LF-ə çevirib. <code>-Xignore-cr-at-eol</code> olmadan bütöv fayllar toqquşur. İkincisi, #3 öz 43 təhlükəsizlik yoxlamasını <code>tests/selftest.py</code>-a yazıb, #5 isə həmin faylı silir. Yoxlamalar pytest-ə köçürülməlidir. Üçüncüsü, #3 və #5 eyni HTTP qatını fərqli üsulla düzəldir. Biri saxlanmalıdır.</p></div>
+
+  <h3>Əsas tapıntıların bugünkü vəziyyəti</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Tapıntı</th><th>Hansı PR toxunur</th><th>Vəziyyət</th></tr></thead>
+    <tbody>
+      <tr><td>İnternetdən hər kəs admin kimi girə bilir</td><td>#3 ortaq giriş kodu qoyur</td><td><span class="pill p-amber">Müvəqqəti</span> Kodu bilən hər rolu ala bilir.</td></tr>
+      <tr><td>Real hesab, parol, MFA, SSO yoxdur</td><td>Heç biri</td><td><span class="pill p-red">Açıq</span></td></tr>
+      <tr><td>Sorğular eyni bağlantıda qarışır</td><td>#3 və #5</td><td><span class="pill p-green">Həll olunub</span> iki fərqli üsulla</td></tr>
+      <tr><td>Testin vaxt limiti yalnız brauzerdədir</td><td>#3</td><td><span class="pill p-green">Həll olunub</span></td></tr>
+      <tr><td>Paralel cəhd açmaq və cavab açarını görmək</td><td>Heç biri</td><td><span class="pill p-red">Açıq</span></td></tr>
+      <tr><td>Sxem dəyişəndə baza silinir, backup yoxdur</td><td>Heç biri</td><td><span class="pill p-red">Açıq</span></td></tr>
+      <tr><td>Rəhbərlik panelində uydurma rəqəmlər</td><td>#2 sənəddə qeyd edir</td><td><span class="pill p-red">Açıq</span> Kodda qalır.</td></tr>
+      <tr><td>Razılıq və saxlama müddəti tətbiq olunmur</td><td>#3</td><td><span class="pill p-green">Həll olunub</span></td></tr>
+      <tr><td>İstifadəçi, fənn, qrup idarəetməsi yoxdur</td><td>Heç biri</td><td><span class="pill p-red">Açıq</span></td></tr>
+      <tr><td>AzTU qaydaları kodda sabit yazılıb</td><td>Heç biri</td><td><span class="pill p-red">Açıq</span></td></tr>
+      <tr><td>LLM keyfiyyəti ölçülməyib</td><td>Heç biri</td><td><span class="pill p-red">Açıq</span></td></tr>
+      <tr><td>Verilənlər bazası olan zip tarixçədədir</td><td>#3 faylı silir</td><td><span class="pill p-amber">Yarım</span> Tarixçə təmizlənməyib.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="olcme">
+  <h2>4. Yük ölçməsi</h2>
+  <p>Əvvəlki hesabatların heç biri yük testi etməyib. Mən etdim. Server <code>main</code>-dən, 4 nüvəli konteynerdə, hər sorğu yeni bağlantı ilə. Ünvan tələbənin ana səhifəsidir: <code>/api/student/home</code>.</p>
+  <div class="scroll"><table>
+    <thead><tr><th class="num">Paralel müştəri</th><th class="num">Sorğu / san</th><th class="num">p50</th><th class="num">p95</th><th class="num">p99</th><th class="num">Xəta</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">256</td><td class="num">4 ms</td><td class="num">5 ms</td><td class="num">7 ms</td><td class="num">0</td></tr>
+      <tr><td class="num">20</td><td class="num">47</td><td class="num">423 ms</td><td class="num">466 ms</td><td class="num">1,4 s</td><td class="num">0</td></tr>
+      <tr><td class="num">100</td><td class="num">52</td><td class="num">1,8 s</td><td class="num">3,7 s</td><td class="num">6,2 s</td><td class="num">0</td></tr>
+      <tr><td class="num">300</td><td class="num">17</td><td class="num">2,4 s</td><td class="num">6,7 s</td><td class="num">27,9 s</td><td class="num">150</td></tr>
+    </tbody>
+  </table></div>
+  <div class="stack">
+    <p><b>Nə görünür.</b> Bir müştəri ilə server saniyədə 256 sorğu çəkir. 20 paralel müştəri ilə bu 47-yə düşür. 300 müştəridə sorğuların təxminən dörddə biri uğursuz olur.</p>
+    <p><b>Səbəb axtarışı.</b> Handler özü 1,2 ms işləyir. Amma bir ana səhifə sorğusu 76 SQL çağırışı edir. Paralel axınlar bu çağırışlarda bir-birini gözləyir. Axın keçid intervalını dəyişdim, kömək etmədi. Paralel handler sayını məhdudlaşdırma sınağı yarımçıq qaldı.</p>
+    <p><b>Mənası.</b> AzTU-da 10 000-dən çox tələbə var. 300 nəfərlik bir imtahan axını indiki serveri dayandırar. Yük testi buraxılış şərti olmalıdır.</p>
+  </div>
+</section>
+
+<section id="bosluqlar">
+  <h2>5. Real dünya boşluqları</h2>
+  <p>Dörd araşdırma xətti apardım: Azərbaycan bazarı və qanunu, qlobal məhsulların uğursuzluqları, təhlükəsiz imtahan brauzeri, NIST. Aşağıdakı faktların mənbələri sonda verilib.</p>
+
+  <h3>AzTU-da artıq nə var</h3>
+  <ul>
+    <li>LMS 2011–2014-cü illərdə KOICA layihəsi ilə qurulub. Giriş <code>sso.aztu.edu.az</code> ünvanındandır.</li>
+    <li>TKTA 2023-cü il akkreditasiya hesabatında yazır: sistem e-sənəd dövriyyəsini, cədvəli, e-jurnalı və apellyasiyanı da əhatə etməlidir. Sistemin hüquqi əsas sənədləri göstərilməyib.</li>
+    <li>Rəqəmsallaşma üzrə prorektor "Universitet İdarəetmə Sistemi" elan edib.</li>
+    <li>Nazirlik 20 universitetə Microsoft alətlərini və Copilot-u mərkəzləşdirilmiş verir. AzTU-da aktivdir.</li>
+    <li>aztu.edu.az saytında OpenAI modeli ilə işləyən AI köməkçi var.</li>
+    <li>Kampus bir ərazidə yeddi çoxmərtəbəli korpusdur. Altı fakültə, 10 000-dən çox tələbə, 1 000-dən çox müəllim.</li>
+  </ul>
+
+  <h3>Yerli rəqiblər</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Məhsul</th><th>Harada</th><th>Qeyd</th></tr></thead>
+    <tbody>
+      <tr><td>Unibook (Neuron)</td><td>ADNSU və digər universitetlər</td><td>Bulud, təxminən 50 modul</td></tr>
+      <tr><td>EduMan (Ultra)</td><td>UNEC, ADU, kolleclər</td><td>UNEC 2019-dan QR kodlu, imzalı arayış verir</td></tr>
+      <tr><td>Empro</td><td>ADPU</td><td>Tələbə kabineti</td></tr>
+      <tr><td>Blackboard</td><td>BDU, ADA</td><td>ADA-da Ellucian Banner ilə birlikdə</td></tr>
+      <tr><td>Microsoft 365 və Copilot</td><td>20 universitet</td><td>Nazirlik pulsuz verir</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><p><b>Nəticə.</b> QR kodlu arayış bu bazarda yenilik deyil. Tapdığım rəqiblərin heç biri mənbəli AI tutor və ya kampus köməkçisi elan etmir. Bu mənim çıxarışımdır, mənbə ilə təsdiqlənməyib.</p></div>
+
+  <h3>Qanun və qayda</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Sənəd</th><th>Tələb</th><th>Məhsula təsiri</th></tr></thead>
+    <tbody>
+      <tr><td>Fərdi məlumatlar haqqında Qanun, 998-IIIQ, maddə 8</td><td>Razılıq yazılı və ya gücləndirilmiş e-imzalı e-sənəd olmalıdır. Sübut yükü operatordadır.</td><td>Ekrandakı "razıyam" düyməsi kifayət etməyə bilər. Hüquqşünas baxmalıdır.</td></tr>
+      <tr><td>Maddə 9.5</td><td>Üz, səs, barmaq izi, xətt biometrik məlumatdır.</td><td>Kamera ilə proktorinq etmirik.</td></tr>
+      <tr><td>Maddə 14</td><td>Bərabər qoruma olmayan ölkəyə ötürmə qadağandır, subyekt razı deyilsə.</td><td>Xarici LLM yalnız açıq razılıqla və maskalama ilə. Hostinq ölkə daxilində.</td></tr>
+      <tr><td>Maddə 15</td><td>Fərdi məlumat sistemi emaldan əvvəl dövlət qeydiyyatından keçir.</td><td>Universitet üçün qeydiyyat sənədlərini biz hazırlayırıq.</td></tr>
+      <tr><td>Fərman 718, 03.06.2019</td><td>Publik hüquqi şəxslər dövlət sistemlərini Hökumət Buludunda yerləşdirir.</td><td>Keçid planında BDU və UNEC var, AzTU yoxdur. Məhsul universitetin öz serverində də işləməlidir.</td></tr>
+      <tr><td>Nazirlər Kabinetinin 372 saylı qərarı, 05.11.2026</td><td>XRİTDX publik hüquqi şəxslərin informasiya təhlükəsizliyini diaqnostika edir. Təchizatçılar da daxildir.</td><td>Bizdən audit jurnalı, backup, təhlükəsizlik sənədləri istəniləcək.</td></tr>
+      <tr><td>Nazirlər Kabinetinin 348 saylı qərarı, 24.12.2013</td><td>Dərs saatlarının 25%-dən çoxunu buraxan tələbə imtahana buraxılmır.</td><td>Hədd kodda sabit yox, tənzimlənən olmalıdır.</td></tr>
+      <tr><td>AzTU qiymətləndirmə qaydası</td><td>Seminar 30, davamiyyət 10, sərbəst iş 10, imtahan 50. İmtahanda minimum 17.</td><td>Bizim nümunə sxem fərqlidir: 10, 10, 10, 20, 50. Düzəldilməlidir.</td></tr>
+      <tr><td>Akkreditasiya meyarları, KQ-05, 30.09.2022</td><td>3.5.1, 3.5.3, 4.4, 5.4.2–5.4.8: e-təhsil sistemi, fəaliyyət jurnalı, rol bölgüsü, mərkəzi sistemlə inteqrasiya, təhlükəsizlik.</td><td>Bu göstəricilərə sübut paketi satış arqumentidir.</td></tr>
+      <tr><td>Dövlət satınalmaları haqqında Qanun, 988-VIQ</td><td>100 000 AZN-dən yuxarı açıq tender. Aşağıda kotirovka sorğusu.</td><td>Pilot qiyməti bu həddin altında qurulmalıdır.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Qlobal məhsulların dərsləri</h3>
+  <div class="cols">
+    <div class="card"><div class="tag">Əvəz etmə, üstünə otur</div><p>Tələbə informasiya sisteminin dəyişdirilməsi ən bahalı uğursuzluqdur. Washington Universitetinin Workday proqramı 266 milyon dollar, Minnesota-nın büdcəsi 151-dən 290 milyona qalxıb. Mövcud sistemlərə qoşulan qat aylarla satılır.</p></div>
+    <div class="card"><div class="tag">AI tutor iki tərəfli bıçaqdır</div><p>Harvard sınağında qoruyucu dizaynlı tutor 0,73–1,3 standart kənarlaşma qazanc verib. 2026-cı ilin 2 379 tələbəli sınağında isə kursa qoşulmuş AI tutor yekun qiyməti 0,37 standart kənarlaşma aşağı salıb. Sokratik rejim və mənbə məcburiyyəti bəzək deyil, şərtdir.</p></div>
+    <div class="card"><div class="tag">Xəbərdarlıq yox, müdaxilə</div><p>Erkən xəbərdarlıq sistemləri təkbaşına tələbəni saxlamır. 11 universitetli MAAPS sınağı ümumi effekt tapmayıb. Bir məhsul irqi risk əlaməti kimi istifadə etdiyi üçün qalmaqala düşüb. Radar-ın dəstək planı və demoqrafiyasız modeli düzgün istiqamətdir.</p></div>
+    <div class="card"><div class="tag">Ən sübutlu modul köməkçidir</div><p>Georgia State-in inzibati çatbotu yay itkisini 21,4% azaldıb. Mesajların 1%-dən azı işçiyə gedib. Kampus köməkçisi universitet üçün ölçülə bilən qənaətdir.</p></div>
+    <div class="card"><div class="tag">Anonimlik ölçülü olmalıdır</div><p>Kurs forumlarında sualların 75,6%-i anonim verilir. Tam anonim tətbiqlər isə təhqirə görə qadağan olunub. Düzgün model: tələbələrə anonim, müəllimə və moderatora açıq.</p></div>
+    <div class="card"><div class="tag">Təhlükəsizlik satınalma sualıdır</div><p>2026-cı ilin may ayında Canvas sızmasında adlar, e-poçtlar və şəxsi mesajlar açılıb. Universitetlər indi təchizatçıdan təhlükəsizlik sorğu vərəqi istəyir.</p></div>
+  </div>
+
+  <h3>Boşluq cədvəli</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Sahə</th><th>Bu gün</th><th>Real istifadə üçün lazımdır</th><th>Nə vaxt</th></tr></thead>
+    <tbody>
+      <tr><td>Kimlik</td><td>Parolsuz rol seçimi</td><td>Şəxsi hesab, işçilərə MFA, universitet SSO-su</td><td><span class="pill p-blue">72 saat</span> SSO sonra</td></tr>
+      <tr><td>Məlumat</td><td>Hər sxem dəyişikliyində silinir</td><td>Miqrasiya, şifrəli backup, bərpa sınağı</td><td><span class="pill p-blue">72 saat</span></td></tr>
+      <tr><td>Real məlumat</td><td>Hər şey sintetikdir</td><td>Tələbə, qrup, fənn, cədvəl, otaq idxalı</td><td><span class="pill p-blue">72 saat</span> CSV ilə</td></tr>
+      <tr><td>İmtahan</td><td>Məşq testi səviyyəsində</td><td>Server taymeri, fərdi variant, tək sessiya, SEB, protokol</td><td><span class="pill p-blue">72 saat</span></td></tr>
+      <tr><td>Miqyas</td><td>300 paralel müştəridə xəta</td><td>Ölçülmüş tutum, imtahan günü ehtiyatı</td><td><span class="pill p-blue">72 saat</span> pilot üçün</td></tr>
+      <tr><td>Qaydalar</td><td>AzTU dəyərləri kodda</td><td>Universitet üzrə tənzimləmə</td><td><span class="pill p-blue">72 saat</span></td></tr>
+      <tr><td>AI</td><td>Qayda əsaslı, ölçülməyib</td><td>Qiymətləndirmə dəsti, xərc həddi, yerli model seçimi</td><td><span class="pill p-grey">30 gün</span></td></tr>
+      <tr><td>Uyğunluq</td><td>Razılıq düyməsi</td><td>Qanuni əsas, qeydiyyat sənədləri, məxfilik bildirişi</td><td><span class="pill p-grey">30 gün</span></td></tr>
+      <tr><td>İnteqrasiya</td><td>Yoxdur</td><td>SSO, OneRoster, iCal, LTI 1.3, dövlət sistemlərinə ixrac</td><td><span class="pill p-grey">30–90 gün</span></td></tr>
+      <tr><td>Hüquqi sənəd</td><td>DEMO nişanı</td><td>SİMA və ya ASAN İmza</td><td><span class="pill p-grey">90 gün</span></td></tr>
+      <tr><td>Mobil</td><td>Mobil veb</td><td>Oflayn işləyən PWA</td><td><span class="pill p-grey">60 gün</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="davam">
+  <div class="note warn"><p><b>Qaralama.</b> Bu fayl yarımçıqdır. Bölmə 6–13 (konsepsiya, arxitektura, workflow-lar, NIST xəritəsi, 72 saatlıq plan, qərarlar) hələ yazılmayıb. Araşdırmanın tam mətni <code>docs/research/</code> qovluğundadır.</p></div>
+</section>
+
+<!--SECTIONS-->
+
+</main>
+</div>
