@@ -1,0 +1,7 @@
+# Development / CI tools only. The application runs on the Python 3.10+ standard library alone.
+pytest>=8,<10
+ruff==0.16.9
+mypy==2.3.1
+# Independent QR decoder for tests/unit/test_qr.py (the test is skipped when these are missing).
+zxing-cpp>=2.2
+numpy>=1.26

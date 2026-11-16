@@ -1,0 +1,32 @@
+# Dependabot version updates. Security alerts and security updates are enabled separately in
+# Settings → Code security (Dependabot alerts / Dependabot security updates).
+version: 2
+updates:
+  # Actions used by .github/workflows are pinned to commit SHAs; Dependabot bumps the SHA and the version comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:17"
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  # Pinned versions of the scanners used by security.yml.
+  - package-ecosystem: pip
+    directory: /.github/security-tools
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:17"
+    groups:
+      security-tools:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  # The application itself uses only the Python standard library, so there is no application manifest to watch.
+  # If a requirements.txt is added at the repository root, add a "pip" entry for directory "/" here.

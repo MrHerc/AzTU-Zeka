@@ -91,7 +91,7 @@ def seed(c, uid: dict, t0):
                assignee=staff_admin, page="/teacher/courses")
 
     synth_users = [r["id"] for r in rows(c, "SELECT id FROM users WHERE synthetic=1 AND role IN ('student','teacher') LIMIT 80")]
-    for i, (cat, prio, subject, body) in enumerate(_SYN_TICKETS):
+    for cat, prio, subject, body in _SYN_TICKETS:
         if not synth_users:
             break
         status = rng.choice(["open", "open", "in_progress", "waiting", "resolved", "resolved", "closed"])
@@ -106,7 +106,7 @@ def seed(c, uid: dict, t0):
 
     voters = rows(c, "SELECT id, role FROM users WHERE synthetic=1 AND role IN ('student','teacher')")
     areas = [a for a, _ in AREAS]
-    for i in range(140):
+    for _ in range(140):
         if not voters:
             break
         v = rng.choice(voters)

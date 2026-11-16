@@ -2,6 +2,7 @@ import { api, html, raw, mount, on, md, ic, toast, modal, route, go, S, pageHead
   failed, infoTip, greeting, QTYPE, cover, datebox, cnt, num, registerTour, openFile, openSyllabus, refCard, refList, t, $, $$, esc, isoDay } from "./core.js";
 import { chatView } from "./chat.js";
 import { achievementsTeaser } from "./achievements.js";
+import { studentPlanCard } from "./radar.js";
 
 const LET = "ABCD";
 // Lesson kind codes map to a tone; labels come localized from the server.
@@ -38,6 +39,7 @@ route("/student", async (el) => {
         <button class="btn btn-accent">${ic("sparkles", 16)} ${t("Soruş")}</button>
       </form>
     </div>
+    <div id="plan-slot"></div>
     ${d.unexcused ? html`<div class="notice coral mt" data-tour="unexcused">${ic("calcheck", 18)}<div class="grow"><b>${t("{n} üzrsüz qayıbınız var.", { n: d.unexcused })}</b>
       ${t("Təsdiqedici sənəd varsa, onu yükləyin — dekanlıq təsdiqlədikdə qayıb üzrlü sayılır.")}</div>
       <button class="btn btn-accent btn-sm" data-go="/student/attendance">${t("Davamiyyətə bax")}</button></div>` : ""}
@@ -94,6 +96,7 @@ route("/student", async (el) => {
     go(`/student/tutor/${$("#qc", el).value}${q ? "?q=" + encodeURIComponent(q) : ""}`);
   });
   achievementsTeaser(3).then((h) => { const box = $("#ach-teaser", el); if (box && h) mount(box, h); else if (box) box.remove(); });
+  studentPlanCard($("#plan-slot", el));
 });
 
 function courseMiniCard(c) {

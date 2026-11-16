@@ -1,0 +1,11 @@
+.git
+data/
+logs/
+config.json
+__pycache__/
+*.pyc
+.dev/
+.kiro/
+pitch/
+aztu-ai-campus.zip
+tests/

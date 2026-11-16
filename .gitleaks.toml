@@ -1,0 +1,13 @@
+# gitleaks configuration: the default rule set plus a narrow allowlist of known non-secrets.
+title = "Zəka gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Known non-secrets: the self-test's fixture access code and the document verification-code alphabet"
+regexTarget = "line"
+regexes = [
+  '''zeka-test-code-7''',
+  '''_CODE_ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"''',
+]

@@ -10,3 +10,15 @@ __pycache__/
 pitch/
 # Agentlərin müvəqqəti iş qovluqları (git worktree), repoya aid deyil
 .claude/worktrees/
+# Gizli açarlar və lokal mühit faylları
+.env
+.env.*
+*.pem
+*.key
+# Verilənlər bazası nüsxələri və arxivlər (repoda sessiya tokenləri və şəxsi məlumat qala bilər)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.zip

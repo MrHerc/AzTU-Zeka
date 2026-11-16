@@ -7,18 +7,39 @@ import secrets
 import urllib.parse
 
 from . import engine, pdftext, store
-from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, _sid
-from .i18n import L, norm_lang, tr
+from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, session_cutoff, _sid
+from .i18n import norm_lang, tr
+from .security import CFG, LIMITS, access_code_ok, safe_next
 from .store import J, audit, iso, now, row, rows, setting
 from .web import HTTPError, Response, json_resp, redirect
 
 
-def _login(c, role):
+def _login(req, role, code, user=None):
+    """Password-less demo login. With ZEKA_ACCESS_CODE set, a new visitor must present the shared code;
+    a visitor who already holds a valid session may switch roles (the demo's role menu) without it."""
+    c = req.db
+    if not LIMITS["login"].hit(req.ip):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
+    if not req.user:
+        if LIMITS["login_fail"].blocked(req.ip):
+            raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
+        if not access_code_ok(code):
+            LIMITS["login_fail"].hit(req.ip)
+            audit(c, None, "login_denied", "session", f"yanlış giriş kodu · {req.ip}")
+            raise HTTPError(403, "Giriş kodu yanlışdır")
     logins = setting(c, "demo_logins")
-    if role not in logins:
+    if not isinstance(role, str) or role not in logins:
         raise HTTPError(400, "Naməlum rol")
     u = row(c, "SELECT * FROM users WHERE username=?", (logins[role],))
-    sid = secrets.token_urlsafe(24)
+    if user and role == "student":              # demo storylines (Zəka Radar): sign in as one of the synthetic students
+        u = row(c, "SELECT * FROM users WHERE username=? AND role='student'", (str(user)[:40],))
+        if not u:
+            raise HTTPError(404, "Tələbə tapılmadı")
+    old = _sid(req)
+    if old:                                   # role switch: the previous session ends (no parallel sessions per browser)
+        c.execute("DELETE FROM sessions WHERE sid=?", (old,))
+    c.execute("DELETE FROM sessions WHERE created_at<?", (session_cutoff(),))
+    sid = secrets.token_urlsafe(32)
     c.execute("INSERT INTO sessions(sid,user_id,created_at) VALUES(?,?,?)", (sid, u["id"], iso(now())))
     audit(c, u["id"], "login", "session", f"demo rol: {role}")
     return u, sid, [session_cookie(sid)]
@@ -33,6 +54,7 @@ def bootstrap(req):
     c, u = req.db, req.user
     ct = store._load("contacts.json")
     info = {**ctx(c), "engine": engine.engine_info(), "news_kinds": setting(c, "news_kinds", {}), "version": "0.3",
+            "access_required": bool(CFG.access_code),
             "langs": ["az", "en", "ru"], "vendor": "Safarov Industries",
             "contact": {k: ct[k] for k in ("phone", "phone_href", "email", "website", "address")}}
     return {"user": pub_user(u), "app": info, "home": ROLE_HOME.get(u["role"]) if u else None, "unread": unread(c, u["id"]) if u else 0}
@@ -40,17 +62,15 @@ def bootstrap(req):
 
 @R("POST", "/api/auth/demo", auth=False)
 def demo_login(req):
-    u, sid, headers = _login(req.db, req.json().get("role"))
+    b = req.json()
+    u, sid, headers = _login(req, b.get("role"), b.get("code"), b.get("user"))
     return json_resp({"user": pub_user(u), "home": ROLE_HOME[u["role"]], "token": sid}, headers=headers)
 
 
 @R("GET", "/demo/login", auth=False)
 def demo_login_get(req):
-    u, _, headers = _login(req.db, req.query.get("role", "student"))
-    nxt = req.query.get("next") or "/#" + ROLE_HOME[u["role"]]
-    if not nxt.startswith("/") or nxt.startswith("//") or "\\" in nxt:
-        nxt = "/"
-    return redirect(nxt, headers)
+    u, _, headers = _login(req, req.query.get("role", "student"), req.query.get("code"), req.query.get("user"))
+    return redirect(safe_next(req.query.get("next") or "/#" + ROLE_HOME[u["role"]]), headers)
 
 
 @R("POST", "/api/auth/logout")
@@ -61,8 +81,12 @@ def logout(req):
 
 @R("POST", "/api/consent")
 def consent(req):
-    req.db.execute("UPDATE users SET consent_at=? WHERE id=?", (iso(now()), req.user["id"]))
-    audit(req.db, req.user["id"], "consent", "user", json.dumps(req.json(), ensure_ascii=False))
+    b = req.json()
+    choice = {"ai": b.get("ai") is not False, "external": b.get("external") is True}
+    prefs = J(req.user.get("prefs"), {}) or {}
+    prefs["consent"] = choice                 # external=True is required before questions are sent to an external LLM
+    req.db.execute("UPDATE users SET consent_at=?, prefs=? WHERE id=?", (iso(now()), json.dumps(prefs, ensure_ascii=False), req.user["id"]))
+    audit(req.db, req.user["id"], "consent", "user", json.dumps(choice))
     return {"ok": True, "consent_at": iso(now())}
 
 
@@ -107,10 +131,15 @@ def badges(req):
     if u["role"] == "student":
         out["requests"] = row(c, "SELECT COUNT(*) n FROM requests WHERE student_id=? AND status IN ('submitted','in_progress','returned')", (u["id"],))["n"]
         out["absences"] = row(c, "SELECT COUNT(*) n FROM attendance WHERE user_id=? AND status='absent'", (u["id"],))["n"]
+        out["plan"] = row(c, "SELECT COUNT(*) n FROM interventions WHERE student_id=? AND status='open'", (u["id"],))["n"]
     elif u["role"] == "teacher":
         out["questions"] = row(c, "SELECT COUNT(*) n FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id WHERE co.teacher_id=? AND tq.status='open'", (u["id"],))["n"]
     else:
         out["office"] = row(c, "SELECT COUNT(*) n FROM requests WHERE status='submitted'")["n"]
+    from .r_radar import badge_count
+    rb = badge_count(c, u)
+    if rb is not None:
+        out["radar"] = rb
     if u["role"] in ("office", "admin"):
         out["support"] = row(c, "SELECT COUNT(*) n FROM support_tickets WHERE status='open'")["n"]
     else:
@@ -132,9 +161,10 @@ def notifications_read(req):
     if b.get("all"):
         c.execute("UPDATE notifications SET read_at=? WHERE user_id=? AND read_at IS NULL", (iso(now()), u["id"]))
     else:
-        ids = [int(i) for i in (b.get("ids") or [])][:100]
+        ids = b.ids("ids", 100)
         if ids:
-            c.execute(f"UPDATE notifications SET read_at=? WHERE user_id=? AND id IN ({','.join('?' * len(ids))})", (iso(now()), u["id"], *ids))
+            # bandit B608: placeholders only
+            c.execute(f"UPDATE notifications SET read_at=? WHERE user_id=? AND id IN ({','.join('?' * len(ids))})", (iso(now()), u["id"], *ids))  # nosec B608
     return {"unread": unread(c, u["id"])}
 
 
@@ -224,15 +254,17 @@ def search(req):
 # ---------------------------------------------------------------- files
 @R("POST", "/api/files")
 def upload_file(req):
+    if not LIMITS["upload"].hit(f"u{req.user['id']}"):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     b = req.json()
     try:
-        data = base64.b64decode(b.get("content_b64") or "", validate=False)
+        data = base64.b64decode(b.text("content_b64"), validate=False)
     except ValueError:
-        raise HTTPError(400, "Fayl oxunmadı")
+        raise HTTPError(400, "Fayl oxunmadı") from None
     try:
-        f = store.save_file(req.db, req.user["id"], (b.get("filename") or "fayl")[:160], data, b.get("accept") or "doc")
+        f = store.save_file(req.db, req.user["id"], b.text("filename", 160) or "fayl", data, b.text("accept") or "doc")
     except ValueError as ex:
-        raise HTTPError(400, str(ex))
+        raise HTTPError(400, str(ex)) from None
     return {k: f[k] for k in ("id", "filename", "mime", "size")}
 
 
@@ -248,6 +280,8 @@ def file_access(req, fid):
 
 @R("POST", "/api/files/{id:int}/link")
 def file_link(req):
+    if not LIMITS["link"].hit(f"u{req.user['id']}"):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     f = file_access(req, req.params["id"])
     return {"url": f"/api/files/{f['id']}?k={make_key('file', f['id'], req.user['id'])}"}
 
@@ -267,14 +301,14 @@ def file_get(req):
 def file_preview(req):
     """Text preview rendered inside the app (works where the browser has no PDF viewer)."""
     f = file_access(req, req.params["id"])
+    if not LIMITS["preview"].hit(f"u{req.user['id']}"):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     data = (store.UPLOADS / f["path"]).read_bytes()
     out = {"id": f["id"], "filename": f["filename"], "mime": f["mime"], "size": f["size"], "created_at": f["created_at"], "pages": []}
     if f["mime"] == "application/pdf":
         out["kind"] = "pdf"
-        try:
-            out["pages"] = [p for p in pdftext.extract_pages(data) if p.strip()]
-        except Exception:  # malformed PDFs fall back to "download"
-            out["pages"] = []
+        # Uploaded PDFs are untrusted: parsed in a separate, time- and memory-limited process; failures fall back to "download".
+        out["pages"] = [p for p in pdftext.extract_pages_isolated(data) if p.strip()]
     elif f["mime"].startswith("image/"):
         out["kind"] = "image"
     elif f["filename"].lower().endswith(".docx"):

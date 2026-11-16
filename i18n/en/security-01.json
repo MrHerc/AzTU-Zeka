@@ -1,0 +1,15 @@
+{
+ "Demo giriş kodu": "Demo access code",
+ "Təşkilatçının verdiyi kodu daxil edin": "Enter the code from the organiser",
+ "Demo yalnız giriş kodu ilə açılır.": "The demo opens only with an access code.",
+ "Giriş kodu yanlışdır": "The access code is incorrect",
+ "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.": "Too many requests. Please try again shortly.",
+ "Sorğu başqa saytdan göndərilib və rədd edildi": "The request came from another site and was rejected",
+ "Sorğu məlumatı düzgün deyil": "The request data is invalid",
+ "Sorğu çox böyükdür (maks. 16 MB)": "The request is too large (max. 16 MB)",
+ "Transfer-Encoding dəstəklənmir": "Transfer-Encoding is not supported",
+ "Yanlış Content-Length": "Invalid Content-Length",
+ "Sillabus çox böyükdür": "The syllabus is too large",
+ "Xarici AI xidmətinə razılıq verilmədiyi üçün demo mühərrik istifadə edildi.": "The demo engine was used because consent to the external AI service has not been given.",
+ "LLM ünvanı https:// ilə başlamalıdır (http:// yalnız lokal model serveri üçün)": "The LLM address must start with https:// (http:// only for a local model server)"
+}

@@ -114,7 +114,9 @@ def news_ics(req):
     n = _get(req, req.params["id"])
     if not n["event_start"]:
         raise HTTPError(400, "Bu xəbər tədbir deyil")
-    fmt = lambda s: datetime.fromisoformat(s).strftime("%Y%m%dT%H%M%S")
+    def fmt(s):
+        return datetime.fromisoformat(s).strftime("%Y%m%dT%H%M%S")
+
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     ics = "\r\n".join(["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//AzTU//Zeka demo//AZ", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
                        f"UID:news-{n['id']}@zeka-demo.local", f"DTSTAMP:{stamp}", f"DTSTART;TZID=Asia/Baku:{fmt(n['event_start'])}",
@@ -132,11 +134,11 @@ def news_manage(req):
 
 
 def _news_fields(b):
-    title = (b.get("title") or "").strip()
+    title = b.text("title")
     if len(title) < 5:
         raise HTTPError(400, "Başlıq ən azı 5 simvol olmalıdır")
     kind = b.get("kind") if b.get("kind") in KINDS else "news"
-    f = {"kind": kind, "title": title[:200], "summary": (b.get("summary") or "").strip()[:400], "body": (b.get("body") or "").strip()[:8000],
+    f = {"kind": kind, "title": title[:200], "summary": b.text("summary", 400), "body": b.text("body", 8000),
          "audience": b.get("audience") if b.get("audience") in ("all", "students", "teachers") else "all",
          "pinned": 1 if b.get("pinned") else 0, "important": 1 if b.get("important") else 0,
          "cover": json.dumps({"icon": str(b.get("icon") or "news")[:20], "tone": b.get("tone") if b.get("tone") in TONES else "navy"}),
@@ -146,12 +148,12 @@ def _news_fields(b):
         raise HTTPError(400, "Qısa məzmunu yazın")
     if b.get("event_start"):
         try:
-            st = datetime.fromisoformat(b["event_start"])
+            st = datetime.fromisoformat(b.text("event_start"))
         except ValueError:
-            raise HTTPError(400, "Tədbirin tarixi düzgün deyil")
-        dur = max(0.5, min(float(b.get("duration_h") or 2), 72))
-        f.update({"event_start": iso(st), "event_end": iso(st + timedelta(hours=dur)), "location": (b.get("location") or "").strip()[:200],
-                  "capacity": max(0, int(b.get("capacity") or 0)), "registration": 1 if b.get("registration") else 0})
+            raise HTTPError(400, "Tədbirin tarixi düzgün deyil") from None
+        dur = b.number("duration_h", 2, 0.5, 72)
+        f.update({"event_start": iso(st), "event_end": iso(st + timedelta(hours=dur)), "location": b.text("location", 200),
+                  "capacity": b.integer("capacity", 0, 0, 100000), "registration": 1 if b.get("registration") else 0})
     else:
         f.update({"event_start": None, "event_end": None, "location": None, "capacity": None, "registration": 0})
     return f
@@ -170,7 +172,8 @@ def news_create(req):
     c, u = req.db, req.user
     f = _news_fields(req.json())
     cols = list(f) + ["author_id", "published_at"]
-    nid = c.execute(f"INSERT INTO news({','.join(cols)}) VALUES({','.join('?' * len(cols))})", (*f.values(), u["id"], iso(now()))).lastrowid
+    # bandit B608: column names from _news_fields()
+    nid = c.execute(f"INSERT INTO news({','.join(cols)}) VALUES({','.join('?' * len(cols))})", (*f.values(), u["id"], iso(now()))).lastrowid  # nosec B608
     _broadcast(c, nid, f)
     audit(c, u["id"], "news_publish", "news", f["title"][:80])
     return news_out(c, row(c, "SELECT * FROM news WHERE id=?", (nid,)), u["id"], full=True)
@@ -183,7 +186,8 @@ def news_update(req):
     if not n:
         raise HTTPError(404, "Xəbər tapılmadı")
     f = _news_fields(req.json())
-    c.execute(f"UPDATE news SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), n["id"]))
+    # bandit B608: column names from _news_fields()
+    c.execute(f"UPDATE news SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), n["id"]))  # nosec B608
     if n["status"] == "draft":
         _broadcast(c, n["id"], f)
     audit(c, u["id"], "news_update", "news", f["title"][:80])
@@ -194,7 +198,8 @@ def news_update(req):
 def news_delete(req):
     c = req.db
     for t in ("news_rsvp", "news_saved", "news_reads"):
-        c.execute(f"DELETE FROM {t} WHERE news_id=?", (req.params["id"],))
+        # bandit B608: table names are constants
+        c.execute(f"DELETE FROM {t} WHERE news_id=?", (req.params["id"],))  # nosec B608
     c.execute("DELETE FROM news WHERE id=?", (req.params["id"],))
     audit(c, req.user["id"], "news_delete", "news", f"#{req.params['id']}")
     return {"ok": True}

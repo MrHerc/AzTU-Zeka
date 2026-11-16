@@ -6,12 +6,12 @@ import json
 import re
 
 from . import engine, refs, store
-from .common import R, course_access, ctx
+from .common import R, course_access, ctx, make_key
 from .i18n import S_, T3
+from .store import J, audit, iso, notify, now, row, rows, setting
+from .web import HTTPError, html_resp, to_int
 
 VOCAB = [S_("Sertifikat")]  # stored document titles look like "Sertifikat: <track>" and are translated part by part on display
-from .store import J, audit, iso, notify, now, row, rows, setting
-from .web import HTTPError, html_resp
 
 e = html.escape
 PREREQ = {"ELM-2105": "Fizika I, Ali riyaziyyat I", "KOMP-1102": "İnformatikanın əsasları", "RİY-1101": "—", "FİZ-1103": "Ali riyaziyyat I (paralel)",
@@ -60,8 +60,8 @@ def academy(req):
 @R("PUT", "/api/academy/assessment", roles=("teacher",))
 def assessment(req):
     c, u = req.db, req.user
-    vals = {k: max(1, min(5, int(v))) for k, v in (req.json().get("values") or {}).items()
-            if k in {t["key"] for t in rows(c, "SELECT key FROM academy_tracks")}}
+    keys = {t["key"] for t in rows(c, "SELECT key FROM academy_tracks")}
+    vals = {k: to_int(v, "values", lo=1, hi=5) for k, v in req.json().obj("values").items() if k in keys and v not in (None, "")}
     prefs = J(u.get("prefs"), {}) or {}
     prefs["self_assessment"] = vals
     c.execute("UPDATE users SET prefs=? WHERE id=?", (json.dumps(prefs, ensure_ascii=False), u["id"]))
@@ -96,10 +96,13 @@ def complete(req):
     if not m:
         raise HTTPError(404, "Modul tapılmadı")
     quiz = J(m["quiz"], [])
-    answers = req.json().get("answers") or []
+    answers = req.json().array("answers")
     correct = sum(1 for i, x in enumerate(quiz) if i < len(answers) and answers[i] == x["a"])
     score = round(100 * correct / len(quiz)) if quiz else 100
-    result = {"passed": score >= 50, "score": score, "correct": [x["a"] for x in quiz], "certificate": None}
+    passed = score >= 50
+    # The answer key is shown only after a pass; a failed attempt marks the right answers it already had and nothing else.
+    key = [x["a"] if passed or (i < len(answers) and answers[i] == x["a"]) else None for i, x in enumerate(quiz)]
+    result = {"passed": passed, "score": score, "correct": key, "certificate": None}
     if result["passed"]:
         c.execute("INSERT OR REPLACE INTO academy_progress(user_id,module_id,status,score,completed_at) VALUES(?,?,?,?,?)",
                   (u["id"], m["id"], "completed", score, iso(now())))
@@ -140,7 +143,7 @@ def tools(req):
 def course_tool(req):
     c, u = req.db, req.user
     co = course_access(req, req.params["id"])
-    key = req.json().get("tool_key")
+    key = req.json().text("tool_key")
     if not row(c, "SELECT 1 FROM tools WHERE key=?", (key,)):
         raise HTTPError(400, "Alət tapılmadı")
     if row(c, "SELECT 1 FROM course_tools WHERE course_id=? AND tool_key=?", (co["id"], key)):
@@ -230,26 +233,79 @@ def syllabus_get(req):
 @R("POST", "/api/syllabus/{cid:int}/generate", roles=("teacher",))
 def syllabus_generate(req):
     co = course_access(req, req.params["cid"])
-    weeks = max(10, min(int(req.json().get("weeks") or 15), 18))
+    weeks = req.json().integer("weeks", 15, 10, 18)
     audit(req.db, req.user["id"], "syllabus_generate", "course", co["code"])
     return build_syllabus(req.db, co, weeks)
+
+
+def _txt(v, n=2000):
+    return str(v if v is not None else "")[:n]
+
+
+def _num(v, lo=0, hi=10000):
+    try:
+        return max(lo, min(int(float(v)), hi))
+    except (TypeError, ValueError):
+        return lo
+
+
+def clean_syllabus(d) -> dict:
+    """Keep only the known syllabus fields, coerced to their types (stored data is rendered into a printable page)."""
+    if not isinstance(d, dict) or not isinstance(d.get("course"), dict):
+        raise HTTPError(400, "Sillabus məlumatı düzgün deyil")
+    lst = lambda v, n=60: [_txt(x, 1000) for x in v][:n] if isinstance(v, list) else []  # noqa: E731
+    co, w, pl, asm = d["course"], d.get("workload"), d.get("plan"), d.get("assessment")
+    w = w if isinstance(w, dict) else {}
+    plan = [{"week": _num(p.get("week"), 0, 60), "topic": _txt(p.get("topic"), 300), "activity": _txt(p.get("activity"), 500)}
+            for p in (pl if isinstance(pl, list) else []) if isinstance(p, dict)][:60]
+    ass = [[_txt(a[0], 200), _num(a[1], 0, 100)] for a in (asm if isinstance(asm, list) else [])
+           if isinstance(a, (list, tuple)) and len(a) == 2][:20]
+    return {"course": {k: (_num(co.get(k), 0, 60) if k == "credits" else _txt(co.get(k), 300))
+                       for k in ("name", "code", "credits", "teacher", "teacher_title", "semester", "prereq", "language")},
+            "description": _txt(d.get("description"), 4000),
+            "workload": {k: _num(w.get(k)) for k in ("total", "contact", "independent", "weeks", "pairs")},
+            "outcomes": lst(d.get("outcomes"), 20), "plan": plan, "assessment": ass, "materials": lst(d.get("materials")),
+            "tools": lst(d.get("tools")), "policies": lst(d.get("policies"), 20), "generated_at": _txt(d.get("generated_at"), 40)}
+
+
+_SYL_COURSE = ("name", "code", "credits", "teacher", "semester", "prereq", "language")
+_SYL_LISTS = ("outcomes", "plan", "assessment", "materials", "tools", "policies")
+
+
+def valid_syllabus(d) -> bool:
+    """The editor saves the whole generated object back; the printable page and the editor both need every part of it."""
+    if not isinstance(d, dict) or not isinstance(d.get("course"), dict) or not isinstance(d.get("workload"), dict):
+        return False
+    if not isinstance(d.get("description"), str) or not all(isinstance(d.get(k), list) for k in _SYL_LISTS):
+        return False
+    if not all(k in d["course"] for k in _SYL_COURSE) or not all(k in d["workload"] for k in ("total", "contact", "independent")):
+        return False
+    plan_ok = all(isinstance(p, dict) and isinstance(p.get("topic"), str) and isinstance(p.get("activity"), str) and "week" in p for p in d["plan"])
+    ass_ok = all(isinstance(a, list) and len(a) == 2 and isinstance(a[0], str) and isinstance(a[1], (int, float)) and not isinstance(a[1], bool)
+                 for a in d["assessment"])
+    return plan_ok and ass_ok
 
 
 @R("PUT", "/api/syllabus/{cid:int}", roles=("teacher",))
 def syllabus_save(req):
     co = course_access(req, req.params["cid"])
     data = req.json().get("data")
-    if not isinstance(data, dict) or "course" not in data:
+    if not valid_syllabus(data):
         raise HTTPError(400, "Sillabus məlumatı düzgün deyil")
+    blob = json.dumps(clean_syllabus(data), ensure_ascii=False)
+    if len(blob) > 200000:
+        raise HTTPError(413, "Sillabus çox böyükdür")
     req.db.execute("INSERT OR REPLACE INTO syllabi(course_id,user_id,data,updated_at) VALUES(?,?,?,?)",
-                   (co["id"], req.user["id"], json.dumps(data, ensure_ascii=False)[:200000], iso(now())))
+                   (co["id"], req.user["id"], blob, iso(now())))
     return {"ok": True, "updated_at": iso(now())}
 
 
 @R("POST", "/api/syllabus/{cid:int}/link", roles=("teacher",))
 def syllabus_link(req):
     co = course_access(req, req.params["cid"])
-    from .common import make_key
+    from .security import LIMITS
+    if not LIMITS["link"].hit(f"u{req.user['id']}"):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     return {"url": f"/syllabus/{co['id']}?k={make_key('syl', co['id'], req.user['id'])}"}
 
 
@@ -257,20 +313,27 @@ def syllabus_link(req):
 def syllabus_page(req):
     c = req.db
     co = course_access(req, req.params["cid"]) if req.user["role"] == "teacher" else row(c, "SELECT * FROM courses WHERE id=?", (req.params["cid"],))
+    if not co:
+        raise HTTPError(404, "Fənn tapılmadı")
     s = row(c, "SELECT data FROM syllabi WHERE course_id=?", (co["id"],))
-    d = J(s["data"], None) if s else build_syllabus(c, co)
+    saved = J(s["data"], None) if s else None
+    d = clean_syllabus(saved if valid_syllabus(saved) else build_syllabus(c, co))
+
+    def li(xs):
+        return "".join(f"<li>{e(str(x))}</li>" for x in xs)
+
     uni = ctx(c)["university"]
-    li = lambda xs: "".join(f"<li>{e(str(x))}</li>" for x in xs)
-    plan = "".join(f"<tr><td>{p['week']}</td><td>{e(p['topic'])}</td><td>{e(p['activity'])}</td></tr>" for p in d["plan"])
-    ass = "".join(f"<tr><td>{e(a)}</td><td>{b}</td></tr>" for a, b in d["assessment"])
-    w = d["workload"]
+    # Every value below is escaped, numbers included: the saved syllabus is teacher-edited JSON shown to leadership and admins.
+    plan = "".join(f"<tr><td>{e(str(p['week']))}</td><td>{e(p['topic'])}</td><td>{e(p['activity'])}</td></tr>" for p in d["plan"])
+    ass = "".join(f"<tr><td>{e(a)}</td><td>{e(str(b))}</td></tr>" for a, b in d["assessment"])
+    w = {k: e(str(d["workload"][k])) for k in ("total", "contact", "independent")}
     body = f"""<div class="toolbar no-print"{' hidden' if req.query.get('embed') == '1' else ''}><button id="print-btn">🖨 Çap et / PDF kimi saxla</button></div>
 <div class="paper syllabus"><header class="doc-head"><img class="crest" src="/static/img/brand/icon.png" alt="AzTU">
-<div><div class="org">{e(uni['name'].upper())}</div><div class="sub">Fənn proqramı (sillabus) · {e(d['course']['semester'])}</div></div></header>
-<h1>{e(d['course']['name'])}</h1>
-<table class="meta"><tr><th>Fənnin kodu</th><td>{e(d['course']['code'])}</td><th>Kredit (AKTS)</th><td>{d['course']['credits']}</td></tr>
-<tr><th>Müəllim</th><td>{e(d['course']['teacher'])}</td><th>Tədris dili</th><td>{e(d['course']['language'])}</td></tr>
-<tr><th>Ön şərtlər</th><td>{e(d['course']['prereq'])}</td><th>İş yükü</th><td>{w['total']} saat (auditoriya {w['contact']}, sərbəst {w['independent']})</td></tr></table>
+<div><div class="org">{e(uni['name'].upper())}</div><div class="sub">Fənn proqramı (sillabus) · {e(str(d['course']['semester']))}</div></div></header>
+<h1>{e(str(d['course']['name']))}</h1>
+<table class="meta"><tr><th>Fənnin kodu</th><td>{e(str(d['course']['code']))}</td><th>Kredit (AKTS)</th><td>{e(str(d['course']['credits']))}</td></tr>
+<tr><th>Müəllim</th><td>{e(str(d['course']['teacher']))}</td><th>Tədris dili</th><td>{e(str(d['course']['language']))}</td></tr>
+<tr><th>Ön şərtlər</th><td>{e(str(d['course']['prereq']))}</td><th>İş yükü</th><td>{w['total']} saat (auditoriya {w['contact']}, sərbəst {w['independent']})</td></tr></table>
 <h3>Fənnin təsviri</h3><p>{e(d['description'])}</p>
 <h3>Təlim nəticələri</h3><p>Fənni uğurla bitirən tələbə:</p><ol>{li(d['outcomes'])}</ol>
 <h3>Həftəlik plan</h3><table class="grades"><tr><th>Həftə</th><th>Mövzu</th><th>Fəaliyyət</th></tr>{plan}</table>
@@ -279,6 +342,6 @@ def syllabus_page(req):
 <h3>Rəqəmsal alətlər</h3><ul>{li(d['tools'])}</ul>
 <h3>Qaydalar</h3><ul>{li(d['policies'])}</ul>
 <footer class="doc-foot">Zəka platformasının AI sillabus köməkçisi ilə hazırlanıb və müəllim tərəfindən redaktə olunub · DEMO</footer></div>"""
-    return html_resp(f"""<!doctype html><html lang="az"><head><meta charset="utf-8"><title>Sillabus · {e(d['course']['name'])}</title>
+    return html_resp(f"""<!doctype html><html lang="az"><head><meta charset="utf-8"><title>Sillabus · {e(str(d['course']['name']))}</title>
 <link rel="icon" href="/static/img/brand/icon.png"><link rel="stylesheet" href="/static/css/doc.css"></head><body>{body}
 <script src="/static/js/print.js"></script></body></html>""")
