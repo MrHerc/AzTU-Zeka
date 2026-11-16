@@ -57,7 +57,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 
 ### Phase 0 — Birləşdirmə və bünövrə · saat 0–10
 
-- [ ] T01 Beş PR-ı birləşdir
+- [x] T01 Beş PR-ı birləşdir — 698 test yaşıl, commit `9d23e99`
 - [ ] T02 Sətir sonlarını sabitlə
 - [ ] T03 Repo-nu dilə və qata görə böl
 - [ ] T04 Miqrasiya mühərriki

@@ -9,6 +9,7 @@ lecture materials, campus assistant, Test studio, 13 e-services with QR-verified
 AI Academy, support desk, leadership dashboard. Five roles: `student`, `teacher`, `office`, `leader`, `admin`.
 
 Zero runtime dependencies by design: Python 3.10+ standard library only, vanilla ES-module JS, no build step.
+Zəka Radar (`app/radar.py`, `app/r_radar.py`) adds explainable early warning with teacher support plans.
 It is being turned from a demo into a product sold to universities — see "Product direction" below before adding features.
 
 ## Commands
@@ -16,20 +17,28 @@ It is being turned from a demo into a product sold to universities — see "Prod
 ```bash
 python run.py --port 5070                 # start (http://127.0.0.1:5070); seeds data/campus.db on first run
 python run.py --reset                     # wipe and re-seed the demo database
-python run.py --host 0.0.0.0 --public-url https://host   # server mode: QR links use this URL, cookie becomes Secure
+ZEKA_ACCESS_CODE=... python run.py --host 0.0.0.0 --public-url https://host   # reachable host: access code is mandatory
 
-python tests/selftest.py                  # the only test suite on main: one script, ~136 checks, RESETS the database
-python tools/i18n.py lint                 # find user-visible strings not wrapped for translation
+python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
+python -m pytest -q                               # 698 tests, about 65 s; uses a temp database, never touches data/
+python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
+ruff check . && mypy                              # lint and type check (config in pyproject.toml)
+for f in static/js/*.js; do node --check "$f"; done
+
+python tools/i18n.py lint                 # user-visible strings not wrapped for translation (51 known findings)
 python tools/i18n.py extract              # refresh i18n/source/*, write untranslated keys to i18n/todo/*.json
 python tools/i18n.py build                # i18n/{en,ru}/*.json -> static/locales/*.json + app/locales/*.json
 python tools/i18n.py stats                # coverage per language (must stay 100%)
+
+docker compose up --build                 # demo container (loopback only, resets data on every start)
 ```
 
-There is no single-test runner on `main`: `selftest.py` is one procedural script that starts an in-process server on a random
-port. It depends on seed specifics, so changing `content/seed.json` can break checks. PR #5 replaces it with pytest
-(`pytest tests/unit/test_x.py::test_name`), ruff and mypy — use those once it is merged.
+Tests: `tests/unit/` (pure logic), `tests/integration/` (real HTTP server on a temp database; `test_security_review.py`
+and `test_radar.py` hold the checks ported from the old self-test). CI: `.github/workflows/ci.yml` (lint, types, JS syntax,
+i18n catalogue, pytest on Python 3.10–3.13 and Windows) and `security.yml` (gitleaks, pip-audit, bandit).
 
-No lint/format/type config exists on `main`. `config.json` (git-ignored, copy from `config.example.json`) or the
+Settings come from the environment (`app/security.py`): `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`, `ZEKA_SESSION_HOURS`,
+`ZEKA_PROXY_HOPS`, `ZEKA_ACCESS_LOG`. `config.json` (git-ignored, copy from `config.example.json`) or the
 `AZTU_LLM_PROVIDER/BASE_URL/API_KEY/MODEL` env vars switch the AI from the offline engine to a real LLM.
 
 ## Architecture
@@ -75,27 +84,25 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 
 ## Things that will bite you
 
-- **Mixed line endings.** 21 tracked files are CRLF (`app/store.py`, `app/engine.py`, `app/r_learning.py`, `static/js/main.js`, …),
-  the rest LF. Keep each file's existing endings; do not let an editor normalise them. Merge the open PR branches with
-  `-Xignore-cr-at-eol`, otherwise whole files conflict.
-- **Unread request bodies desync keep-alive connections** on `main` (handlers that never call `req.json()`); fixed in PRs #3/#5.
-- **Demo login is passwordless for every role including admin** (`/api/auth/demo`, `/demo/login`). Never expose `main` publicly.
-- Leadership-dashboard KPIs in `app/r_admin.py` are partly hard-coded literals — not measurements.
-- `aztu-ai-campus.zip` in the repo root is a stale snapshot with a database; do not read code from it (removed in PR #3).
+- **Mixed line endings.** Some files are CRLF, others LF, and the merge moved several from CRLF to LF. Keep each file's
+  existing endings until Task 2 (`.gitattributes`) normalises the repository in one commit.
+- **Handlers read input through `req.body` typed accessors** (`body.str`, `body.int`, `body.obj`); a body that a handler
+  does not read closes the connection. Malformed input must end as a translated 400, never a 500.
+- **The demo login is still password-less for every role.** A reachable host requires `ZEKA_ACCESS_CODE`; anyone with the
+  code can take any role, including admin. Real accounts are Task 10.
+- **Rate limiters and one-time document keys live in process memory** (`app/security.py`, `common._DOC_KEYS`): they break
+  with more than one worker (Task 7).
+- Leadership-dashboard KPIs in `app/r_admin.py` are partly hard-coded literals — not measurements (Task 39).
+- `docs/ARCHITECTURE.md` and `docs/API.md` were written against the pre-merge `main`: they still say sessions never expire,
+  mention `tests/selftest.py`, and lack the access code and the Radar endpoints.
+- `/api/demo/storyline` answers without the access code (ids only); it must not exist in prod mode (Task 5).
 - Timestamps are naive local time; business logic assumes Asia/Baku.
 
-## Open work on other branches (as of 2026-11-16, none merged)
+## Branch state (2026-11-16)
 
-| PR | Branch | Content |
-|---|---|---|
-| #1 | `claude/fervent-newton-azzabh` | `docs/AUDIT.md` (47 findings), `docs/ROADMAP.md` (30/60/90 days) |
-| #2 | `claude/wizardly-fermat-9hij0x` | new README, `docs/ARCHITECTURE.md`, `docs/API.md` |
-| #3 | `claude/focused-hypatia-bdi95m` | security fixes, `app/security.py`, access code, `docs/SECURITY_REVIEW.md`, security CI |
-| #4 | `claude/vibrant-mayer-nkiwis` | Zəka Radar (explainable early warning), Dockerfile, demo mode |
-| #5 | `claude/festive-cerf-8tk3vl` | pytest suite, ruff/mypy, GitHub Actions CI, bug fixes |
-
-#1 and #3 merge cleanly into `main`. #5 and #4 then conflict with #3 (about 20 and 11 real hunks; `app/web.py`,
-`app/r_core.py`, `app/r_academy.py`, catalogs, `tests/selftest.py`). #3 and #5 fix the same HTTP-layer bugs differently — keep one.
+The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
+#4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
+and research. `main` is unchanged and the five PRs are still open against it; they are superseded by this branch.
 
 ## Product direction
 

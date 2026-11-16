@@ -137,7 +137,7 @@ pre.mermaid { margin: 0; padding: 16px; background: var(--surface); border: 1px 
   <h2>1. Qısa nəticə</h2>
   <div class="verdict">
     <p><b>Zəka bu gün güclü demodur, məhsul deyil.</b> Domen dərinliyi, üç dil və interfeys realdır. Real giriş, qalıcı məlumat, etibarlı imtahan və yükə davam yoxdur.</p>
-    <p><b>Beş əvvəlki iş bu problemlərin bir hissəsini həll edib.</b> Heç biri <code>main</code>-ə birləşdirilməyib. İkisi bir-biri ilə toqquşur. Birləşdirmə planın ilk addımıdır.</p>
+    <p><b>Beş əvvəlki iş bu problemlərin bir hissəsini həll edib və artıq birləşdirilib.</b> Beş PR iş budağında bir ağacdadır: 698 test keçir, lint və tip yoxlaması təmizdir. <code>main</code> hələ dəyişməyib.</p>
     <p><b>AzTU mövcud sistemlərindən Zəka-ya keçir.</b> Bu tam əvəzləmədir. Hər mövcud sistem üçün onu əvəz edən modul və ölçülə bilən üstünlük müəyyən edilib. Əvəzləmə üçün çatışmayan əsas hissə akademik nüvədir: bu gün kodda müəllim nə davamiyyət, nə də bal yaza bilir.</p>
     <p><b>72 saatın planı 6 mərhələ və 44 tapşırıqdır.</b> Sonunda bir fakültə real məlumatla işləyir: real hesablar, itməyən məlumat, müəllimin yazdığı jurnal, sillabus, SEB ilə imtahan, otaq tapan köməkçi, müəllimə sual, klublar. Qalan fakültələr eyni idxal və uzlaşdırma alətləri ilə dalğa-dalğa keçir.</p>
     <p><b>Fərqləndirən ideya: icra olunan sillabus.</b> Sillabus PDF kimi qalmır, fənni konfiqurasiya edir və akkreditasiya üçün sübut zənciri yaradır. Bölmə 6-da açılır.</p>
@@ -204,7 +204,8 @@ pre.mermaid { margin: 0; padding: 16px; background: var(--surface); border: 1px 
       <tr><td class="num">5</td><td>#1 audit</td><td><span class="pill p-green">Təmiz</span></td></tr>
     </tbody>
   </table></div>
-  <div class="note warn"><p><b>Üç tələ.</b> Birincisi, 21 fayl CRLF sətir sonu ilə saxlanıb, #3 və #4 bəzilərini LF-ə çevirib. <code>-Xignore-cr-at-eol</code> olmadan bütöv fayllar toqquşur. İkincisi, #3 öz 43 təhlükəsizlik yoxlamasını <code>tests/selftest.py</code>-a yazıb, #5 isə həmin faylı silir. Yoxlamalar pytest-ə köçürülməlidir. Üçüncüsü, #3 və #5 eyni HTTP qatını fərqli üsulla düzəldir. Biri saxlanmalıdır.</p></div>
+  <div class="note"><p><b>Nəticə: birləşdirildi.</b> Beş budaq <code>claude/tender-meitner-avsvvh</code> iş budağındadır (commit <code>9d23e99</code>). 698 test keçir: PR #5-in 639 testi, köçürülmüş 43 təhlükəsizlik və 26 Radar yoxlaması. Heç bir test silinməyib və ya keçilməyib. Kombinasiyanın sındırdığı dörd yer düzəldilib, biri test təslimində çökmə idi.</p></div>
+  <div class="note warn"><p><b>Birləşdirmədə üç tələ var idi.</b> Birincisi, 21 fayl CRLF sətir sonu ilə saxlanıb, #3 və #4 bəzilərini LF-ə çevirib. <code>-Xignore-cr-at-eol</code> olmadan bütöv fayllar toqquşur. İkincisi, #3 öz 43 təhlükəsizlik yoxlamasını <code>tests/selftest.py</code>-a yazıb, #5 isə həmin faylı silir. Yoxlamalar pytest-ə köçürülməlidir. Üçüncüsü, #3 və #5 eyni HTTP qatını fərqli üsulla düzəldir. Biri saxlanmalıdır.</p></div>
 
   <h3>Əsas tapıntıların bugünkü vəziyyəti</h3>
   <div class="scroll"><table>
@@ -619,7 +620,7 @@ flowchart LR
   <p>6 mərhələ, 44 tapşırıq. Hər tapşırığın qəbul meyarı və yoxlama əmri <code>tasks/todo.md</code>-dədir. Kritik yol ardıcıl gedir, qalan iş ayrı iş qovluqlarında paralel aparılır.</p>
 
   <div class="lane">
-    <div class="when">0–10</div><div class="what"><b>Birləşdirmə və bünövrə</b><span>Beş PR birləşir. Sətir sonları sabitlənir. Repo dilə və qata görə bölünür. Miqrasiya mühərriki, demo və prod rejimləri, handler qapısı və çox proses, backup, Docker və Caddy.</span><span class="accept">T01–T09 · Qapı: testlər yaşıl, HTTPS açılır, 300 müştəridə 0 xəta, bərpa sınağı keçir</span></div>
+    <div class="when">0–10</div><div class="what"><b>Birləşdirmə və bünövrə</b><span>Beş PR birləşir. Sətir sonları sabitlənir. Repo dilə və qata görə bölünür. Miqrasiya mühərriki, demo və prod rejimləri, handler qapısı və çox proses, backup, Docker və Caddy.</span><span class="accept">T01 tamamlandı: 698 test yaşıl. T02–T09 · Qapı: testlər yaşıl, HTTPS açılır, 300 müştəridə 0 xəta, bərpa sınağı keçir</span></div>
     <div class="when">10–22</div><div class="what"><b>Kimlik və reyestr</b><span>Parol, sessiya, TOTP, rol və icazə, OIDC. Fakültə, kafedra, qrup, fənn idarəsi. Kütləvi idxal. Universitet ayarları: qiymət sxemi, davamiyyət həddi.</span><span class="accept">T10–T17 · Qapı: parolsuz yol yoxdur, rol × marşrut matrisi yaşıl, 10 000 tələbə idxal olunub girir</span></div>
     <div class="when">22–36</div><div class="what"><b>Akademik nüvə</b><span>Korpus, otaq, otaq QR-i. Cədvəl idarəsi və iCal. Davamiyyət jurnalı. Qiymət jurnalı. Tapşırıqlar.</span><span class="accept">T18–T22 · Qapı: müəllim dərsdə davamiyyət və bal yazır, hədd və buraxılış avtomatik hesablanır</span></div>
     <div class="when">36–52</div><div class="what"><b>Sillabus və imtahan</b><span>Struktur sillabus, NICE idxalı, təsdiq axını, fənnin konfiqurasiyası. İmtahan nüvəsi, imtahan əhatəli sessiya, SEB, nəzarətçi paneli, hash zəncirli protokol.</span><span class="accept">T23–T30 · Qapı: 300 nəfərlik sınaq imtahanı itkisiz, Windows-da SEB ilə əl sınağı</span></div>
@@ -676,7 +677,7 @@ flowchart LR
   <ol>
     <li><b>Təsdiq.</b> <code>SPEC.md</code> və <code>tasks/plan.md</code> təsdiq gözləyir. Təsdiqdən sonra qurmağa başlayıram.</li>
     <li><b>Commit və push.</b> Hər yoxlama nöqtəsində commit və push edim, yoxsa hər dəfə soruşum?</li>
-    <li><b>Beş PR.</b> Sınaq birləşdirməsinin nəticəsini iş budağına gətirim?</li>
+    <li><b>Beş PR.</b> İş budağında birləşdirilib. <code>main</code>-ə nə vaxt birləşdirək və köhnə beş PR-ı bağlayaq?</li>
     <li><b>Hostinq.</b> AzTU-nun data mərkəzi, AzInTelecom, yoxsa başqa server.</li>
     <li><b>İlk fakültə.</b> Hansı fakültə, hansı fənlər, başlama tarixi.</li>
     <li><b>Köhnə sistemlər.</b> AMAS və DrSys nə edir? İxracı kim verəcək?</li>

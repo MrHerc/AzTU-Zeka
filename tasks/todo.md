@@ -8,19 +8,24 @@ Hər tapşırıq üçün ümumi şərt: `python -m pytest -q`, `ruff check .`, `
 
 ## Phase 0 — Birləşdirmə və bünövrə
 
-## Task 1: Beş PR-ı birləşdir
+## Task 1: Beş PR-ı birləşdir — TAMAMLANDI (commit `9d23e99`)
+
+> Nəticə: 698 test keçdi (639 + 30 təhlükəsizlik + 26 Radar + 3 yeni); ruff və mypy təmiz; i18n en/ru 100%.
+> Köçürülən 43 təhlükəsizlik və 26 Radar yoxlamasının hamısı pytest-dədir. Heç bir test silinməyib və ya keçilməyib.
+> Qalan qeydlər: `docs/ARCHITECTURE.md` və `docs/API.md` köhnə `main`-i təsvir edir (Task 3-də yenilənir);
+> `/api/demo/storyline` giriş kodu olmadan cavab verir (Task 5-də prod rejimində bağlanır); Docker obrazı qurulub sınanmayıb (Task 9).
 
 **Description:** `trial/integration` sınaq budağının nəticəsi iş budağına gətirilir. Sıra: #3, #5, #4, #2, #1; hər biri `-Xignore-cr-at-eol` ilə. HTTP qatında #5-in `web.Body` oxuyucusu və #3-ün bütün qoruyucuları qalır. #3 və #4-ün `tests/selftest.py`-a yazdığı yoxlamalar pytest-ə köçürülür.
 
 **Acceptance criteria:**
-- [ ] Test sayı ən azı 639 + köçürülən təhlükəsizlik və Radar yoxlamalarıdır; heç bir test zəiflədilməyib, keçilməyib, silinməyib
-- [ ] #3-ün qoruyucuları yerindədir: CSRF, sorğu ölçüsü və `Transfer-Encoding` yoxlaması, başlıq doğrulaması, limitlər, giriş kodu, sessiya müddəti
-- [ ] `python tools/i18n.py stats` en və ru üçün 100% göstərir
+- [x] Test sayı ən azı 639 + köçürülən təhlükəsizlik və Radar yoxlamalarıdır; heç bir test zəiflədilməyib, keçilməyib, silinməyib
+- [x] #3-ün qoruyucuları yerindədir: CSRF, sorğu ölçüsü və `Transfer-Encoding` yoxlaması, başlıq doğrulaması, limitlər, giriş kodu, sessiya müddəti
+- [x] `python tools/i18n.py stats` en və ru üçün 100% göstərir
 
 **Verification:**
-- [ ] `python -m pytest -q`
-- [ ] `ruff check . && mypy && for f in static/js/*.js; do node --check "$f"; done`
-- [ ] `python run.py --reset --port 5123` açılır, `/api/bootstrap` 200 qaytarır
+- [x] `python -m pytest -q`
+- [x] `ruff check . && mypy && for f in static/js/*.js; do node --check "$f"; done`
+- [x] `python run.py --reset --port 5123` açılır, `/api/bootstrap` 200 qaytarır
 
 **Dependencies:** None
 **Files likely touched:** `app/web.py`, `app/r_core.py`, `app/r_academy.py`, `app/r_learning.py`, `tests/integration/test_security_review.py`, `tests/integration/test_radar.py`, `README.md`, tərcümə kataloqları
@@ -51,6 +56,7 @@ Hər tapşırıq üçün ümumi şərt: `python -m pytest -q`, `ruff check .`, `
 - [ ] Davranış dəyişmir: bütün testlər dəyişdirilmədən (yalnız idxal yolu) yaşıldır
 - [ ] `git log --follow` köçürülən fayllar üçün tarixçəni göstərir (təmiz adlandırma)
 - [ ] `tests/unit/test_layers.py`: heç bir `domain.py` `core.web`, `core.db` və ya `sqlite3` idxal etmir
+- [ ] `docs/ARCHITECTURE.md` və `docs/API.md` birləşdirilmiş vəziyyəti təsvir edir: sessiya müddəti, giriş kodu, Radar marşrutları, pytest
 
 **Verification:**
 - [ ] `python -m pytest -q`
@@ -83,7 +89,7 @@ Hər tapşırıq üçün ümumi şərt: `python -m pytest -q`, `ruff check .`, `
 **Description:** `core/config.py` bütün ayarları mühit dəyişənlərindən oxuyur. `ZEKA_MODE=prod`: demo giriş marşrutları, seed və reset qeydiyyatdan keçmir. Loopback olmayan ünvanda prod rejimi məcburidir. `manage.py create-admin` ilk administratoru yaradır.
 
 **Acceptance criteria:**
-- [ ] Prod rejimində `/api/auth/demo`, `/demo/login`, `/api/admin/reset` 404 qaytarır
+- [ ] Prod rejimində `/api/auth/demo`, `/demo/login`, `/api/demo/storyline`, `/api/admin/reset` 404 qaytarır
 - [ ] `--host 0.0.0.0` demo rejimində açılmır
 - [ ] Boş prod bazası yalnız `create-admin` ilə yaradılan hesabla açılır; heç bir sintetik istifadəçi yoxdur
 
