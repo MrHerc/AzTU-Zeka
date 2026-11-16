@@ -96,7 +96,7 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 - `docs/ARCHITECTURE.md` and `docs/API.md` were written against the pre-merge `main`: they still say sessions never expire,
   mention `tests/selftest.py`, and lack the access code and the Radar endpoints.
 - `/api/demo/storyline` answers without the access code (ids only); it must not exist in prod mode (Task 5).
-- Timestamps are naive local time; business logic assumes Asia/Baku.
+- Timestamps are naive local time; business logic assumes Asia/Baku (Task 5: clock; Task 9: container zone).
 
 ## Branch state (2026-11-16)
 
@@ -109,7 +109,8 @@ and research. `main` is unchanged and the five PRs are still open against it; th
 AzTU is **replacing all of its existing systems** with this product (not an overlay). Read these before adding features:
 
 - `SPEC.md` — objective, replacement matrix, capability map (stable module ids), target layout, code style, boundaries, success criteria.
-- `tasks/plan.md` and `tasks/todo.md` — 6 phases, 44 tasks with acceptance criteria and verification commands, migration waves.
+- `tasks/plan.md` and `tasks/todo.md` — 6 phases, 46 tasks with acceptance criteria and verification commands, migration waves,
+  record owner per entity. `docs/review/plan-review-2026-11-16.md` — the 24 review findings and the fixes applied.
 - `docs/CODEMAP.md` — what the current code really does, with file:line evidence and a capability inventory.
 - `docs/research/` — market, law, SEB and NIST research, verbatim; `docs/report/zeka-vahid-hesabat.html` — the unified report.
 

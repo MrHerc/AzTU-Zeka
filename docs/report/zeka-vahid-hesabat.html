@@ -139,7 +139,7 @@ pre.mermaid { margin: 0; padding: 16px; background: var(--surface); border: 1px 
     <p><b>Zəka bu gün güclü demodur, məhsul deyil.</b> Domen dərinliyi, üç dil və interfeys realdır. Real giriş, qalıcı məlumat, etibarlı imtahan və yükə davam yoxdur.</p>
     <p><b>Beş əvvəlki iş bu problemlərin bir hissəsini həll edib və artıq birləşdirilib.</b> Beş PR iş budağında bir ağacdadır: 698 test keçir, lint və tip yoxlaması təmizdir. <code>main</code> hələ dəyişməyib.</p>
     <p><b>AzTU mövcud sistemlərindən Zəka-ya keçir.</b> Bu tam əvəzləmədir. Hər mövcud sistem üçün onu əvəz edən modul və ölçülə bilən üstünlük müəyyən edilib. Əvəzləmə üçün çatışmayan əsas hissə akademik nüvədir: bu gün kodda müəllim nə davamiyyət, nə də bal yaza bilir.</p>
-    <p><b>72 saatın planı 6 mərhələ və 44 tapşırıqdır.</b> Sonunda bir fakültə real məlumatla işləyir: real hesablar, itməyən məlumat, müəllimin yazdığı jurnal, sillabus, SEB ilə imtahan, otaq tapan köməkçi, müəllimə sual, klublar. Qalan fakültələr eyni idxal və uzlaşdırma alətləri ilə dalğa-dalğa keçir.</p>
+    <p><b>72 saatın planı 6 mərhələ və 46 tapşırıqdır və tənqidi yoxlamadan keçib.</b> Dörd müstəqil rəyçinin 24 tapıntısının heç biri təkzib olunmadı; hamısı plana işlənib. Sonunda bir fakültə real məlumatla işləyir: real hesablar, itməyən məlumat, müəllimin yazdığı jurnal, sillabus, SEB ilə imtahan, otaq tapan köməkçi, müəllimə sual, klublar. Qalan fakültələr eyni idxal və uzlaşdırma alətləri ilə dalğa-dalğa keçir.</p>
     <p><b>Fərqləndirən ideya: icra olunan sillabus.</b> Sillabus PDF kimi qalmır, fənni konfiqurasiya edir və akkreditasiya üçün sübut zənciri yaradır. Bölmə 6-da açılır.</p>
   </div>
 </section>
@@ -343,7 +343,7 @@ pre.mermaid { margin: 0; padding: 16px; background: var(--surface); border: 1px 
   <h3>Dörd əsas ideya</h3>
   <div class="cols">
     <div class="card"><div class="tag">İcra olunan sillabus</div><p>Dərc olunan sillabus fənnin konfiqurasiyasıdır. Qiymət sxemi jurnalın sütunlarını qurur. Davamiyyət həddi xəbərdarlığı işə salır. AI siyasəti tutorun rejimini kilidləyir. Təlim nəticələri imtahanın planını və çərçivə xəritəsini verir.</p></div>
-    <div class="card"><div class="tag">Müşahidəsiz imtahan bütövlüyü</div><p>Qoruma serverdədir: yalnız imtahana çatan sessiya, server taymeri, tək sessiya, fərdi variant, şəbəkə siyahısı. SEB əlavə qatdır. Hər hadisə hash zəncirinə yazılır, kökü QR-lı protokola düşür. Kamera yoxdur.</p></div>
+    <div class="card"><div class="tag">Müşahidəsiz imtahan bütövlüyü</div><p>Qoruma serverdədir: yalnız imtahana çatan sessiya, server taymeri, tək sessiya, fərdi variant, şəbəkə siyahısı. İmtahan sualları məşq suallarından ayrı hovuzdadır. SEB əlavə qatdır. Hər hadisə, cavab və bal hash zəncirinə yazılır, kökü QR-lı protokola düşür. Kamera yoxdur.</p></div>
     <div class="card"><div class="tag">Hər qapı bir QR</div><p>Otağın QR-i dörd iş görür: marşrutun başlanğıc nöqtəsi, "indi burada hansı dərsdir", növbəti dərsə yol, nasazlıq bildirişi. Bina daxilində GPS və mayak avadanlığı lazım olmur.</p></div>
     <div class="card"><div class="tag">Mənbəsiz cavab yoxdur</div><p>Tutor və kampus köməkçisi yalnız universitetin öz mətnlərindən cavab verir və mənbəni göstərir. Mənbə tapılmayanda sualı insana ötürür. Susmaya görə məlumat serverdən çıxmır.</p></div>
   </div>
@@ -474,7 +474,7 @@ sequenceDiagram
   M->>P: Nəticəni açıqlayır
   P-->>T: Bal jurnalda
   </pre>
-  <p class="src">Server üç şeyi özü məcbur edir: sessiya imtahandan kənar heç bir marşruta çatmır, son vaxtdan sonra cavab qəbul olunmur, ikinci giriş birincini bağlayır.</p>
+  <p class="src">Server dörd şeyi özü məcbur edir. İmtahan sessiyası imtahandan kənar marşruta, adi sessiya isə imtahan marşrutuna çatmır. Son vaxtdan sonra cavab qəbul olunmur. İmtahana giriş tələbənin başqa sessiyalarını bağlayır. İmtahan sualları ayrıca hovuzdadır: tutor, məşq testi və ixrac onları göstərmir.</p>
 
   <h3>Kampus köməkçisi: sualdan əməliyyata</h3>
   <pre class="mermaid">
@@ -617,56 +617,92 @@ flowchart LR
 
 <section id="plan">
   <h2>10. 72 saatlıq plan</h2>
-  <p>6 mərhələ, 44 tapşırıq. Hər tapşırığın qəbul meyarı və yoxlama əmri <code>tasks/todo.md</code>-dədir. Kritik yol ardıcıl gedir, qalan iş ayrı iş qovluqlarında paralel aparılır.</p>
+  <p>6 mərhələ, 46 tapşırıq. Hər tapşırığın qəbul meyarı və yoxlama əmri <code>tasks/todo.md</code>-dədir. Beş PR-ın birləşdirilməsi (T01) artıq tamamlanıb.</p>
+  <div class="note"><p><b>Plan tənqidi yoxlamadan keçib.</b> Dörd müstəqil rəyçi 24 tapıntı verdi: 10 bloklayıcı, 14 əsas. Hər tapıntını ayrı agent təkzib etməyə çalışdı. Heç biri təkzib olunmadı; 5-i tam, 19-u qismən təsdiqləndi və daraldılmış düzəlişlə tətbiq olundu. Tam qeyd: <code>docs/review/plan-review-2026-11-16.md</code>.</p></div>
 
-  <div class="lane">
-    <div class="when">0–10</div><div class="what"><b>Birləşdirmə və bünövrə</b><span>Beş PR birləşir. Sətir sonları sabitlənir. Repo dilə və qata görə bölünür. Miqrasiya mühərriki, demo və prod rejimləri, handler qapısı və çox proses, backup, Docker və Caddy.</span><span class="accept">T01 tamamlandı: 698 test yaşıl. T02–T09 · Qapı: testlər yaşıl, HTTPS açılır, 300 müştəridə 0 xəta, bərpa sınağı keçir</span></div>
-    <div class="when">10–22</div><div class="what"><b>Kimlik və reyestr</b><span>Parol, sessiya, TOTP, rol və icazə, OIDC. Fakültə, kafedra, qrup, fənn idarəsi. Kütləvi idxal. Universitet ayarları: qiymət sxemi, davamiyyət həddi.</span><span class="accept">T10–T17 · Qapı: parolsuz yol yoxdur, rol × marşrut matrisi yaşıl, 10 000 tələbə idxal olunub girir</span></div>
-    <div class="when">22–36</div><div class="what"><b>Akademik nüvə</b><span>Korpus, otaq, otaq QR-i. Cədvəl idarəsi və iCal. Davamiyyət jurnalı. Qiymət jurnalı. Tapşırıqlar.</span><span class="accept">T18–T22 · Qapı: müəllim dərsdə davamiyyət və bal yazır, hədd və buraxılış avtomatik hesablanır</span></div>
-    <div class="when">36–52</div><div class="what"><b>Sillabus və imtahan</b><span>Struktur sillabus, NICE idxalı, təsdiq axını, fənnin konfiqurasiyası. İmtahan nüvəsi, imtahan əhatəli sessiya, SEB, nəzarətçi paneli, hash zəncirli protokol.</span><span class="accept">T23–T30 · Qapı: 300 nəfərlik sınaq imtahanı itkisiz, Windows-da SEB ilə əl sınağı</span></div>
-    <div class="when">52–62</div><div class="what"><b>Köməkçi, sual-cavab, icma, inteqrasiya</b><span>Otaq tapma və marşrut. Bilik bazası idarəsi və insana ötürmə. Fənn forumu, qəbul saatları. Klublar. E-poçt. API açarı, webhook, OneRoster.</span><span class="accept">T31–T37 · Qapı: 50 suallıq dəstdə mənbə düzgünlüyü ən azı 90%</span></div>
-    <div class="when">62–72</div><div class="what"><b>Miqrasiya, sərtləşdirmə, buraxılış</b><span>ETL və uzlaşdırma. Ölçülmüş göstəricilər. Məxfilik. Təhlükəsizlik baxışı və NIST matrisi. E2E, əlçatanlıq, yük. Runbook-lar. Buraxılış.</span><span class="accept">T38–T44 · Qapı: uzlaşdırma fərqi 0, hədəf serverdə bərpa, açıq yüksək tapıntı yoxdur</span></div>
-  </div>
-
-  <h3>Sənin addımların</h3>
+  <h3>Yoxlamanın dəyişdirdiyi əsas şeylər</h3>
   <div class="scroll"><table>
-    <thead><tr><th class="num">Saat</th><th>Nə lazımdır</th><th>Hansı tapşırıq üçün</th></tr></thead>
+    <thead><tr><th>Tapıntı</th><th>Düzəliş</th></tr></thead>
     <tbody>
-      <tr><td class="num">0</td><td>Spesifikasiya və planın təsdiqi. Beş PR-ı birləşdirməyə icazə. Commit və push qaydası.</td><td>T01</td></tr>
-      <tr><td class="num">0</td><td>Hostinq qərarı və serverə giriş</td><td>T09, T44</td></tr>
-      <tr><td class="num">6</td><td>Köhnə sistemlərin siyahısı və ilk ixrac faylları</td><td>T16, T38</td></tr>
-      <tr><td class="num">10</td><td>İlk fakültə, fənlər, müəllimlər</td><td>T15–T17</td></tr>
-      <tr><td class="num">22</td><td>Otaq siyahısı, korpus girişləri, mərtəbə planları. SMTP məlumatı.</td><td>T18, T31, T36</td></tr>
-      <tr><td class="num">36</td><td>SEB qurulmuş iki Windows kompüteri. SEB Config Tool ilə yaradılmış bir <code>.seb</code> faylı və onun Config Key-i.</td><td>T28</td></tr>
-      <tr><td class="num">52</td><td>Qaydalar, əsasnamələr, tələbə bələdçisi mətnləri</td><td>T32</td></tr>
-      <tr><td class="num">62</td><td>Sınaq istifadəçiləri. Buraxılış qərarı.</td><td>T44</td></tr>
+      <tr><td>İmtahan sualının cavabı tutorun Məşq rejimindən və məşq testindən alına bilərdi.</td><td>Sualın təyinatı ayrılır: məşq və ya imtahan. Bütün marşrutlar, tutor, Radar və ixrac üzrə sızma testi.</td></tr>
+      <tr><td>İmtahan kilidi sessiyaya bağlı idi, tələbəyə yox.</td><td>Əhatə iki istiqamətdə yoxlanır. İmtahana giriş tələbənin bütün başqa sessiyalarını bağlayır. Şəbəkə siyahısı hər sorğuda yoxlanır.</td></tr>
+      <tr><td>Semestrin ortasında keçid üçün tarixçə idxalı yox idi; 25% həddi sıfırdan sayılardı.</td><td>Dərs səviyyəli davamiyyət və ya açılış qalığı, cari ballar, tarixi yekun qiymətlər və status əmrləri üçün idxal növləri.</td></tr>
+      <tr><td>Bir fənn, bir müəllim, bir siyahı: mühazirə axını, qrup məşğələsi, yarımqrup laboratoriyası ifadə olunmurdu.</td><td>Tədris vahidi modeli: fənn × növ × müəllim × qrup və yarımqrup. Toqquşma yoxlaması və jurnal siyahısı ona görə qurulur.</td></tr>
+      <tr><td>Buraxılmayan tələbə imtahana başlaya bilərdi; təkrar imtahan üçün cəhd ölçüsü yox idi.</td><td>İmtahan siyahısı açılanda jurnaldan götürülür. İmtahanın növü: əsas, təkrar, fərdi vaxt. İmtahan-qiymət cədvəli QR-lı sənəd kimi.</td></tr>
+      <tr><td>Kəsid planında hansı sistemin dəyərinin etibarlı olduğu yazılmamışdı.</td><td>"Qeydin sahibi" cədvəli: hər varlığın hər dalğada bir sahib sistemi var. Geri qayıtma pəncərəsi və ixrac yolu.</td></tr>
+      <tr><td>Backup qoruduğu serverdə qalırdı; imtahan günü 24 saatlıq itkiyə yol verirdi.</td><td>İkinci hosta nüsxə, açarın serverdən kənar saxlanması, imtahan bağlananda əlavə backup.</td></tr>
+      <tr><td>Yük ölçməsi 147 istifadəçili nümunə bazada, yalnız oxuma ilə aparılmışdı.</td><td>Fakültə və universitet ölçülü sınaq dəstləri; yazma və imtahan ssenarisi; hədəf serverdə təkrar ölçmə buraxılış şərtidir.</td></tr>
+      <tr><td>Hash zənciri cavabları və balları əhatə etmirdi, kökü qoruduğu bazada idi.</td><td>Cavab və bal zəncirə daxildir. Kök bağlananda bazadan kənara çıxarılır.</td></tr>
+      <tr><td>Server UTC-də işləyir, qaydalar isə Bakı vaxtını fərz edirdi.</td><td>Saat və konteyner zonası ayrıca tapşırıqlarda; vaxtın saxlanma qaydası sənin qərarındır.</td></tr>
     </tbody>
   </table></div>
 
-  <h3>Vaxt çatmasa kəsmə sırası</h3>
-  <p>Kritik yol və təhlükəsizlik kəsilmir. Sıra ilə növbəti versiyaya keçir: qəbul saatları, klublar, tapşırıqlar, webhook-lar, akkreditasiya hesabatı, SSO. SSO kəsilsə yerli hesab və TOTP qalır.</p>
+  <h3>Mərhələlər</h3>
+  <div class="lane">
+    <div class="when">0–10</div><div class="what"><b>Birləşdirmə və bünövrə</b><span>Sətir sonları sabitlənir. Repo dilə və qata görə bölünür. Miqrasiya mühərriki, demo və prod rejimləri, handler qapısı və çox proses, real ölçülü sınaq dəstləri, backup və ikinci host, Docker və Caddy.</span><span class="accept">T01 tamamlandı: 698 test yaşıl. T02–T09 · Qapı: testlər yaşıl, HTTPS açılır, 300 müştəridə 0 xəta, bərpa sınağı keçir</span></div>
+    <div class="when">10–22</div><div class="what"><b>Kimlik və reyestr</b><span>Parol, sessiya, TOTP, rol və icazə, OIDC. Fakültə, kafedra, qrup, fənn, tədris vahidləri, status əmrləri. Kütləvi idxal və mənbə bağlantıları. Universitet ayarları.</span><span class="accept">T10–T17 · Qapı: parolsuz yol yoxdur, rol × marşrut matrisi yaşıl, 10 000 tələbə idxal olunub girir, sınaq nüsxəsi sabit adla açılır</span></div>
+    <div class="when">22–36</div><div class="what"><b>Akademik nüvə</b><span>Korpus, otaq, otaq QR-i. Cədvəl idarəsi və iCal. Davamiyyət jurnalı açılış qalığı ilə. Qiymət jurnalı, akademik borc siyahısı. Tapşırıqlar və orijinal material faylı. Sənədin bütövlüyü.</span><span class="accept">T18–T22, T45 · Qapı: müəllim dərsdə davamiyyət və bal yazır, hədd və buraxılış avtomatik hesablanır</span></div>
+    <div class="when">36–52</div><div class="what"><b>Sillabus və imtahan</b><span>Struktur sillabus, NICE idxalı, təsdiq axını, fənnin konfiqurasiyası. İmtahan nüvəsi ayrıca sual hovuzu və imtahan siyahısı ilə, imtahan əhatəli sessiya, SEB, nəzarətçi paneli, hash zəncirli protokol, imtahan-qiymət cədvəli.</span><span class="accept">T23–T30 · Qapı: 300 nəfərlik sınaq imtahanı itkisiz, sızma testi yaşıl, Windows-da SEB ilə əl sınağı</span></div>
+    <div class="when">52–62</div><div class="what"><b>Köməkçi, sual-cavab, icma, inteqrasiya</b><span>Otaq tapma və marşrut. Bilik bazası idarəsi və insana ötürmə. Fənn forumu, qəbul saatları. Klublar. E-poçt və dövri fon işləri. API açarı, webhook, OneRoster, dövlət reyestri üçün dəyişiklik siyahısı. E-xidmətlərin dürüstlüyü.</span><span class="accept">T31–T37, T46 · Qapı: 50 suallıq dəstdə mənbə düzgünlüyü ən azı 90%</span></div>
+    <div class="when">62–72</div><div class="what"><b>Miqrasiya, sərtləşdirmə, buraxılış</b><span>ETL və uzlaşdırma. Ölçülmüş göstəricilər. Məxfilik. Təhlükəsizlik baxışı və NIST matrisi. E2E, əlçatanlıq, yük. Runbook-lar. Buraxılış.</span><span class="accept">T38–T44 · Qapı: uzlaşdırma fərqi 0 və ya izahlı, hədəf serverdə bərpa, açıq yüksək tapıntı yoxdur</span></div>
+  </div>
+  <p><b>Kritik zəncir 19 ardıcıl tapşırıqdır:</b> T02, T03, T04, T05, T10, T11, T13, T15, T17, T19, T20, T21, T26, T27, T29, T30, T42, T43, T44. Otaqlar, idxal, sillabus, sual-cavab, klublar və bildirişlər bu zəncirdən kənardır və paralel gedir.</p>
+
+  <h3>Vaxt çatmasa</h3>
+  <div class="cols">
+    <div class="card"><div class="tag">Kəsmə sırası</div><ol><li>Qəbul saatları</li><li>Klublar və kanallar</li><li>Tapşırıq axını (material faylı qalır)</li><li>Webhook-lar</li><li>Akkreditasiya hesabatı</li><li>SSO (yerli hesab və TOTP qalır)</li></ol></div>
+    <div class="card"><div class="tag">Kritik zəncirdə incəltmə</div><ul><li>Sual statistikası və oxşar səhv cavab siyahısı</li><li>Excel-dən yapışdırma</li><li>Ləğv və köçürmə bildirişi</li><li>"Sessiyalarım" siyahısı</li></ul></div>
+    <div class="card"><div class="tag">Kəsilmir</div><ul><li>Kritik zəncirin özü</li><li>Təhlükəsizlik tapşırıqları</li><li>İmtahan siyahısı və buraxılış qapısı</li><li>Backup və bərpa sınağı</li></ul></div>
+  </div>
 </section>
 
 <section id="hedler">
   <h2>11. Dalğalar və kəsid</h2>
-  <p>Heç bir dalğa imtahan sessiyasının ortasında bağlanmır. Hər dalğada köhnə sistem oxunaqlı qalır.</p>
+  <p>Heç bir dalğa imtahan sessiyasının ortasında bağlanmır. Hər varlığın hər anda bir sahib sistemi var.</p>
   <div class="scroll"><table>
-    <thead><tr><th>Dalğa</th><th>Vaxt</th><th>Zəka-ya keçən</th><th>Bağlanma şərti</th></tr></thead>
+    <thead><tr><th>Dalğa</th><th>Vaxt</th><th>Zəka-ya keçən</th><th>Köhnə sistem</th><th>Bağlanma şərti</th></tr></thead>
     <tbody>
-      <tr><td class="num">0</td><td>72 saat</td><td>Bir fakültə: giriş, cədvəl, otaq, davamiyyət, cari ballar, sillabus, köməkçi, sual-cavab, klub</td><td>Uzlaşdırma fərqi 0. 300 nəfərlik sınaq imtahanı.</td></tr>
-      <tr><td class="num">1</td><td>2–4 həftə</td><td>Bütün fakültələr: jurnal, cədvəl, tapşırıq. Universitet SSO-su.</td><td>İki ardıcıl həftə fərq 0</td></tr>
-      <tr><td class="num">2</td><td>Qış sessiyası</td><td>İmtahanlar SEB ilə. Protokollar, apellyasiya, e-xidmətlər.</td><td>Hər imtahanın protokolu və zəncir kökü var</td></tr>
-      <tr><td class="num">3</td><td>Yaz semestrinin əvvəli</td><td>Zəka əsas sistemdir. Tarixi məlumat köçürülür. Dövlət sistemlərinə ixrac.</td><td>Rektorluğun yazılı qəbulu. Arxivin bərpa sınağı.</td></tr>
+      <tr><td class="num">0</td><td>72 saat</td><td>Bir fakültə: giriş, cədvəl, otaq, davamiyyət (idxal olunmuş qalıqla), cari ballar, sillabus, köməkçi, sual-cavab, klub</td><td>Əsas mənbə və hüquqi qeyd qalır</td><td>İxraca qarşı uzlaşdırma fərqi 0 və ya sətir-sətir izahlı. 300 nəfərlik sınaq imtahanı.</td></tr>
+      <tr><td class="num">1</td><td>2–4 həftə</td><td>Bütün fakültələr: jurnal, cədvəl, tapşırıq. Universitet SSO-su.</td><td>Paralel iş, gecəlik müqayisə; kəsiddən sonra yalnız oxunur</td><td>14 ardıcıl gecə fərq 0 və ya izahlı</td></tr>
+      <tr><td class="num">2</td><td>Qış sessiyası</td><td>İmtahanlar SEB ilə. Protokollar, apellyasiya, e-xidmətlər.</td><td>İmtahan nəticəsinin ehtiyat nüsxəsi</td><td>Hər imtahanın protokolu və zəncir kökü var</td></tr>
+      <tr><td class="num">3</td><td>Yaz semestrinin əvvəli</td><td>Zəka əsas sistemdir. Tədris planı və fənn qeydiyyatı modulu. Tarixi məlumat. Dövlət sistemlərinə ixrac.</td><td>Arxiv</td><td>Rektorluğun yazılı qəbulu. Arxivin bərpa sınağı. Yaz qeydiyyatı Zəka-dadır.</td></tr>
     </tbody>
   </table></div>
+
+  <h3>Qeydin sahibi</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Varlıq</th><th>Sahib sistem</th><th>Sinxron istiqaməti</th></tr></thead>
+    <tbody>
+      <tr><td>Şəxslər, struktur, fənn, qeydiyyat, status əmrləri</td><td>Dalğa 1-in kəsidinə qədər köhnə sistem, sonra Zəka</td><td>Köhnə sistem → Zəka (təkrar idxal); kəsiddən sonra Zəka → ixrac</td></tr>
+      <tr><td>Cədvəl, otaq</td><td>İlk idxaldan Zəka</td><td>Fayl → Zəka; təkrar idxal yalnız konflikt hesabatı ilə</td></tr>
+      <tr><td>Davamiyyət, cari ballar</td><td>Dalğa 0-da sənin qərarın: A və ya B. Dalğa 1-dən Zəka.</td><td>A: köhnə sistem əsasdır, pilot müəllimlər ikisinə də yazır. B: yalnız Zəka-ya yazılır.</td></tr>
+      <tr><td>İmtahan nəticələri</td><td>Dalğa 2-yə qədər köhnə sistem, sonra Zəka</td><td>Zəka → köhnə sistem (ehtiyat nüsxə)</td></tr>
+      <tr><td>Yeni semestrin fənn qeydiyyatı</td><td>Köhnə Academic modulu, dalğa 3-də Zəka</td><td>Köhnə sistem → Zəka</td></tr>
+    </tbody>
+  </table></div>
+  <p>Zəka-da dəyişdirilmiş sətir təkrar idxalda üstünə yazılmır, konflikt hesabatına düşür. Kəsiddən sonra geri qayıtma pəncərəsi var, susmaya görə 14 gün: Zəka-da yazılan məlumat ixrac olunub köhnə sistemə qaytarılır.</p>
+
+  <h3>İlk versiyadan çıxarılıb, dalğaya yazılıb</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Nə</th><th>Nə vaxt</th><th>O vaxta qədər</th></tr></thead>
+    <tbody>
+      <tr><td>Tədris planı, fərdi tədris planı, seçmə fənn qeydiyyatı, kredit həddi</td><td>Dalğa 3</td><td>Qeydiyyat köhnə sistemdən idxal olunur</td></tr>
+      <tr><td>Transkript və keçmiş semestr qiymətinə əsaslanan sənədlər</td><td>Dalğa 3</td><td>Tarixi qiymətlər köçürülüb uzlaşdırılana qədər bağlıdır, səbəbi göstərilir</td></tr>
+      <tr><td>Akademik borcun idarəsi, təkrar dinləmə, yay semestri</td><td>Dalğa 3</td><td>Yalnız borc siyahısı və CSV ixracı</td></tr>
+      <tr><td>Müraciət növlərinin admin redaktoru</td><td>İlk versiyadan sonra</td><td>Rəydən keçən data miqrasiyası; admin növü açır və bağlayır</td></tr>
+      <tr><td>Postgres</td><td>Yük testi tələb edərsə, dalğa 1-dən əvvəl</td><td>SQLite, SQL yalnız <code>repo.py</code>-də</td></tr>
+      <tr><td>SAML, LTI 1.3</td><td>Asılılıq icazəsi gələndə</td><td>OIDC, OneRoster, iCal</td></tr>
+    </tbody>
+  </table></div>
+
   <h3>Kənar tərəfdən asılı işlər</h3>
   <div class="scroll"><table>
     <thead><tr><th>İş</th><th>Kimdən asılıdır</th><th>O gələnə qədər</th></tr></thead>
     <tbody>
       <tr><td><code>sso.aztu.edu.az</code> ilə giriş</td><td>AzTU İT: protokol və müştəri qeydiyyatı</td><td>Yerli hesab və TOTP</td></tr>
-      <tr><td>Hüquqi qüvvəli e-imza</td><td>SİMA və ya ASAN İmza ilə müqavilə</td><td>QR doğrulama və reyestr</td></tr>
+      <tr><td>Hüquqi qüvvəli e-imza</td><td>SİMA və ya ASAN İmza ilə müqavilə</td><td>QR doğrulama, saxlanmış nüsxə və hash yoxlaması (T45)</td></tr>
       <tr><td>Sistemin dövlət qeydiyyatı (maddə 15)</td><td>AzTU hüquq şöbəsi</td><td>Məlumat inventarı hazırdır (T40)</td></tr>
-      <tr><td>TMİS və "Tələbə-məzun" sistemi</td><td>Nazirlik və DİM: açıq API tapılmayıb</td><td>Sütunları tənzimlənən fayl ixracı (T37)</td></tr>
+      <tr><td>TMİS və "Tələbə-məzun" sistemi</td><td>Nazirlik və DİM: açıq API tapılmayıb</td><td>Operator üçün dəyişiklik siyahısı və fayl ixracı (T37)</td></tr>
       <tr><td>Kənar sızma testi</td><td>Müstəqil icraçı</td><td>Daxili çoxagentli rəy və təkzib (T41)</td></tr>
     </tbody>
   </table></div>
@@ -674,18 +710,24 @@ flowchart LR
 
 <section id="qerarlar">
   <h2>12. Sənin qərarların</h2>
-  <ol>
-    <li><b>Təsdiq.</b> <code>SPEC.md</code> və <code>tasks/plan.md</code> təsdiq gözləyir. Təsdiqdən sonra qurmağa başlayıram.</li>
-    <li><b>Commit və push.</b> Hər yoxlama nöqtəsində commit və push edim, yoxsa hər dəfə soruşum?</li>
-    <li><b>Beş PR.</b> İş budağında birləşdirilib. <code>main</code>-ə nə vaxt birləşdirək və köhnə beş PR-ı bağlayaq?</li>
-    <li><b>Hostinq.</b> AzTU-nun data mərkəzi, AzInTelecom, yoxsa başqa server.</li>
-    <li><b>İlk fakültə.</b> Hansı fakültə, hansı fənlər, başlama tarixi.</li>
-    <li><b>Köhnə sistemlər.</b> AMAS və DrSys nə edir? İxracı kim verəcək?</li>
-    <li><b>SSO protokolu.</b> <code>sso.aztu.edu.az</code> OIDC, SAML, yoxsa CAS ilə işləyir?</li>
-    <li><b>LLM.</b> Oflayn mühərrik kifayətdir, yoxsa xarici və ya yerli model qoşulur?</li>
-    <li><b>NIST.</b> NICE xəritəsi və platformanın nəzarətləri kimi başa düşmüşəm. Düzdür?</li>
-    <li><b>Java.</b> V1-də ikinci backend dili planlaşdırmamışam. Java tələb edən hissə varmı?</li>
-  </ol>
+  <p>Spesifikasiyada 25 açıq sual var. Vaxtı bağlı olanlar aşağıdadır; tam siyahı <code>SPEC.md</code>-də, saat üzrə addımlar <code>tasks/plan.md</code>-dədir.</p>
+  <div class="scroll"><table>
+    <thead><tr><th class="num">Saat</th><th>Qərar və ya giriş</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>Spesifikasiya və planın təsdiqi. İş budağından <code>main</code>-ə PR və köhnə beş PR-ın bağlanması.</td></tr>
+      <tr><td class="num">0</td><td>Hostinq və server girişi, sınaq nüsxəsinin DNS adı, sertifikat üsulu, imtahan auditoriyasının alt şəbəkəsi. Backup üçün ölkə daxilində ikinci host və açarın saxlanma yeri.</td></tr>
+      <tr><td class="num">0</td><td>NICE Framework Components v2.2.0 faylı: sessiyanın şəbəkə icazəsinə <code>www.nist.gov</code> və <code>csrc.nist.gov</code> əlavə et və ya faylı repoya qoy.</td></tr>
+      <tr><td class="num">6</td><td>Köhnə sistemlərin siyahısı və ilk ixraclar. Pilot fakültənin cari semestr davamiyyəti və cari balları. AMAS və DrSys nə edir.</td></tr>
+      <tr><td class="num">10</td><td>İlk fakültə, fənlər, müəllimlər; real cədvəl ixracı qrup, yarımqrup, dərs növü və müəllim sütunları ilə. Davamiyyət və qiymətləndirmə əsasnaməsi, rəsmi akademik təqvim.</td></tr>
+      <tr><td class="num">10</td><td>"Qeydin sahibi" cədvəli və dalğa 0 üçün A və ya B. Kəsid tarixi. Status əmrlərini kim daxil edir. Vaxtın saxlanma qaydası.</td></tr>
+      <tr><td class="num">22</td><td>Otaq siyahısı, korpus girişləri, mərtəbə planları. SMTP məlumatı. Rol cədvəli: dekanlığın rol adı və moderatorlar.</td></tr>
+      <tr><td class="num">36</td><td>SEB qurulmuş iki Windows kompüteri. Parolsuz saxlanmış bir <code>.seb</code> faylı və SEB Config Tool-un göstərdiyi Config Key.</td></tr>
+      <tr><td class="num">36</td><td>Nəticədən sonra sual açarı tələbəyə göstərilsinmi (susmaya görə yox). Cəhd gedərkən adi giriş imtahan sessiyasını bağlamasınmı (susmaya görə bağlamır). Təkrar imtahan qaydası və imtahan-qiymət cədvəlini kim imzalayır.</td></tr>
+      <tr><td class="num">52</td><td>Qaydalar, əsasnamələr, tələbə bələdçisi mətnləri.</td></tr>
+      <tr><td class="num">62</td><td>Sınaq istifadəçiləri. Buraxılış qərarı.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Vaxtı olmayan suallar: LLM seçimi; "sillabus üçün NIST" anlayışımın düzgünlüyü (NICE xəritəsi və platformanın nəzarətləri); V1-də Java tələb edən hissənin olub-olmaması; maddə 8 və 15 üzrə hüquqşünas rəyi.</p>
 </section>
 
 <section id="yoxlanmayib">
@@ -693,13 +735,15 @@ flowchart LR
   <ul>
     <li><b>Rəsmi saytlar.</b> nist.gov, owasp.org və safeexambrowser.org bu mühitdən birbaşa açılmadı. NIST faktları axtarış çıxarışlarına, SEB faktları GitHub-dakı mənbə koduna əsaslanır.</li>
     <li><b>SEB real cihazda sınanmayıb.</b> Config Key alqoritmi mənbə kodundan götürülüb. Təsdiq üçün sənin verəcəyin <code>.seb</code> faylı və açarı lazımdır.</li>
-    <li><b>Yük ölçməsi sintetikdir.</b> 4 nüvəli konteynerdə aparılıb. Hədəf serverdə təkrar olunmalıdır.</li>
-    <li><b>Qanun.</b> Maddələr rəsmi mətndən oxunub, amma hüquqi şərh deyil. Maddə 8 üzrə razılıq forması hüquqşünas rəyi tələb edir.</li>
+    <li><b>Yük ölçməsi real ölçüdə deyil.</b> 147 istifadəçili nümunə bazada, yalnız oxuma ilə, bir prosesdə, 4 nüvəli konteynerdə aparılıb. Plan fakültə və universitet ölçülü dəstlə, yazma ilə və hədəf serverdə təkrar ölçməni tələb edir.</li>
+    <li><b>Birləşdirilmiş kod yalnız Python 3.13-də sınanıb.</b> CI matrisi (3.10–3.12, Windows), gitleaks və pip-audit GitHub-da işləməlidir. Docker obrazı qurulmayıb.</li>
+    <li><b>Qanun.</b> Maddələr rəsmi mətndən oxunub, amma hüquqi şərh deyil. "Tələbə-məzun" üçün 10 günün əmr tarixindən sayılması və 40 kredit həddi fərziyyədir.</li>
     <li><b>Köhnə sistemlər.</b> KOICA sisteminin daxili quruluşu və ixrac imkanları məlum deyil. AMAS və DrSys haqqında yalnız ad var.</li>
     <li><b>Semestr tarixləri.</b> Nümunə məlumatdandır, rəsmi təqvimlə yoxlanmayıb.</li>
-    <li><b>72 saat.</b> Qiymətləndirmə təxmindir. Kəsmə sırası buna görə yazılıb.</li>
+    <li><b>Kod xəritəsi.</b> Dörd bölməsi birləşdirmədən əvvəl oxunub, sətir nömrələri mexaniki yenilənib. İmkan inventarı birləşdirilmiş kodda aparılıb.</li>
+    <li><b>72 saat.</b> 46 tapşırıq və 19-luq kritik zəncir üçün qiymətləndirmə təxmindir. Kəsmə və incəltmə siyahıları buna görə yazılıb.</li>
   </ul>
-  <p class="src">Mənbələr: <code>docs/research/</code> qovluğundakı dörd araşdırma hesabatı, hər fakt üçün keçidlə; <code>docs/AUDIT.md</code>, <code>docs/SECURITY_REVIEW.md</code>, <code>docs/ROADMAP.md</code> (PR #1 və #3); <code>docs/CODEMAP.md</code>. Qanun mətnləri: e-qanun.az, 998-IIIQ və 988-VIQ; president.az, Fərman 718. SEB: github.com/SafeExamBrowser. NIST: csrc.nist.gov.</p>
+  <p class="src">Mənbələr: <code>docs/research/</code> qovluğundakı dörd araşdırma hesabatı, hər fakt üçün keçidlə; <code>docs/AUDIT.md</code>, <code>docs/SECURITY_REVIEW.md</code>, <code>docs/ROADMAP.md</code>; <code>docs/CODEMAP.md</code>; <code>docs/review/plan-review-2026-11-16.md</code>. Qanun mətnləri: e-qanun.az, 998-IIIQ və 988-VIQ; president.az, Fərman 718. SEB: github.com/SafeExamBrowser. NIST: csrc.nist.gov.</p>
 </section>
 
 </main>
