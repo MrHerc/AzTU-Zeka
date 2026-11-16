@@ -220,7 +220,7 @@ Hər mərhələnin sonunda, yoxlama nöqtəsindən əvvəl:
 
 | Risk | Təsir | Azaltma |
 |---|---|---|
-| Birləşdirilmiş kod CI matrisində sınır (Python 3.10–3.12, Windows) | Orta | Lokal yoxlama yalnız Python 3.13-dədir. Push-dan sonra GitHub Actions nəticəsinə baxılır, qırmızı iş T02-dən əvvəl düzəldilir. |
+| Təhlükəsizlik iş axını iş budağında işləmir | Orta | CI iş budağında yaşıldır (Python 3.10–3.13 və Windows, üç ardıcıl commit). `security.yml` (gitleaks, pip-audit, bandit) bu budaqda işə düşməyib: T02-dən əvvəl əl ilə işə salınır və ya tetikləyicisi iş budağını əhatə edəcək şəkildə düzəldilir. |
 | Köhnə sistemlərdən ixrac gecikir və ya natamamdır | Yüksək | İdxal OneRoster CSV şablonu ilə də işləyir: dekanlıq Excel-dən doldura bilər. Şablon dəstinə `attendance-opening.csv` və `grades.csv` daxildir. Kəşf birinci saatdan başlayır. |
 | Dalğa 3-də qeydiyyat mənbəyi yoxdur | Yüksək | Yaz qeydiyyatı arxivdən əvvəl köhnə sistemdən ixrac olunur; modul Dalğa 3-dən əvvəl ayrıca tapşırıqdır. |
 | SEB real cihazda fərqli davranır | Yüksək | Config Key alqoritmi SEB mənbə kodundan götürülüb; sahibin verdiyi `.seb` və açarla müqayisə testi; saat 52-də əl sınağı. İmtahanın qoruması SEB-dən asılı deyil (A10). |
