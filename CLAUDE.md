@@ -99,14 +99,27 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 
 ## Product direction
 
-The target is a unified university portal sold to Azerbaijani universities: real identity (SSO), syllabus management with
-framework mapping, a safe-exam-browser mode, campus assistant with room finding, ask-the-teacher Q&A, club communities,
-integrations, and security controls mapped to NIST. The owner wants the existing frontend kept and built upon, and code
-separated by language and layer (backend / frontend / infra) with an explicit architecture.
+AzTU is **replacing all of its existing systems** with this product (not an overlay). Read these before adding features:
+
+- `SPEC.md` — objective, replacement matrix, capability map (stable module ids), target layout, code style, boundaries, success criteria.
+- `tasks/plan.md` and `tasks/todo.md` — 6 phases, 44 tasks with acceptance criteria and verification commands, migration waves.
+- `docs/CODEMAP.md` — what the current code really does, with file:line evidence and a capability inventory.
+- `docs/research/` — market, law, SEB and NIST research, verbatim; `docs/report/zeka-vahid-hesabat.html` — the unified report.
+
+Facts that shape the plan:
+
+- The academic core has no write path today: attendance, grades, timetable, users, courses and enrolments are only created by
+  `seed()`. A teacher cannot mark attendance or enter a grade.
+- Throughput collapses under concurrency (256 req/s with 1 client, 47 with 20, errors at 300). Bounding concurrent handlers to
+  2 per process restores it (226 req/s at 20 clients, 0 errors at 300) — measured, not yet implemented (Task 6).
+- New code goes into `backend/zeka/modules/<id>/{domain,service,repo,routes}.py` once the restructure (Task 3) lands;
+  `domain.py` has no I/O, SQL lives only in `repo.py`. The existing frontend is kept and extended.
+- Third-party plugins (ponytail, agent-skills, ecc, claude-mem) do not load in cloud sessions; they work in local sessions.
 
 ## Working rules set by the owner
 
 - Reply in Azerbaijani, in short sentences. End every reply with what was not verified and the remaining risk.
-- Commit only when told to. Never push without asking first.
+- Commit and push to the session's own working branch at every checkpoint without asking (standing permission from the
+  owner, 2026-11-16, for the V1 sprint). `main`, other branches, tags, merging PRs and force-pushes still need asking first.
 - Work in the order spec → plan → build → test → review → ship. For code review, try to refute each finding with a
   separate agent and fix only what is confirmed.

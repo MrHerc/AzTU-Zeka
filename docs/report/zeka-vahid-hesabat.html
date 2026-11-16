@@ -95,6 +95,12 @@ pre.tree b { color: var(--navy); font-weight: 600; }
 .lane .what span { color: var(--text-2); }
 .lane .what .accept { color: var(--muted); font-size: 13px; }
 .gate { background: var(--navy); color: var(--bg); border-radius: 10px; padding: 12px 16px; font-weight: 600; font-size: 14.5px; }
+pre.mermaid { margin: 0; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; text-align: center; font-family: var(--font); font-size: 13px; color: var(--text); }
+.kv { display: grid; grid-template-columns: minmax(120px, 190px) minmax(0, 1fr); gap: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; font-size: 14.5px; }
+.kv > div { padding: 10px 14px; border-bottom: 1px solid var(--border); min-width: 0; }
+.kv > div:nth-last-child(-n+2) { border-bottom: 0; }
+.kv > div:nth-child(odd) { background: var(--surface-2); font-weight: 600; color: var(--text-2); }
+@media (max-width: 560px) { .kv { grid-template-columns: minmax(0, 1fr); } .kv > div:nth-child(odd) { border-bottom: 0; padding-bottom: 2px; } }
 .src { font-size: 12.5px; color: var(--muted); }
 .src a { color: var(--muted); }
 @media (max-width: 560px) { .lane { grid-template-columns: 66px minmax(0, 1fr); } th, td { padding: 9px 10px; } }
@@ -114,7 +120,7 @@ pre.tree b { color: var(--navy); font-weight: 600; }
   <a href="#workflow">8. Workflow-lar</a>
   <a href="#nist">9. NIST xəritəsi</a>
   <a href="#plan">10. 72 saatlıq plan</a>
-  <a href="#hedler">11. 72 saatda olmayanlar</a>
+  <a href="#hedler">11. Dalğalar və kəsid</a>
   <a href="#qerarlar">12. Sənin qərarların</a>
   <a href="#yoxlanmayib">13. Yoxlanmayanlar</a>
 </nav>
@@ -132,8 +138,8 @@ pre.tree b { color: var(--navy); font-weight: 600; }
   <div class="verdict">
     <p><b>Zəka bu gün güclü demodur, məhsul deyil.</b> Domen dərinliyi, üç dil və interfeys realdır. Real giriş, qalıcı məlumat, etibarlı imtahan və yükə davam yoxdur.</p>
     <p><b>Beş əvvəlki iş bu problemlərin bir hissəsini həll edib.</b> Heç biri <code>main</code>-ə birləşdirilməyib. İkisi bir-biri ilə toqquşur. Birləşdirmə planın ilk addımıdır.</p>
-    <p><b>AzTU-ya "daha bir LMS" satılmaz.</b> Universitetin artıq LMS-i, SSO-su, Microsoft 365 və Copilot-u, saytında AI köməkçisi var. Satılan şey mövcud sistemlərin üstündə vahid qatdır və akkreditasiya hesabatında yazılmış boşluqlardır.</p>
-    <p><b>72 saatda real hədəf bir fakültə üçün pilot buraxılışıdır.</b> Real hesablar, itməyən məlumat, SEB ilə imtahan rejimi, otaq tapan köməkçi, sillabus. Bütün universitet, hüquqi qüvvəli sənəd və AzTU SSO-su 72 saata sığmır. Səbəb kod deyil, universitetdən asılı addımlardır.</p>
+    <p><b>AzTU mövcud sistemlərindən Zəka-ya keçir.</b> Bu tam əvəzləmədir. Hər mövcud sistem üçün onu əvəz edən modul və ölçülə bilən üstünlük müəyyən edilib. Əvəzləmə üçün çatışmayan əsas hissə akademik nüvədir: bu gün kodda müəllim nə davamiyyət, nə də bal yaza bilir.</p>
+    <p><b>72 saatın planı 6 mərhələ və 44 tapşırıqdır.</b> Sonunda bir fakültə real məlumatla işləyir: real hesablar, itməyən məlumat, müəllimin yazdığı jurnal, sillabus, SEB ilə imtahan, otaq tapan köməkçi, müəllimə sual, klublar. Qalan fakültələr eyni idxal və uzlaşdırma alətləri ilə dalğa-dalğa keçir.</p>
     <p><b>Fərqləndirən ideya: icra olunan sillabus.</b> Sillabus PDF kimi qalmır, fənni konfiqurasiya edir və akkreditasiya üçün sübut zənciri yaradır. Bölmə 6-da açılır.</p>
   </div>
 </section>
@@ -234,8 +240,9 @@ pre.tree b { color: var(--navy); font-weight: 600; }
   </table></div>
   <div class="stack">
     <p><b>Nə görünür.</b> Bir müştəri ilə server saniyədə 256 sorğu çəkir. 20 paralel müştəri ilə bu 47-yə düşür. 300 müştəridə sorğuların təxminən dörddə biri uğursuz olur.</p>
-    <p><b>Səbəb axtarışı.</b> Handler özü 1,2 ms işləyir. Amma bir ana səhifə sorğusu 76 SQL çağırışı edir. Paralel axınlar bu çağırışlarda bir-birini gözləyir. Axın keçid intervalını dəyişdim, kömək etmədi. Paralel handler sayını məhdudlaşdırma sınağı yarımçıq qaldı.</p>
-    <p><b>Mənası.</b> AzTU-da 10 000-dən çox tələbə var. 300 nəfərlik bir imtahan axını indiki serveri dayandırar. Yük testi buraxılış şərti olmalıdır.</p>
+    <p><b>Səbəb axtarışı.</b> Handler özü 1,2 ms işləyir. Amma bir ana səhifə sorğusu 76 SQL çağırışı edir. Paralel axınlar bu çağırışlarda bir-birini gözləyir. Axın keçid intervalını dəyişdim, kömək etmədi.</p>
+    <p><b>Yoxlanmış həll.</b> Eyni anda işləyən handler sayını 2-yə məhdudlaşdırdım. 20 müştəridə ötürücülük 47-dən 226 sorğu/san-a qalxdı. 300 müştəridə 221 sorğu/san və 0 xəta alındı. 4 handler ilə nəticə yenə pisləşir: 85 və 36. Plan: proses başına 2 handler, nüvə başına bir proses.</p>
+    <p><b>Mənası.</b> AzTU-da 10 000-dən çox tələbə var. 300 nəfərlik bir imtahan axını indiki serveri dayandırar. Həll planın altıncı tapşırığıdır, yük testi buraxılış şərtidir.</p>
   </div>
 </section>
 
@@ -285,7 +292,7 @@ pre.tree b { color: var(--navy); font-weight: 600; }
 
   <h3>Qlobal məhsulların dərsləri</h3>
   <div class="cols">
-    <div class="card"><div class="tag">Əvəz etmə, üstünə otur</div><p>Tələbə informasiya sisteminin dəyişdirilməsi ən bahalı uğursuzluqdur. Washington Universitetinin Workday proqramı 266 milyon dollar, Minnesota-nın büdcəsi 151-dən 290 milyona qalxıb. Mövcud sistemlərə qoşulan qat aylarla satılır.</p></div>
+    <div class="card"><div class="tag">Əvəzləmə dalğa ilə gedir</div><p>Tələbə informasiya sisteminin bir dəfəyə dəyişdirilməsi ən bahalı uğursuzluq növüdür. Washington Universitetinin Workday proqramı 266 milyon dollar, Minnesota-nın büdcəsi 151-dən 290 milyona qalxıb. Ona görə plan dalğalıdır: idxal, uzlaşdırma, paralel iş, sonra kəsid.</p></div>
     <div class="card"><div class="tag">AI tutor iki tərəfli bıçaqdır</div><p>Harvard sınağında qoruyucu dizaynlı tutor 0,73–1,3 standart kənarlaşma qazanc verib. 2026-cı ilin 2 379 tələbəli sınağında isə kursa qoşulmuş AI tutor yekun qiyməti 0,37 standart kənarlaşma aşağı salıb. Sokratik rejim və mənbə məcburiyyəti bəzək deyil, şərtdir.</p></div>
     <div class="card"><div class="tag">Xəbərdarlıq yox, müdaxilə</div><p>Erkən xəbərdarlıq sistemləri təkbaşına tələbəni saxlamır. 11 universitetli MAAPS sınağı ümumi effekt tapmayıb. Bir məhsul irqi risk əlaməti kimi istifadə etdiyi üçün qalmaqala düşüb. Radar-ın dəstək planı və demoqrafiyasız modeli düzgün istiqamətdir.</p></div>
     <div class="card"><div class="tag">Ən sübutlu modul köməkçidir</div><p>Georgia State-in inzibati çatbotu yay itkisini 21,4% azaldıb. Mesajların 1%-dən azı işçiyə gedib. Kampus köməkçisi universitet üçün ölçülə bilən qənaətdir.</p></div>
@@ -297,6 +304,7 @@ pre.tree b { color: var(--navy); font-weight: 600; }
   <div class="scroll"><table>
     <thead><tr><th>Sahə</th><th>Bu gün</th><th>Real istifadə üçün lazımdır</th><th>Nə vaxt</th></tr></thead>
     <tbody>
+      <tr><td>Akademik nüvə</td><td>Davamiyyət, bal, cədvəl, istifadəçi yalnız nümunə məlumatdır; yazma yolu yoxdur</td><td>Müəllimin yazdığı jurnal, cədvəl idarəsi, reyestr, tapşırıq</td><td><span class="pill p-blue">72 saat</span></td></tr>
       <tr><td>Kimlik</td><td>Parolsuz rol seçimi</td><td>Şəxsi hesab, işçilərə MFA, universitet SSO-su</td><td><span class="pill p-blue">72 saat</span> SSO sonra</td></tr>
       <tr><td>Məlumat</td><td>Hər sxem dəyişikliyində silinir</td><td>Miqrasiya, şifrəli backup, bərpa sınağı</td><td><span class="pill p-blue">72 saat</span></td></tr>
       <tr><td>Real məlumat</td><td>Hər şey sintetikdir</td><td>Tələbə, qrup, fənn, cədvəl, otaq idxalı</td><td><span class="pill p-blue">72 saat</span> CSV ilə</td></tr>
@@ -312,11 +320,386 @@ pre.tree b { color: var(--navy); font-weight: 600; }
   </table></div>
 </section>
 
-<section id="davam">
-  <div class="note warn"><p><b>Qaralama.</b> Bu fayl yarımçıqdır. Bölmə 6–13 (konsepsiya, arxitektura, workflow-lar, NIST xəritəsi, 72 saatlıq plan, qərarlar) hələ yazılmayıb. Araşdırmanın tam mətni <code>docs/research/</code> qovluğundadır.</p></div>
+<section id="konsepsiya">
+  <h2>6. Məhsul konsepsiyası</h2>
+  <p>Zəka AzTU-nun mövcud sistemlərini əvəz edir. Hər sətirdə mövcud sistem, onu əvəz edən modul və nə ilə üstün olmalı olduğu yazılıb.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Mövcud</th><th>Zəka modulu</th><th>Üstünlük</th></tr></thead>
+    <tbody>
+      <tr><td>KOICA LMS, e-Learning</td><td><code>learning</code></td><td>Mənbəli Azərbaycanca tutor, test studiyası, tapşırıq axını, mobil interfeys, üç dil</td></tr>
+      <tr><td>KOICA Academic, kabinetlər</td><td><code>directory</code>, <code>journal</code></td><td>Müəllim jurnalı dərsdə telefonla doldurur. 25% həddi və imtahana buraxılış avtomatik hesablanır.</td></tr>
+      <tr><td>Portal, elanlar, Groupware</td><td><code>comms</code>, <code>services</code></td><td>SLA-lı müraciət, QR ilə doğrulanan sənəd, e-poçt və tətbiqdaxili bildiriş</td></tr>
+      <tr><td>Cədvəl və e-jurnal<span class="sub">TKTA: sistemdə yoxdur</span></td><td><code>timetable</code>, <code>facilities</code>, <code>journal</code></td><td>Toqquşma yoxlaması, otağa marşrut, iCal. Hər dəyişiklik audit jurnalındadır.</td></tr>
+      <tr><td>Apellyasiya portalı</td><td><code>services</code></td><td>Eyni pəncərədə, SLA və qərar tarixçəsi ilə</td></tr>
+      <tr><td>İmtahan prosesi</td><td><code>exam</code></td><td>SEB, fərdi variant, server taymeri, hash zəncirli QR protokol. Biometrika yoxdur.</td></tr>
+      <tr><td>Word və PDF sillabuslar</td><td><code>syllabus</code></td><td>Sillabus fənni konfiqurasiya edir və akkreditasiya sübutu çıxarır</td></tr>
+      <tr><td>Saytdakı AI köməkçi</td><td><code>assistant</code></td><td>Qaydaya istinad, əməliyyat düyməsi, otaq tapma. Məlumat ölkədən çıxmır.</td></tr>
+      <tr><td>Google Forms sorğuları</td><td><code>insight</code></td><td>Rol üzrə hədəfli sorğu, nəticə paneldə</td></tr>
+      <tr><td>Telegram və WhatsApp qrupları</td><td><code>community</code></td><td>Rəsmi, moderasiyalı, auditli. Üzvlük universitet hesabına bağlıdır.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Dörd əsas ideya</h3>
+  <div class="cols">
+    <div class="card"><div class="tag">İcra olunan sillabus</div><p>Dərc olunan sillabus fənnin konfiqurasiyasıdır. Qiymət sxemi jurnalın sütunlarını qurur. Davamiyyət həddi xəbərdarlığı işə salır. AI siyasəti tutorun rejimini kilidləyir. Təlim nəticələri imtahanın planını və çərçivə xəritəsini verir.</p></div>
+    <div class="card"><div class="tag">Müşahidəsiz imtahan bütövlüyü</div><p>Qoruma serverdədir: yalnız imtahana çatan sessiya, server taymeri, tək sessiya, fərdi variant, şəbəkə siyahısı. SEB əlavə qatdır. Hər hadisə hash zəncirinə yazılır, kökü QR-lı protokola düşür. Kamera yoxdur.</p></div>
+    <div class="card"><div class="tag">Hər qapı bir QR</div><p>Otağın QR-i dörd iş görür: marşrutun başlanğıc nöqtəsi, "indi burada hansı dərsdir", növbəti dərsə yol, nasazlıq bildirişi. Bina daxilində GPS və mayak avadanlığı lazım olmur.</p></div>
+    <div class="card"><div class="tag">Mənbəsiz cavab yoxdur</div><p>Tutor və kampus köməkçisi yalnız universitetin öz mətnlərindən cavab verir və mənbəni göstərir. Mənbə tapılmayanda sualı insana ötürür. Susmaya görə məlumat serverdən çıxmır.</p></div>
+  </div>
+
+  <h3>Modul xəritəsi</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Modul</th><th>Bu gün kodda</th><th>72 saatda</th></tr></thead>
+    <tbody>
+      <tr><td><code>platform</code></td><td><span class="pill p-amber">Qismən</span> miqrasiya, backup, fon işi yoxdur</td><td>Miqrasiya, çox proses, backup, Docker və Caddy</td></tr>
+      <tr><td><code>identity</code></td><td><span class="pill p-red">Yoxdur</span> yalnız demo girişi</td><td>Parol, TOTP, rol və icazə, OIDC</td></tr>
+      <tr><td><code>directory</code></td><td><span class="pill p-red">Yalnız nümunə məlumat</span></td><td>Struktur, reyestr, kütləvi idxal, universitet ayarları</td></tr>
+      <tr><td><code>facilities</code>, <code>timetable</code></td><td><span class="pill p-red">Yalnız göstərmə</span></td><td>Otaq, QR, cədvəl idarəsi, iCal</td></tr>
+      <tr><td><code>journal</code></td><td><span class="pill p-red">Yalnız göstərmə</span></td><td>Davamiyyət və qiymət jurnalı, buraxılış qaydası</td></tr>
+      <tr><td><code>syllabus</code></td><td><span class="pill p-amber">Qismən</span> generasiya və çap</td><td>Struktur, çərçivə xəritəsi, təsdiq, konfiqurasiya</td></tr>
+      <tr><td><code>learning</code></td><td><span class="pill p-green">Var</span> tapşırıq yoxdur</td><td>Tapşırıq axını</td></tr>
+      <tr><td><code>exam</code></td><td><span class="pill p-red">Yoxdur</span> məşq testi var</td><td>İmtahan nüvəsi, SEB, nəzarətçi, protokol</td></tr>
+      <tr><td><code>assistant</code></td><td><span class="pill p-amber">Qismən</span></td><td>Otaq tapma, marşrut, bilik bazası idarəsi, insana ötürmə</td></tr>
+      <tr><td><code>qa</code></td><td><span class="pill p-amber">Qismən</span> müəllimə yönləndirmə</td><td>Fənn forumu, AI qaralaması, qəbul saatları</td></tr>
+      <tr><td><code>community</code></td><td><span class="pill p-red">Yoxdur</span></td><td>Klub, kanal, mesaj, moderasiya</td></tr>
+      <tr><td><code>comms</code></td><td><span class="pill p-amber">Qismən</span> e-poçt yoxdur</td><td>E-poçt növbəsi, seçimlər</td></tr>
+      <tr><td><code>services</code>, <code>support</code></td><td><span class="pill p-green">Var</span></td><td>Sənədlər real qiymətdən oxuyur</td></tr>
+      <tr><td><code>radar</code></td><td><span class="pill p-blue">PR #4-də</span></td><td>Birləşdirilir, real jurnaldan qidalanır</td></tr>
+      <tr><td><code>insight</code></td><td><span class="pill p-amber">Qismən</span> sabit rəqəmlər</td><td>Hadisə jurnalı, ölçülmüş göstəricilər, akkreditasiya sübutu</td></tr>
+      <tr><td><code>integration</code>, <code>migration</code></td><td><span class="pill p-red">Yoxdur</span></td><td>API açarı, webhook, OneRoster, ETL, uzlaşdırma</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
-<!--SECTIONS-->
+<section id="arxitektura">
+  <h2>7. Arxitektura</h2>
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 940 380" role="img" aria-label="Müştərilər Caddy vasitəsilə tətbiq proseslərinə çatır; tətbiq qatlara bölünüb və yalnız repo qatı bazaya yazır; SSO, SMTP və LLM serverdən kənardadır">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+        <rect x="230" y="20" width="530" height="340" rx="10" fill="none" stroke="currentColor" stroke-dasharray="6 5" opacity=".55"/>
+        <text x="244" y="40" font-size="11.5" fill="currentColor" opacity=".75">Server: ölkə daxilində, Docker</text>
+        <g font-size="12" fill="currentColor">
+          <rect x="20" y="64" width="180" height="44" rx="8" fill="none" stroke="currentColor"/><text x="110" y="83" text-anchor="middle" font-weight="600">Brauzer</text><text x="110" y="99" text-anchor="middle" font-size="11">mövcud SPA</text>
+          <rect x="20" y="148" width="180" height="44" rx="8" fill="none" stroke="currentColor"/><text x="110" y="167" text-anchor="middle" font-weight="600">SEB</text><text x="110" y="183" text-anchor="middle" font-size="11">yalnız imtahan səhifəsi</text>
+          <rect x="20" y="232" width="180" height="44" rx="8" fill="none" stroke="currentColor"/><text x="110" y="251" text-anchor="middle" font-weight="600">Telefon</text><text x="110" y="267" text-anchor="middle" font-size="11">otaq QR-i</text>
+          <rect x="250" y="148" width="110" height="44" rx="8" fill="none" stroke="currentColor"/><text x="305" y="167" text-anchor="middle" font-weight="600">Caddy</text><text x="305" y="183" text-anchor="middle" font-size="11">TLS, ölçü həddi</text>
+          <rect x="400" y="50" width="340" height="220" rx="10" fill="none" style="stroke: var(--blue)" stroke-width="1.6"/>
+          <text x="414" y="70" font-size="11.5" style="fill: var(--blue)" font-weight="600">Tətbiq: N proses, hər birində 2 handler</text>
+          <rect x="420" y="84" width="140" height="44" rx="8" fill="none" stroke="currentColor"/><text x="490" y="103" text-anchor="middle" font-weight="600">routes</text><text x="490" y="119" text-anchor="middle" font-size="11">giriş və çıxış</text>
+          <rect x="420" y="148" width="140" height="44" rx="8" fill="none" stroke="currentColor"/><text x="490" y="167" text-anchor="middle" font-weight="600">service</text><text x="490" y="183" text-anchor="middle" font-size="11">istifadə halı</text>
+          <rect x="585" y="148" width="140" height="44" rx="8" fill="none" stroke="currentColor"/><text x="655" y="167" text-anchor="middle" font-weight="600">domain</text><text x="655" y="183" text-anchor="middle" font-size="11">qaydalar, I/O yox</text>
+          <rect x="420" y="212" width="140" height="44" rx="8" fill="none" stroke="currentColor"/><text x="490" y="231" text-anchor="middle" font-weight="600">repo</text><text x="490" y="247" text-anchor="middle" font-size="11">SQL yalnız burada</text>
+          <rect x="420" y="296" width="140" height="44" rx="8" fill="none" stroke="currentColor"/><text x="490" y="315" text-anchor="middle" font-weight="600">SQLite WAL</text><text x="490" y="331" text-anchor="middle" font-size="11">miqrasiya ilə</text>
+          <rect x="585" y="296" width="140" height="44" rx="8" fill="none" stroke="currentColor"/><text x="655" y="315" text-anchor="middle" font-weight="600">Yükləmə, backup</text><text x="655" y="331" text-anchor="middle" font-size="11">şifrəli nüsxə</text>
+          <rect x="790" y="64" width="130" height="44" rx="8" fill="none" stroke="currentColor"/><text x="855" y="83" text-anchor="middle" font-weight="600">Universitet SSO-su</text><text x="855" y="99" text-anchor="middle" font-size="11">OIDC</text>
+          <rect x="790" y="148" width="130" height="44" rx="8" fill="none" stroke="currentColor"/><text x="855" y="167" text-anchor="middle" font-weight="600">SMTP</text><text x="855" y="183" text-anchor="middle" font-size="11">bildirişlər</text>
+          <rect x="790" y="232" width="130" height="44" rx="8" fill="none" stroke="currentColor"/><text x="855" y="251" text-anchor="middle" font-weight="600">LLM</text><text x="855" y="267" text-anchor="middle" font-size="11">yalnız razılıqla</text>
+        </g>
+        <g stroke="currentColor" fill="none" stroke-width="1.3" marker-end="url(#ah)">
+          <line x1="200" y1="86" x2="248" y2="160"/><line x1="200" y1="170" x2="248" y2="170"/><line x1="200" y1="254" x2="248" y2="180"/>
+          <line x1="360" y1="170" x2="398" y2="170"/>
+          <line x1="490" y1="128" x2="490" y2="146"/><line x1="560" y1="170" x2="583" y2="170"/><line x1="490" y1="192" x2="490" y2="210"/>
+          <line x1="490" y1="256" x2="490" y2="294"/><line x1="560" y1="234" x2="655" y2="294"/>
+        </g>
+        <g stroke="currentColor" fill="none" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#ah)">
+          <line x1="740" y1="100" x2="788" y2="88"/><line x1="740" y1="170" x2="788" y2="170"/><line x1="740" y1="240" x2="788" y2="252"/>
+        </g>
+        <text x="150" y="133" text-anchor="middle" font-size="11" fill="currentColor" opacity=".8">HTTPS</text>
+      </svg>
+    </div>
+    <figcaption>Üç müştəri Caddy vasitəsilə tətbiqə çatır. Tətbiqin daxilində asılılıq bir istiqamətlidir və bazaya yalnız <code>repo</code> qatı yazır. Qırıq xətlər serverdən çıxan bağlantılardır; LLM susmaya görə bağlıdır.</figcaption>
+  </figure>
+
+  <h3>Əsas qərarlar</h3>
+  <div class="kv">
+    <div>Dil</div><div>Backend Python qalır. V1-də Java yoxdur: onu tələb edən komponent yoxdur, ikinci dil ikinci iş mühiti və təhlükəsizlik səthidir.</div>
+    <div>HTTP qatı</div><div>Mövcud qat PR #3 və #5 düzəlişləri ilə qalır. Qabağına Caddy qoyulur: TLS, HTTP normallaşdırma, ölçü həddi.</div>
+    <div>Paralellik</div><div>Proses başına 2 handler, nüvə başına bir proses. Ölçülüb: 47-dən 226 sorğu/san-a, 300 müştəridə 0 xəta.</div>
+    <div>Baza</div><div>SQLite WAL və nömrəli SQL miqrasiyalar. SQL yalnız <code>repo.py</code>-dədir, Postgres-ə keçid bu sərhədlə hazırlanır.</div>
+    <div>İmtahan brauzeri</div><div>Öz brauzerimizi yazmırıq. Safe Exam Browser istifadə olunur. İmtahanın əsl qoruması serverdədir.</div>
+    <div>Frontend</div><div>Mövcud SPA və dizayn sistemi qalır. İmtahan üçün ayrıca naviqasiyasız səhifə əlavə olunur.</div>
+    <div>Köhnə kod</div><div><code>legacy/</code>-yə köçürülür, davranışı dəyişmir. Yeni modullar birbaşa qatlı yazılır.</div>
+    <div>AI</div><div>Susmaya görə oflayn mühərrik. Xarici model yalnız açıq razılıqla və maskalama ilə.</div>
+  </div>
+
+  <h3>Qovluq quruluşu: dil və qat üzrə</h3>
+  <pre class="tree"><b>backend/</b>                      Python
+  zeka/
+    core/                       web, router, config, db, migrate, security, i18n, audit, events, jobs
+    modules/&lt;modul-id&gt;/
+      domain.py                 qaydalar və hesablamalar; I/O yoxdur
+      service.py                istifadə halları; modulun xarici müqaviləsi
+      repo.py                   SQL yalnız burada
+      routes.py                 sorğunu oxu, service çağır, cavabı formalaşdır
+    legacy/                     köçürülmüş r_*.py; modul-modul boşaldılır
+  migrations/                   0001_baseline.sql, 0002_... (SQL)
+<b>frontend/</b>                     JavaScript, CSS, HTML
+  index.html  exam.html  js/  css/  locales/
+<b>exam/</b>                         SEB konfiqurasiya şablonu (XML plist)
+<b>infra/</b>                        Dockerfile, compose.yml, Caddyfile, backup.sh, restore.sh
+<b>tools/</b>                        i18n, yük testi, miqrasiya ETL (Python)
+<b>tests/</b>                        unit, integration, security, migration, e2e, load, eval
+<b>docs/</b>  <b>tasks/</b>  content/  i18n/</pre>
+</section>
+
+<section id="workflow">
+  <h2>8. Workflow-lar</h2>
+
+  <h3>İmtahan: yaradılmadan protokola</h3>
+  <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant M as Müəllim
+  participant P as Portal
+  participant S as SEB
+  participant T as Tələbə
+  participant N as Nəzarətçi
+  M->>P: İmtahan yaradır (pəncərə, plan, qoruma rejimi)
+  P-->>M: Konfiqurasiya faylı və Config Key hazırdır
+  T->>S: İmtahan keçidini açır
+  S->>P: Konfiqurasiyanı yükləyir
+  T->>P: SEB daxilində giriş
+  S->>P: Config Key hash-ini göndərir
+  P-->>S: Yoxlandı, sessiya yalnız imtahana açıqdır
+  P-->>T: Fərdi variant və server son vaxtı
+  loop Hər cavab
+    T->>P: Cavabı saxla
+    P-->>T: Saxlandı
+  end
+  N->>P: Canlı lövhə, vaxt əlavəsi, insident qeydi
+  T->>P: Təslim
+  P-->>N: Protokol, zəncirin kökü və QR
+  M->>P: Nəticəni açıqlayır
+  P-->>T: Bal jurnalda
+  </pre>
+  <p class="src">Server üç şeyi özü məcbur edir: sessiya imtahandan kənar heç bir marşruta çatmır, son vaxtdan sonra cavab qəbul olunmur, ikinci giriş birincini bağlayır.</p>
+
+  <h3>Kampus köməkçisi: sualdan əməliyyata</h3>
+  <pre class="mermaid">
+flowchart TD
+  Q["Sual: mətn və ya otaq QR-i"] --> I{"Niyyət"}
+  I -->|otaq, marşrut| R["Otaq qrafı, ən qısa yol"]
+  I -->|dərs, müəllim| C["Cədvəl və reyestr"]
+  I -->|qayda, xidmət| K["Bilik bazası"]
+  R --> A["Cavab: addımlar və mənbə"]
+  C --> A
+  K --> S{"Mənbə tapıldı?"}
+  S -->|bəli| A
+  S -->|xeyr| H["İnsana ötür: dəstək və ya müəllim"]
+  A --> X["Əməliyyat: müraciət aç, marşrutu göstər, yer tut"]
+  </pre>
+
+  <h3>Sillabus: qaralamadan akkreditasiya sübutuna</h3>
+  <pre class="mermaid">
+flowchart LR
+  D["Qaralama: müəllim"] --> V{"Cəm 100, imtahan çəkisi düzdür?"}
+  V -->|xeyr| D
+  V -->|bəli| K["Kafedra müdiri"]
+  K -->|geri qaytarır| D
+  K --> U["Tədris şöbəsi"]
+  U -->|geri qaytarır| D
+  U --> P["Dərc olunmuş versiya"]
+  P --> J["Jurnalın komponentləri"]
+  P --> T["Tutorun rejimi"]
+  P --> E["İmtahanın planı"]
+  P --> F["Çərçivə əhatəsi: NICE, Bloom"]
+  J --> R["Akkreditasiya sübutu"]
+  E --> R
+  F --> R
+  </pre>
+
+  <h3>Müəllimə sual</h3>
+  <pre class="mermaid">
+flowchart TD
+  S["Tələbə sual yazır, istəsə anonim"] --> B["Fənn lövhəsi"]
+  B --> AI["AI qaralaması, yalnız müəllimə görünür"]
+  AI --> M{"Müəllim"}
+  M -->|təsdiqləyir və ya düzəldir| C["Cavab dərc olunur"]
+  M -->|özü yazır| C
+  C --> N["Tələbəyə bildiriş"]
+  C --> F{"Tez-tez verilən suala çevrilsin?"}
+  F -->|bəli| T["Tutorun mənbəsi olur"]
+  </pre>
+
+  <h3>Köhnə sistemdən keçid: bir dalğa</h3>
+  <pre class="mermaid">
+flowchart LR
+  A["İnventar"] --> B["Sahə xəritəsi"] --> C["Quru sınaq"] --> D["İdxal"] --> E{"Uzlaşdırma: fərq 0?"}
+  E -->|xeyr| B
+  E -->|bəli| F["Paralel iş"] --> G{"İki həftə fərq 0?"}
+  G -->|xeyr| B
+  G -->|bəli| H["Kəsid: köhnə sistem yalnız oxunur"]
+  </pre>
+
+  <h3>Mənim iş axınım</h3>
+  <pre class="mermaid">
+flowchart LR
+  SP["Spec"] --> PL["Plan"] --> B["Qur: bir dilim"] --> TE["Test"] --> RV["Rəy: altı rəyçi"] --> RF{"Təkzib agenti"}
+  RF -->|tapıntı təsdiqləndi| FX["Düzəlt, reqressiya testi yaz"] --> TE
+  RF -->|təkzib olundu| CP{"Yoxlama nöqtəsi"}
+  CP -->|keçdi| SH["Commit və push, icazə ilə"]
+  CP -->|keçmədi| B
+  </pre>
+  <p class="src">Rəyçilər: kod, təhlükəsizlik, səssiz xəta, test, Python, təhlükəsizlik auditi. Hər tapıntı ayrı agentə təkzib üçün verilir. Yalnız təkzib olunmayan düzəldilir.</p>
+</section>
+
+<section id="nist">
+  <h2>9. NIST xəritəsi</h2>
+  <p>"Sillabus üçün NIST" iki işi bildirir və ikisi də planlaşdırılıb: platformanın təhlükəsizlik nəzarətləri və sillabus nəticələrinin NICE çərçivəsinə bağlanması.</p>
+
+  <h3>Platformanın nəzarətləri</h3>
+  <p>Quruluş NIST CSF 2.0 funksiyaları üzrədir. Nəzarət nömrələri SP 800-53 Rev. 5, buraxılış 5.2.0-dandır.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Funksiya</th><th>Nəzarət</th><th>SP 800-53</th><th>Bu gün</th><th>Tapşırıq</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="3">İdarə et</td><td>Məlumat inventarı, saxlama müddəti, razılıq qeydi</td><td>PM-5(1), PT-2, PT-4, SI-12</td><td><span class="pill p-amber">Qismən</span> PR #3</td><td>T40</td></tr>
+      <tr><td>AI siyasəti: razılıqsız xarici modelə məlumat getmir, qiymət qərarını insan verir</td><td>PT-3, AC-4, SA-9</td><td><span class="pill p-amber">Qismən</span></td><td>T40</td></tr>
+      <tr><td>Təhlükəsiz inkişaf: rəyli birləşdirmə, təhdid modeli</td><td>SA-3, SA-8, SA-11</td><td><span class="pill p-red">Yox</span></td><td>T41</td></tr>
+      <tr><td rowspan="2">Müəyyən et</td><td>Asılılıq, sirr və statik analiz skanı</td><td>RA-5, SA-11, SI-2</td><td><span class="pill p-blue">PR #3</span></td><td>T01</td></tr>
+      <tr><td>Məxfilik təsirinin qiymətləndirilməsi: qiymət, imtahan, AI</td><td>RA-8, RA-3</td><td><span class="pill p-red">Yox</span></td><td>30 gün</td></tr>
+      <tr><td rowspan="8">Qoru</td><td>Real autentifikasiya, yaddaş-ağır parol hash-i</td><td>IA-2, IA-5(1)</td><td><span class="pill p-red">Yox</span></td><td>T10</td></tr>
+      <tr><td>İşçilər üçün ikinci amil</td><td>IA-2(1), IA-2(2)</td><td><span class="pill p-red">Yox</span></td><td>T12</td></tr>
+      <tr><td>Rol və obyekt səviyyəli giriş yoxlaması, susmaya görə qadağa</td><td>AC-3, AC-6</td><td><span class="pill p-amber">Qismən</span></td><td>T13</td></tr>
+      <tr><td>Hər yerdə TLS, HSTS</td><td>SC-8, SC-13</td><td><span class="pill p-blue">PR #3</span></td><td>T09</td></tr>
+      <tr><td>Sessiya: müddət, ləğv, CSRF</td><td>SC-23, AC-12</td><td><span class="pill p-blue">PR #3</span></td><td>T11</td></tr>
+      <tr><td>Giriş doğrulaması, parametrli SQL, CSP</td><td>SI-10, SI-15</td><td><span class="pill p-green">Var</span></td><td>—</td></tr>
+      <tr><td>Limit və kilidləmə</td><td>AC-7, SC-5</td><td><span class="pill p-blue">PR #3</span></td><td>T07, T10</td></tr>
+      <tr><td>İmtahan bütövlüyü: server taymeri, açar müştəriyə getmir, dəyişdirilməsi aşkar olunan jurnal</td><td>SI-7, AU-10</td><td><span class="pill p-red">Yox</span></td><td>T26–T30</td></tr>
+      <tr><td rowspan="2">Aşkarla</td><td>Audit jurnalı: giriş, uğursuz giriş, rol və qiymət dəyişməsi, ixrac</td><td>AU-2, AU-3, AU-12</td><td><span class="pill p-amber">Qismən</span></td><td>T10–T13, T21</td></tr>
+      <tr><td>Mərkəzi log saxlama və xəbərdarlıq</td><td>AU-6, SI-4</td><td><span class="pill p-red">Yox</span></td><td>30 gün</td></tr>
+      <tr><td>Cavab ver</td><td>İnsident planı, əlaqələr, bildiriş müddətləri</td><td>IR-4, IR-6, IR-8</td><td><span class="pill p-red">Yox</span></td><td>T43</td></tr>
+      <tr><td>Bərpa et</td><td>Şifrəli avtomatik backup və sınanmış bərpa</td><td>CP-9, CP-10</td><td><span class="pill p-red">Yox</span></td><td>T08</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Kimlik qaydaları: SP 800-63B-4</h3>
+  <div class="kv">
+    <div>Parol</div><div>Tək amildə ən azı 15 simvol, MFA ilə ən azı 8. 64 simvola icazə. Tərkib qaydası və dövri dəyişmə yoxdur. Zəif parol siyahısı ilə yoxlama.</div>
+    <div>İşçi sessiyası</div><div>AAL2: 24 saatdan gec olmayaraq yenidən giriş, 1 saat boş qalanda bağlanma.</div>
+    <div>Tələbə sessiyası</div><div>AAL1: 30 gündən gec olmayaraq yenidən giriş. İmtahan üçün ayrıca əhatəli sessiya.</div>
+    <div>Hash</div><div>PBKDF2 NIST-in təsdiqlədiyi yeganə sxemdir. Susmaya görə scrypt, tələb olunsa PBKDF2 bir ayarla.</div>
+  </div>
+
+  <h3>Sillabusun çərçivələrə bağlanması</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Çərçivə</th><th>Versiya</th><th>Sillabusda istifadəsi</th></tr></thead>
+    <tbody>
+      <tr><td>NICE Workforce Framework (SP 800-181 Rev. 1)</td><td>Components v2.2.0</td><td>Təlim nəticəsi bilik, bacarıq və tapşırıq bəyanatının nömrəsi ilə işarələnir. İş rolu üzrə əhatə hesabatı çıxır.</td></tr>
+      <tr><td>Bloom taksonomiyası</td><td>yenilənmiş</td><td>Hər nəticənin idrak səviyyəsi. İmtahan planında səviyyə üzrə sual sayı.</td></tr>
+      <tr><td>ECTS</td><td>2015 bələdçisi</td><td>Kredit və iş yükü: 1 kredit 25–30 saat.</td></tr>
+      <tr><td>EQF</td><td>2017</td><td>Proqramın səviyyəsi: bakalavr 6, magistr 7.</td></tr>
+      <tr><td>ABET, CS2023, SFIA 9, ESCO, DigComp 3.0</td><td>cari</td><td>Eyni mexanizmlə əlavə olunur: çərçivə, versiya, bənd nömrəsi.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Saxlama modeli 1EdTech CASE 1.1-ə bənzəyir. Xəritə həmişə çərçivənin versiyası ilə saxlanır, yeni versiya gələndə köhnə xəritə qalır.</p>
+
+  <div class="cols">
+    <div class="card"><div class="tag">Deyə bilərik</div>
+      <ul>
+        <li>"Təhlükəsizlik proqramı NIST CSF 2.0-a uyğunlaşdırılıb, öz qiymətləndirməmizlə."</li>
+        <li>"Nəzarətlər SP 800-53 Rev. 5 orta baza xəttinə bağlanıb, öz qiymətləndirməmizlə."</li>
+        <li>"Autentifikasiya SP 800-63B-4 üzrə qurulub."</li>
+        <li>"Sillabus nəticələri NICE Framework Components v2.2.0-a bağlanır."</li>
+      </ul>
+    </div>
+    <div class="card"><div class="tag">Deyə bilmərik</div>
+      <ul>
+        <li>"NIST sertifikatlı" və ya "NIST təsdiqli". NIST sertifikat vermir.</li>
+        <li>"ISO 27001 sertifikatlı". Akkreditə olunmuş audit tələb edir.</li>
+        <li>"Aldadılması mümkün deyil". SEB Config Key yalnız konfiqurasiyanın bilindiyini sübut edir.</li>
+        <li>Telefon, ikinci cihaz və ya kameraya qarşı qoruma.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="plan">
+  <h2>10. 72 saatlıq plan</h2>
+  <p>6 mərhələ, 44 tapşırıq. Hər tapşırığın qəbul meyarı və yoxlama əmri <code>tasks/todo.md</code>-dədir. Kritik yol ardıcıl gedir, qalan iş ayrı iş qovluqlarında paralel aparılır.</p>
+
+  <div class="lane">
+    <div class="when">0–10</div><div class="what"><b>Birləşdirmə və bünövrə</b><span>Beş PR birləşir. Sətir sonları sabitlənir. Repo dilə və qata görə bölünür. Miqrasiya mühərriki, demo və prod rejimləri, handler qapısı və çox proses, backup, Docker və Caddy.</span><span class="accept">T01–T09 · Qapı: testlər yaşıl, HTTPS açılır, 300 müştəridə 0 xəta, bərpa sınağı keçir</span></div>
+    <div class="when">10–22</div><div class="what"><b>Kimlik və reyestr</b><span>Parol, sessiya, TOTP, rol və icazə, OIDC. Fakültə, kafedra, qrup, fənn idarəsi. Kütləvi idxal. Universitet ayarları: qiymət sxemi, davamiyyət həddi.</span><span class="accept">T10–T17 · Qapı: parolsuz yol yoxdur, rol × marşrut matrisi yaşıl, 10 000 tələbə idxal olunub girir</span></div>
+    <div class="when">22–36</div><div class="what"><b>Akademik nüvə</b><span>Korpus, otaq, otaq QR-i. Cədvəl idarəsi və iCal. Davamiyyət jurnalı. Qiymət jurnalı. Tapşırıqlar.</span><span class="accept">T18–T22 · Qapı: müəllim dərsdə davamiyyət və bal yazır, hədd və buraxılış avtomatik hesablanır</span></div>
+    <div class="when">36–52</div><div class="what"><b>Sillabus və imtahan</b><span>Struktur sillabus, NICE idxalı, təsdiq axını, fənnin konfiqurasiyası. İmtahan nüvəsi, imtahan əhatəli sessiya, SEB, nəzarətçi paneli, hash zəncirli protokol.</span><span class="accept">T23–T30 · Qapı: 300 nəfərlik sınaq imtahanı itkisiz, Windows-da SEB ilə əl sınağı</span></div>
+    <div class="when">52–62</div><div class="what"><b>Köməkçi, sual-cavab, icma, inteqrasiya</b><span>Otaq tapma və marşrut. Bilik bazası idarəsi və insana ötürmə. Fənn forumu, qəbul saatları. Klublar. E-poçt. API açarı, webhook, OneRoster.</span><span class="accept">T31–T37 · Qapı: 50 suallıq dəstdə mənbə düzgünlüyü ən azı 90%</span></div>
+    <div class="when">62–72</div><div class="what"><b>Miqrasiya, sərtləşdirmə, buraxılış</b><span>ETL və uzlaşdırma. Ölçülmüş göstəricilər. Məxfilik. Təhlükəsizlik baxışı və NIST matrisi. E2E, əlçatanlıq, yük. Runbook-lar. Buraxılış.</span><span class="accept">T38–T44 · Qapı: uzlaşdırma fərqi 0, hədəf serverdə bərpa, açıq yüksək tapıntı yoxdur</span></div>
+  </div>
+
+  <h3>Sənin addımların</h3>
+  <div class="scroll"><table>
+    <thead><tr><th class="num">Saat</th><th>Nə lazımdır</th><th>Hansı tapşırıq üçün</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>Spesifikasiya və planın təsdiqi. Beş PR-ı birləşdirməyə icazə. Commit və push qaydası.</td><td>T01</td></tr>
+      <tr><td class="num">0</td><td>Hostinq qərarı və serverə giriş</td><td>T09, T44</td></tr>
+      <tr><td class="num">6</td><td>Köhnə sistemlərin siyahısı və ilk ixrac faylları</td><td>T16, T38</td></tr>
+      <tr><td class="num">10</td><td>İlk fakültə, fənlər, müəllimlər</td><td>T15–T17</td></tr>
+      <tr><td class="num">22</td><td>Otaq siyahısı, korpus girişləri, mərtəbə planları. SMTP məlumatı.</td><td>T18, T31, T36</td></tr>
+      <tr><td class="num">36</td><td>SEB qurulmuş iki Windows kompüteri. SEB Config Tool ilə yaradılmış bir <code>.seb</code> faylı və onun Config Key-i.</td><td>T28</td></tr>
+      <tr><td class="num">52</td><td>Qaydalar, əsasnamələr, tələbə bələdçisi mətnləri</td><td>T32</td></tr>
+      <tr><td class="num">62</td><td>Sınaq istifadəçiləri. Buraxılış qərarı.</td><td>T44</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Vaxt çatmasa kəsmə sırası</h3>
+  <p>Kritik yol və təhlükəsizlik kəsilmir. Sıra ilə növbəti versiyaya keçir: qəbul saatları, klublar, tapşırıqlar, webhook-lar, akkreditasiya hesabatı, SSO. SSO kəsilsə yerli hesab və TOTP qalır.</p>
+</section>
+
+<section id="hedler">
+  <h2>11. Dalğalar və kəsid</h2>
+  <p>Heç bir dalğa imtahan sessiyasının ortasında bağlanmır. Hər dalğada köhnə sistem oxunaqlı qalır.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Dalğa</th><th>Vaxt</th><th>Zəka-ya keçən</th><th>Bağlanma şərti</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>72 saat</td><td>Bir fakültə: giriş, cədvəl, otaq, davamiyyət, cari ballar, sillabus, köməkçi, sual-cavab, klub</td><td>Uzlaşdırma fərqi 0. 300 nəfərlik sınaq imtahanı.</td></tr>
+      <tr><td class="num">1</td><td>2–4 həftə</td><td>Bütün fakültələr: jurnal, cədvəl, tapşırıq. Universitet SSO-su.</td><td>İki ardıcıl həftə fərq 0</td></tr>
+      <tr><td class="num">2</td><td>Qış sessiyası</td><td>İmtahanlar SEB ilə. Protokollar, apellyasiya, e-xidmətlər.</td><td>Hər imtahanın protokolu və zəncir kökü var</td></tr>
+      <tr><td class="num">3</td><td>Yaz semestrinin əvvəli</td><td>Zəka əsas sistemdir. Tarixi məlumat köçürülür. Dövlət sistemlərinə ixrac.</td><td>Rektorluğun yazılı qəbulu. Arxivin bərpa sınağı.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Kənar tərəfdən asılı işlər</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>İş</th><th>Kimdən asılıdır</th><th>O gələnə qədər</th></tr></thead>
+    <tbody>
+      <tr><td><code>sso.aztu.edu.az</code> ilə giriş</td><td>AzTU İT: protokol və müştəri qeydiyyatı</td><td>Yerli hesab və TOTP</td></tr>
+      <tr><td>Hüquqi qüvvəli e-imza</td><td>SİMA və ya ASAN İmza ilə müqavilə</td><td>QR doğrulama və reyestr</td></tr>
+      <tr><td>Sistemin dövlət qeydiyyatı (maddə 15)</td><td>AzTU hüquq şöbəsi</td><td>Məlumat inventarı hazırdır (T40)</td></tr>
+      <tr><td>TMİS və "Tələbə-məzun" sistemi</td><td>Nazirlik və DİM: açıq API tapılmayıb</td><td>Sütunları tənzimlənən fayl ixracı (T37)</td></tr>
+      <tr><td>Kənar sızma testi</td><td>Müstəqil icraçı</td><td>Daxili çoxagentli rəy və təkzib (T41)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="qerarlar">
+  <h2>12. Sənin qərarların</h2>
+  <ol>
+    <li><b>Təsdiq.</b> <code>SPEC.md</code> və <code>tasks/plan.md</code> təsdiq gözləyir. Təsdiqdən sonra qurmağa başlayıram.</li>
+    <li><b>Commit və push.</b> Hər yoxlama nöqtəsində commit və push edim, yoxsa hər dəfə soruşum?</li>
+    <li><b>Beş PR.</b> Sınaq birləşdirməsinin nəticəsini iş budağına gətirim?</li>
+    <li><b>Hostinq.</b> AzTU-nun data mərkəzi, AzInTelecom, yoxsa başqa server.</li>
+    <li><b>İlk fakültə.</b> Hansı fakültə, hansı fənlər, başlama tarixi.</li>
+    <li><b>Köhnə sistemlər.</b> AMAS və DrSys nə edir? İxracı kim verəcək?</li>
+    <li><b>SSO protokolu.</b> <code>sso.aztu.edu.az</code> OIDC, SAML, yoxsa CAS ilə işləyir?</li>
+    <li><b>LLM.</b> Oflayn mühərrik kifayətdir, yoxsa xarici və ya yerli model qoşulur?</li>
+    <li><b>NIST.</b> NICE xəritəsi və platformanın nəzarətləri kimi başa düşmüşəm. Düzdür?</li>
+    <li><b>Java.</b> V1-də ikinci backend dili planlaşdırmamışam. Java tələb edən hissə varmı?</li>
+  </ol>
+</section>
+
+<section id="yoxlanmayib">
+  <h2>13. Yoxlanmayanlar</h2>
+  <ul>
+    <li><b>Rəsmi saytlar.</b> nist.gov, owasp.org və safeexambrowser.org bu mühitdən birbaşa açılmadı. NIST faktları axtarış çıxarışlarına, SEB faktları GitHub-dakı mənbə koduna əsaslanır.</li>
+    <li><b>SEB real cihazda sınanmayıb.</b> Config Key alqoritmi mənbə kodundan götürülüb. Təsdiq üçün sənin verəcəyin <code>.seb</code> faylı və açarı lazımdır.</li>
+    <li><b>Yük ölçməsi sintetikdir.</b> 4 nüvəli konteynerdə aparılıb. Hədəf serverdə təkrar olunmalıdır.</li>
+    <li><b>Qanun.</b> Maddələr rəsmi mətndən oxunub, amma hüquqi şərh deyil. Maddə 8 üzrə razılıq forması hüquqşünas rəyi tələb edir.</li>
+    <li><b>Köhnə sistemlər.</b> KOICA sisteminin daxili quruluşu və ixrac imkanları məlum deyil. AMAS və DrSys haqqında yalnız ad var.</li>
+    <li><b>Semestr tarixləri.</b> Nümunə məlumatdandır, rəsmi təqvimlə yoxlanmayıb.</li>
+    <li><b>72 saat.</b> Qiymətləndirmə təxmindir. Kəsmə sırası buna görə yazılıb.</li>
+  </ul>
+  <p class="src">Mənbələr: <code>docs/research/</code> qovluğundakı dörd araşdırma hesabatı, hər fakt üçün keçidlə; <code>docs/AUDIT.md</code>, <code>docs/SECURITY_REVIEW.md</code>, <code>docs/ROADMAP.md</code> (PR #1 və #3); <code>docs/CODEMAP.md</code>. Qanun mətnləri: e-qanun.az, 998-IIIQ və 988-VIQ; president.az, Fərman 718. SEB: github.com/SafeExamBrowser. NIST: csrc.nist.gov.</p>
+</section>
 
 </main>
 </div>
