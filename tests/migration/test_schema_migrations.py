@@ -25,6 +25,9 @@ def put(d, name, sql):
     (d / name).write_text(sql, encoding="utf-8")
 
 
+ALL = [v for v, _, _ in migrate.discover()]      # every file in backend/migrations
+
+
 def versions(c):
     return [r[0] for r in c.execute("SELECT version FROM schema_migrations ORDER BY version")]
 
@@ -115,14 +118,14 @@ def test_a_demo_database_from_before_the_engine_keeps_every_row(db):
     c = store.connect()
     try:
         assert _counts(c) == before and sum(before.values()) > 1000
-        assert versions(c) == [1]
+        assert versions(c) == ALL
     finally:
         c.close()
 
 
 def test_a_demo_reset_keeps_the_migration_log(db):
     store.reseed()
-    assert versions(db) == [1]
+    assert versions(db) == ALL
 
 
 def test_init_refuses_a_database_newer_than_the_code(db):

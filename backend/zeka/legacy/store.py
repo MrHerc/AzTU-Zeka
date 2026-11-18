@@ -12,7 +12,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from . import engine
-from ..core import clock, config, migrate
+from ..core import clock, config, migrate, security
 from ..core.i18n import T3, tr3
 
 ROOT = Path(__file__).resolve().parents[3]  # backend/zeka/legacy/ -> repo
@@ -172,37 +172,83 @@ def add_material(c, course_id, title, filename, text, user_id, created_at=None) 
     for seq, (heading, body) in enumerate(parts):
         cid = c.execute("INSERT INTO chunks(material_id,course_id,seq,heading,text) VALUES(?,?,?,?,?)",
                         (mid, course_id, seq, heading, body)).lastrowid
-        engine.INDEX["chunks"].add(cid, body, {"course_id": course_id, "material_id": mid, "heading": heading,
-                                                "material": title, "text": body}, boost=heading)
+        engine.INDEX["chunks"].add(*_chunk_entry({"id": cid, "text": body, "course_id": course_id, "material_id": mid,
+                                                  "heading": heading, "material": title}))
+        log_index(c, "chunks", [cid])
     return {"id": mid, "chunks": len(parts), "terms": len(terms), "chars": len(text),
             "headings": [h for h, _ in parts], "glossary": [t for t, _ in terms][:12]}
 
 
 def delete_material(c, material_id):
-    for r in rows(c, "SELECT id FROM chunks WHERE material_id=?", (material_id,)):
-        engine.INDEX["chunks"].remove(r["id"])
+    ids = [r["id"] for r in rows(c, "SELECT id FROM chunks WHERE material_id=?", (material_id,))]
+    for i in ids:
+        engine.INDEX["chunks"].remove(i)
+    log_index(c, "chunks", ids, "delete")
     c.execute("DELETE FROM chunks WHERE material_id=?", (material_id,))
     c.execute("DELETE FROM materials WHERE id=?", (material_id,))
 
 
+def _chunk_entry(ch) -> tuple:
+    return (ch["id"], ch["text"], {"course_id": ch["course_id"], "material_id": ch["material_id"], "heading": ch["heading"],
+                                   "material": ch["material"], "text": ch["text"]}, ch["heading"])
+
+
+def _kb_entry(kb) -> tuple:
+    return (kb["id"], kb["text"], {"heading": kb["heading"], "text": kb["text"], "request": kb["request"],
+                                   "action_label": kb["action_label"], "material": kb["source"]}, kb["heading"])
+
+
+def _question_entry(q) -> tuple:
+    return (q["id"], f"{q['text']} {q.get('topic') or ''}", {"course_id": q["course_id"], "status": q["status"]}, "")
+
+
+_ENTRY_SQL = {
+    "chunks": ("SELECT ch.*, m.title AS material FROM chunks ch JOIN materials m ON m.id=ch.material_id WHERE ch.id=?", _chunk_entry),
+    "campus": ("SELECT * FROM campus_kb WHERE id=?", _kb_entry),
+    "questions": ("SELECT id, course_id, text, topic, status FROM questions WHERE id=?", _question_entry),
+}
+
+
 def index_question(q: dict):
-    engine.INDEX["questions"].add(q["id"], f"{q['text']} {q.get('topic') or ''}",
-                                  {"course_id": q["course_id"], "status": q["status"]})
+    engine.INDEX["questions"].add(*_question_entry(q))
+
+
+def log_index(c, name: str, ids, op: str = "upsert"):
+    """Record search index changes; the other worker processes apply them in sync_indexes() (migration 0070)."""
+    c.executemany("INSERT INTO index_changes(name,doc_id,op) VALUES(?,?,?)", [(name, i, op) for i in ids])
+
+
+def sync_indexes(c):
+    """Apply index changes that other processes logged since this one last looked; a no-op costs one indexed MAX()."""
+    last = c.execute("SELECT MAX(seq) FROM index_changes").fetchone()[0] or 0
+    if last == engine.INDEX_SEQ[0]:
+        return
+    with engine.INDEX_SYNC:
+        if last < engine.INDEX_SEQ[0]:              # the demo was reset: the log started again
+            build_indexes(c)
+            return
+        for ch in rows(c, "SELECT seq, name, doc_id, op FROM index_changes WHERE seq>? ORDER BY seq", (engine.INDEX_SEQ[0],)):
+            sql, entry = _ENTRY_SQL[ch["name"]]
+            doc = row(c, sql, (ch["doc_id"],)) if ch["op"] == "upsert" else None
+            if doc:
+                engine.INDEX[ch["name"]].add(*entry(doc))
+            else:
+                engine.INDEX[ch["name"]].remove(ch["doc_id"])
+            engine.INDEX_SEQ[0] = ch["seq"]
 
 
 def build_indexes(c):
-    for k in engine.INDEX:
-        engine.INDEX[k] = engine.BM25()
+    """Full build at process start (or after a demo reset); later changes arrive through sync_indexes()."""
+    seq = c.execute("SELECT MAX(seq) FROM index_changes").fetchone()[0] or 0   # changes after this are applied again: harmless
+    fresh = {k: engine.BM25() for k in engine.INDEX}
     for ch in rows(c, "SELECT ch.*, m.title AS material FROM chunks ch JOIN materials m ON m.id=ch.material_id"):
-        engine.INDEX["chunks"].add(ch["id"], ch["text"], {"course_id": ch["course_id"], "material_id": ch["material_id"],
-                                                          "heading": ch["heading"], "material": ch["material"],
-                                                          "text": ch["text"]}, boost=ch["heading"])
+        fresh["chunks"].add(*_chunk_entry(ch))
     for kb in rows(c, "SELECT * FROM campus_kb"):
-        engine.INDEX["campus"].add(kb["id"], kb["text"], {"heading": kb["heading"], "text": kb["text"],
-                                                          "request": kb["request"], "action_label": kb["action_label"],
-                                                          "material": kb["source"]}, boost=kb["heading"])
+        fresh["campus"].add(*_kb_entry(kb))
     for q in rows(c, "SELECT id, course_id, text, topic, status FROM questions"):
-        index_question(q)
+        fresh["questions"].add(*_question_entry(q))
+    engine.INDEX.update(fresh)
+    engine.INDEX_SEQ[0] = seq
 
 
 # ---------------------------------------------------------------- documents
@@ -700,6 +746,7 @@ def init(reset: bool = False):
     c = connect()
     try:
         migrate.apply(c, backup_dir=DATA / "backups")
+        security.attach_database(DB_PATH)          # rate limits count across worker processes from now on
         if config.prod():
             if not row(c, "SELECT 1 FROM settings WHERE key='university'"):
                 seed_catalog(c)        # product content only: accounts come from manage.py create-admin and imports

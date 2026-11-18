@@ -38,6 +38,7 @@ for _p in (ROOT, ROOT / "backend"):
 TMP = Path(tempfile.mkdtemp(prefix="zeka-tests-"))
 for _k in [k for k in os.environ if k.startswith("ZEKA_")]:      # read once, when zeka.core.security is imported
     os.environ.pop(_k)
+os.environ["ZEKA_TX_GUARD"] = "1"      # a request that holds the write lock longer than 200 ms fails its test (Task 7)
 
 from zeka.core import security  # noqa: E402  (import after sys.path / before redirecting paths)
 from zeka.legacy import engine, store  # noqa: E402

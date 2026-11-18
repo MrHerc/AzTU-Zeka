@@ -16,12 +16,13 @@ def test_session_cookie(monkeypatch):
     assert common.session_cookie(expire=True)[1] == "zeka_sid=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure"
 
 
-def test_make_key_prunes_expired_keys():
-    stale = common.make_key("doc", 1, 1)
-    common._DOC_KEYS[stale]["exp"] = now() - timedelta(seconds=1)
-    fresh = common.make_key("doc", 2, 1)
-    assert stale not in common._DOC_KEYS and fresh in common._DOC_KEYS
-    assert common._DOC_KEYS[fresh]["exp"] > now() + timedelta(minutes=4)
+def test_make_key_prunes_expired_keys(db):
+    stale = common.make_key(db, "doc", 1, 1)
+    db.execute("UPDATE doc_keys SET expires_at=? WHERE key=?", (iso(now() - timedelta(seconds=1)), stale))
+    fresh = common.make_key(db, "doc", 2, 1)
+    keys = {r["key"]: r["expires_at"] for r in db.execute("SELECT key, expires_at FROM doc_keys")}
+    assert stale not in keys and fresh in keys
+    assert keys[fresh] > iso(now() + timedelta(minutes=4))
 
 
 def test_week_index():

@@ -306,7 +306,7 @@ def syllabus_link(req):
     from ..core.security import LIMITS
     if not LIMITS["link"].hit(f"u{req.user['id']}"):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
-    return {"url": f"/syllabus/{co['id']}?k={make_key('syl', co['id'], req.user['id'])}"}
+    return {"url": f"/syllabus/{co['id']}?k={make_key(req.db, 'syl', co['id'], req.user['id'])}"}
 
 
 @R("GET", "/syllabus/{cid:int}", roles=("teacher", "admin", "leader"))

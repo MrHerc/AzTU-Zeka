@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import secrets
-import threading
+import time
 from datetime import datetime, timedelta
 
 from . import engine, store
@@ -18,9 +19,9 @@ BASE_URL = {"value": "http://127.0.0.1:5070"}
 ROLE_HOME = {"student": "/student", "teacher": "/teacher", "office": "/office", "leader": "/leader", "admin": "/admin"}
 STAFF = ("office", "admin", "leader")
 
-# one-time document view keys (open /doc/{id} in a new tab even where cookies are unavailable)
-_DOC_KEYS: dict = {}
-_DOC_LOCK = threading.Lock()
+# Tests (ZEKA_TX_GUARD=1): a request may hold SQLite's single write lock for at most 200 ms (Task 7).
+_TX_GUARD = os.environ.get("ZEKA_TX_GUARD") == "1"
+TX_GUARD_EXEMPT = ("/api/admin/reset",)
 
 
 def _sid(req):
@@ -40,8 +41,17 @@ def session_cookie(value: str = "", expire: bool = False) -> tuple:
     return ("Set-Cookie", f"{COOKIE}={value}; HttpOnly; SameSite=Lax; Path=/{attrs}")
 
 
+def _note_write(req, sql: str):
+    if req.first_write is None and sql.lstrip()[:7].upper().startswith(("INSERT", "UPDATE", "DELETE", "REPLACE")):
+        req.first_write = time.monotonic()
+
+
 def before(req, roles, auth):
     req.db = store.connect()
+    if _TX_GUARD:
+        req.first_write = None
+        req.db.set_trace_callback(lambda sql: _note_write(req, sql))
+    store.sync_indexes(req.db)
     sid = _sid(req)
     if sid:
         req.user = row(req.db, "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.sid=? AND s.created_at>=?",
@@ -56,6 +66,9 @@ def before(req, roles, auth):
 
 def after(req, ok):
     if req.db is not None:
+        held = _TX_GUARD and ok and req.first_write is not None and time.monotonic() - req.first_write
+        if held and held > 0.2 and not req.path.startswith(TX_GUARD_EXEMPT):
+            raise AssertionError(f"{req.path} held the write lock for {held * 1000:.0f} ms (limit 200)")
         if ok:
             req.db.commit()
         else:
@@ -64,22 +77,23 @@ def after(req, ok):
         req.db = None
 
 
-def make_key(kind: str, obj_id: int, user_id: int) -> str:
+def make_key(c, kind: str, obj_id: int, user_id: int) -> str:
+    """One-time, 5-minute link key, stored in the database so that any worker process can accept it (once)."""
     key = secrets.token_urlsafe(18)
-    with _DOC_LOCK:
-        for k in [k for k, v in _DOC_KEYS.items() if v["exp"] < now()]:
-            _DOC_KEYS.pop(k, None)
-        _DOC_KEYS[key] = {"kind": kind, "id": obj_id, "user": user_id, "exp": now() + timedelta(minutes=5)}
+    c.execute("DELETE FROM doc_keys WHERE expires_at<?", (iso(now()),))
+    c.execute("INSERT INTO doc_keys(key,kind,obj_id,user_id,expires_at) VALUES(?,?,?,?,?)",
+              (key, kind, obj_id, user_id, iso(now() + timedelta(minutes=5))))
     return key
 
 
 def _key_user(req):
-    with _DOC_LOCK:
-        entry = _DOC_KEYS.pop(req.query.get("k"), None)
     kind = "doc" if req.path.startswith("/doc/") else "syl" if req.path.startswith("/syllabus/") else "file"
-    if not entry or entry["exp"] < now() or entry["kind"] != kind or str(entry["id"]) != req.path.rstrip("/").rsplit("/", 1)[-1]:
+    # DELETE ... RETURNING: of two processes holding the same key, only one gets the row back
+    entry = req.db.execute("DELETE FROM doc_keys WHERE key=? RETURNING kind, obj_id, user_id, expires_at", (req.query.get("k"),)).fetchone()
+    req.db.commit()                                 # the key is spent even if this request fails later
+    if not entry or entry["expires_at"] < iso(now()) or entry["kind"] != kind or str(entry["obj_id"]) != req.path.rstrip("/").rsplit("/", 1)[-1]:
         return None
-    return row(req.db, "SELECT * FROM users WHERE id=?", (entry["user"],))
+    return row(req.db, "SELECT * FROM users WHERE id=?", (entry["user_id"],))
 
 
 def ctx(c):

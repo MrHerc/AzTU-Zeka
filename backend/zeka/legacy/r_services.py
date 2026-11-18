@@ -477,7 +477,7 @@ def doc_link(req):
     d = row(req.db, "SELECT id, holder_id FROM documents WHERE id=?", (req.params["id"],))
     if not d or not _doc_allowed(req, d):
         raise HTTPError(404, "Sənəd tapılmadı")
-    return {"url": f"/doc/{d['id']}?k={make_key('doc', d['id'], req.user['id'])}"}
+    return {"url": f"/doc/{d['id']}?k={make_key(req.db, 'doc', d['id'], req.user['id'])}"}
 
 
 @R("GET", "/doc/{id:int}")

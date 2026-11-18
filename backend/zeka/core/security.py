@@ -13,6 +13,7 @@ from __future__ import annotations
 import hmac
 import os
 import re
+import sqlite3
 import threading
 import time
 import urllib.parse
@@ -48,16 +49,43 @@ def access_code_ok(given) -> bool:
 
 
 # ---------------------------------------------------------------- rate limiting
-class RateLimiter:
-    """Fixed-window counter per key, thread-safe, with a bounded number of tracked keys."""
+_SHARED_DB: list = []   # [path] once the database is attached: named limiters then count across worker processes
 
-    def __init__(self, limit: int, window: float, max_keys: int = 20000):
-        self.limit, self.window, self.max_keys = limit, window, max_keys
+
+def attach_database(path) -> None:
+    """Share the named limiters (LIMITS) through the rate_hits table of this SQLite file (migration 0070)."""
+    _SHARED_DB[:] = [str(path)]
+
+
+class RateLimiter:
+    """Events per key in a window. In memory (fixed window, per process) until attach_database(); then the named
+    limiters keep a sliding window in the database, so N worker processes share one limit."""
+
+    def __init__(self, limit: int, window: float, max_keys: int = 20000, name: str | None = None):
+        self.limit, self.window, self.max_keys, self.name = limit, window, max_keys, name
         self._b: OrderedDict = OrderedDict()
         self._lock = threading.Lock()
 
+    def _db(self, key, cost: int, count: bool) -> bool:
+        # Own connection and transaction, committed at once: the request's transaction never holds this lock.
+        c = sqlite3.connect(_SHARED_DB[0], timeout=5)
+        try:
+            c.execute("BEGIN IMMEDIATE")
+            t = time.time()
+            c.execute("DELETE FROM rate_hits WHERE name=? AND key=? AND ts<?", (self.name, str(key), t - self.window))
+            n = c.execute("SELECT COUNT(*) FROM rate_hits WHERE name=? AND key=?", (self.name, str(key))).fetchone()[0]
+            ok = n + cost <= self.limit if count else n >= self.limit
+            if count and ok:
+                c.executemany("INSERT INTO rate_hits(name,key,ts) VALUES(?,?,?)", [(self.name, str(key), t)] * cost)
+            c.execute("COMMIT")
+            return ok
+        finally:
+            c.close()
+
     def hit(self, key, cost: int = 1) -> bool:
         """Count one event for key; False when the key is over its limit for the current window."""
+        if self.name and _SHARED_DB:
+            return self._db(key, cost, True)
         t = time.monotonic()
         with self._lock:
             start, n = self._b.get(key, (t, 0))
@@ -72,6 +100,8 @@ class RateLimiter:
 
     def blocked(self, key) -> bool:
         """True when key has already used up its limit (does not count an event)."""
+        if self.name and _SHARED_DB:
+            return self._db(key, 0, False)
         t = time.monotonic()
         with self._lock:
             start, n = self._b.get(key, (t, 0))
@@ -80,6 +110,13 @@ class RateLimiter:
     def reset(self):
         with self._lock:
             self._b.clear()
+        if self.name and _SHARED_DB:
+            c = sqlite3.connect(_SHARED_DB[0], timeout=5)
+            try:
+                c.execute("DELETE FROM rate_hits WHERE name=?", (self.name,))
+                c.commit()
+            finally:
+                c.close()
 
 
 LIMITS = {
@@ -91,6 +128,8 @@ LIMITS = {
     "link": RateLimiter(120, 60),           # one-time document links per user per minute
     "verify": RateLimiter(60, 60),          # public verification lookups per client per minute
 }
+for _name, _lim in LIMITS.items():
+    _lim.name = _name
 
 
 # ---------------------------------------------------------------- request helpers

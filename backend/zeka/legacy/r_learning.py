@@ -679,6 +679,7 @@ def studio_generate(req):
                          g.get("unit", ""), g["explanation"], g["bloom"], g["difficulty"], g["topic"], json.dumps(flags), u["id"], iso(now()))).lastrowid
         q = row(c, "SELECT * FROM questions WHERE id=?", (qid,))
         store.index_question(q)
+        store.log_index(c, "questions", [qid])
         out.append(q_out(c, q))
     audit(c, u["id"], "ai_generate", "course", f"{co['code']}: {len(out)} sual")
     return {"questions": out, "engine": engine.engine_info()}
@@ -713,6 +714,7 @@ def question_update(req):
         c.execute(f"UPDATE questions SET {', '.join(k + '=?' for k in fields)} WHERE id=?", (*fields.values(), q["id"]))  # nosec B608
     nq = row(c, "SELECT * FROM questions WHERE id=?", (q["id"],))
     store.index_question(nq)
+    store.log_index(c, "questions", [nq["id"]])
     return q_out(c, nq)
 
 
@@ -737,6 +739,7 @@ def question_delete(req):
     course_access(req, q["course_id"])
     req.db.execute("DELETE FROM questions WHERE id=?", (q["id"],))
     engine.INDEX["questions"].remove(q["id"])
+    store.log_index(req.db, "questions", [q["id"]], "delete")
     return {"ok": True}
 
 

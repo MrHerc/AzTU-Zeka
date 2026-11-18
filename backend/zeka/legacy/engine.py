@@ -169,6 +169,8 @@ class BM25:
 
 
 INDEX = {"chunks": BM25(), "campus": BM25(), "questions": BM25()}
+INDEX_SEQ = [0]                 # last index_changes.seq applied in this process (store.sync_indexes)
+INDEX_SYNC = threading.Lock()
 
 # ---------------------------------------------------------------- chunking
 def chunk_markdown(md: str, max_chars: int = 1100) -> list[tuple[str, str]]:

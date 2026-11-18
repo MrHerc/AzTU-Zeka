@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from zeka.legacy import common
+from zeka.legacy import common, store
 
 
 # ---------------------------------------------------------------- authentication
@@ -171,9 +171,13 @@ def test_one_time_document_link_is_single_use_and_scoped(app_db, student):
 def test_one_time_keys_expire(app_db, monkeypatch):
     from datetime import timedelta
 
-    key = common.make_key("doc", 1, 1)
-    entry = common._DOC_KEYS[key]
-    entry["exp"] = entry["exp"] - timedelta(minutes=10)
+    c = store.connect()
+    try:
+        key = common.make_key(c, "doc", 1, 1)
+        c.execute("UPDATE doc_keys SET expires_at=? WHERE key=?", (store.iso(store.now() - timedelta(minutes=10)), key))
+        c.commit()
+    finally:
+        c.close()
     assert app_db.client().get(f"/doc/1?k={key}").status == 401
 
 

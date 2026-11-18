@@ -292,7 +292,7 @@ def file_link(req):
     if not LIMITS["link"].hit(f"u{req.user['id']}"):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     f = file_access(req, req.params["id"])
-    return {"url": f"/api/files/{f['id']}?k={make_key('file', f['id'], req.user['id'])}"}
+    return {"url": f"/api/files/{f['id']}?k={make_key(req.db, 'file', f['id'], req.user['id'])}"}
 
 
 @R("GET", "/api/files/{id:int}")
