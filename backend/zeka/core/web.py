@@ -151,6 +151,9 @@ class Request:
         self.length = 0             # validated Content-Length (set by the dispatcher)
         self.body_read = False
         self.raw: bytes | None = None   # the body, read by the dispatcher before a handler slot is taken
+        self.audit_kind = None          # the route's audit_read kind (Task 13); the handler names whose data it read:
+        self.read_owner = None          # the person the data belongs to
+        self.read_object = None         # the id of what was read
 
     def content_length(self) -> int:
         raw = (self.headers.get("Content-Length") or "").strip()
@@ -336,6 +339,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                         raise HTTPError(503, "Server məşğuldur, bir neçə saniyədən sonra yenidən cəhd edin")
                     try:
                         try:
+                            req.audit_kind = getattr(fn, "audit_read", None)
                             before(req, roles, auth)      # inside the try: a 401/403 must still close the DB connection
                             resp = fn(req)
                             after(req, ok=True)

@@ -423,6 +423,10 @@ def seed(c):
             " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (u["username"], u["full_name"], u.get("patronymic"), u["role"], u["title"], gids.get(u.get("group")), u["color"],
              u.get("student_no"), u.get("admission_year"), u.get("funding"), u.get("form"), u.get("dept"))).lastrowid
+    for u in s["users"]:                  # a dean's office serves its own faculty (Task 13): the demo's one faculty
+        if u["role"] == "office":
+            c.execute("INSERT INTO role_grants(user_id,role,scope_type,scope_id,granted_at) VALUES(?,'office','faculty',?,?)",
+                      (uid[u["username"]], fid, stamp))
     students = [uid["aysel"]]
     used = {"Aysel Məmmədova"}
     while len(students) < 120:

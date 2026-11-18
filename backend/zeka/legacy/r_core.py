@@ -7,7 +7,7 @@ import json
 import urllib.parse
 
 from . import engine, pdftext, store
-from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, start_session
+from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, serves, session_cookie, start_session
 from ..core import clock, config
 from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
@@ -277,6 +277,9 @@ def file_access(req, fid):
         raise HTTPError(404, "Fayl tapılmadı")
     if f["owner_id"] != u["id"] and u["role"] not in ("office", "admin"):
         raise HTTPError(403, "Bu fayla baxmaq icazəniz yoxdur")
+    if f["owner_id"] != u["id"] and not serves(c, u, f["owner_id"]):     # another faculty's student: not even its existence
+        raise HTTPError(404, "Fayl tapılmadı")
+    req.read_owner, req.read_object = f["owner_id"], f["id"]          # audited when it is someone else's (Task 13)
     return f
 
 
@@ -288,18 +291,17 @@ def file_link(req):
     return {"url": f"/api/files/{f['id']}?k={make_key(req.db, 'file', f['id'], req.user['id'])}"}
 
 
-@R("GET", "/api/files/{id:int}")
+@R("GET", "/api/files/{id:int}", audit_read="file")
 def file_get(req):
     f = file_access(req, req.params["id"])
     data = (store.UPLOADS / f["path"]).read_bytes()
     fname = urllib.parse.quote(f["filename"])
-    audit(req.db, req.user["id"], "file_view", "file", f"#{f['id']} {f['filename']}")
     disp = "attachment" if req.query.get("download") == "1" else "inline"
     return Response(data, 200, f["mime"], [("Content-Disposition", f"{disp}; filename*=UTF-8''{fname}"),
                                            ("Cache-Control", "private, no-store")])
 
 
-@R("GET", "/api/files/{id:int}/preview", slow=True)        # a PDF can take its 15 s extraction limit
+@R("GET", "/api/files/{id:int}/preview", slow=True, audit_read="file")   # a PDF can take its 15 s extraction limit
 def file_preview(req):
     """Text preview rendered inside the app (works where the browser has no PDF viewer)."""
     f = file_access(req, req.params["id"])
@@ -321,5 +323,4 @@ def file_preview(req):
             out["pages"] = []
     else:
         out["kind"] = "other"
-    audit(req.db, req.user["id"], "file_preview", "file", f"#{f['id']} {f['filename']}")
     return out

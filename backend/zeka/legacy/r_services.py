@@ -6,7 +6,7 @@ import math
 from datetime import date, datetime, timedelta
 
 from . import docs, store
-from .common import R, STAFF, ctx, holder, make_key
+from .common import R, STAFF, ctx, faculty_students, holder, make_key, office_for, serves
 from ..core.i18n import E, T3, canon
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows
@@ -221,13 +221,11 @@ def req_out(c, r, rt=None):
 
 def _req_for(req, rid):
     r = row(req.db, "SELECT * FROM requests WHERE id=?", (rid,))
-    if not r or (req.user["role"] == "student" and r["student_id"] != req.user["id"]) or req.user["role"] == "teacher":
+    if not r or (req.user["role"] == "student" and r["student_id"] != req.user["id"]) or req.user["role"] == "teacher" \
+            or not serves(req.db, req.user, r["student_id"]):              # a dean's office sees its own faculty (Task 13)
         raise HTTPError(404, "Müraciət tapılmadı")
     return r
 
-
-def office_ids(c):
-    return [r["id"] for r in rows(c, "SELECT id FROM users WHERE role='office'")]
 
 
 # ---------------------------------------------------------------- requests
@@ -244,6 +242,9 @@ def list_requests(req):
             cond += " AND type_code=?"
             args.append(req.query["type"])
         rs = rows(c, f"SELECT * FROM requests WHERE {cond} ORDER BY CASE status WHEN 'submitted' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, due_at", tuple(args))
+        scope = faculty_students(c, u)
+        if scope is not None:
+            rs = [r for r in rs if r["student_id"] in scope]
     else:
         raise HTTPError(403, "İcazə yoxdur")
     types = {t["code"]: type_out(t) for t in rows(c, "SELECT * FROM request_types")}
@@ -268,15 +269,16 @@ def create_request(req):
                      iso(t + timedelta(hours=rt["sla_hours"])))).lastrowid
     attach_files(c, u, rt, b.ids("files", 10), rid)
     c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, u["id"], "submitted", "", iso(t)))
-    notify(c, office_ids(c), "request", T3("Yeni müraciət: {type}", type=rt["name"]), f"{u['full_name']} · № {rid}", f"/office/request/{rid}")
+    notify(c, office_for(c, u["id"]), "request", T3("Yeni müraciət: {type}", type=rt["name"]), f"{u['full_name']} · № {rid}", f"/office/request/{rid}")
     audit(c, u["id"], "request_create", "request", f"#{rid} {rt['name']}")
     return req_out(c, row(c, "SELECT * FROM requests WHERE id=?", (rid,)), rt)
 
 
-@R("GET", "/api/requests/{id:int}")
+@R("GET", "/api/requests/{id:int}", audit_read="request")
 def get_request(req):
     c = req.db
     r = _req_for(req, req.params["id"])
+    req.read_owner, req.read_object = r["student_id"], r["id"]
     rt = get_type(c, r["type_code"])
     out = req_out(c, r, rt)
     out["type"] = rt
@@ -299,7 +301,7 @@ def post_message(req):
     c.execute("INSERT INTO request_messages(request_id,author_id,text,created_at) VALUES(?,?,?,?)", (r["id"], u["id"], text, iso(now())))
     rt = get_type(c, r["type_code"])
     if u["role"] == "student":
-        notify(c, office_ids(c), "message", T3("Müraciətə yeni mesaj (№ {id})", id=r["id"]), f"{u['full_name']}: {text[:80]}", f"/office/request/{r['id']}")
+        notify(c, office_for(c, r["student_id"]), "message", T3("Müraciətə yeni mesaj (№ {id})", id=r["id"]), f"{u['full_name']}: {text[:80]}", f"/office/request/{r['id']}")
     else:
         notify(c, r["student_id"], "message", T3("Dekanlıqdan yeni mesaj"), T3("{type}: {text}", type=rt["name"], text=text[:80]), f"/student/requests/{r['id']}")
     return get_request(req)
@@ -318,7 +320,7 @@ def resubmit(req):
     attach_files(c, u, rt, b.ids("files", 10), r["id"], existing)
     c.execute("UPDATE requests SET data=?, status='submitted', step=0, updated_at=? WHERE id=?", (json.dumps(data, ensure_ascii=False), iso(now()), r["id"]))
     c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], "resubmitted", "", iso(now())))
-    notify(c, office_ids(c), "request", T3("Müraciət yenidən göndərildi (№ {id})", id=r["id"]), T3("{name} · {service}", name=u["full_name"], service=rt["name"]), f"/office/request/{r['id']}")
+    notify(c, office_for(c, r["student_id"]), "request", T3("Müraciət yenidən göndərildi (№ {id})", id=r["id"]), T3("{name} · {service}", name=u["full_name"], service=rt["name"]), f"/office/request/{r['id']}")
     return get_request(req)
 
 
@@ -430,7 +432,8 @@ def request_preview(req):
 def office_summary(req):
     c = req.db
     types = {t["code"]: type_out(t) for t in rows(c, "SELECT * FROM request_types")}
-    allr = [req_out(c, r, types[r["type_code"]]) for r in rows(c, "SELECT * FROM requests")]
+    scope = faculty_students(c, req.user)
+    allr = [req_out(c, r, types[r["type_code"]]) for r in rows(c, "SELECT * FROM requests") if scope is None or r["student_id"] in scope]
     week_ago = now() - timedelta(days=7)
     done = [r for r in allr if r["status"] == "ready"]
     hours = [(datetime.fromisoformat(r["updated_at"]) - datetime.fromisoformat(r["created_at"])).total_seconds() / 3600 for r in done]
@@ -449,9 +452,11 @@ def office_summary(req):
 @R("GET", "/api/documents", roles=STAFF)
 def documents(req):
     q = f"%{(req.query.get('q') or '').strip()}%"
-    return rows(req.db, "SELECT d.id, d.kind, d.title, d.reg_no, d.verify_code, d.issued_at, d.status, d.revoked_reason, u.full_name holder "
-                        "FROM documents d JOIN users u ON u.id=d.holder_id WHERE d.reg_no LIKE ? OR u.full_name LIKE ? OR d.title LIKE ? "
-                        "ORDER BY d.id DESC LIMIT 200", (q, q, q))
+    scope = faculty_students(req.db, req.user)
+    found = rows(req.db, "SELECT d.id, d.kind, d.title, d.reg_no, d.verify_code, d.issued_at, d.status, d.revoked_reason, u.full_name holder, "
+                         "d.holder_id FROM documents d JOIN users u ON u.id=d.holder_id WHERE d.reg_no LIKE ? OR u.full_name LIKE ? "
+                         "OR d.title LIKE ? ORDER BY d.id DESC LIMIT 200", (q, q, q))
+    return [d for d in found if scope is None or d["holder_id"] in scope]
 
 
 @R("POST", "/api/documents/{id:int}/revoke", roles=("office", "admin"))
@@ -467,7 +472,7 @@ def revoke(req):
 
 
 def _doc_allowed(req, d):
-    return req.user["role"] in STAFF or d["holder_id"] == req.user["id"]
+    return d["holder_id"] == req.user["id"] or req.user["role"] in STAFF and serves(req.db, req.user, d["holder_id"])
 
 
 @R("POST", "/api/documents/{id:int}/link")
@@ -480,14 +485,17 @@ def doc_link(req):
     return {"url": f"/doc/{d['id']}?k={make_key(req.db, 'doc', d['id'], req.user['id'])}"}
 
 
-@R("GET", "/doc/{id:int}")
+@R("GET", "/doc/{id:int}", audit_read="document")
 def doc_page(req):
     c = req.db
     d = row(c, "SELECT * FROM documents WHERE id=?", (req.params["id"],))
     if not d:
         raise HTTPError(404, "Sənəd tapılmadı")
     if not _doc_allowed(req, d):
+        if req.user["role"] in STAFF:                                   # another faculty's student: not even its existence
+            raise HTTPError(404, "Sənəd tapılmadı")
         raise HTTPError(403, "Bu sənədə baxmaq icazəniz yoxdur")
+    req.read_owner, req.read_object = d["holder_id"], d["id"]
     h = holder(c, d["holder_id"])
     issuer = row(c, "SELECT * FROM users WHERE id=?", (d["issued_by"],)) or {"full_name": "—"}
     tr = store.transcript_rows(c, d["holder_id"]) if (J(d["data"], {}) or {}).get("type") == "transcript" else None

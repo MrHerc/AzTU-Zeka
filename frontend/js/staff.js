@@ -139,7 +139,9 @@ route("/admin", async (el) => {
 const ACTIONS = {
   login: [t("Giriş"), "b-gray"], consent: [t("Razılıq verildi"), "b-gray"], request_create: [t("Müraciət yaradıldı"), "b-blue"],
   document_issue: [t("Sənəd verildi"), "b-green"], request_complete: [t("Müraciət tamamlandı"), "b-green"], document_revoke: [t("Sənəd ləğv edildi"), "b-red"],
-  file_view: [t("Fayla baxış"), "b-amber"], file_preview: [t("Fayl önizləməsi"), "b-amber"], news_publish: [t("Xəbər dərc edildi"), "b-green"],
+  file_view: [t("Fayla baxış"), "b-amber"], file_preview: [t("Fayl önizləməsi"), "b-amber"],
+  read_file: [t("Başqasının faylına baxış"), "b-amber"], read_document: [t("Başqasının sənədinə baxış"), "b-amber"],
+  read_request: [t("Başqasının müraciətinə baxış"), "b-amber"], read_risk_profile: [t("Risk profilinə baxış"), "b-amber"], news_publish: [t("Xəbər dərc edildi"), "b-green"],
   news_update: [t("Xəbər yeniləndi"), "b-blue"], news_delete: [t("Xəbər silindi"), "b-red"], quiz_submit: [t("Test göndərildi"), "b-blue"],
   quiz_publish: [t("Test dərc edildi"), "b-green"], ai_generate: [t("AI sual generasiyası"), "b-violet"], material_upload: [t("Material yükləndi"), "b-blue"],
   material_delete: [t("Material silindi"), "b-red"], tutor_settings: [t("Tutor tənzimləmələri"), "b-navy"], settings_update: [t("Tənzimləmələr dəyişdirildi"), "b-navy"],

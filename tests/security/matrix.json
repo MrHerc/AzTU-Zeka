@@ -223,14 +223,14 @@
  },
  "GET /api/files/{id:int}": {
   "access": "any",
-  "audit_read": null,
+  "audit_read": "file",
   "demo": false,
   "perm": null,
   "slow": false
  },
  "GET /api/files/{id:int}/preview": {
   "access": "any",
-  "audit_read": null,
+  "audit_read": "file",
   "demo": false,
   "perm": null,
   "slow": true
@@ -384,7 +384,7 @@
    "office",
    "teacher"
   ],
-  "audit_read": null,
+  "audit_read": "risk_profile",
   "demo": false,
   "perm": null,
   "slow": false
@@ -398,7 +398,7 @@
  },
  "GET /api/requests/{id:int}": {
   "access": "any",
-  "audit_read": null,
+  "audit_read": "request",
   "demo": false,
   "perm": null,
   "slow": false
@@ -577,7 +577,7 @@
  },
  "GET /doc/{id:int}": {
   "access": "any",
-  "audit_read": null,
+  "audit_read": "document",
   "demo": false,
   "perm": null,
   "slow": false

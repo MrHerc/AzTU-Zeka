@@ -135,12 +135,40 @@ def after(req, ok):
         held = _TX_GUARD and ok and req.first_write is not None and time.monotonic() - req.first_write
         if held and held > 0.2 and not req.path.startswith(TX_GUARD_EXEMPT):
             raise AssertionError(f"{req.path} held the write lock for {held * 1000:.0f} ms (limit 200)")
+        if ok and req.audit_kind and req.read_owner and req.user and req.read_owner != req.user["id"]:
+            # Task 13: someone else's document, file, request or risk profile was read; written last, so briefly locked
+            store.audit(req.db, req.user["id"], f"read_{req.audit_kind}", req.audit_kind,
+                        f"#{req.read_object} · sahibi #{req.read_owner}")
         if ok:
             req.db.commit()
         else:
             req.db.rollback()
         req.db.close()
         req.db = None
+
+
+# ---------------------------------------------------------------- dean's office scope (Task 13, slice 2)
+def faculty_students(c, u) -> set[int] | None:
+    """The students an ``office`` user serves: those of the faculties in its grants. None: no limit (leader, admin)."""
+    if u["role"] != "office":
+        return None
+    return {r["id"] for r in rows(c, "SELECT u.id FROM users u JOIN study_groups g ON g.id=u.group_id WHERE g.faculty_id IN "
+                                     "(SELECT scope_id FROM role_grants WHERE user_id=? AND role='office' AND scope_type='faculty')",
+                                  (u["id"],))}
+
+
+def serves(c, u, student_id) -> bool:
+    """Whether a staff user may see this student's requests, documents and files."""
+    scope = faculty_students(c, u)
+    return scope is None or student_id in scope
+
+
+def office_for(c, student_id) -> list[int]:
+    """The office users whose faculty scope covers the student (who is told about a new request)."""
+    return [r["user_id"] for r in rows(c, "SELECT DISTINCT g.user_id FROM role_grants g JOIN users u ON u.id=g.user_id "
+                                          "JOIN study_groups sg ON sg.faculty_id=g.scope_id JOIN users s ON s.group_id=sg.id "
+                                          "WHERE g.role='office' AND g.scope_type='faculty' AND s.id=? AND u.status='active'",
+                                       (student_id,))]
 
 
 def make_key(c, kind: str, obj_id: int, user_id: int) -> str:

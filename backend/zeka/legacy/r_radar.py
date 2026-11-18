@@ -102,13 +102,14 @@ def radar_home(req):
             "model": {"weights": radar.WEIGHTS, "levels": {"high": 50, "watch": 30}}, "generated_at": iso(now())}
 
 
-@R("GET", "/api/radar/student/{sid:int}", roles=VIEW)
+@R("GET", "/api/radar/student/{sid:int}", roles=VIEW, audit_read="risk_profile")
 def radar_student(req):
     c = req.db
     ids, _ = scope(req)
     st, mine = student_access(req, req.params["sid"], ids)
     an = radar.analysis(c, ids if req.user["role"] == "teacher" else None)
     sid = st["id"]
+    req.read_owner, req.read_object = sid, sid
     q = req.query.get("course")
     cid = int(q) if q and q.isdigit() and int(q) in mine else max(mine, key=lambda x: an.profiles[(sid, x)]["score"])
     p = an.profiles[(sid, cid)]
