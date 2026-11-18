@@ -36,13 +36,13 @@ Hər tapşırıq üçün ümumi şərt: `python -m pytest -q`, `ruff check .`, `
 **Description:** `.gitattributes` əlavə olunur (`* text=auto eol=lf`, `*.bat text eol=crlf`, ikili fayllar `binary`). Bütün repo bir ayrıca commit-də normallaşdırılır. Həmin commit-də başqa dəyişiklik olmur.
 
 **Acceptance criteria:**
-- [ ] `git ls-files --eol | grep -c "i/crlf"` 0 qaytarır
-- [ ] Normallaşdırma commit-i `git diff -w` ilə boşdur
-- [ ] `start_demo.bat` Windows-da işləyir (CRLF qalır)
+- [x] `git ls-files --eol | grep -c "i/crlf"` 0 qaytarır
+- [x] Normallaşdırma commit-i `git diff -w` ilə boşdur
+- [x] `start_demo.bat` Windows-da işləyir (CRLF qalır)
 
 **Verification:**
-- [ ] `git ls-files --eol | awk '{print $1}' | sort | uniq -c`
-- [ ] `python -m pytest -q`
+- [x] `git ls-files --eol | awk '{print $1}' | sort | uniq -c`
+- [x] `python -m pytest -q`
 
 **Dependencies:** Task 1
 **Files likely touched:** `.gitattributes`, bütün CRLF faylları (yalnız sətir sonu)
@@ -53,15 +53,15 @@ Hər tapşırıq üçün ümumi şərt: `python -m pytest -q`, `ruff check .`, `
 **Description:** `git mv` ilə köçürmə, iki commit: (1) `app/` → `backend/zeka/core/` və `backend/zeka/legacy/`, `run.py` → `backend/run.py`; (2) `static/` → `frontend/`, Docker və yerləşdirmə faylları → `infra/`. İdxal yolları, statik qovluq yolu, CI, `pyproject.toml`, README və `CLAUDE.md` yenilənir. Qat qaydasını yoxlayan test əlavə olunur.
 
 **Acceptance criteria:**
-- [ ] Davranış dəyişmir: bütün testlər dəyişdirilmədən (yalnız idxal yolu) yaşıldır
-- [ ] `git log --follow` köçürülən fayllar üçün tarixçəni göstərir (təmiz adlandırma)
-- [ ] `tests/unit/test_layers.py`: heç bir `domain.py` `core.web`, `core.db` və ya `sqlite3` idxal etmir
-- [ ] `docs/ARCHITECTURE.md` və `docs/API.md` birləşdirilmiş vəziyyəti təsvir edir: sessiya müddəti, giriş kodu, Radar marşrutları, pytest
+- [x] Davranış dəyişmir: bütün testlər dəyişdirilmədən (yalnız idxal yolu) yaşıldır
+- [x] `git log --follow` köçürülən fayllar üçün tarixçəni göstərir (təmiz adlandırma)
+- [x] `tests/unit/test_layers.py`: heç bir `domain.py` `core.web`, `core.db` və ya `sqlite3` idxal etmir
+- [x] `docs/ARCHITECTURE.md` və `docs/API.md` birləşdirilmiş vəziyyəti təsvir edir: sessiya müddəti, giriş kodu, Radar marşrutları, pytest
 
 **Verification:**
-- [ ] `python -m pytest -q`
-- [ ] `python backend/run.py --port 5123` açılır; əsas səhifə və `/static/` yolları işləyir
-- [ ] `docker build -f infra/Dockerfile .`
+- [x] `python -m pytest -q`
+- [x] `python backend/run.py --port 5123` açılır; əsas səhifə və `/static/` yolları işləyir
+- [x] `docker build -f infra/Dockerfile .`
 
 **Dependencies:** Task 2
 **Files likely touched:** bütün `app/`, `static/` (köçürmə), `backend/run.py`, `pyproject.toml`, `.github/workflows/*.yml`, `CLAUDE.md`, `README.md`
@@ -74,14 +74,14 @@ Hər tapşırıq üçün ümumi şərt: `python -m pytest -q`, `ruff check .`, `
 Fayl adı `NNNN_ad.sql`, NNNN = tapşırıq nömrəsi × 10 (Task 12 → `0120_totp.sql`); eyni tapşırığın sonrakı düzəlişi və ya ikinci dilimi `0121_…`. Birləşdirilmiş (commit olunmuş) miqrasiya faylı redaktə edilmir, hər tapşırıq öz faylını əlavə edir. Mühərrik `schema_migrations`-da olmayan hər faylı nömrə sırası ilə tətbiq edir; nömrələrdə boşluq və kiçik nömrənin gec gəlməsi xəta deyil. Miqrasiya yalnız öz tapşırığının `Dependencies` zəncirindəki cədvəllərə söykənir. Tapşırıq daha böyük nömrəli tapşırığın cədvəlinə söykənirsə, onun miqrasiyası həmin fayldan böyük nömrə alır (Task 35 → `0365_community.sql`, `0360`-dan sonra).
 
 **Acceptance criteria:**
-- [ ] `PRAGMA user_version = 4` olan (indiki `SCHEMA_VERSION`) demo bazası miqrasiyadan sonra hər cədvəldə eyni sətir sayına malikdir
-- [ ] Tətbiq olunmuş miqrasiya faylı dəyişdirilibsə (checksum), bazada faylı olmayan versiya qeydi varsa (baza daha yeni koddandır) və ya eyni NNNN ilə iki fayl varsa, server açılmır və səbəbi yazır
-- [ ] `0001` və `0030` tətbiq olunmuş bazaya sonradan əlavə olunan `0020` tətbiq olunur (test)
-- [ ] Hər miqrasiyadan əvvəl bazanın nüsxəsi yaradılır; son 5 nüsxə saxlanır
+- [x] `PRAGMA user_version = 4` olan (indiki `SCHEMA_VERSION`) demo bazası miqrasiyadan sonra hər cədvəldə eyni sətir sayına malikdir
+- [x] Tətbiq olunmuş miqrasiya faylı dəyişdirilibsə (checksum), bazada faylı olmayan versiya qeydi varsa (baza daha yeni koddandır) və ya eyni NNNN ilə iki fayl varsa, server açılmır və səbəbi yazır
+- [x] `0001` və `0030` tətbiq olunmuş bazaya sonradan əlavə olunan `0020` tətbiq olunur (test)
+- [x] Hər miqrasiyadan əvvəl bazanın nüsxəsi yaradılır; son 5 nüsxə saxlanır
 
 **Verification:**
-- [ ] `python -m pytest tests/migration/test_schema_migrations.py -q`
-- [ ] `python backend/manage.py status`
+- [x] `python -m pytest tests/migration/test_schema_migrations.py -q`
+- [x] `python backend/manage.py status`
 
 **Dependencies:** Task 3
 **Files likely touched:** `backend/zeka/core/migrate.py`, `backend/zeka/core/db.py`, `backend/migrations/0001_baseline.sql`, `backend/manage.py`, `tests/migration/test_schema_migrations.py`
@@ -94,16 +94,16 @@ Fayl adı `NNNN_ad.sql`, NNNN = tapşırıq nömrəsi × 10 (Task 12 → `0120_t
 Saat (plan A19). `core/clock.py`: `now()` (UTC, ofsetli) və `local()` (`ZEKA_TZ`, susmaya görə `Asia/Baku`). `store.now()` `clock.local()`-dan oxuyur; legacy davranışı dəyişmir. Prod rejimində qurşaq tapılmasa server açılmır və səbəbi yazır. Demo rejimində tz bazası yoxdursa (Windows) OS vaxtı işlənir. `ruff` `DTZ005` və `DTZ011` açılır: `clock.py`-dən kənarda `datetime.now()` və `date.today()` lint xətasıdır. CI-da bir ubuntu matris sətri `TZ: America/Los_Angeles` ilə işləyir.
 
 **Acceptance criteria:**
-- [ ] Prod rejimində `/api/auth/demo`, `/demo/login`, `/api/demo/storyline`, `/api/admin/reset` 404 qaytarır
-- [ ] `--host 0.0.0.0` demo rejimində açılmır
-- [ ] Prod rejimində `PUBLIC_URL=https://…` və `ZEKA_PROXY_HOPS=0` ilə server açılmır
-- [ ] Boş prod bazası yalnız `create-admin` ilə yaradılan hesabla açılır; heç bir sintetik istifadəçi yoxdur
-- [ ] Proses `TZ=America/Los_Angeles`, `ZEKA_TZ=Asia/Baku`, saat 06:00Z-yə sabitlənib: `/api/student/home` 10:00–11:30 dərsini `now` göstərir (Linux; tz bazası olmayan Windows-da keçilir)
-- [ ] Prod rejimində mövcud olmayan `ZEKA_TZ` dəyəri ilə server açılmır; `ruff check .` `clock.py`-dən kənarda `datetime.now()` və `date.today()` çağırışı tapmır
+- [x] Prod rejimində `/api/auth/demo`, `/demo/login`, `/api/demo/storyline`, `/api/admin/reset` 404 qaytarır
+- [x] `--host 0.0.0.0` demo rejimində açılmır
+- [x] Prod rejimində `PUBLIC_URL=https://…` və `ZEKA_PROXY_HOPS=0` ilə server açılmır
+- [x] Boş prod bazası yalnız `create-admin` ilə yaradılan hesabla açılır; heç bir sintetik istifadəçi yoxdur
+- [x] Proses `TZ=America/Los_Angeles`, `ZEKA_TZ=Asia/Baku`, saat 06:00Z-yə sabitlənib: `/api/student/home` 10:00–11:30 dərsini `now` göstərir (Linux; tz bazası olmayan Windows-da keçilir)
+- [x] Prod rejimində mövcud olmayan `ZEKA_TZ` dəyəri ilə server açılmır; `ruff check .` `clock.py`-dən kənarda `datetime.now()` və `date.today()` çağırışı tapmır
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_modes.py tests/integration/test_clock.py -q`
-- [ ] `ZEKA_MODE=prod python backend/run.py` və `curl -s -o /dev/null -w "%{http_code}" -X POST localhost:5070/api/auth/demo`
+- [x] `python -m pytest tests/integration/test_modes.py tests/integration/test_clock.py -q`
+- [x] `ZEKA_MODE=prod python backend/run.py` və `curl -s -o /dev/null -w "%{http_code}" -X POST localhost:5070/api/auth/demo`
 
 **Dependencies:** Task 4
 **Files likely touched:** `backend/zeka/core/config.py`, `backend/zeka/core/clock.py`, `backend/run.py`, `backend/manage.py`, `backend/zeka/legacy/r_core.py`, `backend/zeka/legacy/r_admin.py`, `backend/zeka/legacy/store.py`, `tests/integration/test_clock.py`, `pyproject.toml`, `.github/workflows/ci.yml`
@@ -114,14 +114,14 @@ Saat (plan A19). `core/clock.py`: `now()` (UTC, ofsetli) və `local()` (`ZEKA_TZ
 **Description:** Handler icrası sayı məhdud semaforla əhatələnir (`ZEKA_HANDLERS`, susmaya görə 2). Xaricə şəbəkə çağırışı edən marşrut (`slow=True`: LLM, OIDC) əsas 2 slotu tutmur, ayrıca hədli semaforda gedir (`ZEKA_SLOW`, susmaya görə 4); hər xarici çağırışın açıq vaxt aşımı var (≤ 15 s). Növbə vaxtı bitəndə 503 və `Retry-After`. `run.py --workers N`: `SO_REUSEPORT` ilə eyni portu paylaşan N proses, düşəni yenidən başladan nəzarətçi, səliqəli dayanma. `/healthz` əlavə olunur; `server_time` (UTC, ofsetli) və `tz` qaytarır. `tools/loadtest.py` yazılır. `--dataset demo|faculty|university` müvəqqəti bazada sintetik dəst yaradır (faculty: 2 000 tələbə, 12 000 qeydiyyat, 1 200 cədvəl sətri, 20 000 cəhd, 20 000 hissə; university: 10 000 / 60 000 / 6 000 / 100 000 / 100 000); hər ssenarinin marşrut qarışığı və düşünmə fasiləsi faylın başında yazılır.
 
 **Acceptance criteria:**
-- [ ] 300 paralel müştəri, oxu ssenarisi: 0 xəta, tək prosesdə ≥ 200 sorğu/san (ölçülmüş baza: 221; demo baza, qapının reqressiya yoxlaması)
-- [ ] 4 proses tək prosesin ən azı 2,5 mislini verir
-- [ ] Semafor sızmır: 1 000 xətalı sorğudan sonra normal sorğu cavab alır; öldürülən proses demo bazada 2 saniyəyə bərpa olunur; işçi dinləmə yuvasını yalnız indeksi qurandan sonra açır və bu müddətdə qalan proseslər xətasız cavab verir
-- [ ] 4 paralel 10 saniyəlik `slow` handler gedərkən oxu və yazma sorğuları: 5xx = 0, p95 ≤ 500 ms
+- [x] 300 paralel müştəri, oxu ssenarisi: 0 xəta, tək prosesdə ≥ 200 sorğu/san (ölçülmüş baza: 221; demo baza, qapının reqressiya yoxlaması)
+- [x] 4 proses tək prosesin ən azı 2,5 mislini verir
+- [x] Semafor sızmır: 1 000 xətalı sorğudan sonra normal sorğu cavab alır; öldürülən proses demo bazada 2 saniyəyə bərpa olunur; işçi dinləmə yuvasını yalnız indeksi qurandan sonra açır və bu müddətdə qalan proseslər xətasız cavab verir
+- [x] 4 paralel 10 saniyəlik `slow` handler gedərkən oxu və yazma sorğuları: 5xx = 0, p95 ≤ 500 ms
 
 **Verification:**
-- [ ] `python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset demo`
-- [ ] `python -m pytest tests/integration/test_concurrency.py -q`
+- [x] `python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset demo`
+- [x] `python -m pytest tests/integration/test_concurrency.py -q`
 
 **Dependencies:** Task 3
 **Files likely touched:** `backend/zeka/core/web.py`, `backend/run.py`, `tools/loadtest.py`, `tests/integration/test_concurrency.py`
@@ -129,21 +129,21 @@ Saat (plan A19). `core/clock.py`: `now()` (UTC, ofsetli) və `local()` (`ZEKA_TZ
 
 ## Task 7: Proses-lokal vəziyyəti bazaya köçür
 
-**Description:** Birdəfəlik sənəd açarları (`common._DOC_KEYS`) və limit sayğacları (`security.py`) cədvələ keçir. Axtarış indeksləri hər prosesdə qurulur; `index_version` dəyişəndə proses yalnız dəyişən sənədləri (əlavə, yenilənmə, silinmə) tətbiq edir; tam qurma yalnız proses başlayanda olur. `0070_shared_state.sql`-də isti yol indeksləri: `attempts(user_id, quiz_id)`, `timetable(course_id)`, `enrollments(course_id)`, `quizzes(course_id)`, `materials(course_id)`, `lessons(course_id)`; `student_home` cədvəli tələbənin fənləri üzrə JOIN ilə oxuyur.
+**Description:** Birdəfəlik sənəd açarları (`common._DOC_KEYS`) və limit sayğacları (`security.py`) cədvələ keçir. Axtarış indeksləri hər prosesdə qurulur; `index_version` dəyişəndə proses yalnız dəyişən sənədləri (əlavə, yenilənmə, silinmə) tətbiq edir; tam qurma yalnız proses başlayanda olur. `0071_hot_path_indexes.sql`-də isti yol indeksləri (0070 artıq tətbiq olunmuşdu): `attempts(user_id, quiz_id)`, `timetable(course_id)`, `enrollments(course_id)`, `quizzes(course_id)`, `materials(course_id)`, `lessons(course_id)`; `student_home` və `/api/schedule` cədvəli yalnız istifadəçinin fənləri üzrə, hər fənnə bir indeksli sorğu ilə oxuyur (`week_timetable`).
 
 **Acceptance criteria:**
-- [ ] A prosesinin verdiyi açarı B prosesi bir dəfə qəbul edir, ikinci istifadə rədd olunur
-- [ ] Limit proses sayına vurulmur: N proseslə də eyni hədd tətbiq olunur
-- [ ] Limit sayğacı öz qısa tranzaksiyasında yazılır və dərhal commit olunur; test rejimində ilk yazmadan commit-ə qədər 200 ms-dən uzun sorğu tranzaksiyası testi yıxır (idxal istisna)
-- [ ] A prosesindən yüklənən material B prosesində növbəti sorğuda axtarışda çıxır
-- [ ] `university` dəstində (100 000 hissə) material yükləndikdən sonra digər prosesin növbəti axtarışı ≤ 200 ms gecikir (tam yenidənqurma yoxdur); işçinin başlanğıc müddəti və proses başına indeks yaddaşı ölçülüb və `docs/perf/baseline.md`-də yazılıb
-- [ ] `university` dəstində oxu ssenarisinin marşrutlarının icra etdiyi heç bir sorğunun `EXPLAIN QUERY PLAN`-ında 1 000 sətirdən böyük cədvəl üzrə `SCAN` yoxdur (`tests/load/test_query_plans.py`; Task 42 qarışıq və imtahan ssenarilərini əlavə edir)
-- [ ] `faculty` dəstində tək prosesin oxu ssenarisi demo nəticəsinin ≥ 60%-ni verir (hədd: SPEC Open Questions 23) və 300 paralel müştəridə 0 xəta; `university` nəticəsi `docs/perf/baseline.md`-də yazılıb
+- [x] A prosesinin verdiyi açarı B prosesi bir dəfə qəbul edir, ikinci istifadə rədd olunur
+- [x] Limit proses sayına vurulmur: N proseslə də eyni hədd tətbiq olunur
+- [x] Limit sayğacı öz qısa tranzaksiyasında yazılır və dərhal commit olunur; test rejimində ilk yazmadan commit-ə qədər 200 ms-dən uzun sorğu tranzaksiyası testi yıxır (idxal istisna)
+- [x] A prosesindən yüklənən material B prosesində növbəti sorğuda axtarışda çıxır
+- [x] `university` dəstində (100 000 hissə) material yükləndikdən sonra digər prosesin növbəti axtarışı ≤ 200 ms gecikir (tam yenidənqurma yoxdur); işçinin başlanğıc müddəti və proses başına indeks yaddaşı ölçülüb və `docs/perf/baseline.md`-də yazılıb
+- [x] `university` dəstində oxu ssenarisinin marşrutlarının icra etdiyi heç bir sorğunun `EXPLAIN QUERY PLAN`-ında 1 000 sətirdən böyük cədvəl üzrə `SCAN` yoxdur (`tests/load/test_query_plans.py`; Task 42 qarışıq və imtahan ssenarilərini əlavə edir)
+- [x] `faculty` dəstində tək prosesin oxu ssenarisi demo nəticəsinin ≥ 60%-ni verir (hədd: SPEC Open Questions 23) və 300 paralel müştəridə 0 xəta; `university` nəticəsi `docs/perf/baseline.md`-də yazılıb
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_multiworker_state.py -q` (iki prosesli server ilə)
-- [ ] `python -m pytest tests/load/test_query_plans.py -q`
-- [ ] `python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset faculty` və eyni əmr `--dataset university` ilə
+- [x] `python -m pytest tests/integration/test_multiworker_state.py -q` (iki prosesli server ilə)
+- [x] `python -m pytest tests/load/test_query_plans.py -q`
+- [x] `python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset faculty` və eyni əmr `--dataset university` ilə
 
 **Dependencies:** Task 4, Task 6
 **Files likely touched:** `backend/zeka/core/security.py`, `backend/zeka/legacy/common.py`, `backend/zeka/legacy/engine.py`, `backend/zeka/legacy/r_learning.py`, `backend/migrations/0070_shared_state.sql`, `tools/loadtest.py`, `tests/load/test_query_plans.py`, `docs/perf/baseline.md`

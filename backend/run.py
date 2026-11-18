@@ -1,5 +1,6 @@
 """Start the AzTU Rəqəmsal Kampus demo:  python backend/run.py [--port 5070] [--reset] [--public-url https://zeka.example.az]"""
 import argparse
+import gc
 import os
 import re
 import signal
@@ -111,11 +112,11 @@ def main():
 
 
 def worker(args, log):
-    """One forked worker: build this process's search indexes first, then bind the shared port; stop on SIGTERM."""
+    """One forked worker: bring the inherited search indexes up to date, then bind the shared port; stop on SIGTERM."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)            # Ctrl+C reaches the supervisor, which stops the workers
     c = store.connect()
     try:
-        store.build_indexes(c)                              # until the port is bound, the other workers take the traffic
+        store.sync_indexes(c)       # built once by the supervisor (store.init); a restarted worker applies what changed since
     finally:
         c.close()
     srv = make_server(args.port, api.R, ROOT / "frontend", api.before, api.after, log, host=args.host, reuse_port=True)
@@ -155,6 +156,7 @@ def supervise(args, log):
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    gc.freeze()             # the cyclic GC would write to every inherited index object and unshare its pages in each worker
     for _ in range(args.workers):
         spawn()
     while children:

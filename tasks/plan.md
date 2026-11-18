@@ -63,12 +63,12 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 ### Faza 1 — Birləşdirmə və bünövrə · saat 0–10
 
 - [x] T01 Beş PR-ı birləşdir — 698 test yaşıl, commit `9d23e99`
-- [ ] T02 Sətir sonlarını sabitlə
-- [ ] T03 Repo-nu dilə və qata görə böl
-- [ ] T04 Miqrasiya mühərriki
-- [ ] T05 İş rejimləri: demo və prod
-- [ ] T06 Handler qapısı və çox proses
-- [ ] T07 Proses-lokal vəziyyəti bazaya köçür
+- [x] T02 Sətir sonlarını sabitlə — `cfe023a`
+- [x] T03 Repo-nu dilə və qata görə böl — `2d7455b`, `93f28dd`
+- [x] T04 Miqrasiya mühərriki — `b85ab5e`
+- [x] T05 İş rejimləri: demo və prod — `af5259e`, `c96880e`
+- [x] T06 Handler qapısı və çox proses — `b2ecc6f`, `83eeebb`
+- [x] T07 Proses-lokal vəziyyəti bazaya köçür — `95a348c` və dilim 2 (indekslər, ölçmə)
 - [ ] T08 Backup və bərpa
 - [ ] T09 Yerləşdirmə: Docker, Caddy, sağlamlıq yoxlaması
 

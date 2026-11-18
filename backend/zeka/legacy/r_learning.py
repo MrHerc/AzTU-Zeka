@@ -60,6 +60,12 @@ def next_lesson(c, course_id):
     return None
 
 
+def week_timetable(c, course_ids):
+    """Timetable rows of these courses by weekday and start: one indexed lookup per course, never the whole table."""
+    tt = [x for cid in course_ids for x in rows(c, "SELECT * FROM timetable WHERE course_id=?", (cid,))]
+    return sorted(tt, key=lambda x: (x["weekday"], x["start"], x["id"]))
+
+
 def att_summary(c, uid, course_id):
     r = row(c, "SELECT COUNT(*) total, SUM(a.status='present') present, SUM(a.status='late') late, SUM(a.status='absent') absent, "
                "SUM(a.status='excused') excused FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE a.user_id=? AND l.course_id=?",
@@ -155,12 +161,13 @@ def schedule(req):
     cs = {co["id"]: co for co in my_courses(c, u)}
     t = now()
     monday = t.date() - timedelta(days=t.isoweekday() - 1)
+    tt = week_timetable(c, cs)
     days = []
     for i in range(5):
         d = monday + timedelta(days=i)
         items = []
-        for x in rows(c, "SELECT * FROM timetable WHERE weekday=? ORDER BY start", (i + 1,)):
-            if x["course_id"] in cs:
+        for x in tt:
+            if x["weekday"] == i + 1:
                 co = cs[x["course_id"]]
                 tch = row(c, "SELECT full_name FROM users WHERE id=?", (co["teacher_id"],))
                 items.append({**x, "course": co["name"], "code": co["code"], "color": co["color"], "teacher": tch["full_name"] if tch else ""})
@@ -253,9 +260,10 @@ def student_home(req):
             if not d.get("correct") and d.get("topic"):
                 weak.setdefault(d["topic"], {"topic": d["topic"], "course_id": a["course_id"], "n": 0})["n"] += 1
     today = []
-    for x in rows(c, "SELECT * FROM timetable WHERE weekday=? ORDER BY start", (t.isoweekday(),)):
-        co = next((k for k in cs if k["id"] == x["course_id"]), None)
-        if co:
+    by_id = {k["id"]: k for k in cs}
+    for x in week_timetable(c, by_id):
+        co = by_id[x["course_id"]]
+        if x["weekday"] == t.isoweekday():
             state = "done" if x["end"] < t.strftime("%H:%M") else "now" if x["start"] <= t.strftime("%H:%M") <= x["end"] else "next"
             today.append({**x, "course": co["name"], "color": co["color"], "teacher": co["teacher"], "state": state, "course_id": co["id"]})
     reqs = rows(c, "SELECT r.id, r.status, r.created_at, r.updated_at, t.name type_name, t.icon FROM requests r JOIN request_types t ON t.code=r.type_code "

@@ -126,3 +126,32 @@ def test_a_material_uploaded_through_one_worker_is_found_through_the_other(port)
     assert status == 200 and "Plazma generatorları" in json.dumps(found, ensure_ascii=False), found
     a.close()
     b.close()
+
+
+def test_a_restarted_worker_applies_what_changed_since_the_supervisor_built_the_index(port):
+    """A replacement is forked from the supervisor, whose index dates from start-up: it must apply the change log."""
+    token = login(port, "teacher")
+    a, pid_a = on_worker(port, token)
+    b, pid_b = on_worker(port, avoid=pid_a)
+    b.close()
+    text = ("# Kriogen texnika\n\n## Nasoslar\n\nKriotermosifon maye azotla soyudulan dövrəli nasosdur. "
+            "Kriotermosifon vakuum kameralarında istifadə olunur.\n")
+    status, body = a.call("POST", "/api/courses/1/materials", {"filename": "krio.md", "title": "Kriogen texnika",
+                                                               "content_b64": base64.b64encode(text.encode()).decode()})
+    assert status == 200, body
+    a.close()
+    os.kill(pid_a, signal.SIGKILL)
+    for _ in range(300):
+        try:
+            c = Conn(port, token)
+            if c.worker() not in (pid_a, pid_b):
+                break
+            c.close()
+        except OSError:
+            pass
+        time.sleep(0.02)
+    else:
+        raise AssertionError("no replacement worker answered")
+    status, found = c.call("GET", "/api/search?q=kriotermosifon")
+    c.close()
+    assert status == 200 and "Kriogen texnika" in json.dumps(found, ensure_ascii=False), found
