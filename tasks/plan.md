@@ -8,7 +8,7 @@ Source spec: `SPEC.md` · Tapşırıqlar: `tasks/todo.md` · Vəziyyət: **təsd
 icra olunan sillabus, SEB ilə imtahan, otaq tapan köməkçi, müəllimə sual, klublar, idxal və kəsid alətləri.
 Bir fakültə 72-ci saatda real məlumatla işə başlayır. Qalan fakültələr eyni alətlərlə dalğa-dalğa keçir.
 
-İş 6 mərhələ, 46 tapşırıqdır (T01–T46; T45 mərhələ 2-də, T46 mərhələ 4-dədir). Hər tapşırıq bir şaquli dilimdir: sxem, servis, marşrut, interfeys, test.
+İş 6 mərhələ, 46 tapşırıqdır (T01–T46; T45 Faza 3-də, T46 Faza 5-dədir). Fazalar 1–6 nömrələnir; Faza 1 bünövrədir. Hər tapşırıq bir şaquli dilimdir: sxem, servis, marşrut, interfeys, test.
 Hər mərhələ yoxlama nöqtəsi ilə bağlanır. Nöqtə keçilməsə növbəti mərhələ başlamır.
 
 ## Architecture Decisions
@@ -54,13 +54,13 @@ Kritik yol (`tasks/todo.md` asılılıqlarından ən uzun zəncir, 19 tapşırı
 T02→T03→T04→T05→T10→T11→T13/1→T15/1→T17→T19→T20→T21→T26→T27→T29→T30→T42→T43→T44.
 T15/2 (tədris vahidi) T17 ilə paralel gedir və T19-dan əvvəl bitməlidir.
 `facilities` (T18, T31), idxal (T16), `syllabus`, `qa`, `community`, `comms`, T13/2, T45, T46 bu zəncirdən kənardır və paralel gedir.
-T36 mərhələ 4-ün siyahısındadır, amma zolaq 3-də saat 22–36-da qurulur: dilim 1 (iş icraçısı və dövri işlər) T26-dan, dilim 2 (outbox və e-poçt) T30-dan əvvəl bitməlidir. T45 də zəncirdə deyil və T30-dan əvvəl bitməlidir.
+T36 Faza 5-in siyahısındadır, amma zolaq 3-də saat 22–36-da qurulur: dilim 1 (iş icraçısı və dövri işlər) T26-dan, dilim 2 (outbox və e-poçt) T30-dan əvvəl bitməlidir. T45 də zəncirdə deyil və T30-dan əvvəl bitməlidir.
 
 ## Task List
 
 Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 
-### Phase 0 — Birləşdirmə və bünövrə · saat 0–10
+### Faza 1 — Birləşdirmə və bünövrə · saat 0–10
 
 - [x] T01 Beş PR-ı birləşdir — 698 test yaşıl, commit `9d23e99`
 - [ ] T02 Sətir sonlarını sabitlə
@@ -76,7 +76,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] Bütün testlər yaşıl; `docker compose up` ilə HTTPS açılır; yenidən başlatma məlumatı saxlayır
 - [ ] 300 paralel müştəridə 0 xəta (`demo` və `faculty` dəstləri); bərpa sınağı keçir
 
-### Phase 1 — Kimlik və reyestr · saat 10–22
+### Faza 2 — Kimlik və reyestr · saat 10–22
 
 - [ ] T10 Hesablar və parol
 - [ ] T11 Sessiya sərtləşdirməsi
@@ -93,7 +93,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] Sınaq nüsxəsi sabit adla açılır: `curl https://<ad>/healthz` (`-k` olmadan) sahibin SEB kompüterindən 200 qaytarır; sintetik məlumatla işləyir; hər yoxlama nöqtəsində push-dan sonra `docs/runbooks/deploy.md` ilə yenilənir. Ad saat 22-yə hazır deyilsə: T18, T19, T28-in əl yoxlamaları LAN-da http ilə (`seb://`) aparılır, `sebs://` sınağı və Google Calendar abunəliyi T44-ün meyarına yazılır
 - [ ] Sahib rol cədvəlini və `qa.moderate`, `community.moderate` bölgüsünü təsdiqləyib (T13; SPEC Open Questions 24)
 
-### Phase 2 — Akademik nüvə · saat 22–36
+### Faza 3 — Akademik nüvə · saat 22–36
 
 - [ ] T18 Korpus, otaq və otaq QR-i
 - [ ] T19 Cədvəl idarəsi və iCal
@@ -107,7 +107,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] 25% həddi və imtahana buraxılış avtomatik hesablanır
 - [ ] Verilmiş sənəd saxlanmış yükdən göstərilir; bazada dəyişdirilən yük `/verify`-da "sənəd dəyişdirilib" verir
 
-### Phase 3 — Sillabus və imtahan · saat 36–52
+### Faza 4 — Sillabus və imtahan · saat 36–52
 
 - [ ] T23 Struktur sillabus
 - [ ] T24 Çərçivə xəritəsi və NICE idxalı
@@ -122,7 +122,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] 300 simulyasiya olunmuş tələbə ilə sınaq imtahanı: `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty` 0 itki və p95 < 500 ms verir. Əmr T27-də yazılır və T30-dan sonra yenidən işlədilir (hash zənciri və nəzarətçi sorğusu yükə əlavə olunur)
 - [ ] Windows kompüterində SEB ilə əl sınağı (sahib)
 
-### Phase 4 — Köməkçi, sual-cavab, icma, inteqrasiya · saat 52–62
+### Faza 5 — Köməkçi, sual-cavab, icma, inteqrasiya · saat 52–62
 
 - [ ] T31 Kampus köməkçisi: otaq tapma və marşrut
 - [ ] T32 Kampus köməkçisi: bilik bazası idarəsi və insana ötürmə
@@ -138,7 +138,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] Hər yeni modul təhlükəsizlik matrisindədir
 - [ ] Prod rejimində yalnız adminin açdığı müraciət növləri təklif olunur; `python backend/manage.py jobs status` beş dövri işin hər biri üçün son uğurlu icranı göstərir
 
-### Phase 5 — Miqrasiya, sərtləşdirmə, buraxılış · saat 62–72
+### Faza 6 — Miqrasiya, sərtləşdirmə, buraxılış · saat 62–72
 
 - [ ] T38 ETL və uzlaşdırma
 - [ ] T39 Ölçülmüş göstəricilər və akkreditasiya sübutu

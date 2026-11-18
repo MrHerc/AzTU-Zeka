@@ -50,6 +50,12 @@ Bunlarla işləyirəm. Səhv olan varsa, indi düzəlt.
 10. Tədris dövrü və imtahan sessiyası ayrı saxlanır. `content/seed.json`-dakı aralıq (15.09.2026 – 31.01.2027) ikisini birlikdə əhatə edir; aralarındakı sərhəd məlum deyil və rəsmi təqvimlə yoxlanmayıb (Open Questions 15).
 11. 25% qaydası belə oxunur; sahib təsdiqləməlidir (Open Questions 15). Məxrəc fənnin tədris dövründəki ləğv olunmamış dərslərinin akademik saatıdır. Buraxılmış hər saat sayılır, üzrlü də: bu, yeganə mənbənin hərfi oxunuşudur (`docs/research/01-azerbaycan-bazar-ve-qanun.md:44`). Davamiyyətin 10 balı jurnaldan tenant qayda cədvəli ilə hesablanır.
 
+### Sahibin 2026-11-18 qərarları
+
+- Plan təsdiq olunub.
+- İnteqrasiyalar mərhələlidir; hələlik mövcud sistemlər saxlanır: dalğa 0-da köhnə sistem rəsmi qeyddir (Open Questions 19, A variantı). İnteqrasiya fayl idxalı ilə başlayır; SSO və API bağlantıları sonrakı mərhələdədir.
+- Sillabus yaradılarkən kafedranın akademik yük forması (Forma №3) istifadə olunur: `docs/forms/forma-3.md`, Task 16 və Task 23.
+
 ## Capability Map
 
 Modul id-ləri sabitdir. Asılılıq bir istiqamətlidir, dövr yoxdur.

@@ -6,7 +6,7 @@ Hər tapşırıq üçün ümumi şərt: `python -m pytest -q`, `ruff check .`, `
 
 ---
 
-## Phase 0 — Birləşdirmə və bünövrə
+## Faza 1 — Birləşdirmə və bünövrə
 
 ## Task 1: Beş PR-ı birləşdir — TAMAMLANDI (commit `9d23e99`)
 
@@ -199,7 +199,7 @@ Saat (plan A19). `core/clock.py`: `now()` (UTC, ofsetli) və `local()` (`ZEKA_TZ
 
 ---
 
-## Phase 1 — Kimlik və reyestr
+## Faza 2 — Kimlik və reyestr
 
 ## Task 10: Hesablar və parol
 
@@ -341,7 +341,10 @@ Mənbə bağlantısı: `import_links(kind, source_system, source_id, row_id, sou
 
 OneRoster 1.2 CSV sütun adları və Azərbaycanca başlıq qarşılıqları qəbul olunur. Xəritə: OneRoster `classes` → `teaching_units`; `enrollments`-də `role=teacher` vahidin müəllimini təyin edir, `role=student` fənnə qeydiyyatı, qrupu və yarımqrupu yazır; `beginDate`/`endDate` `enrollments.begin_date`/`end_date`-ə düşür. `sourcedId` üzrə idempotent yeniləmə: `sourcedId` `import_links.source_id`-də saxlanır. Fayl ya tam idxal olunur, ya heç; konfliktli sətir xəta deyil. Admin ekranında yükləmə və quru sınaq önizləməsi. Aktivləşdirmə kodları yalnız `student` rolu üçündür; işçi hesabı Task 10-dakı admin müvəqqəti parolu ilə açılır. Kod: `secrets` ilə 60 bit (12 base32 simvol), yalnız verildiyi tələbə nömrəsi ilə birlikdə qəbul olunur, bazada yalnız SHA-256-sı saxlanır, birdəfəlikdir, müddəti tenant ayarıdır (susmaya görə 14 gün). Dekanlıq CSV-si fakültə üzrə yaradılanda bir dəfə verilir; yenidən yaratma köhnə kodları ləğv edir. Yanlış kod cəhdləri Task 10-dakı (hesab, ünvan) məhdudiyyətindən keçir; yanlış cəhd kodu ləğv etmir.
 
+**Forma №3 (2026-11-18, sahibin qərarı):** `--kind teaching-load` kafedranın akademik yük faylını (`.xlsx`) oxuyur və tədris vahidlərini yaradır. Format və oxuma qaydaları `docs/forms/forma-3.md`-dədir: iki tərtibat (bir vərəqdə müəllim blokları; hər müəllimə bir vərəq), başlıq mətnlə tapılır, boş fənn adlı sətir əvvəlki fənnin davamıdır, birləşmiş mühazirə axını bütün qrupları əhatə edən bir vahiddir, `Digər dərs yüklərini aparan müəllimlər` ikinci müəllimdir. Oxuyucu standart kitabxana ilə yazılır (`zipfile`, `xml.etree`), Office faylları üçün mövcud ölçü və DTD qoruyucuları ilə; yeni asılılıq yoxdur. Müəllim adı reyestrdəki istifadəçiyə uyğunlaşdırılır; tapılmayan ad konflikt hesabatına düşür, hesab yaradılmır.
+
 **Acceptance criteria:**
+- [ ] Hər iki tərtibatda uydurma Forma №3 nümunəsi (`tests/fixtures/forma3_blocks.xlsx`, `tests/fixtures/forma3_sheets.xlsx`) gözlənilən tədris vahidlərini verir: axın, yarımqrup, ikinci müəllim, `Cəmi` və `SAAT HESABI` sətirlərinin keçilməsi daxil; real fayllar repoya düşmür
 - [ ] 10 000 sətirlik istifadəçi faylı 60 saniyədən tez idxal olunur; təkrar işlətmə 0 dəyişiklik bildirir
 - [ ] 3 səhv sətri olan fayl heç nə yazmır və 3 sətri nömrə və səbəblə göstərir
 - [ ] Zəka-da dəyişdirilmiş sətir təkrar idxalda üstünə yazılmır, konflikt hesabatında sətir nömrəsi ilə görünür; `--prefer source` üstünə yazır və audit hadisəsi yazır
@@ -382,7 +385,7 @@ OneRoster 1.2 CSV sütun adları və Azərbaycanca başlıq qarşılıqları qə
 
 ---
 
-## Phase 2 — Akademik nüvə
+## Faza 3 — Akademik nüvə
 
 ## Task 18: Korpus, otaq və otaq QR-i
 
@@ -537,13 +540,16 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 
 ---
 
-## Phase 3 — Sillabus və imtahan
+## Faza 4 — Sillabus və imtahan
 
 ## Task 23: Struktur sillabus
 
 **Description:** `syllabus_versions` cədvəli: versiya, status, doğrulanmış JSON. Sahələr: nəticələr (id, mətn, Bloom səviyyəsi), həftəlik plan (mövzu, nəticələr, fəaliyyət), qiymətləndirmə (komponent, çəki), qaydalar (davamiyyət, gecikmə, AI siyasəti), prerekvizitlər (ilkin dəyər fənnin prerekvizit sahəsindən, Task 17), ədəbiyyat. Mövcud səhifə redaktora çevrilir; mövcud generator ilkin doldurma kimi qalır.
 
+**Forma №3-dən ilkin doldurma:** yeni sillabus fənnin dərc olunmuş tədris vahidlərindən (Task 16, `teaching-load` idxalı) iş yükünü götürür: semestr üzrə mühazirə, məşğələ, laboratoriya kontakt saatları, qruplar, tələbə sayı, müəllimlər. Müəllim dəyərləri dəyişə bilər; Forma №3-dən fərqlənən saat təsdiq zəncirində fərq kimi göstərilir.
+
 **Acceptance criteria:**
+- [ ] Forma №3-dən idxal olunmuş fənn üçün yeni sillabusun saatları idxal olunmuş kontakt saatlarına bərabərdir; dəyişdirilmiş saat kafedra müdirinin ekranında fərq kimi görünür
 - [ ] Çəkilərin cəmi 100 deyilsə və ya imtahan çəkisi tenant qaydasına uyğun deyilsə saxlanmır
 - [ ] Davamiyyət həddi tenant həddindən yuxarı olan sillabus saxlanmır: sillabus həddi yalnız aşağı sala bilər
 - [ ] Hər saxlama yeni qaralama versiyası yaradır; dərc olunmuş versiya dəyişdirilə bilmir
@@ -695,7 +701,7 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 
 ---
 
-## Phase 4 — Köməkçi, sual-cavab, icma, inteqrasiya
+## Faza 5 — Köməkçi, sual-cavab, icma, inteqrasiya
 
 ## Task 31: Kampus köməkçisi: otaq tapma və marşrut
 
@@ -862,7 +868,7 @@ Prod rejimində təklif. `request_types.enabled` sütunu: prod rejimində susmay
 
 ---
 
-## Phase 5 — Miqrasiya, sərtləşdirmə, buraxılış
+## Faza 6 — Miqrasiya, sərtləşdirmə, buraxılış
 
 ## Task 38: ETL və uzlaşdırma
 
