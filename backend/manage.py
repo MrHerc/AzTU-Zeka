@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from zeka.core import backup, config, migrate  # noqa: E402
 from zeka.legacy import store  # noqa: E402
+from zeka.modules.identity import domain as identity  # noqa: E402
 
 
 def main(argv=None) -> int:
@@ -113,13 +114,16 @@ def create_admin(username: str, name: str) -> int:
         if store.row(c, "SELECT 1 FROM users WHERE username=?", (username,)):
             print(f"error: user {username} already exists", file=sys.stderr)
             return 2
-        uid = c.execute("INSERT INTO users(username,full_name,role,title,color,synthetic) VALUES(?,?,'admin','Administrator','#1a2355',0)",
-                        (username, name)).lastrowid
+        password = identity.temporary_password()
+        uid = c.execute("INSERT INTO users(username,full_name,role,title,color,synthetic,password_hash,must_change) "
+                        "VALUES(?,?,'admin','Administrator','#1a2355',0,?,1)",
+                        (username, name, identity.hash_password(password))).lastrowid
         store.audit(c, None, "create_admin", "user", username)
         c.commit()
     finally:
         c.close()
     print(f"created administrator {username} (id {uid})")
+    print(f"temporary password (shown once, must be changed at the first sign-in): {password}")
     return 0
 
 

@@ -1,6 +1,6 @@
 import { S, api, html, raw, mount, on, ic, toast, modal, matchRoute, currentPath, go, route, pageHead, fmtDateTime, openDoc, $, $$, t, tl, LANG,
   loading, empty, failed, infoTip, routeProgress, initMotion, REDUCED, ago, TOURS } from "./core.js";
-import { shell, setActiveNav, ROLES, HOME, ROLE_LABEL, refreshBadges, switchLang, setCollapsed, notifIcon } from "./shell.js";
+import { shell, setActiveNav, ROLES, HOME, ROLE_LABEL, refreshBadges, switchLang, setCollapsed, notifIcon, passwordModal } from "./shell.js";
 import { LANGS } from "./i18n.js";
 import { startTour, tourDone, startPageTour, maybeHint, clearHint, tourCatalog } from "./tour.js";
 import "./student.js";
@@ -43,6 +43,17 @@ function langSwitch(cls = "") {
   return html`<div class="seg lang-seg ${cls}" role="group" aria-label="${t("Dil seçimi")}">${LANGS.map((l) =>
     html`<button class="${l.code === LANG ? "active" : ""}" data-setlang="${l.code}" lang="${l.code}" title="${l.label}" aria-pressed="${l.code === LANG}">${l.short}</button>`)}</div>`;
 }
+function passwordLogin() {
+  return html`<h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Universitet hesabınızla daxil olun.")}</p>
+    <form class="stack" id="login-form">
+      <div class="field"><label class="label" for="login-name">${t("İstifadəçi adı və ya e-poçt")}</label>
+        <input class="input" id="login-name" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+      <div class="field"><label class="label" for="login-pass">${t("Parol")}</label>
+        <input class="input" id="login-pass" name="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary btn-block" type="submit">${ic("lock", 16)} ${t("Daxil ol")}</button>
+      <p class="small muted" style="margin:0">${t("Parolu unutmusunuzsa, dekanlığa və ya İT xidmətinə müraciət edin: müvəqqəti parol verəcəklər.")}</p>
+    </form>`;
+}
 async function loginPage(root) {
   const uni = S.app.university;
   mount(root, html`<div class="login">
@@ -57,10 +68,10 @@ async function loginPage(root) {
          ["cap", t("Müəllimlər üçün AI Akademiya"), t("İngilis dilində tədris, sillabus və rəqəmsal alətlər")]].map(([i, ti, s]) =>
         html`<div class="feat"><span class="fi">${ic(i, 20)}</span><div><b>${ti}</b><span>${s}</span></div></div>`)}</div>
       <div class="login-ach" id="login-ach" aria-live="polite"></div>
-      <div class="foot">${t("Demo versiya")} v${S.app.version || "0.3"} · ${t("məlumatlar sintetikdir")} · ${(S.app.contact && S.app.contact.address) || uni.address} · <b>by Safarov Industries</b></div>
+      <div class="foot">${S.app.mode === "prod" ? html`v${S.app.version || "0.3"}` : html`${t("Demo versiya")} v${S.app.version || "0.3"} · ${t("məlumatlar sintetikdir")}`} · ${(S.app.contact && S.app.contact.address) || uni.address} · <b>by Safarov Industries</b></div>
     </div>
     <div class="login-side"><div class="login-card">
-      <h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
+      ${S.app.mode === "prod" ? passwordLogin() : html`<h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
       <button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("Pilotda")}</span></button>
       <div class="or">${t("demo rolları")}</div>
       ${S.app.access_required ? html`<div class="field mb"><label class="label" for="access-code">${t("Demo giriş kodu")}</label>
@@ -68,8 +79,18 @@ async function loginPage(root) {
       ${demoButton()}
       <div class="or">${t("və ya rol seçin")}</div>
       <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
-      <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>
+      <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>`}
     </div></div></div>`);
+  on(root, "submit", "#login-form", async (e, f) => {
+    e.preventDefault();
+    const btn = $("button[type=submit]", f);
+    btn.classList.add("loading");
+    try {
+      const r = await api.post("/api/auth/login", { login: $("#login-name", f).value, password: $("#login-pass", f).value });
+      S.user = r.user;
+      go(r.home);
+    } catch (err) { btn.classList.remove("loading"); toast(err.message, "err"); $("#login-pass", f).select(); }
+  });
   on(root, "click", "[data-role]", async (e, b) => {
     b.classList.add("loading");
     try {
@@ -120,6 +141,7 @@ async function render() {
   const { path, query } = currentPath();
   if (!S.user) { try { const b = await api.get("/api/bootstrap"); S.user = b.user; S.app = b.app; } catch { S.user = null; } }
   if (!S.user) { root.dataset.shell = ""; return loginPage(root); }
+  if (S.user.must_change) { root.dataset.shell = ""; mount(root, html`<div class="login"></div>`); return passwordModal(true); }
   if (path === "/" || path === "/login") return go(HOME[S.user.role]);
   if (root.dataset.shell !== `${S.user.role}:${S.user.id}:${LANG}`) shell(root);
   const r = matchRoute(path);

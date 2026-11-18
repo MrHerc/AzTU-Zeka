@@ -98,7 +98,7 @@ In the tables below, "any" means any signed-in user. "Staff" means `office`, `le
 
 ## Authentication and session
 
-Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MODE=demo`, the default); with `ZEKA_MODE=prod` the routes `POST /api/auth/demo`, `GET /demo/login`, `GET /api/demo/storyline` and `POST /api/admin/reset` answer `404`, and no other route signs anyone in. `GET /api/bootstrap` reports the mode as `app.mode`. When the server runs with `ZEKA_ACCESS_CODE`, a visitor must send that shared code to sign in; `GET /api/bootstrap` reports this as `app.access_required`. The session id is returned both as an `HttpOnly` cookie and in the response body. Clients send it back either as the cookie `zeka_sid` or as the header `X-Session`. A session expires `ZEKA_SESSION_HOURS` hours after it was created (default 12); after that the server answers `401`. Logout deletes the session.
+Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MODE=demo`, the default); with `ZEKA_MODE=prod` the routes `POST /api/auth/demo`, `GET /demo/login`, `GET /api/demo/storyline` and `POST /api/admin/reset` answer `404`, and accounts sign in with a password (`POST /api/auth/login`, below). `GET /api/bootstrap` reports the mode as `app.mode`. When the server runs with `ZEKA_ACCESS_CODE`, a visitor must send that shared code to sign in; `GET /api/bootstrap` reports this as `app.access_required`. The session id is returned both as an `HttpOnly` cookie and in the response body. Clients send it back either as the cookie `zeka_sid` or as the header `X-Session`. A session expires `ZEKA_SESSION_HOURS` hours after it was created (default 12); after that the server answers `401`. Logout deletes the session.
 
 | Method | Path | Access | Purpose |
 |---|---|---|---|
@@ -106,7 +106,28 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/auth/demo` | public | Sign in as the demo user of a role |
 | `GET` | `/demo/login` | public | Sign in by link and redirect |
 | `POST` | `/api/auth/logout` | any | Delete the session and expire the cookie |
+| `POST` | `/api/auth/login` | public | Sign in with a user name or e-mail and a password (Task 10) |
+| `POST` | `/api/auth/password` | any | Change one's own password; the only route open to a temporary password |
+| `POST` | `/api/admin/users/{id}/temp-password` | admin | Issue a one-time password; the account must change it |
+| `POST` | `/api/admin/users/{id}/unlock` | admin | Lift a lock or block, with a reason (audited) |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
+
+### `POST /api/auth/login`
+
+Body `{"login": "<user name or e-mail>", "password": "<as typed>"}`. `200` with `{"user", "home"}` and the session cookie;
+`user.must_change` is true after a temporary password, and that session reaches only `/api/auth/*` and `/api/bootstrap`
+(other routes answer `403`). A wrong password, an unknown account and a disabled account all get the same `401`.
+Failures are counted per account and client (IPv6: its /64): 10 in 15 minutes block that client for that account for
+15 minutes, and 100 consecutive failures lock the account for 15 minutes. Both answer `429` with `Retry-After`, are
+checked before the password is hashed, and are written to the audit log. Hashing: scrypt (n=2^15, r=8, p=1); a hash
+with older parameters is replaced at the next sign-in.
+
+### `POST /api/auth/password`
+
+Body `{"current", "new"}`. The new password follows NIST SP 800-63B-4: at least 15 characters (64 and more allowed, at
+most 128), no composition rules, not in `content/password-blocklist.txt`, not a repetition, a keyboard or alphabet
+sequence, or mostly the user's own name. A refusal is `400` with the reason in the request's language; a wrong current
+password is `403` and counts as a failed sign-in.
 
 ### `POST /api/auth/demo`
 
@@ -765,7 +786,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-115 routes, in the order the router matches them. The four marked "demo" do not exist in prod mode.
+120 routes, in the order the router matches them, except that the Task 10 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -773,6 +794,11 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/auth/demo` | public (demo) |
 | GET | `/demo/login` | public (demo) |
 | POST | `/api/auth/logout` | any |
+| POST | `/api/auth/login` | public |
+| POST | `/api/auth/password` | any |
+| POST | `/api/admin/users/{id}/temp-password` | admin |
+| POST | `/api/admin/users/{id}/unlock` | admin |
+| GET | `/healthz` | public |
 | POST | `/api/consent` | any |
 | GET | `/api/me` | any |
 | PUT | `/api/me/prefs` | any |

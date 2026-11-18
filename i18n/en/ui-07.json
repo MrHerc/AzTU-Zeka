@@ -1,0 +1,18 @@
+{
+ "Universitet hesabınızla daxil olun.": "Sign in with your university account.",
+ "İstifadəçi adı və ya e-poçt": "Username or email",
+ "Parol": "Password",
+ "Daxil ol": "Sign in",
+ "Parolu unutmusunuzsa, dekanlığa və ya İT xidmətinə müraciət edin: müvəqqəti parol verəcəklər.": "Forgot your password? Contact the dean's office or IT support: they will give you a temporary password.",
+ "Parolu dəyiş": "Change password",
+ "Yeni parol təyin edin": "Set a new password",
+ "Administrator sizə müvəqqəti parol verib. Davam etmək üçün özünüzə yeni parol seçin.": "An administrator gave you a temporary password. Choose your own new password to continue.",
+ "Müvəqqəti parol": "Temporary password",
+ "Hazırkı parol": "Current password",
+ "Yeni parol": "New password",
+ "Yeni parol (təkrar)": "New password (again)",
+ "Ən azı 15 simvol. Bir neçə sözdən ibarət cümlə həm yadda qalır, həm etibarlıdır; xüsusi simvol tələb olunmur.": "At least 15 characters. A sentence of several words is easy to remember and strong; special characters are not required.",
+ "Parolu saxla": "Save password",
+ "Yeni parollar eyni deyil": "The new passwords do not match",
+ "Parol dəyişdirildi": "Password changed"
+}

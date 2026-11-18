@@ -4,11 +4,10 @@ from __future__ import annotations
 import os
 import base64
 import json
-import secrets
 import urllib.parse
 
 from . import engine, pdftext, store
-from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, session_cutoff, _sid
+from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, start_session, _sid
 from ..core import clock, config
 from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
@@ -37,14 +36,8 @@ def _login(req, role, code, user=None):
         u = row(c, "SELECT * FROM users WHERE username=? AND role='student'", (str(user)[:40],))
         if not u:
             raise HTTPError(404, "Tələbə tapılmadı")
-    old = _sid(req)
-    if old:                                   # role switch: the previous session ends (no parallel sessions per browser)
-        c.execute("DELETE FROM sessions WHERE sid=?", (old,))
-    c.execute("DELETE FROM sessions WHERE created_at<?", (session_cutoff(),))
-    sid = secrets.token_urlsafe(32)
-    c.execute("INSERT INTO sessions(sid,user_id,created_at) VALUES(?,?,?)", (sid, u["id"], iso(now())))
-    audit(c, u["id"], "login", "session", f"demo rol: {role}")
-    return u, sid, [session_cookie(sid)]
+    sid, headers = start_session(req, u, f"demo rol: {role}")    # a role switch ends the previous session
+    return u, sid, headers
 
 
 def unread(c, uid):

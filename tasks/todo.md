@@ -208,12 +208,14 @@ Qeyd (2026-11-18): yoxlamalar `SITE_ADDRESS=localhost` ilə keçdi. Sınaq mühi
 **Description:** `users` cədvəlinə `email`, `password_hash`, `must_change`, `status`, `failed_count`, `locked_until` əlavə olunur. `POST /api/auth/login`, parol dəyişmə, adminin birdəfəlik müvəqqəti parol verməsi. Hash: `hashlib.scrypt`, parametrlər sabitdir və sətirdə saxlanır: n=2^15, r=8, p=1, `maxmem` açıq verilir (stdlib-in susmaya görə həddi bu parametri rədd edir); n=2^17 sahibin qərarı ilə (ölçülüb: 323 ms və 128 MiB hər hash; SPEC Open Questions 21). Hash açıq yazma tranzaksiyası olmadan hesablanır. Siyasət NIST SP 800-63B-4 üzrə: tək amildə ≥ 15 simvol, MFA ilə ≥ 8, ən azı 64-ə icazə, tərkib qaydası və dövri dəyişmə yoxdur, zəif parol siyahısı. Prod rejimində rol seçimi ekranı giriş forması ilə əvəz olunur.
 
 **Acceptance criteria:**
-- [ ] Yanlış parol və mövcud olmayan istifadəçi eyni cavabı verir; müqayisə sabit vaxtlıdır
-- [ ] Uğursuz cəhdlər (hesab, müştəri ünvanı; IPv6-da /64) üzrə sayılır: 15 dəqiqədə 10 uğursuz cəhd həmin ünvanı həmin hesab üçün 15 dəqiqə bloklayır (429 və `Retry-After`; handler yatmır; blok scrypt-dən əvvəl yoxlanır; blok zamanı rədd edilən cəhd sayılmır). Hesab üzrə ardıcıl 100 uğursuz cəhd hesabı 15 dəqiqə kilidləyir. Hər blok və kilid audit hadisəsi yazır; admin kilidi səbəblə aça bilir. Test: A ünvanından 50 yanlış parol B ünvanından düzgün girişi gecikdirmir.
-- [ ] Qısa və siyahıdakı parollar tərcümə olunmuş səbəblə rədd olunur; hash parametri dəyişəndə növbəti girişdə yenidən hesablanır
+- [x] Yanlış parol və mövcud olmayan istifadəçi eyni cavabı verir; müqayisə sabit vaxtlıdır
+- [x] Uğursuz cəhdlər (hesab, müştəri ünvanı; IPv6-da /64) üzrə sayılır: 15 dəqiqədə 10 uğursuz cəhd həmin ünvanı həmin hesab üçün 15 dəqiqə bloklayır (429 və `Retry-After`; handler yatmır; blok scrypt-dən əvvəl yoxlanır; blok zamanı rədd edilən cəhd sayılmır). Hesab üzrə ardıcıl 100 uğursuz cəhd hesabı 15 dəqiqə kilidləyir. Hər blok və kilid audit hadisəsi yazır; admin kilidi səbəblə aça bilir. Test: A ünvanından 50 yanlış parol B ünvanından düzgün girişi gecikdirmir.
+- [x] Qısa və siyahıdakı parollar tərcümə olunmuş səbəblə rədd olunur; hash parametri dəyişəndə növbəti girişdə yenidən hesablanır
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_passwords.py tests/integration/test_auth_login.py -q`
+- [x] `python -m pytest tests/unit/test_passwords.py tests/integration/test_auth_login.py -q`
+
+Qeyd (2026-11-18): `content/password-blocklist.txt` qısa siyahıdır (≈100); yerləşdirmədə böyük sızmış-parol siyahısı ilə əvəz oluna bilər. Prod giriş forması, məcburi parol dəyişmə pəncərəsi və profil menyusunda "Parolu dəyiş" brauzerdə (Chromium) yoxlanıb. `manage.py create-admin` müvəqqəti parol çap edir.
 
 **Dependencies:** Task 5, Task 7
 **Files likely touched:** `backend/zeka/modules/identity/{domain,service,repo,routes}.py`, `backend/migrations/0100_identity.sql`, `frontend/js/main.js`, `content/password-blocklist.txt`

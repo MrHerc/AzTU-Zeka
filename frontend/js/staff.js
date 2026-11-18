@@ -115,8 +115,8 @@ route("/admin", async (el) => {
     <div class="grid g-2 mt">
       <div class="card"><div class="card-h"><h3>${ic("layers", 17)} ${t("Məlumatlar")}</h3></div><div class="card-b"><div class="grid g-4">${Object.entries(s.counts).map(([k, v]) => html`<div><div class="stat-v" style="font-size:20px">${cnt(v)}</div><div class="stat-l">${NAMES[k] || k}</div></div>`)}</div>
         <div class="tiny muted mt">${t("Verilənlər bazası")}: <code>${s.db_path}</code> · ${t("fayllar")}: <code>${s.uploads}</code></div></div></div>
-      <div class="card"><div class="card-h"><h3>${ic("refresh", 17)} ${t("Demo məlumatları")}</h3></div><div class="card-b stack"><p class="small muted" style="margin:0">${t("Bütün dəyişikliklər (müraciətlər, fayllar, xəbərlər, testlər, söhbətlər) silinəcək və ilkin demo məlumatları yenidən yaradılacaq. Bu əməliyyat geri qaytarılmır.")}</p>
-        <button class="btn btn-danger" id="reset" style="align-self:flex-start">${ic("refresh", 15)} ${t("Demo məlumatlarını sıfırla")}</button></div></div></div>`);
+      ${S.app.mode === "prod" ? "" : html`<div class="card"><div class="card-h"><h3>${ic("refresh", 17)} ${t("Demo məlumatları")}</h3></div><div class="card-b stack"><p class="small muted" style="margin:0">${t("Bütün dəyişikliklər (müraciətlər, fayllar, xəbərlər, testlər, söhbətlər) silinəcək və ilkin demo məlumatları yenidən yaradılacaq. Bu əməliyyat geri qaytarılmır.")}</p>
+        <button class="btn btn-danger" id="reset" style="align-self:flex-start">${ic("refresh", 15)} ${t("Demo məlumatlarını sıfırla")}</button></div></div>`}</div>`);
   $("#test", el).addEventListener("click", async (e) => {
     const b = e.currentTarget; b.disabled = true;
     try { const r = await api.post("/api/admin/test-llm"); toast(r.message, r.ok ? "ok" : "err"); } catch (err) { toast(err.message, "err"); } finally { b.disabled = false; }

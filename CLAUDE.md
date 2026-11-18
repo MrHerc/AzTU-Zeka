@@ -22,7 +22,7 @@ ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-u
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 758 tests, about 2 min; uses a temp database, never touches data/
+python -m pytest -q                               # 808 tests, about 2.5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -103,9 +103,12 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   (`tests/unit/test_layers.py`). Web URLs stay `/static/...` although the files live in `frontend/`.
 - **Handlers read input through `req.body` typed accessors** (`body.str`, `body.int`, `body.obj`); a body that a handler
   does not read closes the connection. Malformed input must end as a translated 400, never a 500.
-- **The demo login is still password-less for every role.** Demo mode refuses a reachable host unless
-  `ZEKA_ALLOW_OPEN_DEMO=1`; anyone with `ZEKA_ACCESS_CODE` can take any role. In `ZEKA_MODE=prod` the demo routes
-  (`@R(..., demo=True)`) do not exist, people are never seeded and the database is never deleted. Real accounts: Task 10.
+- **Two ways in.** Demo mode keeps the password-less role login (a reachable host needs `ZEKA_ALLOW_OPEN_DEMO=1`;
+  anyone with `ZEKA_ACCESS_CODE` can take any role). `ZEKA_MODE=prod` has no demo routes (`@R(..., demo=True)`), never
+  seeds people or deletes the database, and signs in with passwords: `backend/zeka/modules/identity/` (scrypt, NIST
+  policy, throttling per account and client in `login_blocks`, temporary passwords with `must_change`). A refused
+  sign-in is *returned* as a 401/429 response, not raised, so the failure count commits. `manage.py create-admin` prints
+  a temporary password. Sessions are still plain ids with `X-Session` until Task 11.
 - **Schema changes go through `backend/migrations/NNNN_name.sql`** (number = task × 10, a second file of the same task takes
   the next number, e.g. `0071`); never edit an applied file: the server refuses to start on a changed checksum.
 - **Process memory is per worker.** State that must hold across `--workers` lives in the database: one-time keys (`doc_keys`),
@@ -120,7 +123,7 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
-and research, then Faza 1 (Tasks 1–7 done). `main` is unchanged and the five PRs are still open against it; they are
+and research, then Faza 1 (Tasks 1–9, Checkpoint A) and Faza 2 from Task 10. `main` is unchanged and the five PRs are still open against it; they are
 superseded by this branch.
 
 ## Product direction
@@ -140,8 +143,8 @@ Facts that shape the plan:
 - Throughput: one process gives about 270 req/s on the read scenario at 300 clients with 0 errors, on the demo, faculty and
   university datasets alike; 4 processes about 830 (Tasks 6–7, `docs/perf/baseline.md`). Before the gate it fell to 47 at 20
   clients.
-- New code goes into `backend/zeka/modules/<id>/{domain,service,repo,routes}.py` (layout in place since Task 3);
-  `domain.py` has no I/O, SQL lives only in `repo.py`. The existing frontend is kept and extended.
+- New code goes into `backend/zeka/modules/<id>/{domain,service,repo,routes}.py`; `domain.py` has no I/O, SQL lives
+  only in `repo.py`, routes register on the legacy router (`legacy/routes.py` imports them). `identity` is the first. The existing frontend is kept and extended.
 - Third-party plugins (ponytail, agent-skills, ecc, claude-mem) may be missing at the start of a cloud session; they load after a resume.
 
 ## Working rules set by the owner

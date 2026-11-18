@@ -1,0 +1,24 @@
+{
+ "Əvvəlcə müvəqqəti parolu dəyişin": "Change your temporary password first",
+ "Parol ən azı {n} simvol olmalıdır": {
+  "one": "The password must be at least {n} character long",
+  "other": "The password must be at least {n} characters long"
+ },
+ "Parol {n} simvoldan uzun ola bilməz": {
+  "one": "The password cannot be longer than {n} character",
+  "other": "The password cannot be longer than {n} characters"
+ },
+ "Bu parol çox geniş yayılıb; başqasını seçin": "This password is too common; choose another one",
+ "Parol eyni simvolların təkrarından ibarətdir": "The password is just the same characters repeated",
+ "Parol klaviatura və ya əlifba ardıcıllığıdır": "The password is a keyboard or alphabet sequence",
+ "Parol əsasən adınızı, istifadəçi adınızı və ya universitetin adını təkrarlayır": "The password mostly repeats your name, your username or the university's name",
+ "Parol düzgün göndərilməyib": "The password was not sent correctly",
+ "İstifadəçi tapılmadı": "User not found",
+ "Kilidin açılma səbəbini yazın": "Enter the reason for unlocking",
+ "Çox sayda uğursuz cəhd. {n} saniyədən sonra yenidən cəhd edin.": {
+  "one": "Too many failed attempts. Try again in {n} second.",
+  "other": "Too many failed attempts. Try again in {n} seconds."
+ },
+ "İstifadəçi adı və ya parol yanlışdır": "Incorrect username or password",
+ "Hazırkı parol yanlışdır": "The current password is incorrect"
+}

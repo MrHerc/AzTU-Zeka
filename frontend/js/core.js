@@ -38,7 +38,8 @@ async function req(method, url, body) {
     const err = new Error((data && data.error) || t("Xəta baş verdi ({status})", { status: r.status }));
     err.status = r.status;
     lastFailStatus = r.status;
-    if (r.status === 401 && !url.includes("/api/bootstrap")) { location.hash = "#/login"; }
+    // a wrong password is answered on the form itself: re-rendering the login page would wipe what was typed
+    if (r.status === 401 && !url.includes("/api/bootstrap") && !url.startsWith("/api/auth/login")) { location.hash = "#/login"; }
     throw err;
   }
   return data;

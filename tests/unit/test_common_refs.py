@@ -35,7 +35,8 @@ def test_pub_user_hides_internal_fields():
     u = {"id": 1, "username": "aysel", "full_name": "A", "role": "student", "title": "t", "color": "#fff", "consent_at": None,
          "prefs": '{"lang": "en"}', "student_no": "secret", "patronymic": "x"}
     out = common.pub_user(u)
-    assert out == {"id": 1, "username": "aysel", "full_name": "A", "role": "student", "title": "t", "color": "#fff", "consent_at": None, "prefs": {"lang": "en"}}
+    assert out == {"id": 1, "username": "aysel", "full_name": "A", "role": "student", "title": "t", "color": "#fff", "consent_at": None,
+                   "must_change": False, "prefs": {"lang": "en"}}
     assert common.pub_user(None) is None and common.pub_user({**u, "prefs": None})["prefs"] == {}
 
 

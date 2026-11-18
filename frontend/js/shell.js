@@ -1,4 +1,4 @@
-import { S, api, html, raw, mount, on, ic, icon, toast, go, avatar, ago, esc, $, $$, t, LANG, currentPath, tourFor, REDUCED } from "./core.js";
+import { S, api, html, raw, mount, on, ic, icon, toast, modal, go, avatar, ago, esc, $, $$, t, LANG, currentPath, tourFor, REDUCED } from "./core.js";
 import { LANGS, setLang } from "./i18n.js";
 
 export const HOME = { student: "/student", teacher: "/teacher", office: "/office", leader: "/leader", admin: "/admin" };
@@ -203,14 +203,16 @@ function userMenu(host) {
     <a class="menu-item" href="#/profile">${ic("user", 16)} ${t("Profil və tənzimləmələr")}</a>
     <a class="menu-item" href="#/notifications">${ic("bell", 16)} ${t("Bildirişlər")}</a>
     <a class="menu-item" href="#/support">${ic("ticket", 16)} ${t("Dəstək xidməti")}</a>
+    <button class="menu-item" id="um-password">${ic("lock", 16)} ${t("Parolu dəyiş")}</button>
     <button class="menu-item show-sm" id="um-theme">${ic(S.theme === "dark" ? "sun" : "moon", 16)} ${S.theme === "dark" ? t("Açıq tema") : t("Tünd tema")}</button>
-    <button class="menu-item" data-demo-start>${ic("play", 16)} ${t("3 dəqiqəlik demo ssenarisi")}</button>
+    ${S.app.mode === "prod" ? "" : html`<button class="menu-item" data-demo-start>${ic("play", 16)} ${t("3 dəqiqəlik demo ssenarisi")}</button>
     <div class="menu-sep"></div><div class="menu-label">${t("Demo: rolu dəyiş")}</div>
-    ${ROLES.map(([k, l, s, i]) => html`<button class="menu-item" data-switch="${k}">${ic(i, 16)} ${l}${k === u.role ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}
+    ${ROLES.map(([k, l, s, i]) => html`<button class="menu-item" data-switch="${k}">${ic(i, 16)} ${l}${k === u.role ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}`}
     <div class="menu-sep"></div><button class="menu-item danger" id="logout">${ic("logout", 16)} ${t("Çıxış")}</button>`.__html);
   if (!dd) return;
   on(dd, "click", "[data-switch]", (e, b) => { closeDropdowns(); if (b.dataset.switch !== S.user.role) switchRole(b.dataset.switch); });
   on(dd, "click", "#um-theme", () => { closeDropdowns(); toggleTheme(); });
+  on(dd, "click", "#um-password", () => { closeDropdowns(); passwordModal(false); });
   on(dd, "click", "#logout", async () => { closeDropdowns(); await api.post("/api/auth/logout"); sessionStorage.removeItem("zeka-sid"); S.user = null; go("/login"); });
 }
 
@@ -307,4 +309,30 @@ export function setActiveNav(path) {
   $$(".bottom-nav a").forEach((a) => { const p = a.dataset.path; a.classList.remove("active"); if (path === p || path.startsWith(p + "/")) { if (!bb || p.length > bb.dataset.path.length) bb = a; } });
   if (bb) bb.classList.add("active");
   return best ? best.dataset.label : "";
+}
+
+// Password change (Task 10). forced: a temporary password from an administrator; the account reaches nothing else first.
+export function passwordModal(forced = false) {
+  modal({
+    title: forced ? t("Yeni parol təyin edin") : t("Parolu dəyiş"), dismissable: !forced,
+    body: html`<div class="stack">
+      ${forced ? html`<p class="muted" style="margin:0">${t("Administrator sizə müvəqqəti parol verib. Davam etmək üçün özünüzə yeni parol seçin.")}</p>` : ""}
+      <div class="field"><label class="label" for="pw-cur">${forced ? t("Müvəqqəti parol") : t("Hazırkı parol")}</label>
+        <input class="input" id="pw-cur" type="password" autocomplete="current-password"></div>
+      <div class="field"><label class="label" for="pw-new">${t("Yeni parol")}</label>
+        <input class="input" id="pw-new" type="password" autocomplete="new-password" maxlength="128"></div>
+      <div class="field"><label class="label" for="pw-rep">${t("Yeni parol (təkrar)")}</label>
+        <input class="input" id="pw-rep" type="password" autocomplete="new-password" maxlength="128"></div>
+      <p class="small muted" style="margin:0">${t("Ən azı 15 simvol. Bir neçə sözdən ibarət cümlə həm yadda qalır, həm etibarlıdır; xüsusi simvol tələb olunmur.")}</p></div>`,
+    actions: [{ label: t("Parolu saxla"), cls: "btn-primary", onClick: async (w) => {
+      const nw = w.querySelector("#pw-new").value;
+      if (nw !== w.querySelector("#pw-rep").value) { toast(t("Yeni parollar eyni deyil"), "err"); return false; }
+      try {
+        const r = await api.post("/api/auth/password", { current: w.querySelector("#pw-cur").value, new: nw });
+        S.user = r.user;
+        toast(t("Parol dəyişdirildi"), "ok");
+        if (forced) go(HOME[S.user.role]);
+      } catch (err) { toast(err.message, "err"); return false; }
+    } }],
+  });
 }

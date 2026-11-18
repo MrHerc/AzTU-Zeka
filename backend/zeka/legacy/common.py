@@ -41,6 +41,23 @@ def session_cookie(value: str = "", expire: bool = False) -> tuple:
     return ("Set-Cookie", f"{COOKIE}={value}; HttpOnly; SameSite=Lax; Path=/{attrs}")
 
 
+def start_session(req, u, how: str) -> tuple[str, list]:
+    """A new session for ``u`` (the browser's previous one ends); returns the session id and its cookie header."""
+    c = req.db
+    old = _sid(req)
+    if old:                                   # no parallel sessions per browser
+        c.execute("DELETE FROM sessions WHERE sid=?", (old,))
+    c.execute("DELETE FROM sessions WHERE created_at<?", (session_cutoff(),))
+    sid = secrets.token_urlsafe(32)
+    c.execute("INSERT INTO sessions(sid,user_id,created_at) VALUES(?,?,?)", (sid, u["id"], iso(now())))
+    store.audit(c, u["id"], "login", "session", how)
+    return sid, [session_cookie(sid)]
+
+
+# A session of an account that must change its (temporary) password reaches only these paths.
+MUST_CHANGE_OPEN = ("/api/auth/", "/api/bootstrap")
+
+
 def _note_write(req, sql: str):
     if req.first_write is None and sql.lstrip()[:7].upper().startswith(("INSERT", "UPDATE", "DELETE", "REPLACE")):
         req.first_write = time.monotonic()
@@ -56,8 +73,12 @@ def before(req, roles, auth):
     if sid:
         req.user = row(req.db, "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.sid=? AND s.created_at>=?",
                        (sid, session_cutoff()))
+    if req.user and req.user["status"] != "active":             # a disabled account's sessions end at once
+        req.user = None
     if not req.user and req.path.startswith(("/doc/", "/api/files/", "/syllabus/")) and req.query.get("k"):
         req.user = _key_user(req)
+    if req.user and req.user["must_change"] and not req.path.startswith(MUST_CHANGE_OPEN):
+        raise HTTPError(403, "Əvvəlcə müvəqqəti parolu dəyişin")
     if auth and not req.user:
         raise HTTPError(401, "Daxil olmamısınız")
     if roles and req.user["role"] not in roles:
@@ -106,6 +127,7 @@ def pub_user(u):
     if not u:
         return None
     out = {k: u[k] for k in ("id", "username", "full_name", "role", "title", "color", "consent_at")}
+    out["must_change"] = bool(u.get("must_change"))
     out["prefs"] = J(u.get("prefs"), {}) or {}
     return out
 

@@ -109,16 +109,33 @@ def _counts(c):
     return {t: c.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0] for t in names}  # nosec B608
 
 
+def _to_baseline(c):
+    """Turn a current database into one from before the migration engine: the 0001 schema with its rows, no log."""
+    base = sqlite3.connect(":memory:")
+    base.executescript((migrate.DIR / "0001_baseline.sql").read_text(encoding="utf-8"))
+    keep = set(base.execute("SELECT type, name FROM sqlite_master"))
+    columns = {t: {r[1] for r in base.execute(f'PRAGMA table_info("{t}")')} for kind, t in keep if kind == "table"}
+    base.close()
+    have = c.execute("SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
+    for kind in ("index", "table"):                       # later indexes first: one of them uses a later column
+        for k, name in have:
+            if k == kind and (k, name) not in keep:
+                c.execute(f'DROP {kind.upper()} "{name}"')
+    for t, allowed in columns.items():
+        for col in [r[1] for r in c.execute(f'PRAGMA table_info("{t}")') if r[1] not in allowed]:
+            c.execute(f'ALTER TABLE "{t}" DROP COLUMN "{col}"')
+    c.execute(f"PRAGMA user_version={store.LEGACY_SCHEMA_VERSION}")
+    c.commit()
+
+
 def test_a_demo_database_from_before_the_engine_keeps_every_row(db):
+    _to_baseline(db)
     before = _counts(db)
-    db.execute("DROP TABLE schema_migrations")
-    db.execute(f"PRAGMA user_version={store.LEGACY_SCHEMA_VERSION}")
-    db.commit()
     db.close()
     store.init()
     c = store.connect()
     try:
-        assert _counts(c) == before and sum(before.values()) > 1000
+        assert {t: n for t, n in _counts(c).items() if t in before} == before and sum(before.values()) > 1000
         assert versions(c) == ALL
     finally:
         c.close()
