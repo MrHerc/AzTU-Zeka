@@ -11,6 +11,11 @@ def today() -> str:
     return now().date().isoformat()
 
 
+def get(c, entity: str, rid: int):
+    """For other modules: one directory row (its public columns)."""
+    return repo.get(c, entity, rid, public=True)
+
+
 def _check_refs(c, entity: str, values: dict) -> dict | None:
     roles = domain.ENTITIES[entity].get("ref_roles", {})
     for field, target in domain.refs(entity).items():

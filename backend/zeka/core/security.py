@@ -129,6 +129,10 @@ LIMITS = {
     "preview": RateLimiter(30, 60),         # PDF/DOCX previews per user per minute
     "link": RateLimiter(120, 60),           # one-time document links per user per minute
     "verify": RateLimiter(60, 60),          # public verification lookups per client per minute
+    # Checkpoint B: failed password sign-ins per client (IPv6: /64) per 15 minutes, whatever the account; generous,
+    # because a campus puts many students behind one address. Stops one client spraying passwords or tying up scrypt.
+    "password_fail": RateLimiter(100, 900),
+    "sso": RateLimiter(30, 60),             # single sign-on starts per client per minute
 }
 for _name, _lim in LIMITS.items():
     _lim.name = _name

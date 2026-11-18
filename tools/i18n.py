@@ -264,7 +264,7 @@ def py_scan(path: Path):
                 target = args[0]
             elif fn == "HTTPError" and len(args) >= 2:
                 target = args[1]
-            elif fn in ("ValueError", "RuntimeError") and args:
+            elif fn in ("ValueError", "RuntimeError", "TableError") and args:
                 target = args[0]
             if target is not None:
                 if isinstance(target, ast.Constant) and isinstance(target.value, str):

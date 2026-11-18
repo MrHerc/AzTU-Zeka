@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import math
 import secrets
 import unicodedata
 
@@ -242,7 +243,7 @@ def jwt_claims(token) -> dict | None:
 
 
 def _number(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
 def _same(a, b: str) -> bool:

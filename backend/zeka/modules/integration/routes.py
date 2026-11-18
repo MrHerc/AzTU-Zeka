@@ -12,10 +12,10 @@ import io
 
 from ...core.i18n import S
 from ...core.web import HTTPError, json_resp
-from ...legacy.common import R, ROLE_HOME, pub_user, start_session
-from ..directory import repo as directory
-from ..identity.routes import _blocked, _password
-from . import importer, tables
+from ...legacy.common import R, ROLE_HOME, blocked_response, password_field, pub_user, start_session
+from ..directory import service as directory
+from ..identity import service as identity
+from . import domain, importer, tables
 
 
 @R("POST", "/api/admin/import", roles=("admin",))
@@ -43,19 +43,20 @@ def activation_codes(req):
     out = io.StringIO()
     w = csv.writer(out)
     w.writerow(["student_no", "full_name", "group", "username", "code", "expires_at"])
-    w.writerows([[x["student_no"], x["full_name"], x["group"], x["username"], x["code"], x["expires_at"]] for x in items])
+    w.writerows([[domain.csv_cell(x[k]) for k in ("student_no", "full_name", "group", "username", "code", "expires_at")] for x in items])
     return {"count": len(items), "csv": out.getvalue()}
 
 
 @R("POST", "/api/auth/activate", auth=False)
 def activate(req):
     b = req.json()
-    status, value = importer.activate(req.db, b.text("student_no", 64), b.text("code", 40), _password(b, "password"), req.ip)
+    status, value = importer.activate(req.db, b.text("student_no", 64), b.text("code", 40), password_field(b, "password"), req.ip)
     if status == "blocked":
-        return _blocked(req, value)
+        return blocked_response(req, value)
     if status == "wrong":            # an unknown code, another student's code, a spent or expired one: the same answer
         return json_resp({"error": S("Tələbə bileti nömrəsi və ya aktivləşdirmə kodu yanlışdır", req.lang)}, 401)
     if status == "weak":
         raise HTTPError(400, value)
-    _, headers = start_session(req, value, "aktivləşdirmə")
-    return json_resp({"user": pub_user(value), "home": ROLE_HOME.get(value["role"], "/")}, headers=headers)
+    scope = identity.scope_after_password(value)                       # what a password sign-in of this account needs
+    _, headers = start_session(req, value, "aktivləşdirmə", scope=scope)
+    return json_resp({"user": {**pub_user(value), "scope": scope}, "home": ROLE_HOME.get(value["role"], "/")}, headers=headers)

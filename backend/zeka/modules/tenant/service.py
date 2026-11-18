@@ -46,7 +46,7 @@ def problem(section: str, v) -> dict | None:
     if section == "sessions":
         for kind, (lo_i, hi_i, lo_a, hi_a) in (("staff", (5, 1440, 1, 2160)), ("student", (5, 1440, 1, 2160))):
             x = v.get(kind)
-            if not (isinstance(x, dict) and isinstance(x.get("idle_minutes"), int) and isinstance(x.get("absolute_hours"), int)
+            if not (isinstance(x, dict) and type(x.get("idle_minutes")) is int and type(x.get("absolute_hours")) is int
                     and lo_i <= x["idle_minutes"] <= hi_i and lo_a <= x["absolute_hours"] <= hi_a
                     and x["idle_minutes"] <= x["absolute_hours"] * 60):
                 return E("Sessiya müddətləri: boş qalma 5–1440 dəqiqə, ümumi 1–2160 saat, boş qalma ümumidən çox olmamalıdır")
@@ -77,7 +77,7 @@ def save(c, user, section: str, v: dict):
     elif section == "university":
         set_setting(c, "university", {**(setting(c, "university", {}) or {}), **{k: x.strip() for k, x in v.items()}})
     elif section == "sessions":
-        set_setting(c, "session_limits", v)
+        set_setting(c, "session_limits", {k: v[k] for k in ("staff", "student")})
     elif section == "sso":
         set_setting(c, "sso", {k: v.get(k) for k in SSO_KEYS if v.get(k) is not None})
     else:

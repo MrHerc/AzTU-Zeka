@@ -778,6 +778,10 @@ def init(reset: bool = False):
             seed(c)
             c.execute(f"PRAGMA user_version={LEGACY_SCHEMA_VERSION}")
             c.commit()
+        if row(c, "SELECT 1 FROM settings WHERE key='university'") and not row(c, "SELECT 1 FROM settings WHERE key='tenant'"):
+            content = _load("seed.json").get("tenant")      # a database from before Task 17: the university's own rules
+            if content:
+                set_setting(c, "tenant", content)
         purge_expired(c)
         c.commit()
         build_indexes(c)

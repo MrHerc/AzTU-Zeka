@@ -75,7 +75,11 @@ route("/admin/import", async (el) => {
   on(el, "click", "#imp-run", async (e, b) => {
     if (!checked) return;
     b.classList.add("loading");
-    try { const r = await api.post("/api/admin/import", await body(false)); mount(box, report(r)); reset(); toast(t("İdxal olundu"), "ok"); }
+    try {
+      const r = await api.post("/api/admin/import", await body(false));
+      mount(box, report(r)); reset();
+      toast(r.written ? t("İdxal olundu") : t("Fayl idxal olunmadı"), r.written ? "ok" : "err");     // nothing written: say so
+    }
     catch (err) { toast(err.message, "err"); }
     finally { b.classList.remove("loading"); }
   });

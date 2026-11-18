@@ -157,7 +157,7 @@ route("/student/course/:id", async (el, p) => {
         <div class="card" data-tour="attendance-card"><div class="card-h"><h3>${ic("calcheck", 17)} ${t("Davamiyyət")}</h3><a class="small" href="#/student/attendance">${t("Ətraflı")} ${ic("arrow", 13)}</a></div><div class="card-b">
           <div class="row">${ring(a.rate, 74, a.rate < 80 ? "var(--red)" : "var(--green)")}<div class="grow small"><div>${t("Keçirilib")}: <b>${num(a.total)}</b> ${t("dərs")}</div>
             <div>${t("Qayıb")}: <b style="color:var(--red)">${num(a.absent)}</b> · ${t("Üzrlü")}: <b>${num(a.excused)}</b> · ${t("Gecikmə")}: <b>${num(a.late)}</b></div>
-            <div class="muted">${t("İcazə verilən hədd: {n} dərs ({p}%)", { n: a.limit, p: a.limit_percent })}</div></div></div></div></div>
+            <div class="muted">${t("İcazə verilən hədd: {n} dərs ({p}%)", { n: a.limit ?? "—", p: a.limit_percent })}</div></div></div></div></div>
         <div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Dərs cədvəli")}</h3></div><div class="card-b list">${c.schedule.length ? c.schedule.map((x) => html`<div class="list-item">
           <div class="grow"><b class="small">${x.weekday_name}</b> <span class="small muted">${x.start}–${x.end}</span><div class="tiny muted">${x.room}</div></div><span class="badge ${kindTone(x.kind)}">${x.kind}</span></div>`)
           : empty("calendar", t("Cədvəl məlumatı yoxdur"))}</div></div>
@@ -331,7 +331,7 @@ route("/student/attendance", async (el) => {
     <div class="grid g-3" data-tour="att-courses">${a.courses.map((c) => html`<div class="card pad slide-up"><div class="row"><span class="course-ic sm2" style="background:${c.color}">${c.code.split("-")[0]}</span>
       <b class="small grow">${c.name}</b><b style="color:${c.rate < 80 ? "var(--red)" : "var(--green)"}">${num(c.rate)}%</b></div>
       <div class="row wrap mt small"><span class="badge b-green">${t("{n} iştirak", { n: c.present })}</span><span class="badge b-red">${t("{n} qayıb", { n: c.absent })}</span><span class="badge b-blue">${t("{n} üzrlü", { n: c.excused })}</span><span class="badge b-amber">${t("{n} gecikmə", { n: c.late })}</span></div>
-      <div class="row between tiny muted mt">${t("Limitdən istifadə: {a} / {b} dərs", { a: c.absent, b: c.limit })}<span>${t("{n} dərs keçirilib", { n: c.total })}</span></div>${progress((100 * c.absent) / Math.max(1, c.limit), "coral")}</div>`)}</div>
+      <div class="row between tiny muted mt">${t("Limitdən istifadə: {a} / {b} dərs", { a: c.counted, b: c.limit ?? "—" })}<span>${t("{n} dərs keçirilib", { n: c.total })}</span></div>${progress(c.limit ? (100 * c.counted) / c.limit : 0, "coral")}</div>`)}</div>
     <div class="card mt" data-tour="att-log"><div class="card-h"><h3>${ic("list", 17)} ${t("Qayıblar və gecikmələr")}</h3></div>
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Tarix")}</th><th>${t("Fənn")}</th><th>${t("Dərs")}</th><th>${t("Status")}</th><th></th></tr></thead><tbody>
       ${a.records.length ? a.records.map((r) => html`<tr><td class="nowrap"><b>${fmtDate(r.day)}</b> <span class="tiny muted">${r.start}</span></td>

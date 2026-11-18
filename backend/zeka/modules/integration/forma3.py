@@ -3,19 +3,33 @@
 Two layouts: (A) one sheet of teacher blocks, each opened by ``<ştat> - <dərəcə>, <vəzifə>, <Soyad Ad Ata adı>``;
 (B) one sheet per teacher with the name in E4. The header is found by its text (``Fənlər`` / ``FƏNNİN ADI``), never
 by column letter; the semester of an hour column comes from the (merged) cell above the header.
+
+Nothing is dropped without a word: a cell, column, header or row the reader cannot use is returned in ``skipped`` with
+its place and reason, and the import shows it with the conflicts.
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 
+from ...core.i18n import E
 from . import domain
 from .tables import Sheet
 
-SUBJECT = ("fənlər", "fənnin adı")
-KINDS = (("mühazirə", "lecture"), ("məşğələ", "seminar"), ("laboratoriya", "lab"))
-TOTALS = ("cəmi", "cəm", "aktiv")
-SKIP_SHEETS = ("saat hesabı", "arayış")
+MAX_HOURS = 10_000
+
+
+def norm(v: str) -> str:
+    """Compared form: Azerbaijani lower case, and Latin I = İ (``FƏNNIN ADI`` typed with I still matches)."""
+    return domain.key(v)
+
+
+SUBJECT = tuple(norm(x) for x in ("Fənlər", "FƏNNİN ADI"))
+KINDS = tuple((norm(p), k) for p, k in (("Mühazirə", "lecture"), ("Məşğələ", "seminar"), ("Laboratoriya", "lab")))
+TOTALS = tuple(norm(x) for x in ("Cəmi", "Cəm", "Aktiv"))
+HOURLY = norm("SAAT HESABI")
+SKIP_SHEETS = tuple(norm(x) for x in ("saat hesabı", "arayış"))
 TEACHER_LINE = re.compile(r"ştat\s*-", re.IGNORECASE)
 
 
@@ -26,15 +40,11 @@ class Line:
     row: int                                   # the sheet's row number (1-based), for the report
     teacher: str
     subject: str
-    semester: str                              # "payız" | "yaz"
+    semester: str                              # "payiz" | "yaz" (compared form)
     kind: str                                  # lecture | seminar | lab
     hours: float
     students: int | None
     groups: list[tuple[str, int | None]] = field(default_factory=list)       # (group, subgroup)
-
-
-def norm(v: str) -> str:
-    return domain.norm(v)
 
 
 def person(text: str) -> str:
@@ -47,11 +57,16 @@ def person(text: str) -> str:
     return " ".join(tail)
 
 
-def _number(v: str) -> float:
-    try:
-        return float((v or "").strip().replace(",", ".") or 0)
-    except ValueError:
+def _number(v: str) -> float | None:
+    """A cell's number: empty is 0; text, infinity, NaN or an absurd size is None (the cell is reported)."""
+    v = (v or "").strip().replace(",", ".")
+    if not v:
         return 0.0
+    try:
+        n = float(v)
+    except ValueError:
+        return None
+    return n if math.isfinite(n) and 0 <= n < MAX_HOURS else None
 
 
 def _group(v: str) -> tuple[str, int | None]:
@@ -68,6 +83,7 @@ def _label(sheet: Sheet, r: int, c: int) -> str:
 
 
 def _semester(sheet: Sheet, header: int, c: int) -> str | None:
+    """"payiz" | "yaz" | "year" (the year total, not a unit) | None (no label found)."""
     for r in (header - 1, header - 2):
         if r < 0:
             continue
@@ -75,15 +91,15 @@ def _semester(sheet: Sheet, header: int, c: int) -> str | None:
         if not text:                           # an unmerged label is written once, at the left of its block
             text = next((norm(x) for x in reversed(sheet.rows[r][:c]) if x.strip()), "")
         if "il ərzində" in text:
-            return None
-        if "payız" in text:
-            return "payız"
+            return "year"
+        if "payiz" in text:
+            return "payiz"
         if "yaz" in text:
             return "yaz"
     return None
 
 
-def _columns(sheet: Sheet, h: int) -> dict:
+def _columns(sheet: Sheet, h: int, skipped: list) -> dict:
     header = [norm(x) for x in sheet.rows[h]]
     cols: dict = {"hours": {}}
     for c, name in enumerate(header):
@@ -91,15 +107,19 @@ def _columns(sheet: Sheet, h: int) -> dict:
             cols["subject"] = c
         elif name.startswith("qrup"):
             cols["group"] = c
-        elif name.startswith("tələbələrin sayı"):
+        elif name.startswith(norm("Tələbələrin sayı")):
             cols["students"] = c
-        elif name.startswith("digər dərs yük"):
+        elif name.startswith(norm("Digər dərs yük")):
             cols["other"] = c
         else:
             kind = next((k for prefix, k in KINDS if name.startswith(prefix)), None)
-            semester = _semester(sheet, h, c) if kind else None
-            if kind and semester:
+            if not kind:
+                continue
+            semester = _semester(sheet, h, c)
+            if semester in ("payiz", "yaz"):
                 cols["hours"][c] = (semester, kind)
+            elif semester is None:
+                skipped.append((sheet.name, h + 1, E("Sütunun semestri tapılmadı: {x}", x=sheet.rows[h][c])))
     return cols
 
 
@@ -107,9 +127,10 @@ def _cell(row: list[str], c: int | None) -> str:
     return row[c].strip() if c is not None and c < len(row) else ""
 
 
-def _block(sheet: Sheet, h: int, end: int, teacher: str) -> list[Line]:
-    cols = _columns(sheet, h)
+def _block(sheet: Sheet, h: int, end: int, teacher: str, skipped: list) -> list[Line]:
+    cols = _columns(sheet, h, skipped)
     if "subject" not in cols or "group" not in cols:
+        skipped.append((sheet.name, h + 1, E("Başlıqda fənn və ya qrup sütunu yoxdur")))
         return []
     out: list[Line] = []
     subject = ""
@@ -120,27 +141,37 @@ def _block(sheet: Sheet, h: int, end: int, teacher: str) -> list[Line]:
     for r in range(start, end):
         row = sheet.rows[r]
         texts = [norm(x) for x in row]
-        if any("saat hesabı" in x for x in texts):
+        if any(HOURLY in x for x in texts):
             break                                               # the hourly-paid section is not teaching units
-        if any(x in TOTALS or x.startswith("cəmi") for x in texts[:max(cols["subject"], cols["group"]) + 1]):
+        if any(x in TOTALS or x.startswith(TOTALS[0]) for x in texts[:max(cols["subject"], cols["group"]) + 1]):
             continue
         if _cell(row, cols["subject"]):
             subject, stream = _cell(row, cols["subject"]), {}
         if not subject:
             continue
         group = _group(_cell(row, cols["group"]))
-        students_text = _cell(row, cols.get("students"))
-        students = int(_number(students_text)) if students_text else None
-        hours = {key: _number(_cell(row, c)) for c, key in cols["hours"].items()}
-        if not group[0] or not any(v > 0 for v in hours.values()) and students is None:
+        students = _number(_cell(row, cols.get("students")))
+        hours = {}
+        for c, key in cols["hours"].items():
+            value = _number(_cell(row, c))
+            if value is None:
+                skipped.append((sheet.name, r + 1, E("Saat oxunmadı: {x}", x=_cell(row, c)[:40])))
+            elif value > 0:
+                hours[key] = value
+        if students is None:
+            skipped.append((sheet.name, r + 1, E("Tələbə sayı oxunmadı: {x}", x=_cell(row, cols.get("students"))[:40])))
+        students_n = int(students) if students else None
+        if not group[0]:
+            if hours:
+                skipped.append((sheet.name, r + 1, E("Saatı olan sətirdə qrup yazılmayıb")))
+            continue
+        if not hours and students_n is None:
             continue
         other = person(_cell(row, cols.get("other")))
-        lectured: set[str] = set()
+        lectured = set()
         for (semester, kind), value in hours.items():
-            if value <= 0:
-                continue
             line = Line(sheet.name, r + 1, other if other and kind != "lecture" else teacher, subject, semester, kind, value,
-                        students, [group])
+                        students_n, [group])
             out.append(line)
             if kind == "lecture":
                 stream[semester] = line
@@ -148,16 +179,15 @@ def _block(sheet: Sheet, h: int, end: int, teacher: str) -> list[Line]:
         for semester, line in stream.items():                  # no lecture hours of its own: it joins the stream
             if semester not in lectured and group not in line.groups:
                 line.groups.append(group)
-                line.students = (line.students or 0) + (students or 0) if students is not None else line.students
+                if students_n is not None:
+                    line.students = (line.students or 0) + students_n
     return out
 
 
-def _header_rows(sheet: Sheet, start: int, end: int) -> list[int]:
-    return [r for r in range(start, end) if any(norm(x) in SUBJECT for x in sheet.rows[r])]
-
-
-def read(sheets: list[Sheet]) -> list[Line]:
+def read(sheets: list[Sheet]) -> tuple[list[Line], list[tuple[str, int, dict]]]:
+    """The form's lines, and every (sheet, row, reason) the reader could not use."""
     out: list[Line] = []
+    skipped: list[tuple[str, int, dict]] = []
     for sheet in sheets:
         if any(s in norm(sheet.name) for s in SKIP_SHEETS):
             continue
@@ -168,6 +198,9 @@ def read(sheets: list[Sheet]) -> list[Line]:
             starts = [(3, person(rows[3][4]))]                 # layout B: the name in E4
         for i, (r, teacher) in enumerate(starts):
             end = starts[i + 1][0] if i + 1 < len(starts) else len(rows)
-            for h in _header_rows(sheet, r + 1, end)[:1]:
-                out += _block(sheet, h, end, teacher)
-    return out
+            headers = [x for x in range(r + 1, end) if any(norm(v) in SUBJECT for v in rows[x])]
+            if not headers:
+                skipped.append((sheet.name, r + 1, E("Müəllimin blokunda başlıq tapılmadı")))
+            for j, h in enumerate(headers):                    # each header reads only the rows up to the next one
+                out += _block(sheet, h, headers[j + 1] if j + 1 < len(headers) else end, teacher, skipped)
+    return out, skipped

@@ -227,6 +227,9 @@ def drain(timeout: float = QUEUE_WAIT) -> bool:
         return _IDLE.wait_for(lambda: _INFLIGHT[0] == 0, timeout=timeout)
 
 
+MAX_ID = 2 ** 63 - 1                     # the largest SQLite integer
+
+
 class Router:
     def __init__(self):
         self.routes = []
@@ -258,7 +261,10 @@ class Router:
             if m == method:
                 # The path is already percent-decoded by the handler; decoding again would turn "%2541" into "A".
                 # Only ASCII digits are converted ("²".isdigit() is True, but int("²") raises).
-                params = {k: int(v) if v.isascii() and v.isdigit() else v for k, v in mt.groupdict().items()}
+                raw = mt.groupdict()
+                if any(v.isascii() and v.isdigit() and (len(v) > 19 or int(v) > MAX_ID) for v in raw.values()):
+                    raise HTTPError(404, "Tapılmadı")          # SQLite would overflow (int() too, past 4300 digits)
+                params = {k: int(v) if v.isascii() and v.isdigit() else v for k, v in raw.items()}
                 return fn, params, roles, auth
         raise HTTPError(405 if allowed else 404, "Tapılmadı" if not allowed else "Metod dəstəklənmir")
 

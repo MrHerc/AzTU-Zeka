@@ -36,7 +36,7 @@ def sign_in(c, login: str, password: str, ip: str, t: float | None = None):
     typed, client = login.strip().lower()[:254], domain.client_key(ip)
     u = repo.find_login(c, typed) if typed else None
     account = u["username"] if u else typed     # one counter per account, whether it was typed as name or e-mail
-    wait = max(repo.block_wait(c, account, client, t), repo.lock_wait(u))
+    wait = max(repo.block_wait(c, account, client, t), repo.lock_wait(u) if u else repo.block_wait(c, account, "*", t))
     if wait:                                   # checked before scrypt; a refused attempt is not counted
         return "blocked", math.ceil(wait)
     ok = domain.verify(password, (u["password_hash"] if u else None) or _dummy())
@@ -45,6 +45,8 @@ def sign_in(c, login: str, password: str, ip: str, t: float | None = None):
             audit(c, u["id"] if u else None, "login_blocked", "user", f"{account} · {client}")
         if u and repo.account_failure(c, u["id"]):
             audit(c, u["id"], "account_locked", "user", account)
+        elif not u:
+            repo.unknown_failure(c, account, t)
         return "wrong", None
     new_hash = domain.hash_password(password) if domain.needs_rehash(u["password_hash"]) else None   # before the writes
     repo.signed_in(c, account, client, u["id"], new_hash, complete=scope_after_password(u) != "mfa")

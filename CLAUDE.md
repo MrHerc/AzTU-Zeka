@@ -25,14 +25,14 @@ python backend/manage.py activation-codes --faculty CODE --out codes.csv   # one
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 975 tests, about 2.5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1019 tests, about 3 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
 python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset faculty [--workers 4]   # docs/perf/baseline.md
 python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes (must be none)
 
-python tools/i18n.py lint                 # user-visible strings not wrapped for translation (51 known findings)
+python tools/i18n.py lint                 # user-visible strings not wrapped for translation (56 known findings)
 python tools/i18n.py extract              # refresh i18n/source/*, write untranslated keys to i18n/todo/*.json
 python tools/i18n.py build                # i18n/{en,ru}/*.json -> frontend/locales/*.json + backend/zeka/core/locales/*.json
 python tools/i18n.py stats                # coverage per language (must stay 100%)
@@ -131,7 +131,7 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
-and research, then Faza 1 (Tasks 1–9, Checkpoint A) and Faza 2 from Task 10. `main` is unchanged and the five PRs are still open against it; they are
+and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 from Task 18. `main` is unchanged and the five PRs are still open against it; they are
 superseded by this branch.
 
 ## Product direction

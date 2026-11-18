@@ -119,7 +119,7 @@ def test_a_code_is_accepted_only_once_in_its_window(app_db):
     assert first.post("/api/auth/mfa/verify", {"code": now}).status == 200
     second, _ = sign_in(app_db, name, ip="10.2.0.2")
     replay = second.post("/api/auth/mfa/verify", {"code": now})
-    assert replay.status == 401 and "Qalan" in replay.json["error"] or "left" in replay.json["error"]
+    assert replay.status == 401 and "Qalan" in replay.json["error"]
 
 
 def test_a_recovery_code_works_once(app_db):

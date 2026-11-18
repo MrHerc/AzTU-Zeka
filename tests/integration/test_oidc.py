@@ -113,6 +113,7 @@ def set_sso(**fields):
     finally:
         c.close()
     sso._CACHE.clear()
+    sso._FAILED.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -461,6 +462,8 @@ def test_prod_refuses_a_discovery_document_with_an_endpoint_that_is_not_https(ap
     b = browser(app_db)
     assert hop(b, app_db.url + "/api/auth/sso/start") == (302, "/#/login?sso=failed")
     doc["userinfo_endpoint"] = "https://idp.example/userinfo"
+    assert hop(b, app_db.url + "/api/auth/sso/start") == (302, "/#/login?sso=failed"), "a failed discovery is kept 30 s"
+    sso._FAILED.clear()
     status, where = hop(b, app_db.url + "/api/auth/sso/start")
     assert status == 302 and where.startswith("https://idp.example/authorize?")
 

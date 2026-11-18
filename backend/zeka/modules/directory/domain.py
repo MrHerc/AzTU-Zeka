@@ -17,6 +17,7 @@ DEGREES = ("bachelor", "master", "phd")
 UNIT_KINDS = ("lecture", "seminar", "lab")             # mühazirə, məşğələ, laboratoriya
 TEACHING_ROLES = ("teacher", "dept_head")
 CODE = re.compile(r"^[0-9A-Za-zƏəİıÖöÜüĞğŞşÇç._-]{2,30}$")
+DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")               # not week dates (2026-W01-1), which Python 3.11 also reads
 LOGIN = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
 EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
 # What a user list or a saved user returns: never the password hash, the TOTP secret or the failure counters.
@@ -122,8 +123,10 @@ def field_value(kind: str, field: str, v):
 
 def date_problem(field: str, v) -> dict | None:
     try:
+        if not (isinstance(v, str) and DATE.fullmatch(v)):
+            raise ValueError(v)
         date.fromisoformat(v)
-        return None if len(v) == 10 else E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field=field)
+        return None
     except (TypeError, ValueError):
         return E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field=field)
 

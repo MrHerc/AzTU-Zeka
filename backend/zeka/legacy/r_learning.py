@@ -77,7 +77,7 @@ def att_summary(c, uid, course_id):
     out = {k: r[k] or 0 for k in ("total", "present", "late", "absent", "excused")}
     out["planned"] = planned
     out["limit_percent"] = rules["limit_percent"]
-    out["limit"] = int(planned * rules["limit_percent"] / 100)
+    out["limit"] = int(planned * rules["limit_percent"] / 100) if planned else None     # no term yet: unknown, not 0
     out["counted"] = out["absent"] + (out["excused"] if rules["excused_counts_toward_limit"] else 0)
     out["rate"] = round(100 * (out["present"] + out["late"]) / out["total"]) if out["total"] else 100
     return out

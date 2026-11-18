@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import secrets
+import sqlite3
 import time
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -102,18 +103,19 @@ class Context:
 
 # ---------------------------------------------------------------- reading the file
 def _cells(kind: str, filename: str, data: bytes) -> tuple[list[tuple[int, dict]], dict | None]:
-    rows = tables.table_rows(filename, data)
+    rows = tables.table_rows(filename, data)                    # (row number in the file, cells)
     if not rows:
         return [], E("Fayl boşdur")
-    index, problem = domain.header_map(kind, rows[0])
+    index, problem = domain.header_map(kind, rows[0][1])
     if problem:
         return [], problem
-    return [(n + 2, {col: (r[i] if i < len(r) else "").strip() for col, i in index.items()}) for n, r in enumerate(rows[1:])], None
+    return [(n, {col: (r[i] if i < len(r) else "").strip() for col, i in index.items()}) for n, r in rows[1:]], None
 
 
 def _plan_rows(kind: str, ctx: Context, cells: list[tuple[int, dict]], errors: list) -> list[Item]:
     items: list[Item] = []
     seen: dict[str, int] = {}
+    pairs: dict[tuple[int, int], Item] = {}
     for n, x in cells:
         values, problem = domain.draft(kind, x)
         if not problem and x["sourcedId"] in seen:
@@ -125,7 +127,14 @@ def _plan_rows(kind: str, ctx: Context, cells: list[tuple[int, dict]], errors: l
         item, problem = _resolve(kind, ctx, n, x["sourcedId"], values)
         if problem:
             errors.append({"row": n, "reason": problem})
+        elif item and item.link == "enrollments" and (item.values["user_id"], item.values["course_id"]) in pairs:
+            first = pairs[(item.values["user_id"], item.values["course_id"])]   # a lecture and a lab: one enrolment
+            if first.values["subgroup"] is None:
+                first.values["subgroup"] = item.values["subgroup"]
+            first.extra.setdefault("aliases", []).append(item.source_id)
         elif item:
+            if item.link == "enrollments":
+                pairs[(item.values["user_id"], item.values["course_id"])] = item
             items.append(item)
     return items
 
@@ -241,7 +250,10 @@ def _course_for(c, cache: dict, subject: str, semester: str) -> int | None:
 def _plan_load(c, filename: str, data: bytes, conflicts: list) -> list[Item]:
     if not (filename or "").lower().endswith(".xlsx"):
         raise tables.TableError("Forma №3 XLSX faylı olmalıdır")
-    lines = forma3.read(tables.xlsx_sheets(data))
+    lines, skipped = forma3.read(tables.xlsx_sheets(data))
+    conflicts += [{"row": f"{sheet}!{n}", "reason": reason} for sheet, n, reason in skipped]
+    if not lines and not skipped:
+        raise tables.TableError("Faylda Forma №3 tədris yükü tapılmadı")
     people = _person_index(c)
     groups = {forma3.norm(k): v for k, v in repo.by_column(c, "study_groups", "name").items()}
     cache: dict = {}
@@ -262,9 +274,11 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> list[Item]:
                                                      "hours": ln.hours, "students": ln.students},
                           groups=sorted({groups[forma3.norm(g)] for g, _ in ln.groups}), extra={"where": where}))
     seen: dict[str, Item] = {}
-    for it in items:                                   # the same unit twice in one form: its hours add up
+    for it in items:                                   # the same unit twice in one form: its hours add up, and it is said
         if it.source_id in seen:
             seen[it.source_id].values["hours"] += it.values["hours"]
+            conflicts.append({"row": it.extra["where"], "reason": E("Eyni tədris vahidi formada təkrarlanır: saatlar toplandı ({x})",
+                                                                    x=seen[it.source_id].extra["where"])})
         else:
             seen[it.source_id] = it
     return list(seen.values())
@@ -318,6 +332,7 @@ def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, er
                 errors.append({"row": it.row, "reason": _missing("Tədris vahidi", it.source_id)})
             continue
         new_hash, cur_hash = domain.row_hash(_new(it)), domain.row_hash(cur)
+        it.extra["cur_hash"] = cur_hash
         if new_hash == cur_hash:
             it.action = "unchanged" if link and link["source_hash"] == new_hash else "relink"
         elif link and cur_hash == link["source_hash"]:
@@ -334,7 +349,18 @@ def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, er
 
 
 # ---------------------------------------------------------------- writing
-def _write(c, ctx: Context, items: list[Item], user_id: int | None) -> int:
+def _now_hash(c, it: Item) -> str | None:
+    """The row's compared fields as they are now, inside the write lock."""
+    table, cols, key = TARGETS[it.link]
+    if it.row_id is None:
+        return None
+    r = repo.one(c, table, cols, it.row_id, key)
+    if r is None:
+        return None
+    return domain.row_hash({**r, **({"groups": repo.groups_of(c, it.row_id)} if it.link in UNIT_LINKS else {})})
+
+
+def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: list) -> int:
     new_ids: dict[tuple[str, str], int] = {}
     t = iso(now())
     done = 0
@@ -350,6 +376,15 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None) -> int:
             new_ids[(it.link, it.source_id)] = rid
         else:
             rid = it.row_id if it.row_id is not None else 0       # set by _classify for every action but insert
+            if it.action == "update" and _now_hash(c, it) != it.extra.get("cur_hash"):
+                it.action = "conflict"                            # changed in Zəka while the file was being checked
+                conflicts.append({"row": it.extra.get("where", it.row), "id": rid,
+                                  "reason": E("İdxal yoxlanarkən Zəka-da dəyişdirildi; mənbənin dəyəri yazılmadı")})
+                continue
+            if it.action in ("update", "overwrite") and it.link == "users":
+                before = repo.one(c, "users", ("role", "status"), rid)
+                if before and (before["role"], before["status"]) != (values["role"], values["status"]):
+                    identity.end_all_sessions(c, rid)             # a new role or status starts from a new sign-in
             if it.action in ("update", "overwrite"):
                 repo.update(c, table, rid, {**values, **({"updated_at": t} if table in STAMPED else {})}, key)
             if it.action == "overwrite":
@@ -357,7 +392,9 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None) -> int:
         it.row_id = rid
         if it.link in UNIT_LINKS and it.action != "relink":
             repo.set_groups(c, rid, it.groups or [])
-        repo.link(c, it.link, ctx.source, it.source_id, rid, domain.row_hash({**values, **({"groups": it.groups} if it.link in UNIT_LINKS else {})}))
+        written = domain.row_hash({**values, **({"groups": it.groups} if it.link in UNIT_LINKS else {})})
+        for sid in (it.source_id, *it.extra.get("aliases", [])):
+            repo.link(c, it.link, ctx.source, sid, rid, written)
         done += it.action != "relink"
     return done
 
@@ -396,11 +433,14 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     lock = time.monotonic()
     c.execute("BEGIN IMMEDIATE")
     try:
-        _write(c, ctx, items, user_id)
+        _write(c, ctx, items, user_id, conflicts)
         counts = _counts(items)
         audit(c, user_id, "import", kind, f"{source} · {filename} · +{counts['inserted']} ~{counts['updated']} "
                                           f"={counts['unchanged']} !{len(conflicts)}")
         c.commit()
+    except sqlite3.IntegrityError:                      # another writer took a unique value after the check
+        c.rollback()
+        raise tables.TableError("Məlumat idxal yoxlanarkən dəyişdi; faylı yenidən yoxlayıb idxal edin") from None
     except BaseException:
         c.rollback()
         raise
@@ -452,7 +492,8 @@ def activate(c, student_no: str, code: str, password: str, ip: str, t: float | N
         return "blocked", math.ceil(wait)
     hit = repo.code(c, domain.code_hash(code)) if domain.code_shape_ok(code) else None
     ok = bool(hit and hit["student_no"] and hit["student_no"].lower() == student_no.strip().lower() and not hit["used_at"]
-              and not hit["revoked_at"] and hit["expires_at"] > iso(now()) and hit["status"] == "active" and hit["role"] == "student")
+              and not hit["revoked_at"] and hit["expires_at"] > iso(now()) and hit["status"] == "active" and hit["role"] == "student"
+              and not hit["password_hash"] and not hit["totp_enabled_at"] and not hit["sso"])     # only an account with no way in yet
     if not ok or hit is None:
         identity.throttle_failure(c, account, ip, t)
         return "wrong", None

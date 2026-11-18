@@ -34,6 +34,15 @@ def update(c, name: str, rid: int, values: dict, key: str = "id"):
     c.execute(f"UPDATE {name} SET {', '.join(f'{k}=?' for k in values)} WHERE {key}=?", (*values.values(), rid))  # nosec B608
 
 
+def one(c, name: str, cols: tuple[str, ...], rid: int, key: str = "id"):
+    """One target row as it is now (re-read inside the write lock)."""
+    return row(c, f"SELECT {', '.join(cols)} FROM {name} WHERE {key}=?", (rid,))  # nosec B608 - constants
+
+
+def groups_of(c, unit_id: int) -> list[int]:
+    return [r["group_id"] for r in rows(c, "SELECT group_id FROM teaching_unit_groups WHERE unit_id=? ORDER BY group_id", (unit_id,))]
+
+
 def set_groups(c, unit_id: int, group_ids: list[int]):
     c.execute("DELETE FROM teaching_unit_groups WHERE unit_id=?", (unit_id,))
     c.executemany("INSERT INTO teaching_unit_groups(unit_id,group_id) VALUES(?,?)", [(unit_id, g) for g in group_ids])
@@ -47,9 +56,11 @@ def link(c, kind: str, source: str, source_id: str, row_id: int, source_hash: st
 
 # ---------------------------------------------------------------- activation codes
 def faculty_students(c, faculty_id: int) -> list:
-    """Active students of a faculty who have not chosen a password yet."""
+    """Active students of a faculty who have no way in yet: no password, no second factor, no provider link (a code
+    for any other account would be a second way in that skips what the account already has)."""
     return rows(c, "SELECT u.id, u.username, u.full_name, u.student_no, g.name grp FROM users u JOIN study_groups g ON g.id=u.group_id "
                    "WHERE g.faculty_id=? AND u.role='student' AND u.status='active' AND u.password_hash IS NULL "
+                   "AND u.totp_enabled_at IS NULL AND NOT EXISTS (SELECT 1 FROM sso_identities s WHERE s.user_id=u.id) "
                    "ORDER BY g.name, u.full_name, u.id", (faculty_id,))
 
 
@@ -64,7 +75,8 @@ def add_codes(c, items: list[tuple[int, str]], t: str, expires: str):
 
 
 def code(c, code_hash: str):
-    return row(c, "SELECT a.*, u.student_no, u.username, u.status, u.role, u.password_hash FROM activation_codes a "
+    return row(c, "SELECT a.*, u.student_no, u.username, u.status, u.role, u.password_hash, u.totp_enabled_at, "
+                  "EXISTS (SELECT 1 FROM sso_identities s WHERE s.user_id=u.id) AS sso FROM activation_codes a "
                   "JOIN users u ON u.id=a.user_id WHERE a.code_hash=?", (code_hash,))
 
 

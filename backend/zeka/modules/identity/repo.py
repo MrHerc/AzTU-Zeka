@@ -51,6 +51,17 @@ def account_failure(c, uid: int) -> bool:
     return True
 
 
+def unknown_failure(c, account: str, t: float):
+    """A failure for a name no account has: counted in a row of its own ("*") and locked after as many as a real
+    account, so the answer to a locked name is the same whether it exists or not."""
+    r = row(c, "SELECT failures FROM login_blocks WHERE account=? AND client='*'", (account,))
+    n = (r["failures"] if r else 0) + 1
+    locked = n >= domain.ACCOUNT_LIMIT
+    c.execute("INSERT INTO login_blocks(account,client,failures,first,until) VALUES(?,'*',?,?,?) ON CONFLICT(account,client) "
+              "DO UPDATE SET failures=excluded.failures, first=excluded.first, until=excluded.until",
+              (account, 0 if locked else n, t, t + domain.BLOCK if locked else None))
+
+
 def signed_in(c, account: str, client: str, uid: int, new_hash: str | None, complete: bool = True):
     """The password was right. Failure counts clear only when the sign-in is complete: while a second factor is
     pending they stay, or every correct password would buy five more code guesses (Task 12)."""

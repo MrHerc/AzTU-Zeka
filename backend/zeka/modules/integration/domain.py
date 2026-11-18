@@ -69,13 +69,22 @@ def norm(heading: str) -> str:
     return " ".join((heading or "").replace("\ufeff", "").translate(AZ_LOWER).lower().split())
 
 
+def key(v: str) -> str:
+    """The form values are compared in: ``norm`` with ı = i, so Latin capitals typed the English way (SEMINAR, sourcedId,
+    MÜHAZIRƏ, FƏNNIN ADI) match their Azerbaijani spelling."""
+    return norm(v).replace("ı", "i")
+
+
+def _lookup(table: dict[str, str], v: str) -> str | None:
+    return {key(k): x for k, x in table.items()}.get(key(v))
+
+
 def header_map(kind: str, header: list[str]) -> tuple[dict[str, int], dict | None]:
     """{canonical column: index} for a header row, or the missing required columns."""
-    wanted = {alias: col for col, aliases in COLUMNS[kind].items() for alias in aliases}
+    wanted = {key(alias): col for col, aliases in COLUMNS[kind].items() for alias in aliases}
     found: dict[str, int] = {}
     for i, h in enumerate(header):
-        plain = " ".join((h or "").replace("\ufeff", "").lower().split())      # sourcedId: Latin I stays i
-        col = wanted.get(norm(h)) or wanted.get(plain)
+        col = wanted.get(key(h))
         if col and col not in found:
             found[col] = i
     missing = [c for c in REQUIRED[kind] if c not in found]
@@ -126,7 +135,7 @@ def draft(kind: str, cells: dict[str, str]) -> tuple[dict, dict | None]:
 
 
 def _user(x: dict) -> tuple[dict, dict | None]:
-    role = IMPORT_ROLES.get(norm(x.get("role", "")))
+    role = _lookup(IMPORT_ROLES, x.get("role", ""))
     if not role:
         return {}, E("Rol student və ya teacher olmalıdır")
     full = " ".join(f"{x.get('givenName', '')} {x.get('familyName', '')}".split())
@@ -149,7 +158,7 @@ def _user(x: dict) -> tuple[dict, dict | None]:
 
 
 def _org(x: dict) -> tuple[dict, dict | None]:
-    entity = ORG_TYPES.get(norm(x.get("type", "")))
+    entity = _lookup(ORG_TYPES, x.get("type", ""))
     if not entity:
         return {}, E("Təşkilatın növü faculty və ya department olmalıdır")
     out: dict = {"_entity": entity, "_parent": x.get("parentSourcedId") or None}
@@ -191,7 +200,7 @@ def _course(x: dict) -> tuple[dict, dict | None]:
 
 
 def _class(x: dict) -> tuple[dict, dict | None]:
-    kind = UNIT_KIND.get(norm(x.get("kind", "")) or "lecture")
+    kind = _lookup(UNIT_KIND, x.get("kind", "") or "lecture")
     if not kind:
         return {}, E("Dərsin növü mühazirə, məşğələ və ya laboratoriya olmalıdır")
     sub = x.get("subgroup", "").strip()
@@ -203,7 +212,7 @@ def _class(x: dict) -> tuple[dict, dict | None]:
 
 
 def _enrollment(x: dict) -> tuple[dict, dict | None]:
-    role = IMPORT_ROLES.get(norm(x.get("role", "")))
+    role = _lookup(IMPORT_ROLES, x.get("role", ""))
     if not role:
         return {}, E("Rol student və ya teacher olmalıdır")
     out: dict = {"_role": role, "_class": x["classSourcedId"], "_user": x["userSourcedId"]}
@@ -224,7 +233,7 @@ def _lesson(x: dict) -> tuple[dict, dict | None]:
     start, end = x.get("start", "").strip(), x.get("end", "").strip()
     if not (TIME.fullmatch(start) and TIME.fullmatch(end) and start < end):
         return {}, E("Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır")
-    kind = UNIT_KIND.get(norm(x.get("kind", "")) or "lecture")
+    kind = _lookup(UNIT_KIND, x.get("kind", "") or "lecture")
     if not kind:
         return {}, E("Dərsin növü mühazirə, məşğələ və ya laboratoriya olmalıdır")
     room = " ".join(x.get("room", "").split())[:100] or None
@@ -234,6 +243,12 @@ def _lesson(x: dict) -> tuple[dict, dict | None]:
 
 # ---------------------------------------------------------------- activation codes
 CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"           # base32: 12 characters carry 60 bits
+
+
+def csv_cell(v) -> str:
+    """A cell of an exported CSV: text that a spreadsheet would run as a formula starts with a quote instead."""
+    s = "" if v is None else str(v)
+    return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
 
 
 def code_hash(code: str) -> str:

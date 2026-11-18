@@ -28,6 +28,7 @@ SECTIONS = tuple(DEFAULTS)
 TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 PREFIX = re.compile(r"^[0-9A-Za-zƏəİıÖöÜüĞğŞşÇç]{2,12}$")
 LETTER = re.compile(r"^[A-Z][+-]?$")
+DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def load(c) -> dict:
@@ -39,7 +40,10 @@ def load(c) -> dict:
 
 # ---------------------------------------------------------------- checks
 def _num(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    try:
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    except OverflowError:                          # an int too large for a float (10**400)
+        return False
 
 
 def _text(v, lo: int = 1, hi: int = 80) -> bool:
@@ -47,8 +51,8 @@ def _text(v, lo: int = 1, hi: int = 80) -> bool:
 
 
 def _iso(v) -> bool:
-    try:
-        return isinstance(v, str) and len(v) == 10 and bool(date.fromisoformat(v))
+    try:                                           # YYYY-MM-DD only: Python 3.11 also parses week dates (2026-W01-1)
+        return isinstance(v, str) and bool(DATE.fullmatch(v)) and bool(date.fromisoformat(v))
     except ValueError:
         return False
 
@@ -64,7 +68,8 @@ def problem(section: str, v) -> dict | None:
 def _grading(g: dict) -> dict | None:
     comps, exam, scale = g["components"], g["exam"], g["scale"]
     if not isinstance(comps, list) or not 1 <= len(comps) <= 20 or not all(
-            isinstance(x, dict) and _text(x.get("name")) and _num(x.get("max")) and x["max"] > 0 for x in comps):
+            isinstance(x, dict) and not set(x) - {"name", "max", "attendance"} and _text(x.get("name")) and _num(x.get("max"))
+            and x["max"] > 0 for x in comps):
         return E("Qiymətləndirmə komponentlərinin adı və müsbət maksimal balı olmalıdır")
     if len({x["name"].strip() for x in comps}) != len(comps) or sum(bool(x.get("attendance")) for x in comps) > 1:
         return E("Komponentlərin adları təkrarlanmamalıdır; davamiyyət ən çox bir komponentdir")
@@ -74,13 +79,13 @@ def _grading(g: dict) -> dict | None:
     total = sum(x["max"] for x in comps) + exam["max"]
     if abs(total - 100) > 1e-9:
         return E("Komponentlər və imtahan birlikdə 100 bal etməlidir (indi: {n})", n=round(total, 2))
-    if not _num(g["pass_mark"]) or not 0 < g["pass_mark"] <= 100:
+    if not _num(g["pass_mark"]) or not 1 <= g["pass_mark"] <= 100:
         return E("Keçid balı 1 ilə 100 arasında olmalıdır")
     if not isinstance(scale, list) or not 1 <= len(scale) <= 12 or not all(
             isinstance(x, list) and len(x) == 2 and isinstance(x[0], str) and LETTER.fullmatch(x[0]) and _num(x[1]) for x in scale):
         return E("Hərf şkalası hərf və aşağı həddən ibarət sətirlərdir")
     lows = [x[1] for x in scale]
-    if lows != sorted(lows, reverse=True) or len(set(lows)) != len(lows) or lows[-1] != g["pass_mark"]:
+    if any(not 0 < x <= 100 for x in lows) or lows != sorted(lows, reverse=True) or len(set(lows)) != len(lows) or lows[-1] != g["pass_mark"]:
         return E("Hərf şkalası yuxarıdan aşağı düzülməli və son hədd keçid balı olmalıdır")
     return None
 
@@ -168,7 +173,7 @@ def attendance_points(attended: int, total: int, max_points: float, rule: list) 
         return None
     missed = 100 * (total - attended) / total
     if rule:
-        return float(next((p for limit, p in rule if missed <= limit), 0))
+        return float(min(next((p for limit, p in rule if missed <= limit), 0), max_points))
     return round(max_points * attended / total, 1)
 
 

@@ -11,36 +11,31 @@ import sqlite3
 import time
 
 from ...core import perms
+from ...core.security import LIMITS
 from ...core.i18n import S
 from ...core.web import HTTPError, json_resp, redirect
-from ...legacy.common import BASE_URL, R, ROLE_HOME, _own_commit, pub_user, rotate_session, session_cookie, start_session
+from ...legacy.common import (BASE_URL, R, ROLE_HOME, _own_commit, blocked_response, password_field, pub_user,
+                             rotate_session, session_cookie, start_session)
 from ...legacy.qr import qr_svg
 from ...legacy.store import audit
 from . import domain, repo, service, sso
 
-PASSWORD_INPUT_MAX = 1024          # longer input is refused before any hashing
-
-
-def _password(body, key: str) -> str:
-    """The password exactly as typed: no trimming (spaces are allowed characters)."""
-    v = body.get(key)
-    if not isinstance(v, str) or len(v) > PASSWORD_INPUT_MAX:
-        raise HTTPError(400, "Parol düzgün göndərilməyib")
-    return v
-
-
-def _blocked(req, seconds: int):
-    return json_resp({"error": S("Çox sayda uğursuz cəhd. {n} saniyədən sonra yenidən cəhd edin.", req.lang, n=seconds)},
-                     429, headers=[("Retry-After", str(seconds))])
+_password, _blocked = password_field, blocked_response      # shared with the activation route (legacy.common)
 
 
 @R("POST", "/api/auth/login", auth=False)
 def login(req):
     b = req.json()
-    status, value = service.sign_in(req.db, b.text("login", 254), _password(b, "password"), req.ip)
+    login_name, password = b.text("login", 254), _password(b, "password")
+    client = domain.client_key(req.ip)
+    if LIMITS["password_fail"].blocked(client):        # checked before scrypt: a refused attempt costs nothing
+        return _blocked(req, int(LIMITS["password_fail"].window))
+    status, value = service.sign_in(req.db, login_name, password, req.ip)
     if status == "blocked":
         return _blocked(req, value)
     if status == "wrong":       # the same answer for an unknown account, a wrong password and a disabled account
+        _own_commit(req)        # the failure count first: the limiter writes in a transaction of its own
+        LIMITS["password_fail"].hit(client)
         return json_resp({"error": S("İstifadəçi adı və ya parol yanlışdır", req.lang)}, 401)
     scope = service.scope_after_password(value)       # the second factor, or its enrolment, comes next for staff
     _, headers = start_session(req, value, "parol", scope=scope)
@@ -267,6 +262,8 @@ def _back(path: str, code: str, headers: list):
 
 @R("GET", "/api/auth/sso/start", auth=False, slow=True)
 def sso_start(req):
+    if not LIMITS["sso"].hit(domain.client_key(req.ip)):
+        return _back("/login", "failed", [])
     try:
         url, headers = _begin(req, None)
     except HTTPError as ex:                            # a browser navigation: back to the sign-in page, not JSON
@@ -316,6 +313,8 @@ def sso_link_start(req):
         raise HTTPError(403, "Əvvəlcə ikinci addımı tamamlayın")
     if service.has_staff_role(req.db, req.user) and not req.user.get("session_mfa"):
         raise HTTPError(403, "İşçi hesabını bağlamaq üçün parol və ikinci addımla daxil olun")
+    if not LIMITS["sso"].hit(domain.client_key(req.ip)):
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     try:
         url, headers = _begin(req, req.user["id"])
     except HTTPError as ex:                            # answered, not raised: the audit of a failed discovery commits

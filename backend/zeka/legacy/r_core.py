@@ -7,7 +7,7 @@ import json
 import urllib.parse
 
 from . import engine, pdftext, store
-from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, serves, session_cookie, start_session
+from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, scope_sql, serves, session_cookie, start_session
 from ..core import clock, config, tenant
 from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
@@ -139,8 +139,9 @@ def badges(req):
         out["plan"] = row(c, "SELECT COUNT(*) n FROM interventions WHERE student_id=? AND status='open'", (u["id"],))["n"]
     elif u["role"] == "teacher":
         out["questions"] = row(c, "SELECT COUNT(*) n FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id WHERE co.teacher_id=? AND tq.status='open'", (u["id"],))["n"]
-    else:
-        out["office"] = row(c, "SELECT COUNT(*) n FROM requests WHERE status='submitted'")["n"]
+    elif u["role"] in STAFF:
+        where, args = scope_sql(u, "student_id")
+        out["office"] = row(c, f"SELECT COUNT(*) n FROM requests WHERE status='submitted' AND {where}", args)["n"]  # nosec B608
     from .r_radar import badge_count
     rb = badge_count(c, u)
     if rb is not None:

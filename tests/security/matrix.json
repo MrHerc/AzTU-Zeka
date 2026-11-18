@@ -504,7 +504,7 @@
    "admin",
    "office"
   ],
-  "audit_read": null,
+  "audit_read": "document",
   "demo": false,
   "perm": null,
   "slow": false
@@ -1115,7 +1115,7 @@
    "admin",
    "office"
   ],
-  "audit_read": null,
+  "audit_read": "request",
   "demo": false,
   "perm": null,
   "slow": false
@@ -1131,7 +1131,7 @@
  },
  "POST /api/requests/{id:int}/messages": {
   "access": "any",
-  "audit_read": null,
+  "audit_read": "request",
   "demo": false,
   "perm": null,
   "slow": false

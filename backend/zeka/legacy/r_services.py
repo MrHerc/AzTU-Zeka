@@ -6,7 +6,7 @@ import math
 from datetime import date, datetime, timedelta
 
 from . import docs, store
-from .common import R, STAFF, ctx, faculty_students, holder, make_key, office_for, serves
+from .common import R, STAFF, ctx, holder, make_key, office_for, scope_sql, serves
 from ..core.i18n import E, T3, canon
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows
@@ -222,7 +222,7 @@ def req_out(c, r, rt=None):
 
 def _req_for(req, rid):
     r = row(req.db, "SELECT * FROM requests WHERE id=?", (rid,))
-    if not r or (req.user["role"] == "student" and r["student_id"] != req.user["id"]) or req.user["role"] == "teacher" \
+    if not r or (req.user["role"] == "student" and r["student_id"] != req.user["id"]) or req.user["role"] not in ("student", *STAFF) \
             or not serves(req.db, req.user, r["student_id"]):              # a dean's office sees its own faculty (Task 13)
         raise HTTPError(404, "Müraciət tapılmadı")
     return r
@@ -242,10 +242,9 @@ def list_requests(req):
         if req.query.get("type"):
             cond += " AND type_code=?"
             args.append(req.query["type"])
-        rs = rows(c, f"SELECT * FROM requests WHERE {cond} ORDER BY CASE status WHEN 'submitted' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, due_at", tuple(args))
-        scope = faculty_students(c, u)
-        if scope is not None:
-            rs = [r for r in rs if r["student_id"] in scope]
+        where, scope_args = scope_sql(u, "student_id")
+        rs = rows(c, f"SELECT * FROM requests WHERE {cond} AND {where} ORDER BY CASE status WHEN 'submitted' THEN 0 "  # nosec B608
+                     "WHEN 'in_progress' THEN 1 ELSE 2 END, due_at", (*args, *scope_args))
     else:
         raise HTTPError(403, "İcazə yoxdur")
     types = {t["code"]: type_out(t) for t in rows(c, "SELECT * FROM request_types")}
@@ -292,10 +291,11 @@ def get_request(req):
     return out
 
 
-@R("POST", "/api/requests/{id:int}/messages")
+@R("POST", "/api/requests/{id:int}/messages", audit_read="request")
 def post_message(req):
     c, u = req.db, req.user
     r = _req_for(req, req.params["id"])
+    req.read_owner, req.read_object = r["student_id"], r["id"]
     text = req.json().text("text", 2000)
     if not text:
         raise HTTPError(400, "Mesaj boşdur")
@@ -363,10 +363,11 @@ def _apply_outcome(c, r, rt, data, actor):
                    T3("{course} · yeni tarixi kafedra ilə razılaşdırın", course=co["name"]), "/teacher")
 
 
-@R("POST", "/api/requests/{id:int}/action", roles=("office", "admin"))
+@R("POST", "/api/requests/{id:int}/action", roles=("office", "admin"), audit_read="request")
 def request_action(req):
     c, u = req.db, req.user
     r = _req_for(req, req.params["id"])
+    req.read_owner, req.read_object = r["student_id"], r["id"]
     b = req.json()
     action, note = b.get("action"), b.text("note", 1500)
     rt = get_type(c, r["type_code"])
@@ -426,10 +427,11 @@ def request_action(req):
     return get_request(req)
 
 
-@R("GET", "/api/requests/{id:int}/preview", roles=("office", "admin"))
+@R("GET", "/api/requests/{id:int}/preview", roles=("office", "admin"), audit_read="document")
 def request_preview(req):
     c = req.db
     r = _req_for(req, req.params["id"])
+    req.read_owner, req.read_object = r["student_id"], r["id"]
     rt = get_type(c, r["type_code"])
     if not rt.get("document"):
         raise HTTPError(400, "Bu müraciət üçün sənəd yaradılmır")
@@ -445,8 +447,8 @@ def request_preview(req):
 def office_summary(req):
     c = req.db
     types = {t["code"]: type_out(t) for t in rows(c, "SELECT * FROM request_types")}
-    scope = faculty_students(c, req.user)
-    allr = [req_out(c, r, types[r["type_code"]]) for r in rows(c, "SELECT * FROM requests") if scope is None or r["student_id"] in scope]
+    where, scope_args = scope_sql(req.user, "student_id")
+    allr = [req_out(c, r, types[r["type_code"]]) for r in rows(c, f"SELECT * FROM requests WHERE {where}", scope_args)]  # nosec B608
     week_ago = now() - timedelta(days=7)
     done = [r for r in allr if r["status"] == "ready"]
     hours = [(datetime.fromisoformat(r["updated_at"]) - datetime.fromisoformat(r["created_at"])).total_seconds() / 3600 for r in done]
@@ -465,11 +467,10 @@ def office_summary(req):
 @R("GET", "/api/documents", roles=STAFF)
 def documents(req):
     q = f"%{(req.query.get('q') or '').strip()}%"
-    scope = faculty_students(req.db, req.user)
-    found = rows(req.db, "SELECT d.id, d.kind, d.title, d.reg_no, d.verify_code, d.issued_at, d.status, d.revoked_reason, u.full_name holder, "
-                         "d.holder_id FROM documents d JOIN users u ON u.id=d.holder_id WHERE d.reg_no LIKE ? OR u.full_name LIKE ? "
-                         "OR d.title LIKE ? ORDER BY d.id DESC LIMIT 200", (q, q, q))
-    return [d for d in found if scope is None or d["holder_id"] in scope]
+    where, scope_args = scope_sql(req.user, "d.holder_id")
+    return rows(req.db, "SELECT d.id, d.kind, d.title, d.reg_no, d.verify_code, d.issued_at, d.status, d.revoked_reason, u.full_name holder, "
+                        "d.holder_id FROM documents d JOIN users u ON u.id=d.holder_id WHERE (d.reg_no LIKE ? OR u.full_name LIKE ? "
+                        f"OR d.title LIKE ?) AND {where} ORDER BY d.id DESC LIMIT 200", (q, q, q, *scope_args))  # nosec B608
 
 
 @R("POST", "/api/documents/{id:int}/revoke", roles=("office", "admin"))
@@ -477,7 +478,8 @@ def revoke(req):
     reason = req.json().text("reason")
     if not reason:
         raise HTTPError(400, "Ləğv səbəbini yazın")
-    if not row(req.db, "SELECT 1 FROM documents WHERE id=?", (req.params["id"],)):
+    d = row(req.db, "SELECT holder_id FROM documents WHERE id=?", (req.params["id"],))
+    if not d or not serves(req.db, req.user, d["holder_id"]):        # a dean's office: its own faculty only (Task 13)
         raise HTTPError(404, "Sənəd tapılmadı")
     req.db.execute("UPDATE documents SET status='revoked', revoked_reason=?, revoked_at=? WHERE id=?", (reason[:500], iso(now()), req.params["id"]))
     audit(req.db, req.user["id"], "document_revoke", "document", f"#{req.params['id']}: {reason[:80]}")

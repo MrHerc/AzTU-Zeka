@@ -1,0 +1,23 @@
+{
+ "Başlıqda fənn və ya qrup sütunu yoxdur": "В заголовке нет столбца дисциплины или группы",
+ "Tələbə sayı oxunmadı: {x}": "Не удалось прочитать число студентов: {x}",
+ "Saat oxunmadı: {x}": "Не удалось прочитать часы: {x}",
+ "Saatı olan sətirdə qrup yazılmayıb": "В строке с часами не указана группа",
+ "Müəllimin blokunda başlıq tapılmadı": "В блоке преподавателя не найден заголовок",
+ "Sütunun semestri tapılmadı: {x}": "Не найден семестр столбца: {x}",
+ "Forma №3 XLSX faylı olmalıdır": "Форма №3 должна быть файлом XLSX",
+ "Faylda Forma №3 tədris yükü tapılmadı": "В файле не найдена учебная нагрузка по Форме №3",
+ "Naməlum idxal növü": "Неизвестный вид импорта",
+ "Mənbə sisteminin adını yazın (--source)": "Укажите название системы-источника (--source)",
+ "Ekrandan ən çox 20 000 sətir idxal olunur; böyük faylı manage.py ilə idxal edin": "С экрана импортируется не более 20 000 строк; большой файл импортируйте через manage.py",
+ "Məlumat idxal yoxlanarkən dəyişdi; faylı yenidən yoxlayıb idxal edin": "Данные изменились во время проверки импорта; проверьте файл заново и импортируйте его",
+ "Eyni tədris vahidi formada təkrarlanır: saatlar toplandı ({x})": "Одна и та же учебная единица повторяется в форме: часы сложены ({x})",
+ "İdxal yoxlanarkən Zəka-da dəyişdirildi; mənbənin dəyəri yazılmadı": "Изменено в Zəka во время проверки импорта; значение источника не записано",
+ "Fayl CSV və ya XLSX olmalıdır": "Файл должен быть CSV или XLSX",
+ "Faylda sətir çox çoxdur": "В файле слишком много строк",
+ "XLSX faylını oxumaq mümkün olmadı": "Не удалось прочитать файл XLSX",
+ "CSV faylı UTF-8 kodlaşmasında olmalıdır": "Файл CSV должен быть в кодировке UTF-8",
+ "CSV faylını oxumaq mümkün olmadı": "Не удалось прочитать файл CSV",
+ "XLSX faylı çox böyükdür (boş xanalar da sayılır)": "Файл XLSX слишком большой (пустые ячейки тоже учитываются)",
+ "XLSX faylında məlumat yalnız bir vərəqdə olmalıdır": "В файле XLSX данные должны быть только на одном листе"
+}

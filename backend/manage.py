@@ -158,7 +158,7 @@ def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source:
     c = store.connect()
     try:
         report = importer.run(c, kind, source, path.name, path.read_bytes(), dry_run=dry_run, prefer_source=prefer_source)
-    except (OSError, tables.TableError) as ex:
+    except (OSError, tables.TableError, sqlite3.Error) as ex:
         print(f"error: {ex}", file=sys.stderr)
         return 2
     finally:
@@ -176,22 +176,28 @@ def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source:
 
 def run_activation_codes(faculty_code: str, out: Path) -> int:
     import csv
-    if out.exists():
-        print(f"error: {out} exists; codes are written once, to a new file", file=sys.stderr)
+    try:
+        store.init()
+    except migrate.MigrationError as ex:
+        print(f"error: {ex}", file=sys.stderr)
         return 2
-    store.init()
     c = store.connect()
     try:
         f = store.row(c, "SELECT id FROM faculties WHERE code=?", (faculty_code,))
         if not f:
             print(f"error: no faculty {faculty_code}", file=sys.stderr)
             return 2
+        try:
+            fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)      # private from the start; never overwrites
+        except FileExistsError:
+            print(f"error: {out} exists; codes are written once, to a new file", file=sys.stderr)
+            return 2
         items = importer.issue_codes(c, None, f["id"])
-        with open(out, "x", newline="", encoding="utf-8") as fh:
-            os.chmod(out, 0o600)
+        with os.fdopen(fd, "w", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh)
             w.writerow(["student_no", "full_name", "group", "username", "code", "expires_at"])
-            w.writerows([[x["student_no"], x["full_name"], x["group"], x["username"], x["code"], x["expires_at"]] for x in items])
+            w.writerows([[integration_rules.csv_cell(x[k]) for k in ("student_no", "full_name", "group", "username", "code", "expires_at")]
+                         for x in items])
         c.commit()                                     # the codes count only once the file holding them is written
     finally:
         c.close()

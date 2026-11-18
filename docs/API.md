@@ -81,6 +81,8 @@ Counters are kept per client address or per user in fixed windows; over the limi
 | 30 per minute | user | `GET /api/files/{id}/preview` |
 | 120 per minute | user | `POST /api/files/{id}/link`, `POST /api/documents/{id}/link`, `POST /api/syllabus/{cid}/link` |
 | 60 per minute | client address | `GET /verify/{code}` |
+| 100 wrong passwords per 15 minutes | client address | `POST /api/auth/login`: any account, checked before the password is hashed (generous, because a campus network puts many students behind one address) |
+| 30 per minute | client address | `GET /api/auth/sso/start`, `POST /api/auth/sso/link` |
 
 The client address is the connection's peer address; when the server runs with `ZEKA_PROXY_HOPS=N`, it is the N-th address from the right of `X-Forwarded-For`.
 
@@ -180,8 +182,11 @@ live in `backend/zeka/core/tenant.py`; `/api/grades` returns each course's `resu
 `academic_terms` rows, not settings.
 
 Activation codes: 12 base32 characters (60 bits) shown as `XXXX-XXXX-XXXX`; only their SHA-256 is stored; a code works
-once, only with its student number, until `activation_days` (setting, default 14); a new batch for a faculty revokes the
-unused codes of the old one. Wrong codes count per (student number, address) like wrong passwords: 10 in 15 minutes
+once, only with its student number, until `activation_days` (setting, default 14), and only for an active student account
+that has no way in yet: no password, no second factor and no linked provider identity (a temporary password, a role
+change or a deactivation after the batch makes its code useless). The session after activation has the same `scope`
+as after a password. A new batch for a faculty revokes the unused codes of the old one; CSV cells that start with
+`= + - @`, a tab or a carriage return get a leading `'`, so a spreadsheet does not run them. Wrong codes count per (student number, address) like wrong passwords: 10 in 15 minutes
 answer `429` for that address; a wrong attempt does not spend the code. `manage.py activation-codes --faculty CODE
 --out FILE` writes the same CSV (mode 600) for the dean's office.
 
@@ -191,7 +196,8 @@ Body `{"login": "<user name or e-mail>", "password": "<as typed>"}`. `200` with 
 `user.must_change` is true after a temporary password, and that session reaches only `/api/auth/*` and `/api/bootstrap`
 (other routes answer `403`). A wrong password, an unknown account and a disabled account all get the same `401`.
 Failures are counted per account and client (IPv6: its /64): 10 in 15 minutes block that client for that account for
-15 minutes, and 100 consecutive failures lock the account for 15 minutes. Both answer `429` with `Retry-After`, are
+15 minutes, and 100 consecutive failures lock the account for 15 minutes; a name that matches no account is counted and
+locked the same way, so the answer does not reveal whether it exists. Both answer `429` with `Retry-After`, are
 checked before the password is hashed, and are written to the audit log. Hashing: scrypt (n=2^15, r=8, p=1); a hash
 with older parameters is replaced at the next sign-in.
 
@@ -220,7 +226,9 @@ The started sign-in lives in `sso_pending` for 10 minutes and is bound to the br
 `zeka_sso` (path `/api/auth/sso`), so a callback link opened elsewhere, a changed `state` or a second use answers
 `sso=expired`. The ID token comes straight from the token endpoint over TLS and is checked per OIDC Core 3.1.3.7: `iss`,
 `aud` (exactly this client), `azp`, `exp` and `iat` with 60 s of leeway, `nonce`, and an `alg` other than `none`; the
-userinfo `sub` must equal the ID token's (5.3.2). A refusal is `sso=failed` and its reason is audited (`sso_refused`).
+userinfo `sub` must equal the ID token's (5.3.2); userinfo never adds `amr`/`acr`, and its `email_verified` counts only
+together with its own `email`. A refusal is `sso=failed` and its reason is audited (`sso_refused`); a failed discovery is
+remembered for 30 s, so a provider outage is not asked again on every start.
 
 An account is bound to the provider's `(iss, sub)` in `sso_identities`; later sign-ins find the account only through
 that row, so a changed e-mail at the provider never moves a sign-in. The first sign-in links a student account
@@ -319,7 +327,7 @@ Body: `{"ai": <bool>, "external": <bool>}`. `ai` counts as given unless it is `f
 
 **`PUT /api/me/prefs`.** Body fields, all optional: `theme` (`light` or `dark`), `lang` (`az`, `en`, `ru`), `sidebar` (`open` or `collapsed`), `tours` (list of completed tour keys, up to 120). Unknown or invalid values are ignored. Response: `{"prefs": {...}}`.
 
-**`GET /api/badges`.** Always `notifications` and `news` (unread news for the user's audience). Students also get `requests` (open requests), `absences` (unexcused absences) and `plan` (open support plans); teachers get `questions` (open forwarded questions); `office`, `leader` and `admin` get `office` (submitted requests). Teachers, `office` and `leader` get `radar` (high-risk students in their Radar scope). `support` is the number of open tickets for `office` and `admin`, and the number of the user's tickets waiting for their reply for everyone else.
+**`GET /api/badges`.** Always `notifications` and `news` (unread news for the user's audience). Students also get `requests` (open requests), `absences` (unexcused absences) and `plan` (open support plans); teachers get `questions` (open forwarded questions); `office`, `leader` and `admin` get `office` (submitted requests; a dean's office counts only its faculties). Teachers, `office` and `leader` get `radar` (high-risk students in their Radar scope). `support` is the number of open tickets for `office` and `admin`, and the number of the user's tickets waiting for their reply for everyone else.
 
 ```json
 {"notifications": 3, "news": 7, "questions": 3, "radar": 2, "support": 1}
@@ -645,7 +653,11 @@ After issue, the response includes the document:
 
 `GET /api/documents?q=<text>` searches registry number, holder name and title and returns `id`, `kind` (`request` or `certificate`), `title`, `reg_no`, `verify_code`, `issued_at`, `status` (`valid` or `revoked`), `revoked_reason` and `holder`.
 
-`POST /api/documents/{id}/revoke` takes `{"reason": "..."}` (required, up to 500 characters); `404` for an unknown document.
+`POST /api/documents/{id}/revoke` takes `{"reason": "..."}` (required, up to 500 characters); `404` for an unknown document
+and for a document of a student outside the dean's office's faculties. The document list, the request list, the office
+summary and the `office` badge apply the same faculty scope in SQL, before their limit. A request is read only by its
+student and by `office`, `leader` and `admin`; posting a message or an action on someone else's request, and opening a
+document preview, is an audited read.
 
 `POST /api/documents/{id}/link` returns a one-time URL, valid for five minutes; `404` when the document does not exist or belongs to someone else:
 

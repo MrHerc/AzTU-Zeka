@@ -288,15 +288,17 @@ def test_ten_wrong_codes_from_one_address_block_it_and_another_address_still_wor
     assert activate(app_db.client(), "A-1", codes["A-1"], ip="10.8.8.8").status == 200, "a wrong attempt does not spend the code"
 
 
-def test_a_new_batch_revokes_the_old_codes(app_db, codes):
+def test_a_new_batch_revokes_the_old_codes(app_db, codes, proxy):
     admin = app_db.client("admin")
-    c = db()
-    c.execute("UPDATE users SET password_hash=NULL WHERE username='akt.2'")
-    c.commit()
-    c.close()
+    assert imp(admin, "users", "n.csv", csv_bytes(HEADER, [["an", "akt.yeni", "Nərmin", "Əliyeva", "student", "A-N", "İT-25-1", ""]])).status == 200
     fid = admin.get("/api/directory/faculties?q=" + urllib.parse.quote("İTT")).json["items"][0]["id"]
-    new = {r["student_no"]: r["code"] for r in csv.DictReader(io.StringIO(admin.post("/api/admin/activation-codes", {"faculty_id": fid}).json["csv"]))}
+
+    def batch():
+        return {r["student_no"]: r["code"] for r in csv.DictReader(io.StringIO(admin.post("/api/admin/activation-codes", {"faculty_id": fid}).json["csv"]))}
+
+    old, new = batch()["A-N"], batch()
     assert "A-0" not in new, "an activated account gets no new code"
-    old = codes["A-2"]
-    assert activate(app_db.client(), "A-2", old, ip="10.7.7.7").status == 401
-    assert activate(app_db.client(), "A-2", new["A-2"], ip="10.7.7.7").status == 200
+    rows = q("SELECT revoked_at FROM activation_codes WHERE user_id=(SELECT id FROM users WHERE username='akt.yeni') ORDER BY id")
+    assert len(rows) == 2 and rows[0]["revoked_at"] and rows[1]["revoked_at"] is None
+    assert activate(app_db.client(), "A-N", old, ip="10.7.7.7").status == 401
+    assert activate(app_db.client(), "A-N", new["A-N"], ip="10.7.7.7").status == 200

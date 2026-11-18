@@ -51,7 +51,10 @@ route("/admin/directory", async (el, p, q) => {
     for (const n of refNames(e)) {
       if (refs[n]) continue;
       try { refs[n] = Object.fromEntries((await api.get(REF_URL[n] || `/api/directory/${n}?active=1`)).items.map((x) => [x.id, x])); }
-      catch { refs[n] = {}; }               // a list this role may not read: names show as #id
+      catch (err) {
+        if (err.status !== 403) toast(err.message, "err");   // a list this role may not read: names show as #id
+        refs[n] = {};
+      }
     }
   };
   const cell = (x, [k, , kind]) => {

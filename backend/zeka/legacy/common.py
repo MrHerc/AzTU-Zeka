@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 from . import engine, store
 from ..modules.identity import domain as identity
 from ..core import tenant
-from ..core.i18n import E
+from ..core.i18n import E, S
 from .store import J, iso, now, row, rows, setting
-from ..core.web import HTTPError, Router
+from ..core.web import HTTPError, Router, json_resp
 
 R = Router()
 COOKIE = "zeka_sid"
@@ -59,6 +59,23 @@ def start_session(req, u, how: str, scope: str = "full") -> tuple[str, list]:
               (identity.session_hash(sid), u["id"], iso(t), iso(t), scope, req.ip, (req.headers.get("User-Agent") or "")[:200]))
     store.audit(c, u["id"], "login", "session", how)
     return sid, [session_cookie(sid, max_age=session_limits(c, u["role"])[1])]
+
+
+PASSWORD_INPUT_MAX = 1024          # longer input is refused before any hashing
+
+
+def password_field(body, key: str) -> str:
+    """A password exactly as typed: no trimming (spaces are allowed characters)."""
+    v = body.get(key)
+    if not isinstance(v, str) or len(v) > PASSWORD_INPUT_MAX:
+        raise HTTPError(400, "Parol düzgün göndərilməyib")
+    return v
+
+
+def blocked_response(req, seconds: int):
+    """429 with Retry-After for a throttled sign-in; returned, not raised, so the failure count commits."""
+    return json_resp({"error": S("Çox sayda uğursuz cəhd. {n} saniyədən sonra yenidən cəhd edin.", req.lang, n=seconds)},
+                     429, headers=[("Retry-After", str(seconds))])
 
 
 def rotate_session(req) -> list:
@@ -121,9 +138,13 @@ def before(req, roles, auth):
     if not req.user and req.path.startswith(("/doc/", "/api/files/", "/syllabus/")) and req.query.get("k"):
         req.user = _key_user(req)
     scope = req.user.get("session_scope") if req.user else None
-    if scope in identity.SCOPE_OPEN and not req.path.startswith(identity.SCOPE_OPEN[scope]):
+    pending = scope in identity.SCOPE_OPEN and not req.path.startswith(identity.SCOPE_OPEN[scope])
+    must_change = bool(req.user and req.user["must_change"] and not req.path.startswith(MUST_CHANGE_OPEN))
+    if (pending or must_change) and not auth:
+        req.user = None                         # a public page or sign-in: the half-finished session simply does not count
+    elif pending:
         raise HTTPError(403, "Əvvəlcə ikinci addımı tamamlayın")
-    if req.user and req.user["must_change"] and not req.path.startswith(MUST_CHANGE_OPEN):
+    elif must_change:
         raise HTTPError(403, "Əvvəlcə müvəqqəti parolu dəyişin")
     if auth and not req.user:
         raise HTTPError(401, "Daxil olmamısınız")
@@ -149,19 +170,23 @@ def after(req, ok):
 
 
 # ---------------------------------------------------------------- dean's office scope (Task 13, slice 2)
-def faculty_students(c, u) -> set[int] | None:
-    """The students an ``office`` user serves: those of the faculties in its grants. None: no limit (leader, admin)."""
+OFFICE_SCOPE = ("{col} IN (SELECT s.id FROM users s JOIN study_groups sg ON sg.id=s.group_id WHERE sg.faculty_id IN "
+                "(SELECT scope_id FROM role_grants WHERE user_id=? AND role='office' AND scope_type='faculty'))")
+
+
+def scope_sql(u, col: str) -> tuple[str, tuple]:
+    """A WHERE condition limiting ``col`` (a student id) to the students ``u`` serves, applied before any LIMIT."""
     if u["role"] != "office":
-        return None
-    return {r["id"] for r in rows(c, "SELECT u.id FROM users u JOIN study_groups g ON g.id=u.group_id WHERE g.faculty_id IN "
-                                     "(SELECT scope_id FROM role_grants WHERE user_id=? AND role='office' AND scope_type='faculty')",
-                                  (u["id"],))}
+        return "1=1", ()
+    return OFFICE_SCOPE.format(col=col), (u["id"],)
 
 
 def serves(c, u, student_id) -> bool:
-    """Whether a staff user may see this student's requests, documents and files."""
-    scope = faculty_students(c, u)
-    return scope is None or student_id in scope
+    """Whether a staff user may see this student's requests, documents and files (one indexed lookup)."""
+    if u["role"] != "office":
+        return True
+    return row(c, "SELECT 1 FROM users s JOIN study_groups sg ON sg.id=s.group_id JOIN role_grants g ON g.scope_id=sg.faculty_id "
+                  "WHERE s.id=? AND g.user_id=? AND g.role='office' AND g.scope_type='faculty' LIMIT 1", (student_id, u["id"])) is not None
 
 
 def office_for(c, student_id) -> list[int]:
@@ -188,7 +213,7 @@ def _key_user(req):
     _own_commit(req)                                # the key is spent even if this request fails later
     if not entry or entry["expires_at"] < iso(now()) or entry["kind"] != kind or str(entry["obj_id"]) != req.path.rstrip("/").rsplit("/", 1)[-1]:
         return None
-    return row(req.db, "SELECT * FROM users WHERE id=?", (entry["user_id"],))
+    return row(req.db, "SELECT * FROM users WHERE id=? AND status='active'", (entry["user_id"],))
 
 
 def ctx(c):

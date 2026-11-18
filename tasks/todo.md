@@ -412,8 +412,9 @@ davamiyyət qaydası sxemdən gəlir. Edilməyib: loqonun yüklənməsi (hələ 
 
 ## Checkpoint B: Task 10–17 sonra
 
-- [ ] Prod rejimində parolsuz yol yoxdur; rol × marşrut matrisi yaşıl
-- [ ] 10 000 tələbə idxal olunur və aktivləşdirmə kodu ilə öz hesabına girir
+- [x] Prod rejimində parolsuz yol yoxdur; rol × marşrut matrisi yaşıl (`test_modes.py`, `test_authz_matrix.py`, 158 marşrut)
+- [x] 10 000 tələbə idxal olunur və aktivləşdirmə kodu ilə öz hesabına girir (`test_import.py`: 10k 0,33 s, kilid ~200 ms)
+- [x] Yeddi rəyçinin baxışı, hər tapıntının ayrıca təkzibi, yalnız təsdiqlənənlərin düzəlişi: `docs/review/checkpoint-b-2026-11-18.md`, reqressiya testləri `tests/integration/test_checkpoint_b.py`
 - [ ] Sınaq nüsxəsi sabit adla açılır: `curl https://<ad>/healthz` (`-k` olmadan) sahibin SEB kompüterindən 200 qaytarır; sintetik məlumatla işləyir; hər yoxlama nöqtəsində push-dan sonra `docs/runbooks/deploy.md` ilə yenilənir. Ad saat 22-yə hazır deyilsə: Task 18, 19, 28-in əl yoxlamaları LAN-da http ilə (`seb://`) aparılır, `sebs://` sınağı və Google Calendar abunəliyi Task 44-ün meyarına yazılır
 - [ ] Sahib rol cədvəlini və `qa.moderate`, `community.moderate` bölgüsünü təsdiqləyib (Task 13; SPEC Open Questions 24)
 - [ ] Rəy axını keçib; sahiblə baxış

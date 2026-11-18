@@ -31,6 +31,8 @@ SCOPES = ("openid", "email", "profile")
 # Claims userinfo may not override: they come from the checked ID token only.
 ID_TOKEN_ONLY = ("iss", "sub", "aud", "azp", "exp", "iat", "nonce", "amr", "acr", "auth_time")
 _CACHE: dict[str, tuple[float, dict]] = {}       # per worker: issuer -> (valid until, discovery document)
+_FAILED: dict[str, tuple[float, str]] = {}       # per worker: issuer -> (retry after, reason) of a failed discovery
+FAILED_TTL = 30
 
 
 class SSOError(Exception):
@@ -109,6 +111,20 @@ def discover(issuer: str) -> dict:
     hit = _CACHE.get(issuer)
     if hit and hit[0] > time.monotonic():
         return hit[1]
+    failed = _FAILED.get(issuer)
+    if failed and failed[0] > time.monotonic():
+        raise SSOError(failed[1])
+    try:
+        doc = _checked(issuer)
+    except SSOError as ex:
+        _FAILED[issuer] = (time.monotonic() + FAILED_TTL, str(ex))
+        raise
+    _FAILED.pop(issuer, None)
+    _CACHE[issuer] = (time.monotonic() + DISCOVERY_TTL, doc)
+    return doc
+
+
+def _checked(issuer: str) -> dict:
     doc = _call(issuer.rstrip("/") + "/.well-known/openid-configuration")
     if doc.get("issuer") != issuer:
         raise SSOError("discovery issuer")
@@ -118,7 +134,6 @@ def discover(issuer: str) -> dict:
     for key, value in doc.items():
         if (key.endswith("_endpoint") or key == "jwks_uri") and url_problem(value):
             raise SSOError(f"{key} scheme")
-    _CACHE[issuer] = (time.monotonic() + DISCOVERY_TTL, doc)
     return doc
 
 
@@ -162,5 +177,7 @@ def exchange(cfg: dict, doc: dict, code: str, verifier: str, nonce: str, redirec
         extra = {k: v for k, v in info.items() if k not in ID_TOKEN_ONLY}
         if "email" in extra:                          # an address and its verification come from the same answer
             extra.setdefault("email_verified", False)
+        else:
+            extra.pop("email_verified", None)
         claims = {**claims, **extra}
     return claims

@@ -1,4 +1,6 @@
 """A dean's office sees its own faculty; reading another person's data is audited (tasks/todo.md, Task 13, slice 2)."""
+import base64
+
 import pytest
 
 from zeka.legacy import store
@@ -25,9 +27,10 @@ def setting(app_db):
     finally:
         c.close()
     student = app_db.client("student")
-    fid = student.post("/api/files", {"filename": "arayis.txt", "content_b64": "YXJheWlz"})
-    return {"faculty_b": fb, "aysel": aysel, "request": rid, "document": did, "office": office,
-            "file": fid.json["id"] if fid.status == 200 else None}
+    pdf = base64.b64encode(store.demo_pdf(["DEMO ARAYIS"])).decode()
+    fid = student.post("/api/files", {"filename": "arayis.pdf", "content_b64": pdf})
+    assert fid.status == 200, fid.text
+    return {"faculty_b": fb, "aysel": aysel, "request": rid, "document": did, "office": office, "file": fid.json["id"]}
 
 
 def test_a_dean_s_office_gets_404_for_another_faculty_s_student(app_db, setting):
@@ -36,8 +39,7 @@ def test_a_dean_s_office_gets_404_for_another_faculty_s_student(app_db, setting)
     assert setting["request"] not in {r["id"] for r in office.get("/api/requests?status=all").json}
     assert office.get(f"/doc/{setting['document']}").status == 404
     assert setting["document"] not in {d["id"] for d in office.get("/api/documents").json}
-    if setting["file"]:
-        assert office.get(f"/api/files/{setting['file']}").status == 404
+    assert office.get(f"/api/files/{setting['file']}").status == 404
     assert office.get("/api/requests?status=all").json, "its own faculty's requests are still there"
 
 
@@ -49,6 +51,7 @@ def test_a_grant_for_the_other_faculty_opens_it(app_db, setting):
     try:
         assert office.get(f"/api/requests/{setting['request']}").status == 200
         assert office.get(f"/doc/{setting['document']}").status == 200
+        assert office.get(f"/api/files/{setting['file']}").status == 200
     finally:
         admin.delete(f"/api/admin/users/{setting['office']}/roles/{gid}")
 

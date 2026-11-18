@@ -1,0 +1,23 @@
+{
+ "Başlıqda fənn və ya qrup sütunu yoxdur": "The header has no course or group column",
+ "Tələbə sayı oxunmadı: {x}": "The number of students could not be read: {x}",
+ "Saat oxunmadı: {x}": "The hours could not be read: {x}",
+ "Saatı olan sətirdə qrup yazılmayıb": "A row with hours names no group",
+ "Müəllimin blokunda başlıq tapılmadı": "No header was found in the teacher's block",
+ "Sütunun semestri tapılmadı: {x}": "The column's semester was not found: {x}",
+ "Forma №3 XLSX faylı olmalıdır": "Form No. 3 must be an XLSX file",
+ "Faylda Forma №3 tədris yükü tapılmadı": "No Form No. 3 teaching load was found in the file",
+ "Naməlum idxal növü": "Unknown import kind",
+ "Mənbə sisteminin adını yazın (--source)": "Enter the name of the source system (--source)",
+ "Ekrandan ən çox 20 000 sətir idxal olunur; böyük faylı manage.py ilə idxal edin": "The screen imports at most 20,000 rows; import a larger file with manage.py",
+ "Məlumat idxal yoxlanarkən dəyişdi; faylı yenidən yoxlayıb idxal edin": "The data changed while the import was being checked; check the file again and import it",
+ "Eyni tədris vahidi formada təkrarlanır: saatlar toplandı ({x})": "The same teaching unit repeats in the form: its hours were added up ({x})",
+ "İdxal yoxlanarkən Zəka-da dəyişdirildi; mənbənin dəyəri yazılmadı": "Changed in Zəka while the import was being checked; the source value was not written",
+ "Fayl CSV və ya XLSX olmalıdır": "The file must be CSV or XLSX",
+ "Faylda sətir çox çoxdur": "The file has too many rows",
+ "XLSX faylını oxumaq mümkün olmadı": "The XLSX file could not be read",
+ "CSV faylı UTF-8 kodlaşmasında olmalıdır": "The CSV file must be in UTF-8 encoding",
+ "CSV faylını oxumaq mümkün olmadı": "The CSV file could not be read",
+ "XLSX faylı çox böyükdür (boş xanalar da sayılır)": "The XLSX file is too large (empty cells count too)",
+ "XLSX faylında məlumat yalnız bir vərəqdə olmalıdır": "The XLSX file must hold its data on one sheet only"
+}
