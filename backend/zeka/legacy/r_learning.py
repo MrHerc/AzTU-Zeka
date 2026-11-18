@@ -14,6 +14,7 @@ from .common import (R, check_limit, cite_list, course_access, history, kb_cite_
 from ..core import tenant
 from ..core.i18n import E, S, S_, T3
 from ..modules.directory import service as directory
+from ..modules.journal import service as journal
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows, setting
 from ..core.web import HTTPError
@@ -68,18 +69,23 @@ def week_timetable(c, course_ids):
 
 
 def att_summary(c, uid, course_id):
+    """Lesson counts of the student's records, and the journal's standing (Task 20): planned and missed academic hours,
+    the share, the effective limit and the status; the lessons-based ``limit`` and ``counted`` stay for older screens."""
     r = row(c, "SELECT COUNT(*) total, SUM(a.status='present') present, SUM(a.status='late') late, SUM(a.status='absent') absent, "
                "SUM(a.status='excused') excused FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE a.user_id=? AND l.course_id=?",
             (uid, course_id))
-    weekly = row(c, "SELECT COUNT(*) n FROM timetable WHERE course_id=?", (course_id,))["n"]
-    rules = tenant.load(c)["attendance"]                     # Task 17: the university's limit, not a constant
-    planned = weekly * tenant.teaching_weeks(directory.current_term(c))
+    rules = tenant.load(c)["attendance"]
     out = {k: r[k] or 0 for k in ("total", "present", "late", "absent", "excused")}
+    st = next(iter(journal.course_standing(c, course_id, uid)), None)
+    planned = st["planned_lessons"] if st else 0
+    out.update(st or {"planned_hours": 0, "missed_hours": 0, "allowed_hours": 0, "percent": 0.0, "status": "normal", "as_of": None,
+                      "limit_percent": rules["limit_percent"], "unexcused_hours": 0, "excused_hours": 0})
     out["planned"] = planned
-    out["limit_percent"] = rules["limit_percent"]
-    out["limit"] = int(planned * rules["limit_percent"] / 100) if planned else None     # no term yet: unknown, not 0
+    out["limit"] = int(planned * out["limit_percent"] / 100) if planned else None     # no term yet: unknown, not 0
     out["counted"] = out["absent"] + (out["excused"] if rules["excused_counts_toward_limit"] else 0)
     out["rate"] = round(100 * (out["present"] + out["late"]) / out["total"]) if out["total"] else 100
+    for k in ("student_id", "full_name", "student_no", "group", "planned_lessons", "opening_id"):
+        out.pop(k, None)
     return out
 
 

@@ -17,6 +17,7 @@ import "./admin-directory.js";
 import "./admin-import.js";
 import "./admin-settings.js";
 import "./timetable-admin.js";
+import "./journal.js";
 import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;
@@ -200,7 +201,9 @@ async function render() {
   el.tabIndex = -1;
   const swap = () => { content.replaceChildren(el); mount(el, loading()); };
   if (document.startViewTransition && !REDUCED && content.firstElementChild) {
-    try { await document.startViewTransition(swap).updateCallbackDone; } catch { swap(); }
+    const vt = document.startViewTransition(swap);
+    vt.ready.catch(() => {}); vt.finished.catch(() => {});      // a newer navigation skips this one: not an error to show
+    try { await vt.updateCallbackDone; } catch { swap(); }
   } else swap();
   $$(".modal-back, .palette-back").forEach((m) => m.remove());
   clearHint();

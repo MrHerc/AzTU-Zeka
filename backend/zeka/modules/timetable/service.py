@@ -145,13 +145,15 @@ def generate(c, user, term_id: int | None) -> tuple[str, dict | None]:
 
 
 # ---------------------------------------------------------------- one lesson
+def audience(c, unit_ids: list[int]) -> dict[int, tuple[list[int], int | None]]:
+    """For other modules (the journal, Task 20): {unit id: (its group ids, its subgroup)}."""
+    groups, subs = repo.groups_of_units(c, unit_ids), repo.unit_subgroups(c, unit_ids)
+    return {u: (groups.get(u, []), subs.get(u)) for u in unit_ids}
+
+
 def _students(c, les: dict, day: str) -> list[int]:
-    enrolled = repo.enrolled(c, les["course_id"], day)
-    if not les.get("unit_id"):
-        return [s["id"] for s in enrolled]
-    u = repo.unit(c, les["unit_id"])
-    groups = repo.groups_of_units(c, [les["unit_id"]])[les["unit_id"]]
-    return [s["id"] for s in enrolled if domain.attends(s, groups, u["subgroup"] if u else None)]
+    aud = audience(c, [les["unit_id"]]) if les.get("unit_id") else {}
+    return [s["id"] for s in repo.enrolled(c, les["course_id"], day) if domain.on_list(s, {**les, "day": day}, aud)]
 
 
 def _tell(c, les: dict, day: str, title, body: str):

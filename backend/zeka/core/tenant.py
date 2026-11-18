@@ -20,7 +20,7 @@ DEFAULTS: dict = {
                 "exam": {"name": "İmtahan", "max": 50, "min": 0}, "pass_mark": 51,
                 "scale": [["A", 91], ["B", 81], ["C", 71], ["D", 61], ["E", 51]]},
     "attendance": {"limit_percent": 25, "excused_counts_toward_limit": True, "points_rule": []},
-    "journal": {"cutover_date": None},
+    "journal": {"cutover_date": None, "edit_hours": 48},   # a teacher corrects a lesson for 48 h after it ends (Task 20)
     "calendar": {"lesson_times": [], "holidays": []},
     "registry": {"prefix": "DOC"},
 }
@@ -107,6 +107,9 @@ def _attendance(a: dict) -> dict | None:
 def _journal(j: dict) -> dict | None:
     if j["cutover_date"] is not None and not _iso(j["cutover_date"]):
         return E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field="cutover_date")
+    h = j["edit_hours"]
+    if type(h) is not int or not 1 <= h <= 720:
+        return E("Düzəliş pəncərəsi 1 ilə 720 saat arasında olmalıdır")
     return None
 
 

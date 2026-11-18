@@ -110,6 +110,18 @@ def attends(student: dict, unit_groups: list[int], unit_subgroup: int | None) ->
     return (not unit_groups or student["group_id"] in unit_groups) and (unit_subgroup is None or student["subgroup"] == unit_subgroup)
 
 
+def on_list(student: dict, lesson: dict, audience: dict[int, tuple[list[int], int | None]]) -> bool:
+    """Whether a student (an enrolment: group_id, subgroup, begin_date, end_date) is on a lesson's list: the enrolment is
+    in force on the lesson's day and the student attends the lesson's unit. A lesson without a unit: every enrolled student."""
+    day = lesson["day"]
+    if (student.get("begin_date") and student["begin_date"] > day) or (student.get("end_date") and student["end_date"] <= day):
+        return False
+    if not lesson.get("unit_id"):
+        return True
+    groups, subgroup = audience.get(lesson["unit_id"], ([], None))
+    return attends(student, groups, subgroup)
+
+
 # ---------------------------------------------------------------- iCalendar (RFC 5545)
 def _text(v) -> str:
     out = str(v or '')

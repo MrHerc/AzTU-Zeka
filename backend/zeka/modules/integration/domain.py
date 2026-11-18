@@ -44,6 +44,11 @@ COLUMNS: dict[str, dict[str, tuple[str, ...]]] = {
     "rooms": {"sourcedId": ("sourcedid", "mənbə id"), "identifier": ("identifier", "kod"), "number": ("number", "nömrə", "otaq"),
               "name": ("name", "ad"), "building": ("building", "korpus"), "floor": ("floor", "mərtəbə"), "kind": ("kind", "növ"),
               "capacity": ("capacity", "tutum", "yer sayı"), "accessible": ("accessible", "əlçatan")},
+    # Task 20: an opening balance per student, course and term; the source key is the three source ids together
+    "attendance-opening": {"termSourcedId": ("termsourcedid", "semestr"), "courseSourcedId": ("coursesourcedid", "fənn"),
+                           "userSourcedId": ("usersourcedid", "tələbə"), "heldHours": ("heldhours", "keçilmiş saat"),
+                           "unexcusedHours": ("unexcusedhours", "üzrsüz qayıb saatı"), "excusedHours": ("excusedhours", "üzrlü qayıb saatı"),
+                           "asOf": ("asof", "tarix", "kəsid tarixi")},
 }
 REQUIRED = {
     "users": ("sourcedId", "username", "givenName", "familyName", "role"),
@@ -54,6 +59,7 @@ REQUIRED = {
     "enrollments": ("sourcedId", "classSourcedId", "userSourcedId", "role"),
     "timetable": ("sourcedId", "courseSourcedId", "weekday", "start", "end"),
     "rooms": ("sourcedId", "identifier", "number", "building"),
+    "attendance-opening": ("termSourcedId", "courseSourcedId", "userSourcedId", "heldHours", "unexcusedHours", "excusedHours", "asOf"),
 }
 KINDS = (*COLUMNS, "teaching-load")
 IMPORT_ROLES = {"student": "student", "tələbə": "student", "teacher": "teacher", "müəllim": "teacher"}
@@ -135,6 +141,8 @@ def _field(kind: str, name: str, v) -> tuple[object, dict | None]:
 
 def draft(kind: str, cells: dict[str, str]) -> tuple[dict, dict | None]:
     """The draft of one row of a kind (everything but teaching-load), or the reason it is refused."""
+    if kind == "attendance-opening":
+        return _opening(cells)
     sid = cells.get("sourcedId", "")
     if not SOURCE.fullmatch(sid):
         return {}, E("sourcedId 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır")
@@ -268,6 +276,28 @@ def _room(x: dict) -> tuple[dict, dict | None]:
     if accessible not in YES | NO:
         return {}, E("«{field}» sahəsində bəli və ya xeyr seçin", field="accessible")
     out["accessible"] = int(accessible in YES)
+    return out, None
+
+
+def opening_key(cells: dict) -> str:
+    """The source key of an opening-balance row: its term, course and student source ids."""
+    return "|".join(cells.get(k, "") for k in ("termSourcedId", "courseSourcedId", "userSourcedId"))
+
+
+def _opening(x: dict) -> tuple[dict, dict | None]:
+    for k in ("termSourcedId", "courseSourcedId", "userSourcedId"):
+        if not SOURCE.fullmatch(x.get(k, "")):
+            return {}, E("«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır", field=k)
+    out: dict = {"_term": x["termSourcedId"], "_course": x["courseSourcedId"], "_user": x["userSourcedId"]}
+    for name, col in (("held_hours", "heldHours"), ("unexcused_hours", "unexcusedHours"), ("excused_hours", "excusedHours")):
+        out[name] = an_int(x.get(col, ""), 0, 5000)
+        if out[name] is None:
+            return {}, E("«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır", field=col, lo=0, hi=5000)
+    if out["unexcused_hours"] + out["excused_hours"] > out["held_hours"]:
+        return {}, E("Buraxılmış saatlar keçilmiş saatlardan çox ola bilməz")
+    out["as_of"] = a_date(x.get("asOf", ""))
+    if not out["as_of"]:
+        return {}, E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field="asOf")
     return out, None
 
 

@@ -319,6 +319,9 @@ export async function schedulePage(el, role) {
 route("/student/schedule", (el) => schedulePage(el, "student"));
 
 // ---------------------------------------------------------------- attendance
+const standing = (c) => ({ warning: html`<span class="badge b-amber">${t("Həddə yaxındır")}</span>`, not_admitted: html`<span class="badge b-red">${t("İmtahana buraxılmır")}</span>`,
+  incomplete: html`<span class="badge b-gray">${t("Məlumat natamam")}</span>` })[c.status] || "";
+
 route("/student/attendance", async (el) => {
   mount(el, loading());
   let a;
@@ -331,7 +334,9 @@ route("/student/attendance", async (el) => {
     <div class="grid g-3" data-tour="att-courses">${a.courses.map((c) => html`<div class="card pad slide-up"><div class="row"><span class="course-ic sm2" style="background:${c.color}">${c.code.split("-")[0]}</span>
       <b class="small grow">${c.name}</b><b style="color:${c.rate < 80 ? "var(--red)" : "var(--green)"}">${num(c.rate)}%</b></div>
       <div class="row wrap mt small"><span class="badge b-green">${t("{n} iştirak", { n: c.present })}</span><span class="badge b-red">${t("{n} qayıb", { n: c.absent })}</span><span class="badge b-blue">${t("{n} üzrlü", { n: c.excused })}</span><span class="badge b-amber">${t("{n} gecikmə", { n: c.late })}</span></div>
-      <div class="row between tiny muted mt">${t("Limitdən istifadə: {a} / {b} dərs", { a: c.counted, b: c.limit ?? "—" })}<span>${t("{n} dərs keçirilib", { n: c.total })}</span></div>${progress(c.limit ? (100 * c.counted) / c.limit : 0, "coral")}</div>`)}</div>
+      <div class="row between tiny muted mt">${t("Buraxılmış: {a} / {b} saat ({p}%)", { a: c.missed_hours, b: c.planned_hours || "—", p: c.percent })}${standing(c)}</div>
+      ${progress(c.allowed_hours ? Math.min(100, (100 * c.missed_hours) / c.allowed_hours) : 0, "coral")}
+      <div class="tiny muted mt">${t("Hədd: {p}% ({n} saat)", { p: c.limit_percent, n: c.allowed_hours })}${c.as_of ? " · " + t("{d} tarixinədək köhnə sistemdən", { d: c.as_of }) : ""}</div></div>`)}</div>
     <div class="card mt" data-tour="att-log"><div class="card-h"><h3>${ic("list", 17)} ${t("Qayıblar və gecikmələr")}</h3></div>
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Tarix")}</th><th>${t("Fənn")}</th><th>${t("Dərs")}</th><th>${t("Status")}</th><th></th></tr></thead><tbody>
       ${a.records.length ? a.records.map((r) => html`<tr><td class="nowrap"><b>${fmtDate(r.day)}</b> <span class="tiny muted">${r.start}</span></td>

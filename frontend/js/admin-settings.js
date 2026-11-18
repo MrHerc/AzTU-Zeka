@@ -19,7 +19,7 @@ const READ = {
     scale: lines($("[name=g-scale]", w).value).map((x) => { const [l, lo] = x.split(/\s+/); return [l, num(lo)]; }) }),
   attendance: (w) => ({ limit_percent: num($("[name=a-limit]", w).value), excused_counts_toward_limit: $("[name=a-excused]", w).checked,
     points_rule: lines($("[name=a-rule]", w).value).map((x) => x.split(/[\s→>-]+/).filter(Boolean).map(num)) }),
-  journal: (w) => ({ cutover_date: $("[name=j-cutover]", w).value || null }),
+  journal: (w) => ({ cutover_date: $("[name=j-cutover]", w).value || null, edit_hours: Number($("[name=j-hours]", w).value) }),
   calendar: (w) => ({ lesson_times: lines($("[name=c-times]", w).value).map((x) => x.split(/\s*[-–]\s*/)), holidays: lines($("[name=c-holidays]", w).value) }),
   registry: (w) => ({ prefix: $("[name=r-prefix]", w).value.trim() }),
   sessions: (w) => ({ staff: { idle_minutes: num($("[name=s-staff-idle]", w).value), absolute_hours: num($("[name=s-staff-abs]", w).value) },
@@ -57,7 +57,8 @@ function view(s) {
       ${area("a-rule", t("Davamiyyət balı cədvəli"), a.points_rule.map((x) => `${x[0]} ${x[1]}`).join("\n"),
         t("Hər sətirdə: buraxılmış faiz (bu həddədək) və bal. Boş qalsa, bal iştirak faizinə mütənasibdir."))}`)}
     ${card("journal", "book", t("Elektron jurnal"), html`${field("j-cutover", t("Kəsid tarixi: jurnalın Zəka-da başladığı gün"), s.journal.cutover_date, "date")}
-      <p class="small muted" style="margin:0">${t("Boşdursa və ya cari tədris dövründən kənardırsa, kəsid yoxdur.")}</p>`)}
+      <p class="small muted" style="margin:0">${t("Boşdursa və ya cari tədris dövründən kənardırsa, kəsid yoxdur.")}</p>
+      ${field("j-hours", t("Müəllimin düzəliş pəncərəsi (dərs bitəndən sonra, saat)"), s.journal.edit_hours ?? 48, "number")}`)}
     ${card("calendar", "calendar", t("Dərs saatları və bayramlar"), html`${area("c-times", t("Dərs saatları"), cal.lesson_times.map((x) => x.join("-")).join("\n"), t("Hər sətirdə: 09:00-10:20"))}
       ${area("c-holidays", t("Bayram günləri"), cal.holidays.join("\n"), t("Hər sətirdə bir tarix: İİİİ-AA-GG"))}`)}
     ${card("registry", "file", t("Sənəd reyestri"), html`${field("r-prefix", t("Reyestr prefiksi"), s.registry.prefix)}

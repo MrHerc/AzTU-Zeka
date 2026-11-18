@@ -357,6 +357,66 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/journal/courses/{id:int}/lessons": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/journal/courses/{id:int}/standing": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/journal/lessons": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/journal/lessons/{id:int}": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/lessons": {
   "access": [
    "academic_office",
@@ -1097,6 +1157,16 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/journal/lessons/{id:int}/teacher": {
+  "access": [
+   "admin",
+   "dept_head"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "journal.correct",
+  "slow": false
+ },
  "POST /api/lessons/{id:int}/cancel": {
   "access": [
    "academic_office",
@@ -1443,6 +1513,31 @@
   "audit_read": null,
   "demo": false,
   "perm": "directory.manage",
+  "slow": false
+ },
+ "PUT /api/journal/lessons/{id:int}/attendance": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "PUT /api/journal/openings/{id:int}": {
+  "access": [
+   "admin",
+   "dept_head"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "journal.correct",
   "slow": false
  },
  "PUT /api/me/prefs": {

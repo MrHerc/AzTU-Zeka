@@ -112,6 +112,15 @@ def set_lesson(c, lid: int, values: dict, stamp: str):
               (*values.values(), stamp, lid))
 
 
+def unit_subgroups(c, unit_ids: list[int]) -> dict[int, int | None]:
+    out: dict[int, int | None] = {}
+    for i in range(0, len(unit_ids), 500):
+        part = unit_ids[i:i + 500]
+        for r in rows(c, f"SELECT id, subgroup FROM teaching_units WHERE id IN ({','.join('?' * len(part))})", tuple(part)):  # nosec B608
+            out[r["id"]] = r["subgroup"]
+    return out
+
+
 def enrolled(c, course_id: int, day: str) -> list[dict]:
     return rows(c, "SELECT u.id, COALESCE(e.group_id, u.group_id) group_id, e.subgroup FROM enrollments e JOIN users u ON u.id=e.user_id "
                    "WHERE e.course_id=? AND u.status='active' AND (e.begin_date IS NULL OR e.begin_date<=?) "

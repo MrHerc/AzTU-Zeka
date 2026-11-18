@@ -37,7 +37,10 @@ def clients(app_db):
     out["admin"].post(f"/api/admin/users/{out['office'].user['id']}/roles", {"role": "academic_office"})
     registrar = app_db.client("office")            # a granted role (Task 13): the academic office's routes are fuzzed too
     assert registrar.post("/api/me/role", {"role": "academic_office"}).status == 200
-    return {**out, "academic_office": registrar}
+    out["admin"].post(f"/api/admin/users/{out['teacher'].user['id']}/roles", {"role": "dept_head"})
+    head = app_db.client("teacher")                # and a department head's (Task 20)
+    assert head.post("/api/me/role", {"role": "dept_head"}).status == 200
+    return {**out, "academic_office": registrar, "dept_head": head}
 
 
 @pytest.mark.parametrize("method, path, role, fields", _routes())

@@ -163,6 +163,13 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/lessons/{id}/move` | `timetable.manage` | `{"day", "start", "end", "room"?}`; checked for clashes on that day; the students are told |
 | `GET` / `POST` / `DELETE` | `/api/me/calendar` | any | Whether one has a calendar feed / a new secret feed address (shown once; the old one stops) / revoke it |
 | `GET` | `/ical/{token}` | public (the token) | The feed as iCalendar (RFC 5545), lessons from 60 days back to 200 ahead; 30 per minute per address |
+| `GET` | `/api/journal/lessons?day=` | staff | The user's own lessons (the last two weeks, or one day) with how many marks they have (Task 20) |
+| `GET` | `/api/journal/courses/{id}/lessons` | the course's teachers, correctors, readers | The course's lessons up to today |
+| `GET` | `/api/journal/lessons/{id}` | the lesson's teacher, the course's teacher, correctors, admin, academic office, leadership | The list with marks and what the user may do |
+| `PUT` | `/api/journal/lessons/{id}/attendance` | as above | `{"marks": {"<student id>": "absent" \| "late" \| "present"}, "reason"?}`: everyone else on the list is present |
+| `POST` | `/api/journal/lessons/{id}/teacher` | `journal.correct` | A substitute teacher for an upcoming lesson: `{"teacher_id", "reason"}` (audited) |
+| `GET` | `/api/journal/courses/{id}/standing` | the course's teachers, correctors, admin, academic office, leadership, dean's office (its faculty) | Each student's planned and missed hours, share and status |
+| `PUT` | `/api/journal/openings/{id}` | `journal.correct` | Correct an opening balance with a reason |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
 
 ### Bulk import (Task 16)
@@ -219,6 +226,32 @@ The calendar feed is a secret address `/ical/<token>`; only the token's SHA-256 
 (as above) or a teacher's own, with `DTSTART;TZID=Asia/Baku` (the zone of `ZEKA_TZ`, with its `VTIMEZONE`), `LOCATION`,
 and `STATUS:CANCELLED` for a cancelled lesson; a calendar that subscribes to it sees every change on its next fetch.
 
+### Attendance journal (Task 20)
+
+A lesson's list: the students with an enrolment in force on its day, in the unit's groups and subgroup. The lesson's
+teacher writes it from the lesson's day until `journal.edit_hours` (setting, default 48) after it ends, in one request:
+every student not named in `marks` is present, and saving the same marks again changes nothing. An excused absence
+(an approved absence request) is never overwritten by a mark. After the window, before the cut-over date, or for an
+imported row (`source='legacy'`), only a corrector (`journal.correct`: a department head, of the course's department
+when the role is scoped to departments, or an administrator) changes it, with a reason that goes to the audit log
+(`attendance_corrected`). A department head can name a substitute teacher for an upcoming lesson, with a reason
+(`lesson_substitute`); the substitute then writes that lesson. Future and cancelled lessons are not written (`403`).
+
+A student's standing per course: planned hours are the academic hours of the course's lessons in the term's teaching
+period that are not cancelled and that the student is on the list of. Missed hours: up to the cut-over date (the
+opening balance's `as_of`, else `journal.cutover_date`) the imported hours (an opening balance, or lesson rows with
+`source='legacy'`), after it the absences recorded in Zəka; an excused absence counts when
+`attendance.excused_counts_toward_limit` is on. The limit is the lower of the university's and the published syllabus's
+(`courses.attendance_limit`). Status: `normal`, `warning` (past 80% of the limit), `not_admitted` (past the limit) or
+`incomplete` (lessons before the cut-over date with nothing imported for them; never `not_admitted`).
+`/api/attendance` and the course cards carry `planned_hours`, `missed_hours`, `allowed_hours`, `percent`,
+`limit_percent`, `status` and `as_of`.
+
+Opening balances are the import kind `attendance-opening` (`termSourcedId`, `courseSourcedId`, `userSourcedId`,
+`heldHours`, `unexcusedHours`, `excusedHours`, `asOf`), resolved through the source system's links of those kinds. Their
+source key is the three ids together; the same file again changes nothing, a balance changed in Zəka since is a
+conflict, and a row whose held hours differ from what Zəka planned up to its date is listed in `warnings` with its row.
+
 ### University settings (Task 17)
 
 Sections: `university` (profile: name, short name, city, address, site, current period), `grading` (components with
@@ -226,7 +259,8 @@ their maximum points, one of them optionally the attendance component; the exam'
 the letter scale from the top down, ending at the pass mark; components and exam add up to 100), `attendance`
 (`limit_percent`, `excused_counts_toward_limit`, `points_rule` as `[missed % up to, points]` rows), `journal`
 (`cutover_date`), `calendar` (`lesson_times`, `holidays`), `registry` (`prefix` of new document numbers), `sessions`
-(idle minutes and absolute hours for staff and students), `sso` (Task 14; no secret), `activation` (`days`). The rules
+(idle minutes and absolute hours for staff and students), `sso` (Task 14; no secret), `activation` (`days`); `journal` also
+holds `edit_hours` (Task 20). The rules
 live in `backend/zeka/core/tenant.py`; `/api/grades` returns each course's `result` (`semester`, `exam`, `total`,
 `letter`, `passed`, `reason`: `exam_min` below the exam minimum, `pass_mark` below the pass mark) from the scheme, and
 `/api/attendance` the limit from the attendance rules and the weeks of the current term. Semester dates are

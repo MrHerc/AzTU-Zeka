@@ -19,6 +19,7 @@ from ...core.i18n import E
 from ...legacy.store import audit, iso, now, setting
 from ..identity import domain as identity_rules
 from ..identity import service as identity
+from ..journal import service as journal
 from . import domain, forma3, repo, tables
 
 MAX_SCREEN_ROWS = 20_000
@@ -35,9 +36,11 @@ TARGETS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "timetable": ("timetable", ("course_id", "weekday", "start", "end", "kind", "room"), "id"),
     "teaching_load": ("teaching_units", ("course_id", "kind", "subgroup", "teacher_id", "hours", "students"), "id"),
     "rooms": ("rooms", ("code", "number", "name", "building_id", "floor", "kind", "capacity", "accessible"), "id"),
+    "attendance_opening": ("attendance_opening", ("student_id", "course_id", "term_id", "held_hours", "unexcused_hours",
+                                                  "excused_hours", "as_of"), "id"),
 }
 UNIT_LINKS = ("classes", "teaching_load")           # these also carry the unit's groups
-STAMPED = ("faculties", "departments", "academic_terms", "courses", "teaching_units", "rooms")
+STAMPED = ("faculties", "departments", "academic_terms", "courses", "teaching_units", "rooms", "attendance_opening")
 IMPORTED_ROLES = ("student", "teacher")              # an import never touches another kind of account
 
 
@@ -118,6 +121,8 @@ def _plan_rows(kind: str, ctx: Context, cells: list[tuple[int, dict]], errors: l
     seen: dict[str, int] = {}
     pairs: dict[tuple[int, int], Item] = {}
     for n, x in cells:
+        if kind == "attendance-opening":
+            x["sourcedId"] = domain.opening_key(x)
         values, problem = domain.draft(kind, x)
         if not problem and x["sourcedId"] in seen:
             problem = E("sourcedId faylda təkrarlanır (sətir {n})", n=seen[x["sourcedId"]])
@@ -216,6 +221,19 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
         if not building_id:
             return None, _missing("Korpus", code)
         return Item(n, "rooms", sid, {**v, "building_id": building_id}, natural=ctx.by("rooms", "code").get(v["code"])), None
+    if kind == "attendance-opening":
+        refs = {k: v.pop(k) for k in ("_term", "_course", "_user")}
+        term_id, course_id, student_id = (ctx.linked("terms", refs["_term"]), ctx.linked("courses", refs["_course"]),
+                                          ctx.linked("users", refs["_user"]))
+        for found, what, ref in ((term_id, "Semestr", "_term"), (course_id, "Fənn", "_course"), (student_id, "Tələbə", "_user")):
+            if not found:
+                return None, _missing(what, refs[ref])
+        if student_id is None or ctx.role(student_id) != "student":
+            return None, E("Yalnız aktiv tələbə qeydiyyata alınır")
+        keys = {(r["student_id"], r["course_id"], r["term_id"]): k for k, r in
+                ctx.table("attendance_opening", ("student_id", "course_id", "term_id")).items()}
+        values = {"student_id": student_id, "course_id": course_id, "term_id": term_id, **v}
+        return Item(n, "attendance_opening", sid, values, natural=keys.get((student_id, course_id, term_id))), None
     raise ValueError(kind)
 
 
@@ -428,15 +446,16 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
             raise tables.TableError("Ekrandan ən çox 20 000 sətir idxal olunur; böyük faylı manage.py ilə idxal edin")
         links = {"users": ("users",), "orgs": ("faculties", "departments"), "terms": ("terms",), "courses": ("courses",),
                  "classes": ("classes",), "enrollments": ("unit_teachers", "enrollments", "users"), "timetable": ("timetable",),
-                 "rooms": ("rooms",)}[kind]
+                 "rooms": ("rooms",), "attendance-opening": ("attendance_opening", "users")}[kind]
         ctx = Context(c, source, links)
         ctx.file_faculties = {x["sourcedId"] for _, x in cells if domain.ORG_TYPES.get(domain.norm(x.get("type", ""))) == "faculties"}
         items = _plan_rows(kind, ctx, cells, errors)
         total = len(cells)
     _classify(ctx, items, prefer_source, conflicts, errors)
     _uniques(kind, ctx, items, errors)
+    warnings = _held_check(c, items) if kind == "attendance-opening" else []
     if errors or dry_run:
-        return _report(kind, source, total, items, errors, conflicts, dry_run, None, started)
+        return {**_report(kind, source, total, items, errors, conflicts, dry_run, None, started), "warnings": warnings}
     c.commit()                                          # nothing of the request may be pending before the import's own transaction
     lock = time.monotonic()
     c.execute("BEGIN IMMEDIATE")
@@ -452,7 +471,19 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     except BaseException:
         c.rollback()
         raise
-    return _report(kind, source, total, items, [], conflicts, False, time.monotonic() - lock, started)
+    return {**_report(kind, source, total, items, [], conflicts, False, time.monotonic() - lock, started), "warnings": warnings}
+
+
+def _held_check(c, items: list[Item]) -> list[dict]:
+    """Opening rows whose held hours differ from what Zəka planned up to their date: listed, not refused (Task 20)."""
+    out = []
+    for it in items:
+        v = it.values
+        planned = journal.planned_until(c, v["student_id"], v["course_id"], v["as_of"])
+        if planned is not None and planned != v["held_hours"]:
+            out.append({"row": it.row, "reason": E("Keçilmiş saat Zəka-nın planından fərqlidir: faylda {a}, Zəka-da {b}",
+                                                   a=v["held_hours"], b=planned)})
+    return out
 
 
 def _counts(items: list[Item]) -> dict:

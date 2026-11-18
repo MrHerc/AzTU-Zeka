@@ -25,6 +25,9 @@ PERMS: dict[str, tuple[str, ...]] = {
     "students.status": ("academic_office",),
     "students.status.read": ("academic_office", "admin", "office", "leader"),
     "timetable.manage": ("admin", "academic_office"),     # timetable rows, making lessons, cancelling and moving them (Task 19)
+    # Task 20: attendance after the teacher's window, imported rows and opening balances, a lesson's substitute teacher;
+    # a department head scoped to departments acts on their courses only
+    "journal.correct": ("dept_head", "admin"),
 }
 
 SCOPE_TYPES = ("faculty", "department", "course")

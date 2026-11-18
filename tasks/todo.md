@@ -475,23 +475,25 @@ Faiz və status (tələbə × fənn). Faiz = buraxılmış akademik saat / plan 
 Açılış qalığı (semestr ortasında kəsid üçün): `attendance_opening(student_id, course_id, held_hours, unexcused_hours, excused_hours, as_of)`: tələbə × fənn × semestr üzrə kəsid tarixinə qədər keçilmiş, üzrsüz buraxılmış və üzrlü buraxılmış saat. Mənbə bağlantısı `import_links`-dədir (Task 16); mənbə açarı (semestr `sourcedId`, fənn `sourcedId`, tələbə `sourcedId`) üçlüyüdür. `held_hours` faizə girmir: idxal hesabatı onu Zəka-nın `as_of`-a qədərki plan saatı ilə tutuşdurur və fərqli sətirləri göstərir. `attendance-opening` növünün yükləyicisi `journal/service.py`-nin açıq funksiyasıdır (Task 16 reyestri; `manage.py import`-a Task 38-də qoşulur). Köhnə sistem dərs səviyyəli qeyd verirsə, Task 38-in `attendance` növü `as_of`-a qədərki dərslərə `source='legacy'` və `as_of` daşıyan davamiyyət sətri yazır; belə sətir 48 saatlıq pəncərəyə düşmür və onu yalnız kafedra müdiri səbəblə dəyişir. Kəsid tarixi və ondan əvvəlki tarixli dərslər qeyd üçün açılmır və Task 39-dakı doldurulma faizinə düşmür. Qalığı olan fəndə status `as_of` tarixi ilə birlikdə göstərilir. Qalıq sətri dərs qeydi deyil: 48 saatlıq pəncərə ona aid deyil. Sətir yalnız iki yolla dəyişir: mənbə açarı (`import_links`) üzrə təkrar idxalla (idxal edən hesab və faylın SHA-256-sı auditdədir; Zəka-da düzəldilmiş sətir Task 16-dakı konflikt qaydasına düşür) və ya kafedra müdirinin səbəbli düzəlişi ilə. `as_of` və ondan əvvəlki tarixə təsdiqlənən üzrlü qayıb müraciəti qalıq sətrində saatı üzrsüzdən üzrlüyə keçirir; səbəb müraciətin id-sidir.
 
 **Acceptance criteria:**
-- [ ] 30 nəfərlik dərs bir sorğu ilə qeyd olunur; eyni sorğunun təkrarı nəticəni dəyişmir
-- [ ] 1-ci yarımqrupun tələbəsinin 2-ci yarımqrupun laboratoriya dərslərində davamiyyət sətri yoxdur və həmin dərslər onun plan saatına düşmür
-- [ ] Kafedra müdiri dərsin müəllimini səbəbsiz dəyişə bilmir; dəyişiklik auditdədir və yeni müəllim həmin dərsin davamiyyətini yazır
-- [ ] Pəncərədən sonra müəllimin düzəlişi rədd olunur; kafedra müdirinin düzəlişi səbəblə yazılır
-- [ ] Vahid test (hədd 25%): 45 plan akademik saatında 11 buraxılmış saat "imtahana buraxılmır" vermir, 12 saat verir; ləğv olunmuş dərs və `teaching_end`-dən sonrakı gün məxrəcə düşmür
-- [ ] Buraxılmış saat faizi yalnız qeydiyyatın `begin_date`–`end_date` aralığındakı dərslərdən hesablanır
-- [ ] Üzrlü qayıb `attendance.excused_counts_toward_limit` ayarına görə sayılır; vahid testlər ayarın hər iki dəyəri üçündür
-- [ ] Effektiv hədd = min(tenant həddi, dərc olunmuş sillabusun həddi); status tələbəyə, müəllimə və dekanlığa görünür
-- [ ] Açılış qalığında plan saatının 20%-i qədər, Zəka-da 6%-i qədər üzrsüz qayıbı olan tələbə "imtahana buraxılmır" statusu alır
-- [ ] Eyni qalıq faylının təkrar idxalı 0 dəyişiklik bildirir; daha gec `as_of` ilə təkrar idxal həmin tarixdən əvvəlki Zəka qeydlərini ikinci dəfə saymır
-- [ ] Faizə kəsid tarixinə qədərki idxal olunmuş qayıblar daxildir: eyni qayıblar dərs səviyyəli sətir kimi və açılış qalığı kimi idxal olunanda faiz və status eynidir
-- [ ] Müəllim açılış qalığını və idxal olunmuş (`source='legacy'`) davamiyyət sətrini dəyişə bilmir (403); kafedra müdirinin düzəlişi səbəblə yazılır
-- [ ] `journal.cutover_date` təyin olunub: həmin tarixdə və ya ondan əvvəl dərsi olan, amma nə açılış qalığı, nə də idxal olunmuş dərs səviyyəli sətri olan tələbə × fənn "normal" yox, "məlumat natamam" göstərir; ona "imtahana buraxılmır" statusu avtomatik verilmir
-- [ ] `held_hours` Zəka-nın `as_of`-a qədərki plan saatından fərqlənən sətir idxal hesabatında sətir nömrəsi ilə görünür
+- [x] 30 nəfərlik dərs bir sorğu ilə qeyd olunur; eyni sorğunun təkrarı nəticəni dəyişmir
+- [x] 1-ci yarımqrupun tələbəsinin 2-ci yarımqrupun laboratoriya dərslərində davamiyyət sətri yoxdur və həmin dərslər onun plan saatına düşmür
+- [x] Kafedra müdiri dərsin müəllimini səbəbsiz dəyişə bilmir; dəyişiklik auditdədir və yeni müəllim həmin dərsin davamiyyətini yazır
+- [x] Pəncərədən sonra müəllimin düzəlişi rədd olunur; kafedra müdirinin düzəlişi səbəblə yazılır
+- [x] Vahid test (hədd 25%): 45 plan akademik saatında 11 buraxılmış saat "imtahana buraxılmır" vermir, 12 saat verir; ləğv olunmuş dərs və `teaching_end`-dən sonrakı gün məxrəcə düşmür
+- [x] Buraxılmış saat faizi yalnız qeydiyyatın `begin_date`–`end_date` aralığındakı dərslərdən hesablanır
+- [x] Üzrlü qayıb `attendance.excused_counts_toward_limit` ayarına görə sayılır; vahid testlər ayarın hər iki dəyəri üçündür
+- [x] Effektiv hədd = min(tenant həddi, dərc olunmuş sillabusun həddi); status tələbəyə, müəllimə və dekanlığa görünür
+- [x] Açılış qalığında plan saatının 20%-i qədər, Zəka-da 6%-i qədər üzrsüz qayıbı olan tələbə "imtahana buraxılmır" statusu alır
+- [x] Eyni qalıq faylının təkrar idxalı 0 dəyişiklik bildirir; daha gec `as_of` ilə təkrar idxal həmin tarixdən əvvəlki Zəka qeydlərini ikinci dəfə saymır
+- [x] Faizə kəsid tarixinə qədərki idxal olunmuş qayıblar daxildir: eyni qayıblar dərs səviyyəli sətir kimi və açılış qalığı kimi idxal olunanda faiz və status eynidir
+- [x] Müəllim açılış qalığını və idxal olunmuş (`source='legacy'`) davamiyyət sətrini dəyişə bilmir (403); kafedra müdirinin düzəlişi səbəblə yazılır
+- [x] `journal.cutover_date` təyin olunub: həmin tarixdə və ya ondan əvvəl dərsi olan, amma nə açılış qalığı, nə də idxal olunmuş dərs səviyyəli sətri olan tələbə × fənn "normal" yox, "məlumat natamam" göstərir; ona "imtahana buraxılmır" statusu avtomatik verilmir
+- [x] `held_hours` Zəka-nın `as_of`-a qədərki plan saatından fərqlənən sətir idxal hesabatında sətir nömrəsi ilə görünür
+
+Qeyd: açılış qalığının yükləyicisi `journal/service.py`-də deyil, Task 16-nın idxal reyestrindədir (`attendance-opening` növü, `manage.py import` və ekran onu artıq tanıyır); qalıq Zəka-nın planı ilə `journal.service.planned_until` vasitəsilə tutuşdurulur. `as_of` tarixinə qədərki dərsə təsdiqlənən üzrlü qayıb müraciətinin qalıqda saatı üzrlüyə keçirməsi edilmədi: belə dərsin Zəka-da qayıb sətri yoxdur, müraciət formu onu seçə bilmir (Task 38-də, köhnə sətirlərlə birlikdə). Fikstur faylı əvəzinə test öz CSV-sini qurur (tarixlər bu günə görədir).
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_attendance_rules.py tests/integration/test_attendance_journal.py tests/integration/test_attendance_opening.py -q`
+- [x] `python -m pytest tests/unit/test_attendance_rules.py tests/integration/test_attendance_journal.py tests/integration/test_attendance_opening.py -q`
 
 **Dependencies:** Task 19, Task 17
 **Files likely touched:** `backend/zeka/modules/journal/{domain,service,repo,routes}.py`, `backend/migrations/0200_attendance_opening.sql` (`attendance_opening` cədvəli; `attendance.source` və `attendance.as_of` sütunları; `courses.attendance_limit`: boşdursa tenant həddi, Task 25 dərcdə yazır), `frontend/js/journal.js`, `frontend/css/m-journal.css`, `tests/fixtures/attendance_opening.csv`

@@ -1,0 +1,21 @@
+{
+ "Düzəliş pəncərəsi 1 ilə 720 saat arasında olmalıdır": "The edit window must be between 1 and 720 hours",
+ "Buraxılmış saatlar keçilmiş saatlardan çox ola bilməz": "Missed hours cannot exceed the hours held",
+ "«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır": "The “{field}” field must be a source id of 1–64 letters, digits and ._:@/- characters",
+ "Keçilmiş saat Zəka-nın planından fərqlidir: faylda {a}, Zəka-da {b}": "Held hours differ from Zəka's plan: {a} in the file, {b} in Zəka",
+ "Qeydlər siyahı kimi göndərilməlidir": "Marks must be sent as a list",
+ "Tələbə bu dərsin siyahısında deyil": "The student is not on this lesson's list",
+ "Qeyd iştirak, qayıb və ya gecikmə olmalıdır": "A mark must be present, absent or late",
+ "Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəblə edir": {
+  "one": "The edit window ({n} hour) has ended: the head of department makes the change with a reason",
+  "other": "The edit window ({n} hours) has ended: the head of department makes the change with a reason"
+ },
+ "Düzəlişin səbəbini yazın": "Enter the reason for the correction",
+ "İdxal olunmuş davamiyyəti yalnız kafedra müdiri səbəblə dəyişir": "Only the head of department changes imported attendance, with a reason",
+ "Müəllimi seçin": "Choose the teacher",
+ "Əvəzetmənin səbəbini yazın": "Enter the reason for the substitution",
+ "Yalnız qarşıdakı dərsin müəllimi dəyişdirilir": "Only an upcoming lesson's teacher can be changed",
+ "Bu dərs keçirilməyib: davamiyyət yazılmır": "This lesson has not taken place: no attendance is recorded",
+ "Kəsid tarixinə qədərki dərsin davamiyyəti köhnə sistemdən idxal olunur; onu kafedra müdiri düzəldir": "Attendance of a lesson up to the cut-over date is imported from the old system; the head of department corrects it",
+ "Saatlar 0 ilə 5000 arasında tam ədəd olmalıdır": "Hours must be a whole number from 0 to 5000"
+}

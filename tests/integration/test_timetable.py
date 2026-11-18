@@ -142,7 +142,7 @@ def test_an_odd_week_row_holds_lessons_every_other_week(app_db, world, rows):
     assert r.status == 200
     admin.post("/api/timetable/generate", {"term_id": world["term"]["id"]})
     days = [date.fromisoformat(x["day"]) for x in q("SELECT day FROM lessons WHERE timetable_id=? ORDER BY day", (r.json["id"],))]
-    assert days and all((b - a).days == 14 for a, b in zip(days, days[1:]))
+    assert days and all((b - a).days == 14 for a, b in zip(days, days[1:], strict=False))
 
 
 def future_lesson(timetable_id):
