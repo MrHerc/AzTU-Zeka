@@ -1,6 +1,6 @@
 # HTTP API
 
-Zəka exposes a JSON API under `/api/` and a few server-rendered pages. The single-page application in `static/` is the only client in this repository; the API is not versioned and has no stability guarantee across demo releases. Everything below is taken from the route modules in `app/r_*.py`; the examples are real responses from a server started on a fresh demo database, shortened where marked with `…`.
+Zəka exposes a JSON API under `/api/` and a few server-rendered pages. The single-page application in `frontend/` (served under `/static/`) is the only client in this repository; the API is not versioned and has no stability guarantee across demo releases. Everything below is taken from the route modules in `backend/zeka/legacy/r_*.py` and the HTTP layer in `backend/zeka/core/`; the examples are real responses from a server started on a fresh demo database, shortened where marked with `…`.
 
 - [Conventions](#conventions)
 - [Authentication and session](#authentication-and-session)
@@ -14,6 +14,7 @@ Zəka exposes a JSON API under `/api/` and a few server-rendered pages. The sing
 - [AI Academy, tools and syllabus](#ai-academy-tools-and-syllabus)
 - [Support desk and feedback](#support-desk-and-feedback)
 - [Analytics and administration](#analytics-and-administration)
+- [Zəka Radar](#zəka-radar)
 - [Public endpoints](#public-endpoints)
 - [Server-rendered pages](#server-rendered-pages)
 - [Endpoint index](#endpoint-index)
@@ -23,8 +24,10 @@ Zəka exposes a JSON API under `/api/` and a few server-rendered pages. The sing
 ### Transport
 
 - Base URL: the server's own origin, for example `http://127.0.0.1:5070`. The API and the application share one origin; no CORS headers are sent.
-- Request bodies are JSON objects. `POST`, `PUT` and `DELETE` requests under `/api/` that carry a body must send `Content-Type: application/json`, otherwise the server answers `415`. A body that is not a JSON object is rejected with `400`. The maximum body size is 30 MB.
-- Responses are `application/json; charset=utf-8` unless stated otherwise.
+- Request bodies are JSON objects. `POST`, `PUT` and `DELETE` requests that carry a body must send `Content-Type: application/json`, otherwise the server answers `415`. A body that is not valid JSON or not a JSON object, or that uses `NaN` or `Infinity`, is rejected with `400`. The maximum body size is 16 MB.
+- `POST`, `PUT` and `DELETE` requests that a browser marks as cross-site are refused with `403`: the server checks `Sec-Fetch-Site` (`same-origin` and `none` pass) and, when the browser does not send it, compares `Origin` with the `Host` header and the public URL. Clients that send neither header, such as scripts, are not affected.
+- `Transfer-Encoding` (chunked bodies) is not supported (`501`); a non-numeric or conflicting `Content-Length` is a `400`. When a handler does not read a request body, or the request is refused before its body is read, the server closes the connection.
+- Responses are `application/json; charset=utf-8` unless stated otherwise, with `Cache-Control: no-store` unless the endpoint sets its own. `HEAD` is answered like `GET` without a body.
 - Path parameters shown as `{id}` are integers. Query parameters are plain strings.
 - Timestamps are ISO 8601 in the server's local time with second precision and no offset, for example `2026-11-05T05:58:04`. Dates are `YYYY-MM-DD`.
 - File content is sent inside JSON as Base64 in a `content_b64` field; there are no multipart endpoints.
@@ -49,20 +52,37 @@ Errors have one shape:
 
 | Status | Meaning in this API |
 |---|---|
-| `400` | Validation failed: a required field is missing, a value is out of range, a file is rejected |
-| `401` | No valid session for an endpoint that needs one |
-| `403` | The session's role is not allowed, or the object belongs to someone else |
-| `404` | Unknown path or object; also returned instead of `403` for requests and support tickets that belong to another user |
+| `400` | Validation failed: a required field is missing, a value is out of range or of the wrong JSON type, a file is rejected, the body is not a JSON object |
+| `401` | No valid session for an endpoint that needs one, including a session older than its lifetime |
+| `403` | The session's role is not allowed, the object belongs to someone else, the demo access code is wrong, or the request came from another site |
+| `404` | Unknown path or object, or a demo-only route in prod mode; also returned instead of `403` for requests, document links, support tickets and support plans that belong to another user |
 | `405` | The path exists but not for this method |
-| `409` | The action conflicts with the object's state (attempt limit reached, request already closed, event full) |
-| `413` | Body larger than 30 MB |
+| `409` | The action conflicts with the object's state (attempt limit reached, request already closed, event full, an open support plan already exists) |
+| `413` | Body larger than 16 MB; also a course material over 10 MB or a syllabus over 200,000 characters |
 | `415` | Body sent without `Content-Type: application/json` |
-| `422` | Test Studio could not generate questions from the material |
+| `422` | Test Studio could not generate questions from the material, or Radar found no plan step for the student |
 | `423` | The teacher has locked the tutor for this course (students only) |
-| `429` | The student's daily message limit for the tutor and campus assistant is reached |
+| `429` | A rate limit is reached (see below), or the student's daily message limit for the tutor and campus assistant |
+| `501` | The request uses `Transfer-Encoding` |
 | `500` | Unhandled server error; the traceback is written to `logs/errors.log` |
 
-Some numeric body fields are converted with plain `int()`; a non-numeric value there produces `500` instead of `400`.
+A field of the wrong JSON type answers `400` with "Invalid value: <field>" (for example a list where text is expected). Malformed input that a handler does not check itself is also answered with `400`, not `500`.
+
+### Rate limits
+
+Counters are kept per client address or per user in fixed windows; over the limit the server answers `429`.
+
+| Limit | Per | Endpoints |
+|---|---|---|
+| 30 per minute | client address | `POST /api/auth/demo`, `GET /demo/login` |
+| 10 wrong access codes per 10 minutes | client address | The same; afterwards logins without a session are refused until the window ends |
+| 30 per minute | user | `POST /api/tutor/{cid}/ask`, `POST /api/campus/ask`, `POST /api/studio/generate` |
+| 40 per 10 minutes | user | `POST /api/files`, `POST /api/courses/{id}/materials` |
+| 30 per minute | user | `GET /api/files/{id}/preview` |
+| 120 per minute | user | `POST /api/files/{id}/link`, `POST /api/documents/{id}/link`, `POST /api/syllabus/{cid}/link` |
+| 60 per minute | client address | `GET /verify/{code}` |
+
+The client address is the connection's peer address; when the server runs with `ZEKA_PROXY_HOPS=N`, it is the N-th address from the right of `X-Forwarded-For`.
 
 ### Roles
 
@@ -78,7 +98,7 @@ In the tables below, "any" means any signed-in user. "Staff" means `office`, `le
 
 ## Authentication and session
 
-Demo login is by role and has no password. The session id is returned both as an `HttpOnly` cookie and in the response body. Clients send it back either as the cookie `zeka_sid` or as the header `X-Session`. Sessions do not expire; logout deletes them.
+Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MODE=demo`, the default); with `ZEKA_MODE=prod` the routes `POST /api/auth/demo`, `GET /demo/login`, `GET /api/demo/storyline` and `POST /api/admin/reset` answer `404`, and no other route signs anyone in. `GET /api/bootstrap` reports the mode as `app.mode`. When the server runs with `ZEKA_ACCESS_CODE`, a visitor must send that shared code to sign in; `GET /api/bootstrap` reports this as `app.access_required`. The session id is returned both as an `HttpOnly` cookie and in the response body. Clients send it back either as the cookie `zeka_sid` or as the header `X-Session`. A session expires `ZEKA_SESSION_HOURS` hours after it was created (default 12); after that the server answers `401`. Logout deletes the session.
 
 | Method | Path | Access | Purpose |
 |---|---|---|---|
@@ -90,7 +110,13 @@ Demo login is by role and has no password. The session id is returned both as an
 
 ### `POST /api/auth/demo`
 
-Body: `{"role": "student" | "teacher" | "office" | "leader" | "admin"}`. An unknown role returns `400`.
+| Field | Type | Notes |
+|---|---|---|
+| `role` | `student`, `teacher`, `office`, `leader` or `admin` | Required; an unknown role returns `400` |
+| `code` | string | The access code; required when the server has one and the request carries no valid session. A visitor with a valid session can switch roles without it. A wrong code returns `403` |
+| `user` | string | Only with `role: "student"`: sign in as the student with this username instead of the demo student (`404` when there is none). Used by the Radar demo storyline |
+
+Signing in deletes the session the request carried, if any.
 
 ```http
 POST /api/auth/demo
@@ -105,15 +131,15 @@ X-Lang: en
  "user": {"id": 1, "username": "aysel", "full_name": "Aysel Məmmədova", "role": "student",
           "title": "Kompüter mühəndisliyi · 2-ci kurs", "color": "#2b5aa8", "consent_at": null, "prefs": {}},
  "home": "/student",
- "token": "6GO0nao9D4xxJpTVtPT1TssOMf_YRhGH"
+ "token": "lFV5P5bkDeFbbHsfx1ccUaahjeElasfTlk2tAKpS-FI"
 }
 ```
 
-Response header: `Set-Cookie: zeka_sid=<token>; HttpOnly; SameSite=Lax; Path=/`, with `; Secure` added when the server runs with an `https://` public URL.
+Response header: `Set-Cookie: zeka_sid=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200` (the session lifetime in seconds), with `; Secure` added when the server runs with an `https://` public URL.
 
-### `GET /demo/login?role=<role>&next=<path>`
+### `GET /demo/login?role=<role>&code=<code>&user=<username>&next=<path>`
 
-Signs in like the call above (the role defaults to `student`) and answers `302` to `next`, or to the role's home page. `next` must be a same-origin path; anything else redirects to `/`.
+Signs in like the call above (the role defaults to `student`) and answers `302` to `next`, or to the role's home page when `next` is absent. `next` must be a same-site relative path; anything else, such as `//host`, redirects to `/`.
 
 ### `GET /api/bootstrap`
 
@@ -122,13 +148,13 @@ Works with or without a session. Returns:
 | Field | Content |
 |---|---|
 | `user` | The signed-in user (`id`, `username`, `full_name`, `role`, `title`, `color`, `consent_at`, `prefs`) or `null` |
-| `app` | `university`, `faculty`, `specialty`, `semester`, `base_url`, `engine` (`mode` is `demo` or `llm`, plus a `label`), `news_kinds`, `version`, `langs`, `vendor`, `contact` |
+| `app` | `university`, `faculty`, `specialty`, `semester`, `base_url`, `engine` (`mode` is `demo` or `llm`, plus a `label`), `news_kinds`, `version`, `mode` (`demo` or `prod`), `access_required`, `langs`, `vendor`, `contact` |
 | `home` | Home route of the user's role, or `null` |
 | `unread` | Number of unread notifications |
 
 ### `POST /api/consent`
 
-Body: any JSON object; it is stored in the audit log as given (the application sends `{"ai": true, "external": <bool>}`). Response: `{"ok": true, "consent_at": "<timestamp>"}`.
+Body: `{"ai": <bool>, "external": <bool>}`. `ai` counts as given unless it is `false`; `external` (consent to send questions to an external AI service) only when it is `true`. The choice is stored in the user's preferences and in the audit log. A student's tutor questions go to a configured LLM only when `external` was given. Response: `{"ok": true, "consent_at": "<timestamp>"}`.
 
 ## Profile, notifications, search and files
 
@@ -148,10 +174,10 @@ Body: any JSON object; it is stored in the audit log as given (the application s
 
 **`PUT /api/me/prefs`.** Body fields, all optional: `theme` (`light` or `dark`), `lang` (`az`, `en`, `ru`), `sidebar` (`open` or `collapsed`), `tours` (list of completed tour keys, up to 120). Unknown or invalid values are ignored. Response: `{"prefs": {...}}`.
 
-**`GET /api/badges`.** Always `notifications` and `news` (unread news for the user's audience). Students also get `requests` (open requests) and `absences` (unexcused absences); teachers get `questions` (open forwarded questions); staff get `office` (submitted requests). `support` is the number of open tickets for `office` and `admin`, and the number of the user's tickets waiting for their reply for everyone else.
+**`GET /api/badges`.** Always `notifications` and `news` (unread news for the user's audience). Students also get `requests` (open requests), `absences` (unexcused absences) and `plan` (open support plans); teachers get `questions` (open forwarded questions); `office`, `leader` and `admin` get `office` (submitted requests). Teachers, `office` and `leader` get `radar` (high-risk students in their Radar scope). `support` is the number of open tickets for `office` and `admin`, and the number of the user's tickets waiting for their reply for everyone else.
 
 ```json
-{"notifications": 3, "news": 7, "requests": 1, "absences": 6, "support": 0}
+{"notifications": 3, "news": 7, "questions": 3, "radar": 2, "support": 1}
 ```
 
 **`POST /api/notifications/read`.** Body `{"all": true}` or `{"ids": [1, 2, 3]}` (up to 100 ids). Response: `{"unread": <n>}`.
@@ -171,7 +197,7 @@ Body: any JSON object; it is stored in the audit log as given (the application s
 
 **`GET /api/files/{id}`.** Returns the file with its MIME type, `Content-Disposition: inline` (or `attachment` with `?download=1`) and `Cache-Control: private, no-store`. Every download is written to the audit log.
 
-**`GET /api/files/{id}/preview`.** Returns `id`, `filename`, `mime`, `size`, `created_at`, `kind` (`pdf`, `image`, `docx` or `other`) and `pages`, a list of extracted text pages for PDF and DOCX. Pages are empty when the text cannot be extracted.
+**`GET /api/files/{id}/preview`.** Returns `id`, `filename`, `mime`, `size`, `created_at`, `kind` (`pdf`, `image`, `docx` or `other`) and `pages`, a list of extracted text pages for PDF and DOCX. A PDF is parsed in a separate, time-limited process; pages are empty when the text cannot be extracted in time.
 
 ## Courses, schedule, attendance and grades
 
@@ -223,9 +249,9 @@ Course access means: students must be enrolled, teachers must teach the course, 
 | `message` | string | Required, cut to 2,000 characters |
 | `mode` | `socratic`, `explain` or `practice` | Must be one of the modes the teacher allows; otherwise the first allowed mode is used |
 
-Errors: `400` empty message, `423` tutor locked by the teacher (students only), `429` daily limit reached (students only; default 50 messages per day across the tutor and the campus assistant).
+Errors: `400` empty message, `423` tutor locked by the teacher (students only), `429` daily limit reached (students only; default 50 messages per day across the tutor and the campus assistant) or more than 30 assistant calls in a minute.
 
-The message is masked for personal data (unless the administrator turned masking off), then answered by the configured LLM when one is enabled and a relevant passage exists, and by the offline engine otherwise. In practice mode the message is either an answer to the pending question or a request for a new one. The answer `meta` can contain `mode`, `topic`, `level` (Socratic step), `guardrail` (the user asked for a finished answer), `no_source`, `practice_qid`, `graded`, `correct`, `engine` and `note` (why the LLM was not used).
+The message is masked for personal data (unless the administrator turned masking off), then answered by the configured LLM when one is enabled and a relevant passage exists, and by the offline engine otherwise. A student's question goes to the LLM only after the student consented to external AI processing (`POST /api/consent` with `external: true`). In practice mode the message is either an answer to the pending question or a request for a new one. The answer `meta` can contain `mode`, `topic`, `level` (Socratic step), `guardrail` (the user asked for a finished answer), `no_source`, `practice_qid`, `graded`, `correct`, `engine` and `note` (why the LLM was not used).
 
 ```http
 POST /api/tutor/1/ask
@@ -260,11 +286,11 @@ Body: `question` (required, up to 2,000 characters), `anonymous` (boolean), `con
 
 ### `POST /api/messages/{id}/rate`
 
-Body: `{"rating": 1}` or `{"rating": -1}`; any other value clears the rating. Only the user's own messages are changed.
+Body: `{"rating": 1}` or `{"rating": -1}`; any other number clears the rating. Only the user's own messages are changed.
 
 ### `POST /api/campus/ask`
 
-Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily limit applies. English and Russian keywords are expanded to the Azerbaijani terms used in the knowledge base. `answer.meta.actions` lists request forms the user can open from the answer:
+Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily limit and per-minute limit apply. English and Russian keywords are expanded to the Azerbaijani terms used in the knowledge base. `answer.meta.actions` lists request forms the user can open from the answer:
 
 ```json
 {
@@ -295,9 +321,9 @@ Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily li
 | `POST` | `/api/quizzes` | `teacher` | Publish a test |
 | `GET` | `/api/quizzes/{id}/results` | `teacher` | Score distribution and per-question correct rate |
 
-**`POST /api/quizzes/{id}/start`.** Returns `attempt_id`, `quiz`, `questions` without answers (`id`, `qtype`, `text`, `options`, `unit`, `topic`, `bloom`) and `deadline` (start time plus the time limit). `409` when the attempt limit is used up. The server does not check the deadline when the attempt is submitted; the time limit is enforced by the client.
+**`POST /api/quizzes/{id}/start`.** Returns `attempt_id`, `quiz`, `questions` without answers (`id`, `qtype`, `text`, `options`, `unit`, `topic`, `bloom`) and `deadline` (start time plus the time limit). `409` when the attempt limit is used up.
 
-**`POST /api/attempts/{id}/submit`.** Body: `{"answers": {"<question id>": <answer>}}`. Answers are a letter, an option index or the option text for `mcq`; `true`/`false` or words such as "Doğru", "Yanlış", "true", "false" for `tf`; a number (comma or dot) for `numeric`, accepted within 2%. Missing answers count as wrong. Submitting an attempt again returns the stored result. Response:
+**`POST /api/attempts/{id}/submit`.** Body: `{"answers": {"<question id>": <answer>}}`. Answers are a letter, an option index or the option text for `mcq`; `true`/`false` or words such as "Doğru", "Yanlış", "true", "false" for `tf` (with "deyil" or "not" negating them); a number (comma or dot) for `numeric`, accepted within 2%. Missing answers count as wrong. The server enforces the time limit: a submission more than two minutes after the deadline is stored without its answers, so every question counts as wrong. Submitting an attempt again returns the stored result. Response:
 
 ```json
 {
@@ -327,11 +353,11 @@ Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily li
 | `count` | integer | 1 to 15, default 6 |
 | `types` | list of `mcq`, `tf`, `numeric` | Default all three |
 
-Questions are saved as drafts with `origin: "ai"` and returned with `flags` (`source_ok`, plus `similar` when an approved question of the course is close) and the `source` passage. `400` when the course has no material; `422` when the material has no `Term — definition` lines and no section that matches a numeric template. Response: `{"questions": [...], "engine": {...}}`.
+Questions are saved as drafts with `origin: "ai"` and returned with `flags` (`source_ok`, plus `similar` when an approved question of the course is close) and the `source` passage. `400` when the course has no material; `422` when the material has no `Term — definition` lines and no section that matches a numeric template; `429` above 30 calls a minute. Response: `{"questions": [...], "engine": {...}}`.
 
 **`GET /api/questions?course_id=<id>&status=draft|approved`.** Lists questions of the course, drafts first.
 
-**`PUT /api/questions/{id}`.** Any of `text`, `explanation`, `topic`, `bloom`, `difficulty`, `unit`, `options` (up to 6), `answer` (option index for `mcq`, boolean for `tf`, number for `numeric`), `status` (`draft` or `approved`). Returns the updated question.
+**`PUT /api/questions/{id}`.** Any of `text`, `explanation`, `topic`, `bloom`, `difficulty`, `unit`, `options` (up to 6), `answer` (option index for `mcq`, boolean for `tf`, number for `numeric`), `status` (`draft` or `approved`). The resulting answer must be gradable (an index within the options, at least two options for `mcq`), otherwise `400`. Returns the updated question.
 
 **`POST /api/quizzes`.**
 
@@ -359,7 +385,7 @@ Publishing notifies every enrolled student.
 | `GET` | `/api/teacher/questions` | `teacher` | Questions forwarded from the tutor, open ones first |
 | `POST` | `/api/teacher/questions/{id}/answer` | `teacher` | Answer a forwarded question |
 
-**`POST /api/courses/{id}/materials`.** Body: `filename` (the extension selects the parser: `.md`, `.txt`, `.docx`, `.pptx`), `content_b64`, optional `title` (default: the file name without extension). At least 40 characters of text must be extracted. Response: `ok`, `id`, `chunks`, `terms`, `chars`, `headings`, `glossary` (first 12 terms), `title`. The material is searchable by the tutor immediately.
+**`POST /api/courses/{id}/materials`.** Body: `filename` (the extension selects the parser: `.md`, `.txt`, `.docx`, `.pptx`), `content_b64`, optional `title` (default: the file name without extension). The file may be at most 10 MB (`413`), and at least 40 characters of text must be extracted. Response: `ok`, `id`, `chunks`, `terms`, `chars`, `headings`, `glossary` (first 12 terms), `title`. The material is searchable by the tutor immediately.
 
 **`PUT /api/courses/{id}/tutor`.** Body: `modes` (subset of `socratic`, `explain`, `practice`; defaults to `socratic` if empty), `rules` (free text up to 2,000 characters, passed to the LLM as the teacher's rules), `locked` (boolean). Returns the course page as in `GET /api/courses/{id}`.
 
@@ -474,9 +500,9 @@ After issue, the response includes the document:
 
 `GET /api/documents?q=<text>` searches registry number, holder name and title and returns `id`, `kind` (`request` or `certificate`), `title`, `reg_no`, `verify_code`, `issued_at`, `status` (`valid` or `revoked`), `revoked_reason` and `holder`.
 
-`POST /api/documents/{id}/revoke` takes `{"reason": "..."}` (required, up to 500 characters).
+`POST /api/documents/{id}/revoke` takes `{"reason": "..."}` (required, up to 500 characters); `404` for an unknown document.
 
-`POST /api/documents/{id}/link` returns a one-time URL, valid for five minutes:
+`POST /api/documents/{id}/link` returns a one-time URL, valid for five minutes; `404` when the document does not exist or belongs to someone else:
 
 ```json
 {"url": "/doc/13?k=kQFAz1cbzpw8vYrHxi6Ziu6x"}
@@ -518,7 +544,7 @@ Audience: students see `all` and `students`, teachers see `all` and `teachers`, 
 | `tags` | Comma-separated string, up to 6 tags |
 | `event_start` | ISO date-time; makes the item an event |
 | `duration_h` | Event length in hours, 0.5 to 72, default 2 |
-| `location`, `capacity`, `registration` | Event details; `capacity` 0 means unlimited |
+| `location`, `capacity`, `registration` | Event details; `capacity` 0 to 100,000, 0 means unlimited |
 
 `PUT` takes the same body as `POST` and replaces every field, so send the complete item. Publishing an item marked `important` notifies every student or teacher in its audience; on update this happens only when the item was a draft before.
 
@@ -539,11 +565,11 @@ Audience: students see `all` and `students`, teachers see `all` and `teachers`, 
 
 **`PUT /api/academy/assessment`.** Body: `{"values": {"<track key>": 1..5}}`. Track keys: `ai`, `emi`, `syllabus`, `communication`, `pedagogy`, `research`, `edtech`. Recommended tracks are the three lowest-rated tracks that are not complete. Returns the same object as `GET /api/academy`.
 
-**`POST /api/academy/module/{id}/complete`.** Body: `{"answers": [<option index>, ...]}` in question order. Response: `passed` (score of 50% or more), `score`, `correct` (the correct option indices) and `certificate`. When the last module of a track is passed, a certificate document is issued and returned as `{id, reg_no, verify_code}`; otherwise `certificate` is `null`.
+**`POST /api/academy/module/{id}/complete`.** Body: `{"answers": [<option index>, ...]}` in question order. Response: `passed` (score of 50% or more), `score`, `correct` and `certificate`. After a pass, `correct` lists the correct option index of every question; after a fail, only the indices the teacher already answered correctly, and `null` for the others. When the last module of a track is passed, a certificate document is issued and returned as `{id, reg_no, verify_code}`; otherwise `certificate` is `null`.
 
 **`POST /api/courses/{id}/tools`.** Body: `{"tool_key": "<key>"}`. Response: `{"on": <bool>, "tools": [<keys>]}`.
 
-**`POST /api/syllabus/{cid}/generate`.** Body: `{"weeks": 10..18}`, default 15. Returns `course`, `description`, `workload`, `outcomes` (up to 6, derived from glossary terms of each material), `plan` (one row per week with colloquia in weeks 7 and 13 and revision in the last week), `assessment`, `materials`, `tools`, `policies` and `generated_at`. `PUT /api/syllabus/{cid}` stores `{"data": <that object>}` and returns `{"ok": true, "updated_at": ...}`.
+**`POST /api/syllabus/{cid}/generate`.** Body: `{"weeks": 10..18}`, default 15. Returns `course`, `description`, `workload`, `outcomes` (up to 6, derived from glossary terms of each material), `plan` (one row per week with colloquia in weeks 7 and 13 and revision in the last week), `assessment`, `materials`, `tools`, `policies` and `generated_at`. `PUT /api/syllabus/{cid}` stores `{"data": <that object>}` and returns `{"ok": true, "updated_at": ...}`. The object must keep every part of a generated syllabus (`course` with its fields, `workload`, `description`, the lists, plan rows with `week`, `topic` and `activity`, assessment rows as `[name, weight]`), otherwise `400`; only these fields are stored, and more than 200,000 characters is a `413`.
 
 ## Support desk and feedback
 
@@ -596,15 +622,119 @@ Vocabularies:
 | `POST` | `/api/admin/reset` | `admin` | Delete all data and reseed the demo |
 | `GET` | `/api/system/status` | any | Status of the platform components |
 
-**`GET /api/analytics`** returns `labels` (8 week labels), `wau_students`, `wau_teachers`, `tutor_questions`, `request_hours`, `kpis` (8 indicators with `key`, `label`, `value`, `target`, `ok`, `series`), `courses` (per course: tutor questions, test average, no-source rate, positive rate, attendance), `insights`, `office` (as `/api/office/summary`), `requests_by_type`, `news` (5 most read), `attendance`, `ai` and `totals`. Several series and values are fixed illustrative numbers in this version: weekly active students and teachers, the test preparation time reduction, the satisfaction score and trend, the learning gain, the cost per student, and all but the last point of the request time, citation and academy series. See section 15 of [ARCHITECTURE.md](ARCHITECTURE.md) for the full breakdown.
+**`GET /api/analytics`** returns `labels` (8 week labels), `wau_students`, `wau_teachers`, `tutor_questions`, `request_hours`, `kpis` (8 indicators with `key`, `label`, `value`, `target`, `ok`, `series`), `courses` (per course: tutor questions, test average, no-source rate, positive rate, attendance), `insights` (the first one is the Zəka Radar summary, with a `link` to `/radar`), `office` (as `/api/office/summary`), `requests_by_type`, `news` (5 most read), `attendance`, `ai` and `totals`. Several series and values are fixed illustrative numbers in this version: weekly active students and teachers, the test preparation time reduction, the satisfaction score and trend, the learning gain, the cost per student, and all but the last point of the request time, citation and academy series. See section 16 of [ARCHITECTURE.md](ARCHITECTURE.md) for the full breakdown.
 
-**`PUT /api/admin/settings`.** Body: any of `daily_messages` (5 to 500), `pii_masking` (boolean), `socratic_default` (boolean), `retention_days` (30 to 3,650). Returns the stored limits. Only `daily_messages` and `pii_masking` affect behaviour in this version.
+**`PUT /api/admin/settings`.** Body: any of `daily_messages` (5 to 500), `pii_masking` (boolean), `socratic_default` (boolean), `retention_days` (30 to 3,650). Saving deletes chat messages older than `retention_days`. Returns the stored limits. `socratic_default` is stored but does not affect behaviour in this version.
 
-**`POST /api/admin/test-llm`.** Response: `{"ok": <bool>, "message": "..."}`; when no LLM is configured, `ok` is false and the message says the demo engine is in use.
+**`POST /api/admin/test-llm`.** Response: `{"ok": <bool>, "message": "..."}`; when no LLM is configured, `ok` is false and the message says the demo engine is in use. An error message never contains the API key.
 
 **`GET /api/system/status`** (any signed-in user) returns `components` (`portal`, `db`, `ai`, `notify`, `sso`, `lms`, each with `status` `operational`, `degraded`, `down` or `planned`, a `name` and a `note`), `checked_at`, `uptime_s` and `overall`. The `ai` component is `degraded` while the offline engine is in use, and `sso` and `lms` are `planned`.
 
-**`POST /api/admin/reset`.** Deletes every row, including all sessions, reseeds the demo data and rebuilds the indexes. Response: `{"ok": true}` with an expired session cookie.
+**`POST /api/admin/reset`.** Demo mode only. Deletes every row except the schema migration log, including all sessions, reseeds the demo data and rebuilds the indexes. Response: `{"ok": true}` with an expired session cookie.
+
+## Zəka Radar
+
+Early warning: a risk score per student and course from attendance, grades, test attempts and tutor activity, the reasons behind it, and support plans that a teacher or the dean's office sends to the student.
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| `GET` | `/api/radar` | `teacher`, `office`, `leader`, `admin` | Dashboard for the courses in scope |
+| `GET` | `/api/radar/student/{sid}` | `teacher`, `office`, `leader`, `admin`, with student access | Risk profile of one student in one course |
+| `POST` | `/api/radar/student/{sid}/plan` | `teacher`, `office`, `admin`, with student access | Preview or send a support plan |
+| `POST` | `/api/interventions/{id}/status` | `teacher`, `office`, `admin`, plan in scope | Close a plan as completed or cancelled |
+| `GET` | `/api/student/plans` | `student` | The student's support plans |
+| `GET` | `/api/student/plans/{id}` | `student`, own plan | One support plan |
+| `POST` | `/api/student/plans/{id}/steps` | `student`, own plan | Mark a step done or not done |
+| `GET` | `/api/demo/storyline` | public, demo mode only | Ids of the demo storyline students and their course |
+
+Scope: a teacher sees the courses they teach (`403` when they teach none); `office`, `leader` and `admin` see all courses. Student access means the student exists (`404` otherwise) and is enrolled in a course in scope (`403` otherwise). Students never see a risk score: the student endpoints leave out `risk_before`, `level_before` and `drivers`.
+
+Reading a plan (any endpoint that returns one) first ticks open steps that the student's activity since the plan was sent has completed, and closes the plan as `completed` when every step is done; the plan's author is then notified.
+
+### `GET /api/radar?course=<id>`
+
+`course` narrows the view to one course in scope; without it a teacher sees all their courses and staff see all courses.
+
+| Field | Content |
+|---|---|
+| `scope` | `role`, `courses` (the courses in scope: `id`, `code`, `name`, `color`, `teacher_id`, `teacher`), `selected` (the course id when one course is shown, else `null`), `can_act` (may create and close plans) |
+| `counts` | `high`, `watch`, `ok`, `students` |
+| `course_counts` | Per course: `id`, `code`, `name`, `color`, `students`, `high`, `watch`, `ok` |
+| `rows` | One row per student, highest score first (fields below) |
+| `gaps` | Topics several at-risk students struggle with: `course_id`, `code`, `course`, `color`, `topic`, `students`, `chunk_id` and `material` of the best matching passage |
+| `drivers` | How many at-risk students have each top driver: `key`, `label`, `n` |
+| `trend` | Weekly `week_start`, `high`, `watch`, `ok`; past weeks from stored snapshots, the last entry is live |
+| `impact` | `plans`, `open`, `completed`, `measured` (plans older than seven days), `improved`, `avg_delta` and up to 12 `items` (`risk_before`, `level_before`, `risk_now`, `level_now`, `delta`, `improved`, `progress`, …) |
+| `model` | `weights` (`attendance` 30, `assessment` 30, `concept` 25, `engagement` 15) and `levels` (`high` from 50, `watch` from 30) |
+| `generated_at` | Timestamp |
+
+A row has `id`, `name`, `color`, `group`, `score` (0 to 100, the student's highest course score), `level` (`high`, `watch` or `ok`), `level_label`, `course_id`, `top_driver`, `top_driver_label`, `why` (the main evidence in one line, `null` for `ok`), `drivers` (`key`, `points`), `confidence` (`high`, `medium`, `low`), `recommendation`, `courses` (score and level per course), `at_risk_courses`, `gaps` and `intervention` (the open plan in scope: `id`, `course_id`, `kind`, `created_at`, `progress`, or `null`):
+
+```json
+{"id": 15, "name": "Murad Hüseynov", "color": "#0891b2", "group": "İT-25-1", "score": 71.6, "level": "high", "level_label": "High risk",
+ "course_id": 1, "top_driver": "attendance", "top_driver_label": "Attendance",
+ "why": "5 unexcused absences / 27 lessons (19%) · Test results: average 46% (2 attempts), latest 25%",
+ "drivers": [{"key": "attendance", "points": 25.3}, {"key": "assessment", "points": 25.3}, {"key": "concept", "points": 21.0}, {"key": "engagement", "points": 0.0}],
+ "confidence": "high",
+ "recommendation": {"kind": "plan", "text": "Personal support plan: material, practice and a consultation on the topics with gaps", "cc_office": true},
+ "courses": [{"id": 1, "code": "ELM-2105", "name": "Theory of electric circuits", "color": "#2b5aa8", "score": 71.6, "level": "high", "top_driver": "attendance"}],
+ "at_risk_courses": 1,
+ "gaps": [{"topic": "Kirxhofun birinci qanunu", "course_id": 1, "code": "ELM-2105", "color": "#2b5aa8", "score": 4.8}, "…"],
+ "intervention": null}
+```
+
+### `GET /api/radar/student/{sid}?course=<id>`
+
+`course` must be one of the student's courses in scope; otherwise the course with the student's highest score is shown. Returns:
+
+| Field | Content |
+|---|---|
+| `student` | `id`, `name`, `patronymic`, `group`, `student_no`, `color` |
+| `course` | The course shown, as in `scope.courses` |
+| `profile` | `score`, `level`, `level_label`, `drivers`, `top_driver`, `gaps`, `confidence`, `recommendation`, `stats` |
+| `history` | Weekly `as_of`, `score`, `level` for up to eight weeks |
+| `lessons` | The last 14 lessons: `day`, `start`, `status`, `topic` |
+| `courses` | The student's courses in scope with score and level |
+| `cohort` | `students`, `rank` (by score), average `attendance` and `grades` of the course |
+| `interventions` | The student's plans in these courses, newest first, cancelled ones left out |
+| `can_act` | Whether the caller may send a plan |
+
+Each driver has `key`, `label`, `weight`, `value` (0 to 1), `points` (weight × value), `confidence` and `evidence` (sentences). A gap has `topic`, `asks`, `wrong` and `score`. `recommendation` is `null` or has `kind` (`plan`, `consult`, `nudge`, `office`), `text` and `cc_office`. `stats` holds `attendance` (`total`, `absent`, `excused`, `late`, `streak`, `recent`, `rate`, `missed_topics`), `assessment` (`attempts`, `avg`, `first`, `last`, `trend`, `grade_pct`, `series`) and `engagement` (`asks_14d`, `asks_before`, `median_asks`, `attempts`).
+
+### `POST /api/radar/student/{sid}/plan`
+
+| Field | Type | Notes |
+|---|---|---|
+| `course_id` | integer | Required; one of the student's courses in scope, otherwise `400` |
+| `kind` | `plan`, `consult`, `nudge` or `office` | Default: the recommendation's kind, else `plan` |
+| `note` | string | Note to the student; whitespace is collapsed, up to 600 characters |
+| `preview` | boolean | `true` returns the plan without saving it |
+
+With `preview`, the response is `{"plan", "score", "level", "kind"}`. Otherwise the plan is stored, the student is notified (and the dean's office when the plan's `cc_office` is set), and the response is `{"id", "intervention"}`. Errors: `409` when the student already has an open plan in this course, `422` when no step can be built from the data.
+
+A plan has `kind`, `title`, `topics`, `topics_source` (`gaps` or `missed`), `steps`, `due_at` (14 days for `plan` and `consult`, 7 for the others), `note` and `cc_office`. A step has `kind` (`read`, `practice`, `attend`, `consult`, `tutor` or `quiz`), `title`, `text`, `link` (an application route) and `done`, plus `topic` and `cites` (`id`, `material`, `heading`, `snippet`) for `read`, `topic` and `question_ids` for `practice`, `when` (`date`, `start`, `room`, `kind`, or `null`) for `consult`, and `done_at` and `auto` once done.
+
+An intervention has `id`, `student_id`, `kind`, `status` (`open`, `completed`, `cancelled`), `created_at`, `updated_at`, `due_at`, `closed_at`, `note`, `plan`, `progress` (`done`, `total`, `percent`), `course`, `author` and `author_title`; for staff and teachers also `risk_before`, `level_before` and `drivers`.
+
+### `POST /api/interventions/{id}/status`
+
+Body: `{"status": "completed"}` or `{"status": "cancelled"}`. `400` for another value, `403` when the plan's course is not in scope, `404` for an unknown plan, `409` when the plan is not open. Returns the intervention.
+
+### Student plan endpoints
+
+`GET /api/student/plans` returns `{"items": [...]}`: up to 10 of the student's plans, open ones first, cancelled ones left out. `GET /api/student/plans/{id}` returns one; a plan of another student or a cancelled plan is `404`.
+
+`POST /api/student/plans/{id}/steps` takes `{"index": <step index>, "done": <bool>}` (`done` defaults to `true`) and returns the plan. `400` when there is no such step, `409` when the plan is no longer open.
+
+### `GET /api/demo/storyline`
+
+Public, demo mode only; returns ids only, for the three-minute presenter script:
+
+```json
+{"students": {"elnur": 22, "fidan": 38, "kamran": 46, "lale": 55, "murad": 15, "nermin": 29}, "course_id": 1}
+```
+
+The keys are usernames: `POST /api/auth/demo {"role": "student", "user": "murad"}` signs in as that student.
 
 ## Public endpoints
 
@@ -615,6 +745,7 @@ These need no session.
 | `GET` | `/api/bootstrap` | See [Authentication and session](#authentication-and-session) |
 | `GET` | `/api/achievements` | 18 AzTU achievements with categories, headline statistics, the date the sources were checked and the source sites |
 | `GET` | `/api/contact` | Official contact details, map links, university systems, pages and social accounts |
+| `GET` | `/api/demo/storyline` | Demo mode only; see [Zəka Radar](#zəka-radar) |
 | `GET` | `/verify/{code}` | Document verification page (HTML) |
 
 Every achievement item has `id`, `category`, `date` (or `null`), `icon`, `tone`, `featured`, `highlight`, `title`, `summary` and `sources` (each with an `https://` URL).
@@ -623,9 +754,9 @@ Every achievement item has `id`, `category`, `date` (or `null`), `icon`, `tone`,
 
 | Method | Path | Access | Purpose |
 |---|---|---|---|
-| `GET` | `/` and `/static/*` | public | Application shell and static assets |
+| `GET` | `/` and `/static/*` | public | Application shell and static assets from `frontend/` |
 | `GET` | `/doc/{id}` | holder, staff, or a one-time key `?k=` | Printable document page; `?embed=1` hides the toolbar for display inside the application |
-| `GET` | `/verify/{code}` | public | Verification result: valid or revoked, title, registry number, issue date, holder initials, issuing unit, hash prefix |
+| `GET` | `/verify/{code}` | public | Verification result: valid or revoked, title, registry number, issue date, holder initials, issuing unit, hash prefix; 60 lookups per minute per client address |
 | `GET` | `/syllabus/{cid}` | `teacher`, `leader`, `admin`, or a one-time key `?k=` | Printable syllabus; `?embed=1` hides the toolbar |
 | `GET` | `/api/requests/{id}/preview` | `office`, `admin` | Document preview with placeholder registry number and code |
 | `GET` | `/demo/login` | public | Login by link, see above |
@@ -634,13 +765,13 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-107 routes, in the order the router matches them.
+115 routes, in the order the router matches them. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
 | GET | `/api/bootstrap` | public |
-| POST | `/api/auth/demo` | public |
-| GET | `/demo/login` | public |
+| POST | `/api/auth/demo` | public (demo) |
+| GET | `/demo/login` | public (demo) |
 | POST | `/api/auth/logout` | any |
 | POST | `/api/consent` | any |
 | GET | `/api/me` | any |
@@ -730,7 +861,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | PUT | `/api/admin/settings` | admin |
 | POST | `/api/admin/test-llm` | admin |
 | GET | `/api/admin/audit` | admin, leader |
-| POST | `/api/admin/reset` | admin |
+| POST | `/api/admin/reset` | admin (demo) |
 | GET | `/api/support/meta` | any |
 | GET | `/api/support/tickets` | any |
 | POST | `/api/support/tickets` | any |
@@ -745,3 +876,11 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | GET | `/api/system/status` | any |
 | GET | `/api/achievements` | public |
 | GET | `/api/contact` | public |
+| GET | `/api/radar` | teacher, office, leader, admin |
+| GET | `/api/radar/student/{sid}` | teacher, office, leader, admin (student access) |
+| POST | `/api/radar/student/{sid}/plan` | teacher, office, admin (student access) |
+| POST | `/api/interventions/{id}/status` | teacher, office, admin (plan in scope) |
+| GET | `/api/student/plans` | student |
+| GET | `/api/student/plans/{id}` | student (own plan) |
+| POST | `/api/student/plans/{id}/steps` | student (own plan) |
+| GET | `/api/demo/storyline` | public (demo) |

@@ -3,14 +3,13 @@ import argparse
 import os
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parent
 ROOT = BACKEND.parent  # repository: frontend/, content/, data/, logs/
 sys.path.insert(0, str(BACKEND))
 
-from zeka.core import config, migrate  # noqa: E402
+from zeka.core import clock, config, migrate  # noqa: E402
 from zeka.legacy import api, store  # noqa: E402
 from zeka.core.security import CFG, LOOPBACK  # noqa: E402
 from zeka.core.web import make_server  # noqa: E402
@@ -55,6 +54,8 @@ def main():
     if config.prod():
         if args.reset:
             ap.error("prod rejimində --reset qadağandır: məlumat heç vaxt silinmir")
+        if clock.ZONE is None:
+            ap.error(f"ZEKA_TZ={clock.TZ_NAME}: saat qurşağı tapılmadı (məs. Asia/Baku; Windows-da tzdata paketi lazımdır)")
         if public.startswith("https://") and CFG.proxy_hops == 0:
             ap.error("PUBLIC_URL https:// ilə başlayır, amma ZEKA_PROXY_HOPS=0: tətbiq TLS danışmır, deməli qabaqda proksi var; "
                      "proksilərin sayını təyin edin (adətən 1)")
@@ -79,7 +80,7 @@ def main():
         if path.exists() and path.stat().st_size > LOG_MAX:      # keep one previous file; the log cannot fill the disk
             path.replace(log_dir / "errors.log.1")
         with open(path, "a", encoding="utf-8") as f:
-            f.write(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {msg}\n")
+            f.write(f"[{clock.local():%Y-%m-%d %H:%M:%S}] {msg}\n")
 
     srv = make_server(args.port, api.R, ROOT / "frontend", api.before, api.after, log, host=args.host)
     shown = f"  ·  ictimai ünvan: {public}" if public else ""

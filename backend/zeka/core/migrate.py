@@ -11,8 +11,9 @@ from __future__ import annotations
 import hashlib
 import re
 import sqlite3
-from datetime import datetime
 from pathlib import Path
+
+from . import clock
 
 DIR = Path(__file__).resolve().parents[2] / "migrations"
 NAME = re.compile(r"^(\d{4})_([a-z0-9_]+)\.sql$")
@@ -63,7 +64,7 @@ def _has_tables(conn: sqlite3.Connection) -> bool:
 
 def _backup(conn: sqlite3.Connection, backup_dir: Path, version: int) -> Path:
     backup_dir.mkdir(parents=True, exist_ok=True)
-    target = backup_dir / f"pre-{version:04d}-{datetime.now():%Y%m%d-%H%M%S-%f}.db"
+    target = backup_dir / f"pre-{version:04d}-{clock.local():%Y%m%d-%H%M%S-%f}.db"
     dest = sqlite3.connect(target)
     try:
         conn.backup(dest)
@@ -84,7 +85,7 @@ def apply(conn: sqlite3.Connection, directory: Path = DIR, backup_dir: Path | No
     for v in pending:
         name, path = paths[v]
         sql = path.read_text(encoding="utf-8")
-        stamp = datetime.now().isoformat(timespec="seconds")
+        stamp = clock.local().isoformat(timespec="seconds")
         # name matches [a-z0-9_]+ and checksum is hex, so the literals below cannot break out of their quotes
         script = (f"BEGIN;\n{sql}\n;\nINSERT INTO schema_migrations(version,name,checksum,applied_at) "
                   f"VALUES({v},'{name}','{checksum(path)}','{stamp}');\nCOMMIT;")

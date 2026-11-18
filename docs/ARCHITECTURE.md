@@ -13,14 +13,15 @@ This document describes how Zəka (AzTU Digital Campus, demo version 0.3) is bui
 - [9. AI engine](#9-ai-engine)
 - [10. Tutor and campus assistant](#10-tutor-and-campus-assistant)
 - [11. Question generation and grading](#11-question-generation-and-grading)
-- [12. Localisation](#12-localisation)
-- [13. Frontend](#13-frontend)
-- [14. Notifications, badges and audit](#14-notifications-badges-and-audit)
-- [15. Analytics](#15-analytics)
-- [16. Logging and status](#16-logging-and-status)
-- [17. Deployment](#17-deployment)
-- [18. Testing](#18-testing)
-- [19. Known limitations and technical debt](#19-known-limitations-and-technical-debt)
+- [12. Zəka Radar](#12-zəka-radar)
+- [13. Localisation](#13-localisation)
+- [14. Frontend](#14-frontend)
+- [15. Notifications, badges and audit](#15-notifications-badges-and-audit)
+- [16. Analytics](#16-analytics)
+- [17. Logging and status](#17-logging-and-status)
+- [18. Deployment](#18-deployment)
+- [19. Testing](#19-testing)
+- [20. Known limitations and technical debt](#20-known-limitations-and-technical-debt)
 
 ## 1. Overview
 
@@ -29,32 +30,40 @@ Zəka is a single Python process that serves a single-page web application and a
 ```mermaid
 flowchart TB
   subgraph Browser
-    SPA["static/js/main.js and page modules<br/>hash router, templating, API client"]
+    SPA["frontend/js/main.js and page modules<br/>hash router, templating, API client"]
   end
-  subgraph Process["Python process: run.py"]
+  subgraph Process["Python process: backend/run.py"]
     direction TB
-    WEB["app/web.py<br/>ThreadingHTTPServer, Router, static files,<br/>security headers, error mapping"]
-    COMMON["app/common.py<br/>before()/after() hooks: DB connection,<br/>session lookup, one-time keys, role guard"]
-    R["Route modules<br/>r_core, r_learning, r_services, r_news,<br/>r_academy, r_support, r_admin"]
-    ENGINE["app/engine.py<br/>tokeniser, BM25, chunking, extraction,<br/>PII masking, LLM client, question templates"]
-    TUTOR["app/tutor.py<br/>Socratic / Explain / Practice composition,<br/>campus assistant"]
-    DOCS["app/docs.py, app/qr.py, app/pdftext.py<br/>document HTML, QR SVG, PDF text"]
-    I18N["app/i18n.py<br/>catalogues, localize()"]
-    STORE["app/store.py<br/>schema, helpers, files, documents, seeding"]
-    REFS["app/refs.py, app/support.py<br/>references, support vocabularies"]
+    WEB["zeka/core/web.py<br/>ThreadingHTTPServer, Router, Body, static files,<br/>request checks, security headers, error mapping"]
+    SEC["zeka/core/security.py<br/>access code, rate limits, client address,<br/>cross-site check"]
+    COMMON["zeka/legacy/common.py<br/>before()/after() hooks: DB connection,<br/>session lookup and lifetime, one-time keys, role guard"]
+    R["Route modules (zeka/legacy)<br/>r_core, r_learning, r_services, r_news,<br/>r_academy, r_admin, r_support, r_radar"]
+    ENGINE["zeka/legacy/engine.py<br/>tokeniser, BM25, chunking, extraction,<br/>PII masking, LLM client, question templates"]
+    TUTOR["zeka/legacy/tutor.py<br/>Socratic / Explain / Practice composition,<br/>campus assistant"]
+    RADAR["zeka/legacy/radar.py, radar_seed.py<br/>risk model, support plans, impact"]
+    DOCS["zeka/legacy/docs.py, qr.py, pdftext.py<br/>document HTML, QR SVG, PDF text"]
+    I18N["zeka/core/i18n.py<br/>catalogues, localize()"]
+    STORE["zeka/legacy/store.py<br/>init, helpers, files, documents, seeding"]
+    MIG["zeka/core/migrate.py<br/>forward-only schema migrations"]
+    REFS["zeka/legacy/refs.py, support.py<br/>references, support vocabularies"]
   end
+  SQL["backend/migrations/*.sql"]
   DB[("data/campus.db<br/>SQLite, WAL")]
   UP[("data/uploads/<br/>files by SHA-256")]
   CONTENT["content/<br/>seed.json, materials/*.md, campus_kb.md,<br/>academy.json, tools.json, news.json, guide.json,<br/>achievements.json, references.json, contacts.json"]
   LLM["LLM provider (optional)"]
 
   SPA --> WEB --> COMMON --> R
+  WEB --> SEC
   R --> ENGINE
   R --> TUTOR --> ENGINE
+  R --> RADAR --> ENGINE
   R --> DOCS
   R --> STORE
   R --> REFS
   WEB --> I18N
+  STORE --> MIG
+  SQL --> MIG --> DB
   STORE --> DB
   STORE --> UP
   CONTENT --> STORE
@@ -64,32 +73,46 @@ flowchart TB
 
 ### Module map
 
-| File | Lines | Responsibility |
-|---|---|---|
-| `run.py` | 57 | Command-line options, database initialisation, server start, error log |
-| `app/web.py` | 195 | `Request`, `Response`, `Router`, `HTTPError`, `make_server()`; static files; security headers |
-| `app/common.py` | 183 | `R` router instance, `before()`/`after()`, session cookie, one-time keys, course access, usage limits, citation helpers |
-| `app/routes.py`, `app/api.py` | 5 | Import the route modules in matching order; compatibility shim for `run.py` and tests |
-| `app/r_core.py` | 289 | Login, logout, consent, profile, preferences, badges, notifications, guide, search, file upload, download, preview |
-| `app/r_learning.py` | 744 | Courses, materials, sources, schedule, attendance, grades, student and teacher home, tutor, campus assistant, tests, Test Studio |
-| `app/r_services.py` | 492 | Service catalogue, request validation and lifecycle, dean's office actions, office summary, documents, verification page |
-| `app/r_news.py` | 200 | News feed, detail, registration, bookmarks, iCalendar export, editor |
-| `app/r_academy.py` | 284 | AI Academy, self-assessment, module completion and certificates, tool catalogue, syllabus assistant |
-| `app/r_support.py` | 309 | Support tickets, feedback, system status, achievements, contacts |
-| `app/r_admin.py` | 137 | Leadership analytics, administrator status, settings, LLM test, audit log, reset |
-| `app/engine.py` | 682 | Text utilities, BM25, chunking, glossary, text extraction, PII masking, LLM client, answer helpers, grading, question generation |
-| `app/tutor.py` | 191 | `compose_tutor()`, `compose_campus()`, `llm_tutor()`, practice formatting, cross-language query expansion |
-| `app/store.py` | 761 | Schema, connection, row helpers, settings, notifications, file storage, materials, index building, document issue, transcripts, seeding, `init()`, `reseed()` |
-| `app/docs.py` | 201 | Printable documents (enrolment certificate, transcript, academic leave extract, academy certificate) and the verification page |
-| `app/qr.py` | 277 | QR encoder: byte mode, error correction level M, versions 1 to 10, SVG output |
-| `app/pdftext.py` | 235 | PDF text extraction: FlateDecode, object streams, ToUnicode CMaps, simple and Type0 fonts |
-| `app/i18n.py` | 199 | Catalogue loading, `S`/`T3`/`E`/`S_`, plural rules, `localize()`, `canon()` |
-| `app/refs.py` | 57 | Verified external references from `content/references.json`, https-only |
-| `app/support.py` | 119 | Support categories, priorities, statuses, SLA hours, feedback areas, synthetic tickets and feedback |
+Python code lives under `backend/`. `backend/zeka/core/` is the platform layer (HTTP, localisation, security, run mode, migrations); `backend/zeka/legacy/` holds every other module. The layer rule that `core/` never imports from `legacy/` is checked by `tests/unit/test_layers.py`. The web client lives in `frontend/` and is served under the URL prefix `/static/`.
+
+| File | Responsibility |
+|---|---|
+| `backend/run.py` | Command-line options, public URL check, run-mode and reachable-host guards, security settings, database initialisation, server start, error log |
+| `backend/manage.py` | Administration commands: `status` and `migrate` (schema migrations), `create-admin` (prod mode) |
+| `backend/migrations/*.sql` | Schema migration files, applied once each in number order; `0001_baseline.sql` is the whole current schema |
+| `backend/zeka/core/config.py` | Run mode from `ZEKA_MODE`: `demo` (default) or `prod` |
+
+Time: every timestamp comes from `backend/zeka/core/clock.py`. `clock.now()` is aware UTC; `clock.local()` (used by `store.now()`) is the naive wall-clock time in `ZEKA_TZ` (default `Asia/Baku`), so the server's own timezone never matters. Prod refuses an unknown `ZEKA_TZ`; ruff rules DTZ005/DTZ011 forbid `datetime.now()` and `date.today()` elsewhere in `backend/`.
+| `backend/zeka/core/migrate.py` | Migration engine: discovery, checksums, status, backup, transactional apply |
+| `backend/zeka/core/web.py` | `Request`, `Body` (typed accessors), `Response`, `Router` (with demo-only routes), `HTTPError`, `make_server()`; static files; body length, cross-site and content-type checks; security headers; error mapping |
+| `backend/zeka/core/security.py` | `CFG` (settings from the `ZEKA_*` environment variables), `access_code_ok()`, `RateLimiter` and `LIMITS`, `client_ip()`, `cross_site()`, `safe_next()`, `header_ok()` |
+| `backend/zeka/core/i18n.py` | Catalogue loading from `backend/zeka/core/locales/`, `S`/`T3`/`E`/`S_`, plural rules, `localize()`, `canon()` |
+| `backend/zeka/legacy/common.py` | `R` router instance, `before()`/`after()`, session lifetime and cookie, one-time keys, course access, usage limits, citation helpers |
+| `backend/zeka/legacy/routes.py`, `api.py` | Import the route modules in matching order; compatibility shim used by `backend/run.py` and the tests |
+| `backend/zeka/legacy/r_core.py` | Login, logout, consent, profile, preferences, badges, notifications, guide, search, file upload, download, preview |
+| `backend/zeka/legacy/r_learning.py` | Courses, materials, sources, schedule, attendance, grades, student and teacher home, tutor, campus assistant, tests, Test Studio |
+| `backend/zeka/legacy/r_services.py` | Service catalogue, request validation and lifecycle, dean's office actions, office summary, documents, verification page |
+| `backend/zeka/legacy/r_news.py` | News feed, detail, registration, bookmarks, iCalendar export, editor |
+| `backend/zeka/legacy/r_academy.py` | AI Academy, self-assessment, module completion and certificates, tool catalogue, syllabus assistant |
+| `backend/zeka/legacy/r_support.py` | Support tickets, feedback, system status, achievements, contacts |
+| `backend/zeka/legacy/r_admin.py` | Leadership analytics, administrator status, settings, LLM test, audit log, reset |
+| `backend/zeka/legacy/r_radar.py` | Radar dashboard, student risk profile, support plans, the student's plan pages, demo storyline ids, Radar badge and leadership insight |
+| `backend/zeka/legacy/radar.py` | Risk model (signals, drivers, levels), cohort analysis and its cache, plan building, automatic step progress, impact, weekly snapshots |
+| `backend/zeka/legacy/radar_seed.py` | Radar demo storylines: named synthetic students, two earlier support plans, weekly snapshots |
+| `backend/zeka/legacy/engine.py` | Text utilities, BM25, chunking, glossary, text extraction, PII masking, LLM client, answer helpers, grading, question generation |
+| `backend/zeka/legacy/tutor.py` | `compose_tutor()`, `compose_campus()`, `llm_tutor()`, practice formatting, cross-language query expansion |
+| `backend/zeka/legacy/store.py` | Connection, row helpers, settings, notifications, file storage, materials, index building, document issue, transcripts, seeding (`seed_catalog()`, `seed()`), retention purge, `init()`, `reseed()` |
+| `backend/zeka/legacy/docs.py` | Printable documents (enrolment certificate, transcript, academic leave extract, academy certificate) and the verification page |
+| `backend/zeka/legacy/qr.py` | QR encoder: byte mode, error correction level M, versions 1 to 10, SVG output |
+| `backend/zeka/legacy/pdftext.py` | PDF text extraction: FlateDecode, object streams, ToUnicode CMaps, simple and Type0 fonts; isolated child process for uploads |
+| `backend/zeka/legacy/refs.py` | Verified external references from `content/references.json`, https-only |
+| `backend/zeka/legacy/support.py` | Support categories, priorities, statuses, SLA hours, feedback areas, synthetic tickets and feedback |
 
 ## 2. Process model and request lifecycle
 
-`run.py` parses the options, calls `store.init()` (which creates or reseeds the database and builds the search indexes), sets the public base URL used for QR codes and cookies, and starts a `ThreadingHTTPServer` with daemon threads. Each request runs in its own thread. Access logging is disabled; unhandled exceptions are written to `logs/errors.log` with a traceback.
+`backend/run.py` parses the options and rejects a `--public-url` that is more than a scheme, a host and a port (a bare host gets `https://`). The run mode comes from `ZEKA_MODE` (`config.MODE`): `demo` (the default) or `prod`; any other value stops the start. In demo mode the server refuses a `--host` other than `127.0.0.1`, `::1` or `localhost` unless `ZEKA_ALLOW_OPEN_DEMO=1`, and then the shared access code `ZEKA_ACCESS_CODE`, when set, is what gates the password-less login. In prod mode `--reset` is refused, and so is an `https://` public URL with `ZEKA_PROXY_HOPS=0` (the process does not speak TLS, so a proxy must be in front). It then sets the security configuration (`CFG.https` when the public URL is HTTPS, the public host as an accepted `Origin`, the access log), calls `store.init()` (which applies the schema migrations, seeds an empty database, deletes chat messages older than the retention period and builds the search indexes; a `MigrationError` stops the start), sets the public base URL used for QR codes and cookies, and starts a `ThreadingHTTPServer` with daemon threads that serves the API and the files in `frontend/`. Each request runs in its own thread. Connections are HTTP/1.1 keep-alive with a 30-second socket timeout.
+
+The access log writes one line per request to standard output (client address, method, path, status, duration). It is on by default for a reachable host and off on loopback; `ZEKA_ACCESS_LOG=1` or `0` forces it. Unhandled exceptions are written to `logs/errors.log` with a traceback, at most 30 entries per minute; the file is moved to `logs/errors.log.1` when it passes 5 MB.
 
 ```mermaid
 sequenceDiagram
@@ -101,15 +124,16 @@ sequenceDiagram
   participant L as i18n.localize
 
   B->>W: GET /api/courses (Cookie or X-Session, X-Lang)
-  W->>W: parse path and query, build Request (lang from X-Lang or ?lang, default az)
+  W->>W: parse path and query, build Request (lang from X-Lang or ?lang, default az; client address)
+  W->>W: Transfer-Encoding (501), bad or conflicting Content-Length (400), body over 16 MB (413)
   alt static path (/, /static/*, /favicon.ico)
-    W-->>B: file bytes with Cache-Control
+    W-->>B: file bytes from frontend/ with Cache-Control
   else API or page route
-    W->>W: POST/PUT/DELETE under /api with a body must be application/json (415)
+    W->>W: POST/PUT/DELETE: cross-site request (403); a body must be application/json (415)
     W->>W: Router.match → handler, params, roles, auth (404/405)
     W->>C: before(req, roles, auth)
     C->>S: open connection (WAL, foreign keys on)
-    C->>S: SELECT user by session id
+    C->>S: SELECT user by session id, session created within ZEKA_SESSION_HOURS
     C->>C: one-time key for /doc, /syllabus, /api/files when no session
     C-->>W: 401 if auth required and no user, 403 if role not allowed
     W->>H: handler(req)
@@ -121,38 +145,60 @@ sequenceDiagram
   end
 ```
 
-Error mapping: an `HTTPError(status, message)` raised anywhere becomes `{"error": "<translated message>"}` for paths under `/api/` and a small HTML page otherwise. Any other exception is logged and returned as a generic 500 message. Route parameters written as `{id:int}` match digits only and arrive as integers; `{code}` matches any path segment.
+Error mapping: an `HTTPError(status, message)` raised anywhere becomes `{"error": "<translated message>"}` for paths under `/api/` and a small HTML page otherwise. A `ValueError` or `TypeError` that escapes a handler (malformed input the handler did not check itself) becomes a 400 with the translated message "Sorğu məlumatı düzgün deyil"; any other exception is logged and returned as a generic 500 message. Route parameters written as `{id:int}` match digits only and arrive as integers; `{code}` matches any path segment. A route declared with `demo=True` does not match in prod mode, so it answers 404 there: the two demo login routes, `/api/demo/storyline` and `/api/admin/reset`.
 
-Security headers on every response: `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, and a Content Security Policy that allows scripts and connections from the same origin only, images from the same origin and `data:` URLs, and inline styles. Static files are served from `static/` with a path check that rejects anything outside the directory; fonts and PNG images are cacheable for a day, other static files are `no-cache`. The maximum request body is 30 MB.
+**Request checks.** Before routing, a request with a `Transfer-Encoding` header is refused with 501, a non-numeric or repeated, conflicting `Content-Length` with 400, and a body larger than 16 MB with 413 (a 10 MB upload is about 13.4 MB as Base64 inside JSON). For `POST`, `PUT` and `DELETE`, `security.cross_site()` refuses with 403 a request that a browser marks as coming from another site: it uses `Sec-Fetch-Site` when present (`same-origin` and `none` pass) and otherwise compares `Origin` with the `Host` header and the public URL host; an `Origin` of `null` is refused, and a request with neither header (a non-browser client) passes. A non-empty body of these methods must then be `application/json` (415).
+
+**Request bodies.** `req.json()` reads the body once and returns a `web.Body`, a `dict` with typed accessors: `text(key, limit)`, `integer(key, default, lo, hi)`, `number(key, default, lo, hi)`, `array(key)`, `ids(key, limit)` and `obj(key)`. Invalid JSON, the constants `NaN` and `Infinity`, and a body that is not an object are answered with 400; a value of the wrong JSON type with 400 "Yanlış dəyər: {field}". `integer` and `number` clamp to `lo` and `hi`. `req.qint()` does the same for query parameters. When a request carries a body that the handler never read, or the answer is 400, 413 or 501 before the body was read, the server closes the connection, so an unread body is never parsed as the next request.
+
+**Response headers** on every response: `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: SAMEORIGIN`, `Cross-Origin-Resource-Policy: same-origin`, a `Permissions-Policy` that turns off camera, microphone, geolocation, payment, USB and interest cohorts, and a Content Security Policy that allows scripts and connections from the same origin only, images from the same origin and `data:` URLs, and inline styles, with `object-src 'none'`, `base-uri 'none'`, `form-action 'self'` and `frame-ancestors 'self'`. With an HTTPS public URL, `Strict-Transport-Security: max-age=31536000` is added. A response that sets no `Cache-Control` gets `no-store`. The `Server` header is `Zeka` without the Python version, and a response header containing CR, LF or NUL is replaced by a 500 before it is sent. `HEAD` is answered like `GET` without the body.
+
+Static files are served from `frontend/` under `/static/` (plus `/` for `index.html` and `/favicon.ico` for `img/favicon.svg`) with a path check that rejects anything outside the directory; fonts and PNG images are cacheable for a day, other static files are `no-cache`.
 
 ## 3. Authentication and authorisation
 
-**Demo login.** `POST /api/auth/demo {"role": ...}` looks up the demo username for that role in the `demo_logins` setting, creates a row in `sessions` with a random 24-byte id, writes an audit entry and returns the user, the role home path and the session id. `GET /demo/login?role=...&next=...` does the same and redirects; `next` must be a same-origin path.
+**Demo login.** `POST /api/auth/demo {"role": ..., "code": ..., "user": ...}` looks up the demo username for that role in the `demo_logins` setting. When `ZEKA_ACCESS_CODE` is set, a visitor without a valid session must send that code, which is compared in constant time; a visitor who already has a valid session may switch roles without it. A wrong code answers 403 and writes a `login_denied` audit entry. With the role `student`, `user` selects a student by username instead of the demo student (the Radar demo storyline uses it). The login deletes the browser's previous session and every expired session, creates a row in `sessions` with a random id from `secrets.token_urlsafe(32)`, writes an audit entry and returns the user, the role home path and the session id. `GET /demo/login?role=...&code=...&user=...&next=...` does the same and redirects to `next`, or to the role home page when `next` is absent; a `next` that is not a same-site relative path (`security.safe_next()`) redirects to `/`. Both login routes exist only in demo mode, and no other route creates a session, so in prod mode nobody can sign in yet; `backend/manage.py create-admin` creates an administrator account, whose sign-in is not implemented yet.
 
-**Session transport.** The session id is set as the cookie `zeka_sid` (`HttpOnly; SameSite=Lax; Path=/`, plus `Secure` when the public URL starts with `https://`). The client also keeps the id in `sessionStorage` and sends it as the `X-Session` header, so the application works where cookies are blocked. Logout deletes the session row and expires the cookie. Sessions have no expiry in this version.
+**Session transport.** The session id is set as the cookie `zeka_sid` (`HttpOnly; SameSite=Lax; Path=/; Max-Age=<ZEKA_SESSION_HOURS × 3600>`, plus `Secure` when the public URL starts with `https://`). The client also keeps the id in `sessionStorage` and sends it as the `X-Session` header, so the application works where cookies are blocked. A session has an absolute lifetime of `ZEKA_SESSION_HOURS` hours from its creation (default 12, accepted range 1 to 720); `before()` ignores older sessions, and their rows are deleted at the next login. Logout deletes the session row and expires the cookie.
 
-**Roles.** `student`, `teacher`, `office` (dean's office and registrar), `leader` (rector's office) and `admin`. Each route declares `roles` and `auth`; `before()` returns 401 when a login is required and missing, and 403 when the role is not in the list. Apart from the two login routes, four routes are public: `/api/bootstrap`, `/api/achievements`, `/api/contact` and the verification page `/verify/{code}`.
+**Roles.** `student`, `teacher`, `office` (dean's office and registrar), `leader` (rector's office) and `admin`. Each route declares `roles` and `auth`; `before()` returns 401 when a login is required and missing, and 403 when the role is not in the list. Apart from the two login routes, five routes are public: `/api/bootstrap`, `/api/achievements`, `/api/contact`, the verification page `/verify/{code}` and, in demo mode only, `/api/demo/storyline`.
 
 **Object-level rules** are enforced in the handlers:
 
 | Object | Rule |
 |---|---|
 | Course | Students must be enrolled; teachers must own the course; office, leader and admin may read any course (`course_access`) |
-| Request | Students see their own; office, leader and admin see all; teachers see none |
-| Uploaded file | Owner, office and admin only; every download and preview is audited |
+| Request | Students see their own; office, leader and admin see all; teachers see none (`_req_for`) |
+| Uploaded file | Owner, office and admin only; every download and preview is audited (`file_access`) |
 | Document | Holder, office, leader and admin |
-| Support ticket | Owner; office and admin work the queue; leader may read; internal notes are hidden from the owner |
+| Support ticket | Owner; office and admin work the queue; leader may read; internal notes are hidden from the owner (`_ticket_for`) |
 | News | Audience filter (`all`, `students`, `teachers`); drafts visible to staff only |
+| Radar student and plan | Teachers see students enrolled in one of their own courses, and only those courses; office, leader and admin see all; teacher, office and admin may create and close plans, leader may only read (`scope`, `student_access`) |
+| Support plan, student side | Only the student it was written for; cancelled plans are hidden; the risk score and drivers are left out (`own_plan`, `iv_out(for_student=True)`) |
+
+**Rate limits.** `security.LIMITS` holds fixed-window counters in process memory; a request over its limit is answered with 429.
+
+| Limit | Window | Counted per | Used by |
+|---|---|---|---|
+| `login` 30 | 1 minute | client address | Both demo login routes |
+| `login_fail` 10 | 10 minutes | client address | Wrong access codes; once reached, logins without a session are refused for the rest of the window |
+| `ai` 30 | 1 minute | user | Tutor, campus assistant, Test Studio generation |
+| `upload` 40 | 10 minutes | user | File upload, course material upload |
+| `preview` 30 | 1 minute | user | File preview |
+| `link` 120 | 1 minute | user | One-time links for documents, syllabi and files |
+| `verify` 60 | 1 minute | client address | `/verify/{code}` |
+
+The client address is the socket peer; with `ZEKA_PROXY_HOPS=N` (0 to 5) it is the N-th address from the right of `X-Forwarded-For`. The daily message limit of the tutor and the campus assistant (section 10) is separate and counted from the database.
 
 **One-time keys.** Documents, syllabi and files open in a new tab, where a `sessionStorage` token is not available. `POST /api/documents/{id}/link` (and the equivalents for syllabi and files) returns a URL with `?k=<key>`. Keys are random, kept in process memory, valid for five minutes, single-use, and bound to the object kind and id. `before()` resolves the key to its user when the request carries no session.
 
 ## 4. Data model
 
-SQLite at `data/campus.db`, WAL journal, foreign keys on, one connection per request with a 15-second busy timeout. Structured values (options, JSON schemas, metadata) are stored as JSON text; strings that must appear in three languages are stored as JSON objects `{"az","en","ru"}` and resolved by the localiser on output. The schema has 40 tables.
+SQLite at `data/campus.db`, WAL journal, `PRAGMA foreign_keys=ON` (the schema declares no foreign key constraints), one connection per request with a 15-second busy timeout. Structured values (options, JSON schemas, metadata) are stored as JSON text; strings that must appear in three languages are stored as JSON objects `{"az","en","ru"}` and resolved by the localiser on output. The schema is defined by the migration files in `backend/migrations/`; the only one so far, `0001_baseline.sql`, creates 42 tables, and the migration engine adds its log table `schema_migrations`.
 
 | Domain | Tables | Notes |
 |---|---|---|
-| Identity and settings | `settings`, `study_groups`, `users`, `sessions` | `settings` holds JSON values (university, faculty, specialty, demo logins, limits, semester start, vocabularies). `users.prefs` holds theme, language, sidebar state, completed tours and the academy self-assessment. `users.synthetic` marks generated people |
+| Identity and settings | `settings`, `study_groups`, `users`, `sessions` | `settings` holds JSON values (university, faculty, specialty, demo logins, limits, semester start, vocabularies). `users.prefs` holds theme, language, sidebar state, completed tours, the consent choice and the academy self-assessment. `users.synthetic` marks generated people. `sessions` holds the id, the user and the creation time |
 | Teaching | `courses`, `enrollments`, `timetable`, `lessons`, `attendance`, `grades` | `timetable` is the weekly pattern; `lessons` are dated instances generated from it since the semester start; `attendance` rows are per lesson and student with status `present`, `late`, `absent` or `excused` and the excusing request id; `courses` carries the tutor settings (`tutor_modes`, `tutor_rules`, `tutor_locked`) |
 | Material and knowledge | `materials`, `chunks`, `campus_kb` | A material keeps the full text; `chunks` are its sections, which are the unit of retrieval and citation; `campus_kb` entries come from `content/campus_kb.md` and may point to a request type |
 | Conversations | `messages`, `teacher_questions` | `messages.channel` is `tutor` (per course) or `campus`; `cites` is a list of chunk or knowledge base ids; `meta` holds mode, topic, Socratic level, practice state, PII labels and engine notes; `rating` is 1, -1 or null |
@@ -162,23 +208,27 @@ SQLite at `data/campus.db`, WAL journal, foreign keys on, one connection per req
 | Communication | `notifications`, `news`, `news_rsvp`, `news_saved`, `news_reads` | Notifications are per user with a kind, a link and a read timestamp |
 | Academy | `academy_tracks`, `academy_modules`, `academy_progress`, `tools`, `course_tools`, `syllabi` | Modules carry paragraphs, key points, phrases, a task and a quiz; progress is per user and module; a saved syllabus is one JSON document per course |
 | Support | `support_tickets`, `support_messages`, `feedback` | Tickets carry category, priority, status, assignee and rating; messages may be internal; feedback rows carry a score, an optional NPS value and an area |
+| Radar | `interventions`, `risk_snapshots` | An intervention is a support plan for one student in one course: kind (`plan`, `consult`, `nudge`, `office`), status (`open`, `completed`, `cancelled`), the plan as JSON (steps with their done state), the risk score, level and drivers when the plan was sent, the author, a note and the due date. `risk_snapshots` holds weekly `high`/`watch`/`ok` counts per course and for all courses (`course_id` 0) |
 | Audit | `audit` | Timestamp, user, action, entity, detail |
 
-**Schema versioning.** `SCHEMA_VERSION` (currently 3) is written to `PRAGMA user_version` after seeding. On start, a database with a different version, a corrupt file, or the `--reset` flag causes the database and its WAL files to be deleted and recreated. `POST /api/admin/reset` deletes all rows and reseeds without restarting the process.
+**Schema migrations.** Schema changes are files `backend/migrations/NNNN_name.sql`, applied forward only by `migrate.apply()` at every start (and by `python backend/manage.py migrate`; `manage.py status` lists applied and pending versions). Each pending file runs once, in number order, in one transaction together with its row in `schema_migrations` (version, name, SHA-256 checksum, time), so a failing file leaves nothing half-applied. Before the first pending file, a copy of an existing database is written to `data/backups/` (the last five are kept). The engine raises `MigrationError` and the server does not start when an applied file was edited (checksum mismatch), when the database records a version that has no file, or when two files share a number.
+
+**When the database is recreated.** An existing database is deleted and rebuilt only with `--reset`, when the file is not a database, or when it is a demo database from before the migration engine whose `PRAGMA user_version` is neither 0 nor 4; a demo seed still writes `user_version` 4 as that marker. In prod mode none of these deletes anything: `init()` raises `MigrationError` instead. `POST /api/admin/reset` (demo mode only) deletes all rows except the migration log and reseeds without restarting the process. On every start, and whenever the administrator saves the settings, `store.purge_expired()` deletes chat messages older than `limits.retention_days`.
 
 ## 5. Demo data seeding
 
-`store.seed()` runs when the `users` table is empty. It reads `content/seed.json` and the other content files and generates everything else with `random.Random(42)`, so each fresh database is identical except for timestamps, which are relative to the current date.
+Seeding has two parts. `store.seed_catalog()` writes the product content every installation needs: university, faculty and specialty settings, limits, the semester start, the campus knowledge base, the e-service catalogue, the AI Academy, the tool catalogue and the news kinds. `store.seed()` is the demo: the catalogue plus synthetic people, courses, activity and documents. In demo mode `seed()` runs when the `users` table is empty; in prod mode only `seed_catalog()` runs, when the `university` setting is missing, and no people are created. `seed()` reads `content/seed.json` and the other content files and generates everything else with `random.Random(42)`, so each fresh demo database is identical except for timestamps, which are relative to the current date.
 
 - University, faculty, programme, demo logins and past semesters come from the seed file. Limits default to 50 assistant messages per student per day, PII masking on, 180 days retention, Socratic mode on.
 - The semester start is 15 September or 15 February, whichever is the most recent, moved back to three weeks ago if that date is less than two weeks old.
 - 6 courses with 16 material files, weekly timetables, lessons for every slot since the semester start, and enrolments for 120 students (one named demo student and 119 generated ones). The demo student is absent on the last Monday and Tuesday before today, which gives the attendance and excuse scenario its six absences.
 - 6 named teachers and 18 generated ones; seeded grades for two assessment components per course.
 - 17 knowledge base entries parsed from the Markdown headings in `campus_kb.md`, with the request code, button label and source taken from an HTML comment under each heading.
-- 43 approved questions and 10 tests, with 85 generated attempts per practice test and fixed result patterns for the demo student.
-- Roughly 1,800 synthetic tutor exchanges across the courses (per-course weights), with topics, citations and ratings, used by the course insights and the leadership dashboard.
+- 43 approved questions and 10 tests (9 practice, 1 graded), with about 85 generated attempts per practice test and fixed result patterns for the demo student.
+- Roughly 1,850 synthetic tutor exchanges across the courses (per-course weights), with topics, citations and ratings, used by the course insights, the leadership dashboard and the Radar model.
 - E-service requests in every status, including one ready enrolment certificate for the demo student, one revoked document and generated one-page PDFs as medical certificate attachments.
 - Academy progress for the demo teacher, news with registrations and read marks, notifications per role, support tickets and 140 feedback entries.
+- Radar storylines (`radar_seed.seed()`): six generated students of ELM-2105, the demo teacher's course, are given attendance, grades, test attempts and tutor activity that tell a clear story (a high-risk student who stopped attending, a student with concept gaps, a disengaged student, a student with an open support plan whose steps were completed from activity, a student whose plan is completed, a student whose absences are all excused). The tutor answers in these histories are composed by the offline engine. The storylines are skipped while ELM-2105 has fewer than eight lessons (the first days of a semester). In both cases `radar.snapshot_history()` writes the weekly risk snapshots for the past weeks of the semester.
 
 Generated timestamps for office activity are folded into 09:00 to 17:59 so that requests are not shown as filed at night.
 
@@ -193,9 +243,9 @@ Generated timestamps for office activity are folded into 09:00 to 17:59 so that 
 | Image-only fields | PNG or JPEG only when the field asks for a photo |
 | Name | Characters outside letters, digits, Azerbaijani letters, space, dot, parentheses and hyphen are replaced; truncated to 120 characters |
 
-The content is written to `data/uploads/<sha256>.bin` once per distinct content, and a `files` row records the owner, original name, MIME type, size and hash. A file is attached to a request when the request is created or resubmitted; a file can be attached only once. Downloads are served with `Content-Disposition` (inline or attachment) and `Cache-Control: private, no-store`. `GET /api/files/{id}/preview` returns extracted text per page for PDF (via `pdftext`), the paragraphs of a DOCX, or the kind `image` so the client can render it.
+The content is written to `data/uploads/<sha256>.bin` once per distinct content, and a `files` row records the owner, original name, MIME type, size and hash. A file is attached to a request when the request is created or resubmitted; a file can be attached only once. Uploads count against the `upload` rate limit. Downloads are served with `Content-Disposition` (inline or attachment) and `Cache-Control: private, no-store`. `GET /api/files/{id}/preview` returns extracted text per page for PDF, the paragraphs of a DOCX, or the kind `image` so the client can render it. An uploaded PDF is parsed in a separate Python process (`pdftext.extract_pages_isolated()`): at most two at a time, a 15-second timeout, on POSIX also CPU and 384 MB memory limits, and each decoded stream capped at 8 MB; a file that cannot be parsed in time yields no pages.
 
-Course materials are different: `POST /api/courses/{id}/materials` extracts text from `.md`, `.txt`, `.docx` or `.pptx` (`engine.extract_text`), prefixes a title heading if missing, and stores the text in `materials` and its sections in `chunks`. The index is updated in place, so the tutor can use the material immediately.
+Course materials are different: `POST /api/courses/{id}/materials` (at most 10 MB, otherwise 413) extracts text from `.md`, `.txt`, `.docx` or `.pptx` (`engine.extract_text`), prefixes a title heading if missing, and stores the text in `materials` and its sections in `chunks`. The index is updated in place, so the tutor can use the material immediately.
 
 ## 7. E-services workflow
 
@@ -254,8 +304,8 @@ sequenceDiagram
 - **Hash**: SHA-256 of a canonical JSON payload of registry number, title, holder id and document data; the first characters are printed on the document and the verification page.
 - **Status**: `valid`, or `revoked` with a reason and timestamp. A revoked document still renders but with a warning; the verification page shows it as revoked.
 - **Rendering**: enrolment certificates and transcripts render in Azerbaijani or English depending on the requested language, with passport-style transliteration of names (`engine.translit`). Transcript grades for past semesters are deterministic synthetic values derived from the user id. Academic leave renders an extract from a rector's order. Academy certificates use a separate layout. Every document carries a DEMO watermark and a footer that states it is not legally valid.
-- **QR code**: `app/qr.py` implements byte-mode encoding with Reed-Solomon error correction at level M for versions 1 to 10, enough for verification URLs up to 213 bytes, and renders an SVG. The test suite checks the encoder against a published Reed-Solomon vector and the format and version bit strings from the QR standard.
-- **Verification page**: public, minimal data (holder shown as initials only), served in the requested language.
+- **QR code**: `backend/zeka/legacy/qr.py` implements byte-mode encoding with Reed-Solomon error correction at level M for versions 1 to 10, enough for verification URLs up to 213 bytes, and renders an SVG. The test suite checks the encoder against a published Reed-Solomon vector and the format and version bit strings from the QR standard.
+- **Verification page**: public, minimal data (holder shown as initials only), served in the requested language, limited to 60 lookups per minute per client address.
 
 ## 9. AI engine
 
@@ -271,9 +321,9 @@ Three indexes live in `engine.INDEX`:
 
 | Index | Documents | Used by |
 |---|---|---|
-| `chunks` | Material sections, metadata: course, material, heading, text | Tutor, global search |
+| `chunks` | Material sections, metadata: course, material, heading, text | Tutor, global search, Radar plan citations and cohort gaps |
 | `campus` | Knowledge base entries, metadata: heading, text, request code, action label, source | Campus assistant |
-| `questions` | Approved and draft questions, metadata: course, status | Practice mode question selection |
+| `questions` | Approved and draft questions, metadata: course, status | Practice mode question selection, Radar practice steps |
 
 `store.build_indexes()` rebuilds all three from the database at start; `add_material`, `delete_material`, `index_question` and the question delete handler update them in place.
 
@@ -283,7 +333,7 @@ Three indexes live in `engine.INDEX`:
 
 ### Text extraction
 
-`extract_text()` reads `.md` and `.txt` (UTF-8 with BOM, then cp1254, then Latin-1), `.docx` (paragraphs from `word/document.xml`; `Heading` and `Title` styles become Markdown headings) and `.pptx` (one `## Slayd n` section per slide). Both Office formats are read with `zipfile` and `xml.etree`.
+`extract_text()` reads `.md` and `.txt` (UTF-8 with BOM, then cp1254, then Latin-1), `.docx` (paragraphs from `word/document.xml`; `Heading` and `Title` styles become Markdown headings) and `.pptx` (one `## Slayd n` section per slide). Both Office formats are read with `zipfile` and `xml.etree` and treated as untrusted: a ZIP member may be at most 20 MB, all members together at most 60 MB, at most 400 slides are read, and XML containing a `DOCTYPE` or `ENTITY` declaration is refused.
 
 ### PII masking
 
@@ -291,7 +341,7 @@ Before a question reaches the retrieval or an LLM, `mask_pii()` replaces e-mail 
 
 ### LLM client
 
-`llm_config()` merges `config.json` (key `llm`) with the environment variables `AZTU_LLM_PROVIDER`, `AZTU_LLM_BASE_URL`, `AZTU_LLM_API_KEY` and `AZTU_LLM_MODEL`; environment values win. The provider is enabled only when both an API key and a model are set. `llm_chat(system, messages, max_tokens)` posts with `urllib` to the OpenAI chat completions endpoint, the Azure OpenAI deployment endpoint (`api-version` configurable, default `2024-10-21`) or the Anthropic Messages API, with a configurable timeout (default 40 seconds) and temperature 0.3 where supported. Any exception propagates to the caller, which falls back to the offline engine.
+`llm_config()` merges `config.json` in the repository root (key `llm`) with the environment variables `AZTU_LLM_PROVIDER`, `AZTU_LLM_BASE_URL`, `AZTU_LLM_API_KEY` and `AZTU_LLM_MODEL`; environment values win. The provider is enabled only when both an API key and a model are set. `llm_chat(system, messages, max_tokens)` posts with `urllib` to the OpenAI chat completions endpoint, the Azure OpenAI deployment endpoint (`api-version` configurable, default `2024-10-21`) or the Anthropic Messages API, with a configurable timeout (default 40 seconds) and temperature 0.3 where supported. The endpoint must use `https://`; `http://` is accepted only for `127.0.0.1`, `localhost` and `::1`. Any exception propagates to the caller, which falls back to the offline engine.
 
 ## 10. Tutor and campus assistant
 
@@ -299,10 +349,10 @@ Before a question reaches the retrieval or an LLM, `mask_pii()` replaces e-mail 
 
 1. The course is loaded with access checks; a locked tutor returns 423 to students.
 2. The mode is taken from the body if the course allows it, otherwise the first allowed mode.
-3. The daily limit is checked for students (default 50 user messages per day across all channels; 429 when reached).
+3. The daily limit is checked for students (default 50 user messages per day across all channels; 429 when reached), then the per-user `ai` rate limit (30 calls per minute; 429).
 4. The message is PII-masked if enabled and the last 12 messages of this user and course are loaded as history.
 5. Practice mode goes to `practice_turn()`. Other modes retrieve the top 4 chunks of the course.
-6. If an LLM is enabled and the best chunk scores at least 1.2, `llm_tutor()` builds a system prompt with the course name, the teacher's rules, the answer language and the top sources (up to 1,500 characters each), sends the last 6 messages, and renumbers the model's `[n]` citations to the sources actually used. On any error the offline engine answers and the error type is recorded in the message metadata as a note.
+6. If an LLM is enabled and the best chunk scores at least 1.2, a student's question goes to the LLM only when the student gave the optional consent to external AI processing (`prefs.consent.external`); otherwise the offline engine answers and the metadata note says why. `llm_tutor()` builds a system prompt with the course name, the teacher's rules, the answer language and the top sources (up to 1,500 characters each), sends the last 6 messages, with earlier user messages masked again when masking is on, and renumbers the model's `[n]` citations to the sources actually used. On any error the offline engine answers and the error type is recorded in the message metadata as a note.
 7. Otherwise `compose_tutor()` answers offline.
 8. The original user message and the answer are stored; the response carries the answer, its citations and the usage counter.
 
@@ -316,7 +366,7 @@ Before a question reaches the retrieval or an LLM, `mask_pii()` replaces e-mail 
 
 ### Campus assistant (`POST /api/campus/ask`)
 
-`expand_query()` appends Azerbaijani knowledge base terms for English and Russian keywords (for example "transcript" or "справка"), the campus index is searched with `k = 3`, and `compose_campus()` returns the best entry's heading, up to three cited sentences, and an action that opens the matching request form when the entry defines one. Below a score of 1.0 the assistant reports that the knowledge base has no answer and offers the free-form application.
+The daily limit and the `ai` rate limit apply as for the tutor. `expand_query()` appends Azerbaijani knowledge base terms for English and Russian keywords (for example "transcript" or "справка"), the campus index is searched with `k = 3`, and `compose_campus()` returns the best entry's heading, up to three cited sentences, and an action that opens the matching request form when the entry defines one. Below a score of 1.0 the assistant reports that the knowledge base has no answer and offers the free-form application.
 
 ## 11. Question generation and grading
 
@@ -326,34 +376,52 @@ Before a question reaches the retrieval or an LLM, `mask_pii()` replaces e-mail 
 - Nineteen numeric templates (Ohm's law, power, series and parallel resistance, Kirchhoff's current law, RC time constant, Python loops, lists, conditionals and dictionaries, derivatives, limits, RMS value, inductive reactance, acceleration, Newton's second law, friction, definite integrals, drawing scale) are activated only when their trigger keyword appears in a chunk of the material; each template produces two randomised instances with a worked explanation.
 - Questions are interleaved by type (numeric, then multiple-choice, then true/false), de-duplicated by their first 80 folded characters, and limited to `count`.
 
-Test Studio stores generated questions as drafts with origin `ai`, flags `source_ok` and, when the Jaccard similarity of stems with an approved question exceeds 0.55, `similar`. Only approved questions can be added to a test.
+Test Studio stores generated questions as drafts with origin `ai`, flags `source_ok` and, when the Jaccard similarity of stems with an approved question exceeds 0.55, `similar`. Only approved questions can be added to a test. An edited question must keep a gradable answer (an option index in range for `mcq`, a boolean for `tf`, a finite number for `numeric`), otherwise the edit is refused with 400.
 
-`grade(question, value)` accepts a letter, an index or the option text for multiple-choice questions, Azerbaijani and English keywords for true/false, and a number with a tolerance of 2% (minimum 0.011) for numeric answers; it returns `None` when the answer cannot be parsed so that practice mode can ask again.
+`grade(question, value)` accepts a letter, an index or the option text for multiple-choice questions, Azerbaijani and English keywords for true/false (a negation with "deyil" or "not" inverts the keyword, so "doğru deyil" is false), and a number with a tolerance of 2% (minimum 0.011) for numeric answers; it returns `None` when the answer cannot be parsed so that practice mode can ask again.
 
-## 12. Localisation
+A test attempt is graded on the server only if it is submitted within the time limit plus two minutes (`QUIZ_GRACE`); a later submission stores the attempt with no answers.
+
+## 12. Zəka Radar
+
+Zəka Radar is an explainable early-warning view: it scores the risk of each student in each course from data the platform already holds, shows the reasons, and turns the diagnosis into a support plan that the teacher sends to the student. The model is in `radar.py`, the routes are in `r_radar.py`, the demo storylines in `radar_seed.py`.
+
+**Model.** `radar.Frame` loads courses, students, enrolments, attendance, grades, finished quiz attempts and the tutor messages' metadata (topic, mode, practice results; not the message text). `radar.profile()` computes four signals per student and course, each a value from 0 to 1 with a confidence and the evidence behind it, and multiplies them by `WEIGHTS`: attendance 30, assessment 30, concept gaps 25, engagement 15, for a score from 0 to 100. The level is `high` from 50, `watch` from 30, otherwise `ok`. Signals built on little data are scaled down by their confidence, and excused absences never count. A profile carries its drivers (sorted by points), the concept gaps, an overall confidence (`high`, `medium`, `low`), the per-signal statistics and, for `watch` and `high`, a recommendation of the plan kind (`plan`, `consult`, `nudge` or `office`) with a flag to copy the dean's office when attendance contributes 15 points or more.
+
+**Analysis and cache.** `radar.analysis(c, course_ids)` builds the profiles for every enrolment in the selected courses, one row per student (the student's highest course score, the one-line "why", the courses at risk and the gaps), counts per level and per course, the topics several at-risk students struggle with (`cohort_gaps`) and the mix of top drivers. Results are cached in process memory, keyed by the course selection, the date and a fingerprint of counts and sums over messages, attempts, attendance, grades, enrolments and lessons, so any change to these inputs produces a fresh analysis; the cache is cleared when it holds more than 24 entries.
+
+**Support plans.** `radar.build_plan()` turns a profile into steps: for `plan` and `consult`, for each of up to two gap topics (or, without gaps, the topics of missed lessons) a `read` step with cited material passages from the `chunks` index and a `practice` step with approved questions from the `questions` index; for `plan` and `office`, an `attend` step when the student has at least two unexcused absences in a row or in the last two weeks; for `plan` and `consult`, a `consult` step after the next lesson; for `nudge`, a `tutor` step and a `quiz` step when the student has no attempts. The due date is 14 days for `plan` and `consult` and 7 days otherwise. Creating a plan stores an `interventions` row with the risk score, level and drivers at that moment, notifies the student (and the dean's office when the plan copies it) and writes an audit entry. Whenever a plan is read, `r_radar.refresh()` ticks open steps from activity since the plan was sent (an Explain or Socratic tutor answer on the topic, a correct practice answer, at least two later lessons attended with no unexcused absence, a finished quiz attempt, any tutor question for the `tutor` step) and closes the plan as `completed` once every step is done, notifying its author. A student can also tick or untick a step.
+
+**Impact and trend.** `radar.impact()` compares each supported student's current score with the score stored when the plan was sent; plans younger than seven days are not measured, and a plan counts as improved when the score fell by 10 points or more or the level dropped. `radar.trend()` returns the stored weekly snapshots plus the live current week.
+
+**Who sees what.** Teachers see the students of their own courses; office, leader and admin see all courses; leader may not create or close plans. A student sees only the plans written for them, without the score or the drivers. The Radar count in `GET /api/badges` is the number of high-risk students for teachers, office and leader, and the leadership dashboard's first insight is a Radar summary (`leader_insight`).
+
+## 13. Localisation
 
 The Azerbaijani source string is the translation key, in the style of gettext.
 
-**Server.** `S(text, lang, **params)` translates and formats one string; `T3(text, **params)` returns a three-language object that can be stored in the database or returned as is; `E` is the same function used for error messages; `S_` marks a string for extraction without translating it. Translations are loaded from `app/locales/en.json` and `app/locales/ru.json` (3,392 keys each). A catalogue value may be an object of plural forms, chosen by the `n` parameter with English (`one`/`other`) or Russian (`one`/`few`/`many`) rules.
+**Server.** `S(text, lang, **params)` translates and formats one string; `T3(text, **params)` returns a three-language object that can be stored in the database or returned as is; `E` is the same function used for error messages; `S_` marks a string for extraction without translating it. Translations are loaded from `backend/zeka/core/locales/en.json` and `backend/zeka/core/locales/ru.json` (3,643 keys each). A catalogue value may be an object of plural forms, chosen by the `n` parameter with English (`one`/`other`) or Russian (`one`/`few`/`many`) rules.
 
 `localize(obj, lang)` is applied to every JSON response. It resolves three-language objects and JSON strings that start with `{"az"`, leaves identifiers (`[a-z0-9_-]+`) untouched so that codes such as statuses and roles are stable, translates plain strings found in the catalogue, and translates composite strings such as `İT korpusu, 214` piece by piece when every textual piece is a catalogue key. Values under the keys `content`, `question`, `context`, `username`, `email`, `heading`, `work`, `part`, `authors` and `publisher` are never translated: they are user text, course headings or source titles. `canon()` maps a translated option label submitted by a form back to its canonical Azerbaijani value.
 
 The language of a request comes from the `X-Lang` header or the `lang` query parameter and defaults to `az`.
 
-**Client.** `static/js/i18n.js` picks the language from `?lang=`, then `localStorage`, then the browser language, loads `/static/locales/<lang>.json` (1,584 keys per language) with top-level `await`, and exports `t(text, params)` with the same plural rules. On boot the server-side preference `prefs.lang` wins over an unset local choice. Dates and numbers are formatted per language in `core.js` (decimal comma and non-breaking thousands separator for Azerbaijani and Russian).
+**Client.** `frontend/js/i18n.js` picks the language from `?lang=`, then `localStorage`, then the browser language, loads `/static/locales/<lang>.json` (served from `frontend/locales/`, 1,776 keys per language) with top-level `await`, and exports `t(text, params)` with the same plural rules. On boot the server-side preference `prefs.lang` wins over an unset local choice. Dates and numbers are formatted per language in `core.js` (decimal comma and non-breaking thousands separator for Azerbaijani and Russian).
 
 **Toolchain.** `tools/i18n.py lint` reports interface text that is not wrapped in `t()` or the server helpers; `extract` writes the source catalogues to `i18n/source/` and the untranslated remainder to `i18n/todo/`; `build` merges `i18n/en/*.json` and `i18n/ru/*.json` into the server and client catalogues; `stats` prints coverage. `i18n/BRIEF.md` contains the translation rules and glossary.
 
-## 13. Frontend
+## 14. Frontend
 
-The application is a set of ES modules loaded by `static/index.html`; there is no framework and no bundler.
+The application is a set of ES modules in `frontend/js/`, loaded by `frontend/index.html` and served under `/static/`; there is no framework and no bundler. Styles are `frontend/css/app.css` plus one `m-*.css` file per area.
 
 | Module | Responsibility |
 |---|---|
 | `core.js` | Shared state `S`, the `html` tagged template (escapes interpolated values; `raw()` opts out), `mount`, event delegation, the `api` client (adds `X-Lang` and `X-Session`, redirects to login on 401), the hash router with `:param` and optional `:param?` segments, the page-tour registry, date and number formatting, status badges, toasts, modals and confirmation dialogs |
 | `shell.js` | Role definitions, navigation per role, header, badges, language switch, theme, sidebar state |
-| `main.js` | Boot, login page, consent dialog, route rendering with view transitions, profile and notification pages, error capture, an overflow audit mode (`?audit=1`) for automated layout checks |
+| `main.js` | Boot, login page (with the access code field when `app.access_required` is true), consent dialog, route rendering with view transitions, profile and notification pages, error capture, an overflow audit mode (`?audit=1`) for automated layout checks |
 | `student.js`, `services.js`, `news.js`, `teacher.js`, `academy.js`, `staff.js`, `support.js`, `guide.js`, `achievements.js` | Pages per area |
+| `radar.js` | Radar dashboard (`#/radar`), student profile (`#/radar/student/:id`) and the student's support plan (`#/student/plan/:id?`) |
+| `demo.js` | Three-minute presenter mode: a floating script that switches roles and opens the pages of the Radar storyline; started from the login page, with `?demo=1` or from the profile menu; state in `sessionStorage` |
 | `chat.js` | Chat interface shared by the tutor and the campus assistant: modes, citations, ratings, forwarding to the teacher |
 | `tour.js` | Welcome tour and page guides; completed tours are kept in `localStorage` and in `prefs.tours` |
 | `i18n.js` | Language detection, catalogue loading, `t()` |
@@ -361,13 +429,13 @@ The application is a set of ES modules loaded by `static/index.html`; there is n
 
 Routes are hash paths such as `#/student/tutor/1` or `#/office/request/12`, so the server only ever serves `index.html` for the application. Rendering a route replaces the `<main>` element, uses the View Transitions API when available and the user has not asked for reduced motion, and shows an empty-state page for 403 and 404. The Content Security Policy forbids inline scripts, so all behaviour lives in the modules; inline styles are allowed because colours are set per course and per user.
 
-## 14. Notifications, badges and audit
+## 15. Notifications, badges and audit
 
-`store.notify(user_ids, kind, title, body, link)` inserts one row per recipient. Kinds in use: `attendance`, `news`, `quiz`, `request`, `question`, `academy`, `sla`, `report`, `message`, `answer`, `support`, `event`, `exam`. `GET /api/badges` returns per-role counters: unread notifications and news for everyone; open requests and unexcused absences for students; open forwarded questions for teachers; the submitted-request queue for staff; and support counters (open tickets for the desk, tickets awaiting the user's reply for everyone else). Publishing news marked important notifies every student or teacher in its audience.
+`store.notify(user_ids, kind, title, body, link)` inserts one row per recipient. Kinds in use: `attendance`, `news`, `quiz`, `request`, `question`, `academy`, `sla`, `report`, `message`, `answer`, `support`, `event`, `exam`, `plan` (a support plan sent to a student) and `radar` (Radar messages to the dean's office and to plan authors). `GET /api/badges` returns per-role counters: unread notifications and news for everyone; open requests, unexcused absences and open support plans for students; open forwarded questions for teachers; the submitted-request queue for everyone who is not a student or teacher; high-risk Radar students for teachers, office and leader; and support counters (open tickets for the desk, tickets awaiting the user's reply for everyone else). Publishing news marked important notifies every student or teacher in its audience.
 
-`store.audit()` records logins, consent, file views and previews, material uploads and deletions, tutor settings, question generation, quiz publication and submission, forwarded questions, request creation, document issue and revocation, request completion, news changes, support creation and updates, feedback, settings changes, syllabus generation and certificate issue. Administrators and leadership can read the last 200 entries.
+`store.audit()` records logins and refused access codes, consent, file views and previews, material uploads and deletions, tutor settings, question generation, quiz publication and submission, forwarded questions, request creation, document issue and revocation, request completion, news changes, support creation and updates, feedback, settings changes, syllabus generation, certificate issue, and Radar plans, plan closures and step changes. Administrators and leadership can read the last 200 entries.
 
-## 15. Analytics
+## 16. Analytics
 
 The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and admin). The feedback and support dashboards (`#/staff/feedback`, `#/staff/support`) read `/api/feedback/summary` and `/api/support/summary`. The analytics endpoint mixes computed values with fixed illustrative series, which matters for anyone reading the dashboard as evidence.
 
@@ -378,6 +446,7 @@ The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and adm
 | Attendance rate, absent and excused counts | Computed from `attendance` |
 | Test averages per course | Computed from `attempts` |
 | Academy completion (teachers with at least three modules), academy hours | Computed from `academy_progress` |
+| Radar summary (first insight: high-risk and watch counts, students with plans whose risk fell) | Computed by `radar.analysis()` and `radar.impact()` |
 | Feedback average, distribution, weekly trend, by area, NPS | Computed from `feedback` (`/api/feedback/summary`) |
 | Support totals, first-response time, CSAT | Computed from `support_tickets` (`/api/support/summary`) |
 | Weekly active students and teachers, test preparation time reduction, satisfaction score and trend, learning gain, cost per student, the statement about paper applications moved online | Fixed values in `r_admin.py` |
@@ -385,46 +454,49 @@ The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and adm
 
 The generated insights (for example "course X: N% of questions are not answered by the material") are computed. Teacher course insights (`course_insights`) are computed from the same message data.
 
-## 16. Logging and status
+## 17. Logging and status
 
-- `logs/errors.log`: tracebacks of unhandled exceptions, one block per occurrence.
+- `logs/errors.log`: tracebacks of unhandled exceptions and one-line notes of malformed input answered with 400, at most 30 per minute; moved to `logs/errors.log.1` at 5 MB.
+- Standard output: the access log when it is on (section 2).
 - `GET /api/system/status`: uptime, database check, engine mode (`llm` or `demo`), notifications, and two components marked `planned` (single sign-on; LMS and registry integration).
 - `GET /api/admin/status`: engine and LLM configuration (without the key), limits, row counts per table, and the database and upload paths relative to the project directory.
 
-## 17. Deployment
+## 18. Deployment
 
 | Mode | How | Notes |
 |---|---|---|
-| Local demo | `python run.py` or `start_demo.bat` | Binds `127.0.0.1:5070`; database in `data/` |
+| Local demo | `python backend/run.py`, `start_demo.bat`, or `./demo.sh` | Binds `127.0.0.1:5070`; database in `data/`. `demo.sh` starts with `--reset` and opens `/?demo=1` |
 | Windows background | `scripts\start_demo.ps1`, `scripts\stop_demo.ps1` | Logs to `logs/server.out.log` and `logs/server.err.log` |
-| Server | `python run.py --host 0.0.0.0 --port <port> --public-url https://<host>` behind a reverse proxy | The proxy should terminate HTTPS and restrict access; the public URL makes QR codes resolvable and marks the cookie `Secure` |
-| Render | `render.yaml` blueprint | Free plan, Frankfurt, Python 3.12.6; `PUBLIC_URL` is filled from the service host; no persistent disk, so the database is reseeded on every restart |
+| Demo on a server | `ZEKA_ALLOW_OPEN_DEMO=1 ZEKA_ACCESS_CODE=<code> python backend/run.py --host 0.0.0.0 --port <port> --public-url https://<host>` behind a reverse proxy | In demo mode a reachable host needs `ZEKA_ALLOW_OPEN_DEMO=1`; the access code then gates the login (without it the banner warns that there is none). The proxy should terminate HTTPS; set `ZEKA_PROXY_HOPS` to the number of proxies so rate limits see the client address. The public URL makes QR codes resolvable, marks the cookie `Secure`, adds HSTS and is accepted as a same-site `Origin` |
+| Prod mode | `ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --port <port> --public-url https://<host>` | No demo routes, no demo people, the database is never deleted; `--reset` is refused. There is no sign-in in this mode yet (section 3) |
+| Docker | `docker compose -f infra/compose.yml up --build` (`infra/Dockerfile`, `infra/compose.yml`) | `python:3.12-slim`, runs as a non-root user, health check on `/api/bootstrap`; starts with `--reset`, so data is rebuilt on every start. The port is published on `127.0.0.1` only and the compose file sets `ZEKA_ALLOW_OPEN_DEMO=1` for that reason |
+| Render | `render.yaml` blueprint | Free plan, Frankfurt, `PYTHON_VERSION` 3.13; a demo on a reachable host: `ZEKA_ALLOW_OPEN_DEMO` is 1, `ZEKA_ACCESS_CODE` is generated by Render, `ZEKA_PROXY_HOPS` is 1, `PUBLIC_URL` is filled from the service host; no persistent disk, so the database is reseeded on every restart |
 
 Output streams are reconfigured to UTF-8 at start so that Azerbaijani characters in the banner do not crash the process when output is redirected on Windows.
 
-## 18. Testing
+## 19. Testing
 
-`tests/selftest.py` is a single script with 136 checks that exits non-zero on any failure. It covers, in order:
+The suite is pytest (`python -m pytest -q`; configuration in `pyproject.toml`, test paths `tests/`), 730 tests at the time of writing:
 
-1. The QR encoder against a published Reed-Solomon vector and the format and version bit strings.
-2. Stemming equivalences, PII masking, transliteration, Cyrillic tokenisation.
-3. The `run.py --help` output under a cp1251 output stream, which used to crash on Windows.
-4. A full reseed, then retrieval quality on sample queries, the offline tutor in both modes, the Socratic guardrail in Azerbaijani and English, cross-language query expansion, localisation rules, question generation for every course, and self-grading of generated questions.
-5. An HTTP smoke test against a server on a random port: every role logs in, and the suite walks through the student, dean's office, teacher, leadership and administrator flows, including document issue and verification, one-time links, attachments, support tickets, feedback and the language-dependent behaviour of responses.
+- `tests/unit/`: pure logic: the QR encoder, the engine (text processing, indexes, question generation and grading, the LLM client), the tutor, PDF extraction, documents, the store and seed content, the HTTP layer pieces in `web.py`, localisation and the translation catalogue, references, and the layer rule (`test_layers.py`).
+- `tests/integration/`: a real HTTP server on a random port: flows per role (student, teacher, staff, services, quizzes, news, tutor), the HTTP layer, input validation, the security controls, the checks of the earlier security review (`test_security_review.py`), Zəka Radar (`test_radar.py`), the run modes (`test_modes.py`) and `backend/run.py` (options, the help text under a non-UTF-8 output stream, a start from a clean checkout).
+- `tests/migration/`: the migration engine and the baseline schema (`test_schema_migrations.py`).
 
-The suite resets the database, so a running server should be restarted after it.
+`tests/conftest.py` points `store.DATA`, `store.UPLOADS` and `store.DB_PATH` at a temporary directory before the application is imported, so the repository's `data/` folder is never read or written; it disables the LLM, clears the `ZEKA_*` environment variables, and lifts the rate limits except for tests that ask for the `rate_limits` fixture.
 
-## 19. Known limitations and technical debt
+CI: `.github/workflows/ci.yml` runs ruff, mypy, `node --check` over `frontend/js/*.js`, the translation catalogue check (`tools/i18n.py stats` and `tests/unit/test_i18n_catalog.py`), and the test suite on Python 3.10 to 3.13 on Ubuntu and 3.12 on Windows. `.github/workflows/security.yml` runs gitleaks, pip-audit over every requirements file with a support check of the CPython version pinned in `render.yaml`, and bandit over `backend` and `tools`.
 
-- Sessions never expire and are never cleaned up.
-- One-time keys for documents, syllabi and files are kept in process memory; they do not survive a restart and do not work across several processes.
+## 20. Known limitations and technical debt
+
+- The demo login is password-less. In demo mode on a reachable host the shared access code is the only gate, it is optional, and anyone with the code can take any role, including admin. Prod mode has no sign-in at all yet.
+- Sessions have an absolute lifetime but are not renewed on activity; expired rows are deleted only when someone logs in.
+- One-time keys for documents, syllabi and files, the rate limit counters and the Radar analysis cache are kept in process memory; they do not survive a restart and do not work across several processes.
 - The BM25 indexes live in process memory, so the server must run as a single process.
-- `limits.retention_days` and `limits.socratic_default` are stored by the administrator settings but not read anywhere else.
-- There is no CSRF token. The mitigations in place are the `SameSite=Lax` cookie, which browsers do not send on cross-site POST requests, and the rule that API calls with a body must use `Content-Type: application/json`, which plain HTML forms cannot send.
-- The only rate limit is the daily message limit for students on the tutor and the campus assistant.
-- The time limit of a test is enforced by the browser only; the server does not check the deadline when an attempt is submitted.
-- Several leadership dashboard series are illustrative (see section 15).
+- `limits.socratic_default` is stored by the administrator settings but not read anywhere else.
+- There is no CSRF token. The mitigations in place are the `SameSite=Lax` cookie, the refusal of `POST`, `PUT` and `DELETE` requests that a browser marks as cross-site (`Sec-Fetch-Site`, `Origin`), and the rule that API calls with a body must use `Content-Type: application/json`, which plain HTML forms cannot send.
+- In demo mode `GET /api/demo/storyline` is public and returns the ids of the storyline students and course.
+- Reading a Radar plan can write to the database (automatic step progress and plan completion).
+- Several leadership dashboard series are illustrative (see section 16).
 - Consent cannot be withdrawn; the profile page describes the planned behaviour.
 - The Render free plan has no disk, so uploads, consent and tour state are lost on restart.
-- `app/api.py` exists only as a compatibility import for `run.py` and the tests.
-- `aztu-ai-campus.zip` in the repository root is an archived snapshot of an earlier working copy. It also contains paths that `.gitignore` excludes: the `.dev/` tools, bytecode caches, a demo database, three demo PDF uploads and empty server logs. Nothing in the code reads it.
+- `backend/zeka/legacy/api.py` exists only as a compatibility import for `backend/run.py` and the tests.

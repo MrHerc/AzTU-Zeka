@@ -54,8 +54,13 @@ jobs:
           # The demo is usually started on Windows (start_demo.bat); run the suite there too.
           - os: windows-latest
             python: "3.12"
+          # one Linux job runs in a timezone far from Baku: the code must read the university clock, not the OS one
+          - os: ubuntu-latest
+            python: "3.13"
+            tz: America/Los_Angeles
     env:
       PYTHONUTF8: "1"
+      TZ: ${{ matrix.tz || 'UTC' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

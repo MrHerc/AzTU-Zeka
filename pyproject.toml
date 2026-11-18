@@ -21,7 +21,7 @@ line-length = 160
 extend-exclude = ["i18n", "frontend", "content"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "B", "UP"]
+select = ["E", "F", "W", "B", "UP", "DTZ005", "DTZ011"]   # DTZ: the clock lives in backend/zeka/core/clock.py
 # The code base deliberately uses long lines (SQL, HTML templates, seed data); the limit is not enforced.
 ignore = ["E501"]
 
@@ -29,6 +29,9 @@ ignore = ["E501"]
 # Parametric quiz templates set up several physics quantities on one line (R = …; I = …; U = I * R).
 # and name them as in physics (R, I, U), which E741 flags as ambiguous.
 "backend/zeka/legacy/engine.py" = ["E702", "E741"]
+"tests/**" = ["DTZ005", "DTZ011"]
+"tools/**" = ["DTZ005", "DTZ011"]
+".github/**" = ["DTZ005", "DTZ011"]
 
 [tool.mypy]
 python_version = "3.10"

@@ -38,7 +38,8 @@ Tests: `tests/unit/` (pure logic), `tests/integration/` (real HTTP server on a t
 and `test_radar.py` hold the checks ported from the old self-test). CI: `.github/workflows/ci.yml` (lint, types, JS syntax,
 i18n catalogue, pytest on Python 3.10–3.13 and Windows) and `security.yml` (gitleaks, pip-audit, bandit).
 
-Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backend/zeka/core/config.py`) and, in
+Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backend/zeka/core/config.py`), `ZEKA_TZ`
+(default `Asia/Baku`; `backend/zeka/core/clock.py`) and, in
 `backend/zeka/core/security.py`, `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`, `ZEKA_SESSION_HOURS`,
 `ZEKA_PROXY_HOPS`, `ZEKA_ACCESS_LOG`. `config.json` (git-ignored, copy from `config.example.json`) or the
 `AZTU_LLM_PROVIDER/BASE_URL/API_KEY/MODEL` env vars switch the AI from the offline engine to a real LLM.
@@ -100,7 +101,8 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).
 - `docs/ARCHITECTURE.md` and `docs/API.md` were written against the pre-merge `main`: they still say sessions never expire,
   mention `tests/selftest.py`, and lack the access code and the Radar endpoints.
-- Timestamps are naive local time; business logic assumes Asia/Baku (Task 5: clock; Task 9: container zone).
+- **Time.** Use `store.now()` (naive Baku wall clock, `ZEKA_TZ`) or `clock.now()` (aware UTC); `datetime.now()` and
+  `date.today()` fail lint outside `backend/zeka/core/clock.py`. Tests freeze time by patching `clock.now`.
 
 ## Branch state (2026-11-16)
 

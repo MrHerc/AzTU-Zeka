@@ -11,7 +11,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from . import engine
-from ..core import config, migrate
+from ..core import clock, config, migrate
 from ..core.i18n import T3, tr3
 
 ROOT = Path(__file__).resolve().parents[3]  # backend/zeka/legacy/ -> repo
@@ -21,7 +21,7 @@ DB_PATH = DATA / "campus.db"
 CONTENT = ROOT / "content"
 
 def now() -> datetime:
-    return datetime.now().replace(microsecond=0)
+    return clock.local().replace(microsecond=0)
 
 
 def iso(dt: datetime) -> str:
