@@ -6,7 +6,7 @@ import { HOME } from "./shell.js";
 
 const KINDS = () => [["users", t("İstifadəçilər")], ["orgs", t("Fakültə və kafedralar")], ["terms", t("Semestrlər")],
   ["courses", t("Fənlər")], ["classes", t("Tədris vahidləri")], ["enrollments", t("Qeydiyyat")], ["timetable", t("Dərs cədvəli")],
-  ["teaching-load", t("Forma №3: kafedranın akademik yükü")]];
+  ["rooms", t("Otaqlar")], ["teaching-load", t("Forma №3: kafedranın akademik yükü")]];
 
 const readFile = (f) => new Promise((ok, bad) => {
   const r = new FileReader();

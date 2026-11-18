@@ -1,0 +1,22 @@
+{
+ "«{field}» sahəsində bəli və ya xeyr seçin": "Choose yes or no in the “{field}” field",
+ "«{field}» sahəsi 1–30 simvol olmalıdır": "The “{field}” field must be 1–30 characters",
+ "Otağın növü düzgün deyil": "The room type is not valid",
+ "Növ: {x}": "Type: {x}",
+ "Tutum: {n} yer": {
+  "one": "Capacity: {n} seat",
+  "other": "Capacity: {n} seats"
+ },
+ "Mərtəbə: {n}": "Floor: {n}",
+ "Əlil arabası ilə əlçatandır": "Wheelchair accessible",
+ "Əlçatanlıq qeyd olunmayıb": "Accessibility not recorded",
+ "{x}: otaqların QR kodları": "{x}: room QR codes",
+ "Otaq tapılmadı": "Room not found",
+ "{n} otaq": {
+  "one": "{n} room",
+  "other": "{n} rooms"
+ },
+ "Yaxın iki həftədə bu otaqda dərs yoxdur": "No lessons in this room in the next two weeks",
+ "İndi bu otaqda dərs yoxdur": "No lesson in this room now",
+ "Bu korpusda aktiv otaq yoxdur": "This building has no active rooms"
+}

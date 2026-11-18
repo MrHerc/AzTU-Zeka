@@ -428,13 +428,16 @@ davamiyyət qaydası sxemdən gəlir. Edilməyib: loqonun yüklənməsi (hələ 
 **Description:** Cədvəllər: `buildings`, `floors`, `rooms` (kod, növ, tutum, əlçatanlıq). CSV idxalı: Task 16-dakı idxal servisinə `--kind rooms` əlavə olunur. Otaq səhifəsi `/r/{kod}`: otağın adı, indiki və növbəti dərs. Hər korpus üçün çap olunan QR vərəqi (mövcud `qr.py`). `timetable.room` mətn sahəsi otağa bağlanır; uyğunlaşmayan sətirlər hesabatda.
 
 **Acceptance criteria:**
-- [ ] Hər otağın sabit QR ünvanı var; səhifə indiki və növbəti dərsi cədvəldən göstərir
-- [ ] Girişsiz baxışda tələbə adı və ya şəxsi məlumat görünmür
-- [ ] Mövcud cədvəl sətirləri otağa bağlanır və ya hesabatda sadalanır
+- [x] Hər otağın sabit QR ünvanı var; səhifə indiki və növbəti dərsi cədvəldən göstərir
+- [x] Girişsiz baxışda tələbə adı və ya şəxsi məlumat görünmür (müəllimin adı da göstərilmir)
+- [x] Mövcud cədvəl sətirləri otağa bağlanır və ya hesabatda sadalanır
+
+Qeyd: mərtəbə ayrıca `floors` cədvəli deyil, otağın `floor` sütunudur (heç bir meyar mərtəbə cədvəli tələb etmir).
+Korpus və otaq ekranı ayrıca `facilities.js` deyil, "Struktur və reyestr" səhifəsinin iki bölməsidir.
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_facilities.py -q`
-- [ ] Əl yoxlaması: çap olunan QR telefonla oxunur və otaq səhifəsini açır
+- [x] `python -m pytest tests/integration/test_facilities.py -q`
+- [ ] Əl yoxlaması: çap olunan QR telefonla oxunur və otaq səhifəsini açır (sahib; brauzerdə vərəq və səhifə yoxlanıb)
 
 **Dependencies:** Task 16; `timetable.room` bağlama dilimi Task 19 birləşdiriləndən sonra
 **Files likely touched:** `backend/zeka/modules/facilities/{domain,service,repo,routes}.py`, `backend/migrations/0180_facilities.sql`, `frontend/js/facilities.js`

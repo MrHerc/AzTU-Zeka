@@ -397,6 +397,19 @@ def seed_catalog(c, s: dict | None = None):
     set_setting(c, "news_kinds", _load("news.json")["kinds"])
 
 
+def _seed_rooms(c, f: dict, stamp: str):
+    """The demo's buildings and rooms (Task 18), then the timetable rows linked to them by their text."""
+    from ..modules.facilities import service as facilities      # here, not at the top: that module imports this one
+    ids = {}
+    for b in f["buildings"]:
+        ids[b["code"]] = c.execute("INSERT INTO buildings(code,name,address,created_at,updated_at) VALUES(?,?,?,?,?)",
+                                   (b["code"], b["name"], b["address"], stamp, stamp)).lastrowid
+    c.executemany("INSERT INTO rooms(building_id,code,number,name,floor,kind,capacity,accessible,created_at,updated_at) "
+                  "VALUES(?,?,?,?,?,?,?,?,?,?)", [(ids[r["building"]], r["code"], r["number"], r["name"], r["floor"], r["kind"],
+                                                   r["capacity"], r["accessible"], stamp, stamp) for r in f["rooms"]])
+    facilities.link_timetable(c, None)
+
+
 def seed(c):
     """The demo: the catalogue plus synthetic people, courses, activity and documents (random.Random(42))."""
     rng = random.Random(42)
@@ -472,6 +485,7 @@ def seed(c):
                 chunk_by.setdefault((info["id"], re.sub(r"\s*\(\d+\)$", "", ch["heading"])), ch["id"])
         for wd, st_, en_, kind, room in co["schedule"]:
             c.execute("INSERT INTO timetable(course_id,weekday,start,end,kind,room) VALUES(?,?,?,?,?,?)", (cid, wd, st_, en_, kind, room))
+    _seed_rooms(c, s["facilities"], stamp)
     tt = rows(c, "SELECT t.*, co.code FROM timetable t JOIN courses co ON co.id=t.course_id")
     titles = {code: [m[1] for m in next(x for x in s["courses"] if x["code"] == code)["materials"]] for code in course_ids}
     lesson_count = {}

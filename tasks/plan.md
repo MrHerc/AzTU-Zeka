@@ -95,7 +95,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 
 ### Faza 3 — Akademik nüvə · saat 22–36
 
-- [ ] T18 Korpus, otaq və otaq QR-i
+- [x] T18 Korpus, otaq və otaq QR-i
 - [ ] T19 Cədvəl idarəsi və iCal
 - [ ] T20 Davamiyyət jurnalı
 - [ ] T21 Qiymət jurnalı

@@ -34,9 +34,10 @@ TARGETS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "enrollments": ("enrollments", ("user_id", "course_id", "group_id", "subgroup", "begin_date", "end_date"), "rowid"),
     "timetable": ("timetable", ("course_id", "weekday", "start", "end", "kind", "room"), "id"),
     "teaching_load": ("teaching_units", ("course_id", "kind", "subgroup", "teacher_id", "hours", "students"), "id"),
+    "rooms": ("rooms", ("code", "number", "name", "building_id", "floor", "kind", "capacity", "accessible"), "id"),
 }
 UNIT_LINKS = ("classes", "teaching_load")           # these also carry the unit's groups
-STAMPED = ("faculties", "departments", "academic_terms", "courses", "teaching_units")
+STAMPED = ("faculties", "departments", "academic_terms", "courses", "teaching_units", "rooms")
 IMPORTED_ROLES = ("student", "teacher")              # an import never touches another kind of account
 
 
@@ -209,6 +210,12 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
         if not course_id:
             return None, _missing("Fənn", ref)
         return Item(n, "timetable", sid, {"course_id": course_id, **v}), None
+    if kind == "rooms":
+        code = v.pop("_building")
+        building_id = ctx.by("buildings", "code").get(code)
+        if not building_id:
+            return None, _missing("Korpus", code)
+        return Item(n, "rooms", sid, {**v, "building_id": building_id}, natural=ctx.by("rooms", "code").get(v["code"])), None
     raise ValueError(kind)
 
 
@@ -287,7 +294,7 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> list[Item]:
 # ---------------------------------------------------------------- comparing
 def _uniques(kind: str, ctx: Context, items: list[Item], errors: list):
     """Unique columns: no two rows of the file and no other row of Zəka may share a value."""
-    cols = {"users": ("username", "email", "student_no"), "orgs": ("code",), "terms": ("code",)}.get(kind, ())
+    cols = {"users": ("username", "email", "student_no"), "orgs": ("code",), "terms": ("code",), "rooms": ("code",)}.get(kind, ())
     for col in cols:
         seen: dict = {}
         for it in items:
@@ -420,7 +427,8 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
         if max_rows and len(cells) > max_rows:
             raise tables.TableError("Ekrandan ən çox 20 000 sətir idxal olunur; böyük faylı manage.py ilə idxal edin")
         links = {"users": ("users",), "orgs": ("faculties", "departments"), "terms": ("terms",), "courses": ("courses",),
-                 "classes": ("classes",), "enrollments": ("unit_teachers", "enrollments", "users"), "timetable": ("timetable",)}[kind]
+                 "classes": ("classes",), "enrollments": ("unit_teachers", "enrollments", "users"), "timetable": ("timetable",),
+                 "rooms": ("rooms",)}[kind]
         ctx = Context(c, source, links)
         ctx.file_faculties = {x["sourcedId"] for _, x in cells if domain.ORG_TYPES.get(domain.norm(x.get("type", ""))) == "faculties"}
         items = _plan_rows(kind, ctx, cells, errors)

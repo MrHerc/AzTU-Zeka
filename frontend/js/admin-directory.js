@@ -11,6 +11,9 @@ const STATUS_KINDS = () => [["admission", t("Qəbul")], ["group_change", t("Qrup
   ["reinstatement", t("Bərpa")], ["graduation", t("Məzun olma")]];
 const STATUS = () => ({ active: t("Təhsil alır"), on_leave: t("Akademik məzuniyyətdə"), expelled: t("Xaric olunub"),
   transferred: t("Köçürülüb"), graduated: t("Məzun olub") });
+const ROOM_KINDS = () => [["lecture_hall", t("Mühazirə zalı")], ["classroom", t("Auditoriya")], ["lab", t("Laboratoriya")],
+  ["computer_lab", t("Kompüter laboratoriyası")], ["office", t("Otaq")], ["other", t("Digər")]];
+const FLAG = () => [["0", t("Xeyr")], ["1", t("Bəli")]];
 const MANAGERS = ["admin", "academic_office"];
 const ENT = () => ({
   faculties: { title: t("Fakültələr"), cols: [["code", t("Kod")], ["name", t("Ad")]],
@@ -34,6 +37,13 @@ const ENT = () => ({
       ["department_id", t("Kafedra"), "ref?:departments"], ["term_id", t("Semestr"), "ref?:terms"]] },
   units: { title: t("Tədris vahidləri"), cols: [["course_id", t("Fənn"), "courses"], ["kind", t("Növ"), "unit_kind"], ["teacher_id", t("Müəllim"), "teachers"], ["subgroup", t("Yarımqrup")]],
     fields: [["course_id", t("Fənn"), "ref:courses"], ["kind", t("Növ"), "unit_kind"], ["teacher_id", t("Müəllim"), "ref?:teachers"], ["subgroup", t("Yarımqrup"), "number"]] },
+  buildings: { title: t("Korpuslar"), cols: [["code", t("Kod")], ["name", t("Ad")], ["address", t("Ünvan")]],
+    fields: [["code", t("Kod"), "text"], ["name", t("Ad"), "text"], ["address", t("Ünvan"), "text?"]] },
+  rooms: { title: t("Otaqlar"), search: t("Kod, nömrə və ya ad"),
+    cols: [["code", t("Kod")], ["building_id", t("Korpus"), "buildings"], ["number", t("Nömrə")], ["name", t("Ad")], ["kind", t("Növ"), "room_kind"], ["capacity", t("Tutum")]],
+    fields: [["building_id", t("Korpus"), "ref:buildings"], ["code", t("Kod (QR ünvanı)"), "text"], ["number", t("Nömrə (qapıda)"), "text"],
+      ["name", t("Ad"), "text?"], ["floor", t("Mərtəbə"), "number"], ["kind", t("Növ"), "room_kind"], ["capacity", t("Tutum"), "number"],
+      ["accessible", t("Əlil arabası ilə əlçatan"), "flag"]] },
 });
 // shortcut: a reference list holds its first page (50 rows); a search picker replaces it once Task 16 imports real data
 const REF_URL = { teachers: "/api/directory/users?active=1&role=teacher" };
@@ -60,6 +70,7 @@ route("/admin/directory", async (el, p, q) => {
   const cell = (x, [k, , kind]) => {
     if (kind === "degree") return (DEGREES().find(([v]) => v === x[k]) || [, x[k]])[1];
     if (kind === "unit_kind") return (UNIT_KINDS().find(([v]) => v === x[k]) || [, x[k]])[1];
+    if (kind === "room_kind") return (ROOM_KINDS().find(([v]) => v === x[k]) || [, x[k]])[1];
     if (kind === "role") return ROLE_LABEL[x[k]] || x[k];
     if (kind === "period:teaching") return `${x.teaching_start} — ${x.teaching_end}`;
     if (kind === "period:exam") return `${x.exam_start} — ${x.exam_end}`;
@@ -68,7 +79,9 @@ route("/admin/directory", async (el, p, q) => {
   };
   const extra = (x) => html`${tab === "courses" ? html`<button class="btn btn-ghost btn-sm" data-enr="${x.id}">${t("Tələbələr")}</button>` : ""}
     ${tab === "units" && canManage(tab) ? html`<button class="btn btn-ghost btn-sm" data-groups="${x.id}">${t("Qruplar")}</button>` : ""}
-    ${tab === "users" && x.role === "student" ? html`<button class="btn btn-ghost btn-sm" data-status="${x.id}">${t("Status")}</button>` : ""}`;
+    ${tab === "users" && x.role === "student" ? html`<button class="btn btn-ghost btn-sm" data-status="${x.id}">${t("Status")}</button>` : ""}
+    ${tab === "buildings" && canManage(tab) ? html`<a class="btn btn-ghost btn-sm" href="/api/facilities/buildings/${x.id}/qr" target="_blank" rel="noopener">${t("QR vərəqi")}</a>` : ""}
+    ${tab === "rooms" ? html`<a class="btn btn-ghost btn-sm" href="/r/${encodeURIComponent(x.code)}" target="_blank" rel="noopener">${t("Səhifə")}</a>` : ""}`;
   const draw = async () => {
     const e = ent[tab];
     const can = canManage(tab);
@@ -80,7 +93,8 @@ route("/admin/directory", async (el, p, q) => {
         [[t("Əsas"), HOME[role]], [t("Struktur və reyestr")]])}
       <div class="seg mb wrap" role="tablist">${tabs.map(([k, v]) => html`<button role="tab" aria-selected="${k === tab}" class="${k === tab ? "active" : ""}" data-tab="${k}">${v.title}</button>`)}</div>
       <div class="card"><div class="card-h wrap"><input class="input input-sm" id="dir-q" type="search" placeholder="${e.search || t("Kod və ya ad üzrə axtar")}" aria-label="${t("Axtar")}" value="${query}" style="max-width:320px">
-        ${can ? html`<button class="btn btn-primary btn-sm" id="dir-new">${ic("plus", 15)} ${t("Yeni")}</button>` : ""}</div>
+        ${can ? html`<button class="btn btn-primary btn-sm" id="dir-new">${ic("plus", 15)} ${t("Yeni")}</button>` : ""}
+        ${can && tab === "rooms" ? html`<button class="btn btn-sm" id="dir-link-rooms">${t("Cədvəli otaqlara bağla")}</button>` : ""}</div>
       <div class="table-wrap"><table class="table"><thead><tr>${e.cols.map((c) => html`<th>${c[1]}</th>`)}<th>${t("Vəziyyət")}</th><th></th></tr></thead><tbody>
         ${items.map((x) => html`<tr><td>${cell(x, e.cols[0])}</td>${e.cols.slice(1).map((c) => html`<td>${cell(x, c)}</td>`)}
           <td>${x.active ? html`<span class="badge b-green">${t("Aktiv")}</span>` : html`<span class="badge b-gray">${t("Deaktiv")}</span>`}</td>
@@ -103,6 +117,8 @@ route("/admin/directory", async (el, p, q) => {
     }
     if (kind === "degree") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(DEGREES(), v || "bachelor")}</select>`);
     if (kind === "unit_kind") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(UNIT_KINDS(), v || "lecture")}</select>`);
+    if (kind === "room_kind") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(ROOM_KINDS(), v || "classroom")}</select>`);
+    if (kind === "flag") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(FLAG(), String(v || 0))}</select>`);
     if (kind === "role") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(Object.entries(ROLE_LABEL), v || "student")}</select>`);
     const type = kind === "number" ? "number" : kind === "date" ? "date" : "text";
     return wrap(html`<input class="input" id="f-${k}" name="${k}" type="${type}" value="${v}">`);
@@ -114,7 +130,7 @@ route("/admin/directory", async (el, p, q) => {
         const body = {};
         for (const [k, , kind] of e.fields) {
           const v = w.querySelector(`[name="${k}"]`).value;
-          body[k] = kind.startsWith("ref") || kind === "number" ? (v === "" ? null : Number(v)) : kind === "text?" && v === "" ? null : v;
+          body[k] = kind.startsWith("ref") || kind === "number" || kind === "flag" ? (v === "" ? null : Number(v)) : kind === "text?" && v === "" ? null : v;
         }
         try {
           if (x) await api.put(`/api/directory/${tab}/${x.id}`, body); else await api.post(`/api/directory/${tab}`, body);
@@ -217,6 +233,15 @@ route("/admin/directory", async (el, p, q) => {
   on(el, "click", "[data-page]", (ev, b) => { page = Number(b.dataset.page); draw(); });
   on(el, "input", "#dir-q", (ev, i) => { clearTimeout(timer); timer = setTimeout(() => { query = i.value; page = 1; draw().then(() => { const n = $("#dir-q", el); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); }, 300); });
   on(el, "click", "#dir-new", () => form(null));
+  on(el, "click", "#dir-link-rooms", async () => {
+    let r;
+    try { r = await api.post("/api/facilities/link-rooms"); } catch (err) { toast(err.message, "err"); return; }
+    modal({ title: t("Cədvəl və otaqlar"), size: "lg", body: html`<p>${t("Otağa bağlanan cədvəl sətri: {n}", { n: r.linked })}</p>
+      ${r.unmatched.length ? html`<p class="small muted">${t("Bu yazılar heç bir otağa (və ya birdən çox otağa) uyğun gəlmir. Otağı əlavə edin və ya cədvəldə düzəldin:")}</p>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Cədvəldəki yazı")}</th><th>${t("Sətir")}</th></tr></thead><tbody>
+        ${r.unmatched.map((x) => html`<tr><td>${x.room}</td><td>${x.rows}</td></tr>`)}</tbody></table></div>`
+        : html`<p class="muted">${t("Bütün cədvəl sətirləri otağa bağlandı")}</p>`}` });
+  });
   on(el, "click", "[data-edit]", (ev, b) => form(find(b, "edit")));
   on(el, "click", "[data-enr]", (ev, b) => enrolments(find(b, "enr")));
   on(el, "click", "[data-status]", (ev, b) => statusOf(find(b, "status")));

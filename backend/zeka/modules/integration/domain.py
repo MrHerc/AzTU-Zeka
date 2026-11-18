@@ -40,6 +40,10 @@ COLUMNS: dict[str, dict[str, tuple[str, ...]]] = {
     "timetable": {"sourcedId": ("sourcedid", "mənbə id"), "courseSourcedId": ("coursesourcedid", "fənn"),
                   "weekday": ("weekday", "həftə günü"), "start": ("start", "başlanğıc"), "end": ("end", "son"),
                   "kind": ("kind", "növ"), "room": ("room", "otaq")},
+    # Task 18: not a OneRoster kind; the university's own room list
+    "rooms": {"sourcedId": ("sourcedid", "mənbə id"), "identifier": ("identifier", "kod"), "number": ("number", "nömrə", "otaq"),
+              "name": ("name", "ad"), "building": ("building", "korpus"), "floor": ("floor", "mərtəbə"), "kind": ("kind", "növ"),
+              "capacity": ("capacity", "tutum", "yer sayı"), "accessible": ("accessible", "əlçatan")},
 }
 REQUIRED = {
     "users": ("sourcedId", "username", "givenName", "familyName", "role"),
@@ -49,6 +53,7 @@ REQUIRED = {
     "classes": ("sourcedId", "courseSourcedId"),
     "enrollments": ("sourcedId", "classSourcedId", "userSourcedId", "role"),
     "timetable": ("sourcedId", "courseSourcedId", "weekday", "start", "end"),
+    "rooms": ("sourcedId", "identifier", "number", "building"),
 }
 KINDS = (*COLUMNS, "teaching-load")
 IMPORT_ROLES = {"student": "student", "tələbə": "student", "teacher": "teacher", "müəllim": "teacher"}
@@ -57,6 +62,9 @@ UNIT_KIND = {"lecture": "lecture", "mühazirə": "lecture", "seminar": "seminar"
 KIND_LABEL = {"lecture": "Mühazirə", "seminar": "Məşğələ", "lab": "Laboratoriya"}      # the timetable keeps the label
 ORG_TYPES = {"faculty": "faculties", "school": "faculties", "college": "faculties", "fakültə": "faculties",
              "department": "departments", "kafedra": "departments"}
+ROOM_KIND = {k: k for k in directory.ROOM_KINDS} | {"mühazirə zalı": "lecture_hall", "auditoriya": "classroom",
+                                                    "laboratoriya": "lab", "kompüter laboratoriyası": "computer_lab",
+                                                    "otaq": "office", "ofis": "office", "digər": "other"}
 YES = {"", "true", "1", "yes", "bəli", "hə"}
 NO = {"false", "0", "no", "xeyr", "yox"}
 
@@ -131,7 +139,7 @@ def draft(kind: str, cells: dict[str, str]) -> tuple[dict, dict | None]:
     if not SOURCE.fullmatch(sid):
         return {}, E("sourcedId 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır")
     return {"users": _user, "orgs": _org, "terms": _term, "courses": _course, "classes": _class,
-            "enrollments": _enrollment, "timetable": _lesson}[kind](cells)
+            "enrollments": _enrollment, "timetable": _lesson, "rooms": _room}[kind](cells)
 
 
 def _user(x: dict) -> tuple[dict, dict | None]:
@@ -239,6 +247,28 @@ def _lesson(x: dict) -> tuple[dict, dict | None]:
     room = " ".join(x.get("room", "").split())[:100] or None
     return {"weekday": weekday, "start": start, "end": end, "kind": KIND_LABEL[kind], "room": room,
             "_course": x["courseSourcedId"]}, None
+
+
+def _room(x: dict) -> tuple[dict, dict | None]:
+    out: dict = {"_building": (x.get("building") or "").strip().upper()}
+    for name, kind, v in (("code", "ucode", x.get("identifier")), ("number", "short", x.get("number")),
+                          ("name", "text?", x.get("name") or None)):
+        out[name], problem = _field(kind, name, v)
+        if problem:
+            return {}, problem
+    for name, lo, hi in (("floor", -5, 200), ("capacity", 0, 5000)):
+        v = x.get(name, "").strip()
+        out[name] = an_int(v, lo, hi) if v else None
+        if v and out[name] is None:
+            return {}, E("«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır", field=name, lo=lo, hi=hi)
+    out["kind"] = _lookup(ROOM_KIND, x.get("kind", "") or "classroom")
+    if not out["kind"]:
+        return {}, E("Otağın növü düzgün deyil")
+    accessible = norm(x.get("accessible", "") or "no")
+    if accessible not in YES | NO:
+        return {}, E("«{field}» sahəsində bəli və ya xeyr seçin", field="accessible")
+    out["accessible"] = int(accessible in YES)
+    return out, None
 
 
 # ---------------------------------------------------------------- activation codes

@@ -299,6 +299,16 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/facilities/buildings/{id:int}/qr": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
+  "slow": false
+ },
  "GET /api/feedback/summary": {
   "access": [
    "admin",
@@ -685,6 +695,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /r/{code}": {
+  "access": "public",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /syllabus/{cid:int}": {
   "access": [
    "admin",
@@ -985,6 +1002,16 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "POST /api/facilities/link-rooms": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
   "slow": false
  },
  "POST /api/feedback": {

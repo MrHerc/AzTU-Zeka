@@ -1,0 +1,24 @@
+{
+ "«{field}» sahəsində bəli və ya xeyr seçin": "В поле «{field}» выберите «да» или «нет»",
+ "«{field}» sahəsi 1–30 simvol olmalıdır": "Поле «{field}» должно содержать от 1 до 30 символов",
+ "Otağın növü düzgün deyil": "Неверный тип помещения",
+ "Növ: {x}": "Тип: {x}",
+ "Tutum: {n} yer": {
+  "one": "Вместимость: {n} место",
+  "few": "Вместимость: {n} места",
+  "many": "Вместимость: {n} мест"
+ },
+ "Mərtəbə: {n}": "Этаж: {n}",
+ "Əlil arabası ilə əlçatandır": "Доступно для инвалидной коляски",
+ "Əlçatanlıq qeyd olunmayıb": "Доступность не указана",
+ "{x}: otaqların QR kodları": "{x}: QR-коды помещений",
+ "Otaq tapılmadı": "Помещение не найдено",
+ "{n} otaq": {
+  "one": "{n} помещение",
+  "few": "{n} помещения",
+  "many": "{n} помещений"
+ },
+ "Yaxın iki həftədə bu otaqda dərs yoxdur": "В ближайшие две недели занятий в этом помещении нет",
+ "İndi bu otaqda dərs yoxdur": "Сейчас в этом помещении занятий нет",
+ "Bu korpusda aktiv otaq yoxdur": "В этом корпусе нет активных помещений"
+}

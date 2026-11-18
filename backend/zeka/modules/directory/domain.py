@@ -2,7 +2,9 @@
 
 Field kinds: ``code`` (2-30 letters, digits, ``.``, ``_``, ``-``), ``code?`` (optional), ``text`` (2-200 characters),
 ``date`` (YYYY-MM-DD), ``year`` (1990-2100), ``int:lo:hi`` / ``int?:lo:hi``, ``ref:<entity>`` (a required id of another
-entity), ``ref?:<entity>`` (optional), ``degree``, ``login`` (a user name), ``role``, ``email?``, ``unit_kind``.
+entity), ``ref?:<entity>`` (optional), ``degree``, ``login`` (a user name), ``role``, ``email?``, ``unit_kind``;
+for rooms (Task 18): ``ucode`` (a code kept in upper case: it is a URL and is printed on a QR sheet), ``short`` (1-30
+characters, a door number), ``room_kind`` and ``flag`` (yes or no, stored as 1 or 0).
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ PAGE = 50
 DEGREES = ("bachelor", "master", "phd")
 UNIT_KINDS = ("lecture", "seminar", "lab")             # mühazirə, məşğələ, laboratoriya
 TEACHING_ROLES = ("teacher", "dept_head")
+ROOM_KINDS = ("lecture_hall", "classroom", "lab", "computer_lab", "office", "other")
 CODE = re.compile(r"^[0-9A-Za-zƏəİıÖöÜüĞğŞşÇç._-]{2,30}$")
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")               # not week dates (2026-W01-1), which Python 3.11 also reads
 LOGIN = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
@@ -50,6 +53,12 @@ ENTITIES: dict[str, dict] = {
     "units": {"table": "teaching_units", "order": "id", "search": (), "unique": (), "filters": ("course_id",),
               "ref_roles": {"teacher_id": TEACHING_ROLES},
               "fields": {"course_id": "ref:courses", "kind": "unit_kind", "teacher_id": "ref?:users", "subgroup": "int?:1:9"}},
+    # Task 18: buildings and rooms (a floor is a number of the room, not a table of its own)
+    "buildings": {"table": "buildings", "order": "name", "search": ("code", "name"), "unique": ("code",),
+                  "fields": {"code": "ucode", "name": "text", "address": "text?"}},
+    "rooms": {"table": "rooms", "order": "code", "search": ("code", "number", "name"), "unique": ("code",), "filters": ("building_id",),
+              "fields": {"building_id": "ref:buildings", "code": "ucode", "number": "short", "name": "text?", "floor": "int?:-5:200",
+                         "kind": "room_kind", "capacity": "int?:0:5000", "accessible": "flag"}},
 }
 
 
@@ -86,15 +95,27 @@ def _value(kind: str, field: str, v):
     if kind.startswith("int"):
         _, lo, hi = kind.split(":")
         return _int(field, v, int(lo), int(hi), kind.startswith("int?"))
+    if kind == "flag":
+        if v in (None, "", False, 0, "0"):
+            return 0, None
+        if v in (True, 1, "1"):
+            return 1, None
+        return None, E("«{field}» sahəsində bəli və ya xeyr seçin", field=field)
     if kind.endswith("?") and v in (None, ""):
         return None, None
     if not isinstance(v, str):
         return None, E("«{field}» sahəsi doldurulmalıdır", field=field)
     v = " ".join(v.split())
-    if kind.rstrip("?") == "code" and not CODE.fullmatch(v):
+    if kind.rstrip("?") in ("code", "ucode") and not CODE.fullmatch(v):
         return None, E("«{field}» sahəsində kod 2–30 hərf, rəqəm, nöqtə, defis və ya alt xətdən ibarət olmalıdır", field=field)
-    if kind == "text" and not 2 <= len(v) <= 200:
+    if kind == "ucode":
+        v = v.upper()               # plain, not Azerbaijani, upper case: "it-101" stays ASCII in a URL ("IT-101")
+    if kind.rstrip("?") == "text" and not 2 <= len(v) <= 200:
         return None, E("«{field}» sahəsi 2–200 simvol olmalıdır", field=field)
+    if kind == "short" and not 1 <= len(v) <= 30:
+        return None, E("«{field}» sahəsi 1–30 simvol olmalıdır", field=field)
+    if kind == "room_kind" and v not in ROOM_KINDS:
+        return None, E("Otağın növü düzgün deyil")
     if kind == "degree" and v not in DEGREES:
         return None, E("«{field}» sahəsində dərəcə bakalavr, magistr və ya doktorantura olmalıdır", field=field)
     if kind == "login":

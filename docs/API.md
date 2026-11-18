@@ -150,6 +150,9 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/auth/activate` | public | `{"student_no", "code", "password"}`: a student chooses a password with the code and is signed in |
 | `GET` | `/api/admin/settings` | admin | The university settings by section (Task 17) |
 | `PUT` | `/api/admin/settings/{section}` | admin | `{"value": {...}}`: check and save one section (audited `settings_change`) |
+| `GET` | `/r/{code}` | public | The page behind a room's QR code (Task 18): the room, the lesson in progress and the next one; 60 per minute per client address |
+| `GET` | `/api/facilities/buildings/{id}/qr` | `directory.manage` | A printable sheet with every active room's QR code (HTML) |
+| `POST` | `/api/facilities/link-rooms` | `directory.manage` | Link timetable rows to rooms by their text; report the texts that name no room |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
 
 ### Bulk import (Task 16)
@@ -158,7 +161,9 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 `python backend/manage.py import --kind K --source S --file F [--dry-run] [--prefer source]` for files over the screen's
 20 000 rows. Kinds: `users`, `orgs` (faculties and departments), `terms`, `courses`, `classes` (teaching units),
 `enrollments` (`role=teacher` sets the unit's teacher; `role=student` enrols in the unit's course with its group,
-subgroup, `beginDate`, `endDate`), `timetable`, and `teaching-load` (Forma №3 `.xlsx`, `docs/forms/forma-3.md`).
+subgroup, `beginDate`, `endDate`), `timetable`, `rooms` (Task 18: `identifier` is the room code, `number`, `name`,
+`building` as a building code, `floor`, `kind`, `capacity`, `accessible`), and `teaching-load` (Forma №3 `.xlsx`,
+`docs/forms/forma-3.md`).
 Columns are OneRoster 1.2 CSV names or Azerbaijani headings; CSV is UTF-8 with commas, semicolons or tabs; XLSX is read
 with the standard library and the Office reader's size and DTD guards. Every row is checked and resolved first; one
 refused row and nothing is written (`errors`: row number and reason). A row is linked to its source by `import_links`
@@ -167,6 +172,21 @@ since the import and the file says otherwise is a conflict: it is listed with it
 `prefer_source` overwrites it and writes `import_overwrite` to the audit log. The write is one `BEGIN IMMEDIATE`
 transaction and the report gives `lock_ms`. An import never changes an account whose role is not student or teacher,
 and never creates an account from Forma №3 (an unknown teacher, course or group is a conflict).
+
+### Buildings and rooms (Task 18)
+
+`buildings` and `rooms` are directory entities (`/api/directory/buildings`, `/api/directory/rooms?building_id=`). A room
+code (2–30 letters, digits, `.`, `_`, `-`) is stored in upper case and is unique across the university: it is the room's
+address `/r/<code>` and what its QR code holds. `number` is what the door says; `kind` is `lecture_hall`, `classroom`,
+`lab`, `computer_lab`, `office` or `other`; `floor` and `capacity` are optional numbers; `accessible` is 0 or 1.
+
+A timetable row keeps the room as text and gets `room_id` when that text, without case and spaces (ı = i), is a room's
+code, `<building name>, <number>` or `<room name>, <number>`. A text that two rooms answer to is linked to neither.
+`POST /api/facilities/link-rooms` sets every row and answers `{"linked", "changed", "unmatched": [{"room", "rows"}]}`.
+
+`/r/{code}` is public and shows no one's name: the room, its building, kind, capacity, floor and accessibility, the
+lesson in progress and the next one within 14 days (course, kind, time), on teaching days of the current term that are
+not holidays. It refreshes itself every 5 minutes, so a tablet on the door stays current.
 
 ### University settings (Task 17)
 

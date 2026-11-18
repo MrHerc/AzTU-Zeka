@@ -275,5 +275,25 @@
   "past_semesters": [
     {"name": "2025/2026 · payız semestri", "name_en": "Fall 2025/2026", "courses": [["Azərbaycan tarixi", "History of Azerbaijan", 5], ["Xətti cəbr və analitik həndəsə", "Linear Algebra and Analytic Geometry", 6], ["İnformatikanın əsasları", "Fundamentals of Informatics", 6], ["Xarici dil I", "Foreign Language I", 5], ["Mühəndisliyə giriş", "Introduction to Engineering", 4], ["Akademik kommunikasiya", "Academic Communication", 4]]},
     {"name": "2025/2026 · yaz semestri", "name_en": "Spring 2025/2026", "courses": [["Diskret riyaziyyat", "Discrete Mathematics", 6], ["Alqoritmlər və proqramlaşdırma", "Algorithms and Programming", 6], ["Xarici dil II", "Foreign Language II", 5], ["Elektrotexnikanın əsasları", "Fundamentals of Electrical Engineering", 5], ["Fəlsəfə", "Philosophy", 4], ["Həyat fəaliyyətinin təhlükəsizliyi", "Life Safety", 4]]}
-  ]
+  ],
+  "facilities": {
+    "buildings": [
+      {"code": "EK", "name": "Əsas korpus", "address": "H. Cavid prospekti 25, Bakı"},
+      {"code": "IT", "name": "İT korpusu", "address": "H. Cavid prospekti 25, Bakı"}
+    ],
+    "rooms": [
+      {"building": "EK", "code": "EK-118", "number": "118", "name": null, "floor": 1, "kind": "classroom", "capacity": 40, "accessible": 1},
+      {"building": "EK", "code": "EK-121", "number": "121", "name": "Fizika laboratoriyası", "floor": 1, "kind": "lab", "capacity": 20, "accessible": 1},
+      {"building": "EK", "code": "EK-220", "number": "220", "name": null, "floor": 2, "kind": "lecture_hall", "capacity": 120, "accessible": 0},
+      {"building": "EK", "code": "EK-224", "number": "224", "name": null, "floor": 2, "kind": "classroom", "capacity": 35, "accessible": 0},
+      {"building": "EK", "code": "EK-301", "number": "301", "name": null, "floor": 3, "kind": "lecture_hall", "capacity": 90, "accessible": 0},
+      {"building": "EK", "code": "EK-305", "number": "305", "name": null, "floor": 3, "kind": "classroom", "capacity": 30, "accessible": 0},
+      {"building": "EK", "code": "EK-316", "number": "316", "name": "Elektronika laboratoriyası", "floor": 3, "kind": "lab", "capacity": 20, "accessible": 0},
+      {"building": "EK", "code": "EK-402", "number": "402", "name": null, "floor": 4, "kind": "classroom", "capacity": 30, "accessible": 0},
+      {"building": "EK", "code": "EK-405", "number": "405", "name": "Qrafika laboratoriyası", "floor": 4, "kind": "computer_lab", "capacity": 24, "accessible": 0},
+      {"building": "EK", "code": "EK-512", "number": "512", "name": null, "floor": 5, "kind": "classroom", "capacity": 30, "accessible": 0},
+      {"building": "IT", "code": "IT-101", "number": "101", "name": null, "floor": 1, "kind": "computer_lab", "capacity": 30, "accessible": 1},
+      {"building": "IT", "code": "IT-214", "number": "214", "name": null, "floor": 2, "kind": "computer_lab", "capacity": 30, "accessible": 0}
+    ]
+  }
 }
