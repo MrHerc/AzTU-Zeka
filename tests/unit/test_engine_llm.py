@@ -65,7 +65,7 @@ def test_llm_chat_builds_provider_specific_requests(cfg_dir, monkeypatch, provid
     monkeypatch.setattr(engine.urllib.request, "urlopen", fake_urlopen)
     out = engine.llm_chat("SYSTEM", [{"role": "user", "content": "Salam"}], max_tokens=33)
     assert out == "OK [1]"
-    assert seen["url"].endswith(url_part) and seen["timeout"] == 40.0
+    assert seen["url"].endswith(url_part) and seen["timeout"] == 15.0      # the cap of Task 6, also the default
     assert {k.lower(): v for k, v in seen["headers"].items()}[header[0].lower()] == header[1]
     body = seen["body"]
     assert body["max_tokens"] == 33

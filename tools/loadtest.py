@@ -41,14 +41,16 @@ SESSIONS = 25          # the demo login allows 30 per client per minute
 
 
 def build_dataset(data: Path, name: str) -> None:
+    """Runs in its own process (see main): ZEKA_DATA is read when store is imported and must not leak to the caller."""
     os.environ["ZEKA_DATA"] = str(data)
     os.environ.pop("ZEKA_MODE", None)
     sys.path.insert(0, str(ROOT / "backend"))
     from zeka.legacy import store
     store.init(reset=True)
-    if SIZES[name] is None:
+    size = SIZES[name]
+    if size is None:
         return
-    students, courses, attempts, chunks = SIZES[name]
+    students, courses, attempts, chunks = size
     rng = random.Random(7)
     c = store.connect()
     try:
@@ -201,7 +203,11 @@ def main(argv=None) -> int:
     with tempfile.TemporaryDirectory(prefix="zeka-load-") as tmp:
         data = Path(tmp)
         t = time.time()
-        build_dataset(data, args.dataset)
+        builder = multiprocessing.get_context("spawn").Process(target=build_dataset, args=(data, args.dataset))
+        builder.start()
+        builder.join()
+        if builder.exitcode != 0:
+            raise SystemExit(f"building the {args.dataset} dataset failed (exit {builder.exitcode})")
         print(f"dataset {args.dataset}: built in {time.time() - t:.1f} s", flush=True)
         port = free_port()
         t = time.time()
