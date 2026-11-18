@@ -2,10 +2,10 @@ import { S, api, html, raw, mount, on, ic, icon, toast, modal, go, avatar, ago, 
 import { LANGS, setLang } from "./i18n.js";
 
 export const HOME = { student: "/student", teacher: "/teacher", office: "/office", leader: "/leader", admin: "/admin",
-  dept_head: "/teacher", academic_office: "/office", proctor: "/teacher" };
+  dept_head: "/teacher", academic_office: "/admin/directory", proctor: "/teacher" };
 // New roles (Task 13) use the navigation of the closest existing role until their own pages arrive.
 const NAV_ROLE = { dept_head: "teacher", academic_office: "office", proctor: "teacher" };
-const navRole = (r) => NAV_ROLE[r] || r;
+const pick = (table, r) => table[r] || table[NAV_ROLE[r]] || [];
 export const ROLES = [
   ["student", t("Tələbə"), t("Aysel Məmmədova · İT-25-1"), "cap", "ic-blue"],
   ["teacher", t("Müəllim"), t("Dos. Rauf Əliyev · Elektronika"), "book", "ic-navy"],
@@ -35,7 +35,8 @@ export const NAV = {
   leader: [[t("Rəhbərlik"), [["chart", t("Pilot paneli"), "/leader"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["inbox", t("E-xidmətlər"), "/office", "office"], ["qr", t("Sənəd reyestri"), "/office/registry"]]],
            [t("Kommunikasiya"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["news", t("Xəbər lenti"), "/news"]]],
            UNI_STAFF, [t("Nəzarət"), [["list", t("Audit jurnalı"), "/admin/audit"]]], [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["ticket", t("Dəstək"), "/support", "support"]]]],
-  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["activity", t("Zəka Radar"), "/radar"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
+  academic_office: [[t("Tədris şöbəsi"), [["layers", t("Struktur və semestrlər"), "/admin/directory"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
+  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["layers", t("Struktur və semestrlər"), "/admin/directory"], ["activity", t("Zəka Radar"), "/radar"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
           [t("Məzmun"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["inbox", t("Müraciətlər"), "/office", "office"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
 };
 // Mobile bottom bar: 4 primary destinations per role (+ menu)
@@ -71,7 +72,7 @@ export function shell(root) {
           <div class="brand-txt"><div class="brand-name">Az<span>TU</span> ${t("Rəqəmsal Kampus")}</div><div class="brand-by">by <b>Safarov Industries</b></div></div></a>
         <button class="sb-close icon-btn" id="sb-close" aria-label="${t("Menyunu bağla")}">${ic("x", 18)}</button>
       </div>
-      <nav class="nav" id="nav">${NAV[navRole(u.role)].map(([sec, items]) => html`<div class="nav-section"><span>${sec}</span></div>${items.map(([i, l, p, b]) =>
+      <nav class="nav" id="nav">${pick(NAV, u.role).map(([sec, items]) => html`<div class="nav-section"><span>${sec}</span></div>${items.map(([i, l, p, b]) =>
         html`<a class="nav-item" href="#${p}" data-path="${p}" data-label="${l}">${ic(i, 18)}<span class="nav-l">${l}</span>${b ? html`<span class="count hidden" data-badge="${b}"></span>` : ""}</a>`)}`)}</nav>
       <div class="sidebar-foot">
         <div class="engine-pill" title="${S.app.engine.label}"><span class="dot ${S.app.engine.mode === "demo" ? "amber" : ""}"></span><span class="sf-l">${S.app.engine.label}</span></div>
@@ -94,7 +95,7 @@ export function shell(root) {
       </header>
       <div id="content"></div>
     </div>
-    <nav class="bottom-nav" aria-label="${t("Sürətli naviqasiya")}">${BOTTOM[navRole(u.role)].map(([i, l, p]) => html`<a href="#${p}" data-path="${p}">${ic(i, 20)}<span>${l}</span></a>`)}
+    <nav class="bottom-nav" aria-label="${t("Sürətli naviqasiya")}">${pick(BOTTOM, u.role).map(([i, l, p]) => html`<a href="#${p}" data-path="${p}">${ic(i, 20)}<span>${l}</span></a>`)}
       <button id="bn-menu" aria-label="${t("Bütün bölmələr")}">${ic("menu", 20)}<span>${t("Menyu")}</span></button></nav>
     <button class="fab-feedback" id="fab-feedback" aria-label="${t("Rəy bildir")}" title="${t("Rəy bildir")}">${ic("smile", 19)}<span>${t("Rəy")}</span></button>
   </div>`);
@@ -261,9 +262,9 @@ function helpMenu(host) {
 // ---------------------------------------------------------------- command palette (Ctrl+K)
 export function palette() {
   if (!S.user || document.querySelector(".palette-back")) return;
-  const pages = NAV[navRole(S.user.role)].flatMap(([sec, items]) => items.map(([i, l, p]) => ({ group: t("Səhifələr"), title: l, sub: sec, link: p, icon: i })));
+  const pages = pick(NAV, S.user.role).flatMap(([sec, items]) => items.map(([i, l, p]) => ({ group: t("Səhifələr"), title: l, sub: sec, link: p, icon: i })));
   pages.push({ group: t("Səhifələr"), title: t("Profil və tənzimləmələr"), sub: "", link: "/profile", icon: "user" }, { group: t("Səhifələr"), title: t("Bildirişlər"), sub: "", link: "/notifications", icon: "bell" });
-  const quick = (QUICK[navRole(S.user.role)] || []).map(([i, l, p]) => ({ group: t("Sürətli əməliyyatlar"), title: l, sub: "", link: p, icon: i }));
+  const quick = pick(QUICK, S.user.role).map(([i, l, p]) => ({ group: t("Sürətli əməliyyatlar"), title: l, sub: "", link: p, icon: i }));
   const back = document.createElement("div");
   back.className = "palette-back";
   back.innerHTML = `<div class="palette" role="dialog" aria-modal="true" aria-label="${esc(t("Axtarış"))}"><div class="palette-in">${icon("search", 18)}<input id="pq" placeholder="${esc(t("Nə axtarırsınız? Məsələn: arayış, Kirxhof, hakaton"))}" autocomplete="off" aria-label="${esc(t("Axtarış sorğusu"))}"><span class="kbd">Esc</span></div>

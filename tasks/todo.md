@@ -328,14 +328,16 @@ Status əmrləri (dilim 2, `0151_directory_units.sql`): `student_status_events(i
 
 **Acceptance criteria:**
 - [ ] Hər varlıq üçün yaratma, dəyişmə, deaktiv etmə doğrulama və audit ilə işləyir; silmə yoxdur
-- [ ] `teaching_end < exam_start` şərtini pozan semestr tərcümə olunmuş səbəblə rədd olunur
+- [x] `teaching_end < exam_start` şərtini pozan semestr tərcümə olunmuş səbəblə rədd olunur
 - [ ] Deaktiv istifadəçi girə bilmir, tarixçəsi qalır
 - [ ] Əmr nömrəsi, əmr tarixi və qüvvəyə minmə tarixi olmadan status dəyişmir; akademik məzuniyyət və xaric qüvvəyə minmə tarixindən sonrakı dərs siyahılarından tələbəni çıxarır, əvvəlki davamiyyət və ballar qalır; məzuniyyətdəki tələbə hesabına girir və öz sənədlərini görür
-- [ ] Siyahılar serverdə səhifələnir (səhifədə ≤ 50) və serverdə axtarılır
+- [x] Siyahılar serverdə səhifələnir (səhifədə ≤ 50) və serverdə axtarılır
 
 **Verification:**
 - [ ] `python -m pytest tests/integration/test_directory_admin.py tests/integration/test_student_status.py -q`
 - [ ] Əl yoxlaması: admin kimi fakültə → kafedra → qrup → tələbə yarat, tələbə kimi gir
+
+Qeyd (2026-11-18): dilim 1 hazırdır — `modules/directory`, `0150_directory.sql`, `frontend/js/admin-directory.js`, `tests/integration/test_directory_admin.py`; fakültə, kafedra, ixtisas, qrup və semestr yaradılır, dəyişir, deaktiv edilir (silmə yoxdur, audit var). İstifadəçi, fənn, qeydiyyat, tədris vahidi və status əmrləri dilim 2-dədir.
 
 **Dependencies:** Task 13 (dilim 1: rol modeli və matris)
 **Files likely touched:** `backend/zeka/modules/directory/{domain,service,repo,routes}.py`, `backend/migrations/0150_directory.sql` (dilim 1: struktur və semestr), `backend/migrations/0151_directory_units.sql` (dilim 2: tədris vahidi, qeydiyyat sütunları, status əmrləri), `backend/zeka/legacy/{r_services,docs}.py`, `frontend/js/admin-directory.js`, `frontend/js/shell.js`, `frontend/css/m-admin.css`, `tests/integration/test_student_status.py`

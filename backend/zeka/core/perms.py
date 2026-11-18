@@ -18,6 +18,8 @@ PERMS: dict[str, tuple[str, ...]] = {
     "community.moderate": ("office", "admin"),            # plus the leader of a club, inside that club (Task 35)
     "roles.grant": ("admin",),
     "users.manage": ("admin",),
+    "directory.read": STAFF_ROLES,                         # structure lists (Task 15)
+    "directory.manage": ("admin", "academic_office"),      # create, change, deactivate structure and terms
 }
 
 SCOPE_TYPES = ("faculty", "department", "course")

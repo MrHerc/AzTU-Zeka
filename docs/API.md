@@ -121,6 +121,11 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `GET` | `/api/admin/users/{id}/roles` | `roles.grant` | A user's roles |
 | `POST` | `/api/admin/users/{id}/roles` | `roles.grant` | Grant a role, optionally scoped to a faculty, department or course (audited) |
 | `DELETE` | `/api/admin/users/{id}/roles/{gid}` | `roles.grant` | Revoke a grant; sessions acting in it fall back at once (audited) |
+| `GET` | `/api/directory/{entity}` | `directory.read` | Faculties, departments, specialties, groups or terms: `?q=` search, `?page=` (50 a page), `?active=1/0` |
+| `POST` | `/api/directory/{entity}` | `directory.manage` | Create (validated, unique code, audited) |
+| `PUT` | `/api/directory/{entity}/{id}` | `directory.manage` | Change (rules checked on the merged row, e.g. teaching ends before the exam session) |
+| `POST` | `/api/directory/{entity}/{id}/deactivate` | `directory.manage` | Deactivate; there is no delete |
+| `POST` | `/api/directory/{entity}/{id}/activate` | `directory.manage` | Activate again |
 | `DELETE` | `/api/me/sessions/{id}` | any | End one of one's own sessions (`404` for another person's) |
 | `POST` | `/api/me/sessions/end-others` | any | End every session but the current one |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
@@ -808,7 +813,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-133 routes, in the order the router matches them, except that the Task 10–13 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+138 routes, in the order the router matches them, except that the Task 10–15 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -831,6 +836,11 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | GET | `/api/admin/users/{id}/roles` | admin |
 | POST | `/api/admin/users/{id}/roles` | admin |
 | DELETE | `/api/admin/users/{id}/roles/{gid}` | admin |
+| GET | `/api/directory/{entity}` | staff |
+| POST | `/api/directory/{entity}` | admin, academic_office |
+| PUT | `/api/directory/{entity}/{id}` | admin, academic_office |
+| POST | `/api/directory/{entity}/{id}/deactivate` | admin, academic_office |
+| POST | `/api/directory/{entity}/{id}/activate` | admin, academic_office |
 | DELETE | `/api/me/sessions/{id}` | any |
 | POST | `/api/me/sessions/end-others` | any |
 | GET | `/healthz` | public |

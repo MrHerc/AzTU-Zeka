@@ -18,7 +18,7 @@ COOKIE = "zeka_sid"
 BASE_URL = {"value": "http://127.0.0.1:5070"}
 ROLE_HOME = {"student": "/student", "teacher": "/teacher", "office": "/office", "leader": "/leader", "admin": "/admin",
              # new roles (Task 13) start from the closest existing home until their own pages arrive
-             "dept_head": "/teacher", "academic_office": "/office", "proctor": "/teacher"}
+             "dept_head": "/teacher", "academic_office": "/admin/directory", "proctor": "/teacher"}
 STAFF = ("office", "admin", "leader")
 
 # Tests (ZEKA_TX_GUARD=1): a request may hold SQLite's single write lock for at most 200 ms (Task 7).

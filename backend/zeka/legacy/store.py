@@ -408,7 +408,14 @@ def seed(c):
         set_setting(c, k, s[k])
     sem0 = semester_start(today)
 
-    gids = {g["name"]: c.execute("INSERT INTO study_groups(name,year) VALUES(?,?)", (g["name"], g["year"])).lastrowid for g in s["groups"]}
+    # the structure (Task 15): one faculty and its specialty; the groups belong to them
+    stamp = iso(t0)
+    fid = c.execute("INSERT INTO faculties(code,name,active,created_at,updated_at) VALUES(?,?,1,?,?)",
+                    (s["faculty"]["short"], s["faculty"]["name"], stamp, stamp)).lastrowid
+    spid = c.execute("INSERT INTO specialties(faculty_id,code,name,degree,active,created_at,updated_at) VALUES(?,?,?,'bachelor',1,?,?)",
+                     (fid, "KM-050616", s["specialty"]["name"], stamp, stamp)).lastrowid
+    gids = {g["name"]: c.execute("INSERT INTO study_groups(name,year,faculty_id,specialty_id) VALUES(?,?,?,?)",
+                                 (g["name"], g["year"], fid, spid)).lastrowid for g in s["groups"]}
     uid = {}
     for u in s["users"]:
         uid[u["username"]] = c.execute(

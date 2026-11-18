@@ -184,6 +184,21 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/directory/{entity}": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.read",
+  "slow": false
+ },
  "GET /api/documents": {
   "access": [
    "admin",
@@ -759,6 +774,36 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/directory/{entity}": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
+  "slow": false
+ },
+ "POST /api/directory/{entity}/{id:int}/activate": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
+  "slow": false
+ },
+ "POST /api/directory/{entity}/{id:int}/deactivate": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
+  "slow": false
+ },
  "POST /api/documents/{id:int}/link": {
   "access": "any",
   "audit_read": null,
@@ -1068,6 +1113,16 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "PUT /api/directory/{entity}/{id:int}": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
   "slow": false
  },
  "PUT /api/me/prefs": {

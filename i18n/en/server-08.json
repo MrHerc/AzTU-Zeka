@@ -1,0 +1,13 @@
+{
+ "«{field}» sahəsi doldurulmalıdır": "The field «{field}» is required",
+ "«{field}» sahəsində kod 2–30 hərf, rəqəm, nöqtə, defis və ya alt xətdən ibarət olmalıdır": "«{field}» must be a code of 2–30 letters, digits, dots, hyphens or underscores",
+ "«{field}» sahəsi 2–200 simvol olmalıdır": "«{field}» must be 2–200 characters long",
+ "«{field}» sahəsində dərəcə bakalavr, magistr və ya doktorantura olmalıdır": "«{field}» must be bachelor, master or doctorate",
+ "Başlanğıc tarixi bitmə tarixindən əvvəl olmalıdır": "The start date must be before the end date",
+ "Tədris dövrü imtahan sessiyası başlamazdan əvvəl bitməlidir": "The teaching period must end before the exam session starts",
+ "«{field}» sahəsində mövcud bir sətir seçin": "Choose an existing item for «{field}»",
+ "«{field}» sahəsində il 1990 ilə 2100 arasında olmalıdır": "«{field}» must be a year between 1990 and 2100",
+ "«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır": "«{field}» must be a date in YYYY-MM-DD format",
+ "Bu kod artıq istifadə olunur": "This code is already in use",
+ "«{field}» sahəsində seçilən sətir tapılmadı": "The item chosen for «{field}» was not found"
+}
