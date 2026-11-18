@@ -8,6 +8,7 @@ import urllib.parse
 
 from . import engine, pdftext, store
 from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, session_cutoff, _sid
+from ..core import config
 from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
 from .store import J, audit, iso, now, row, rows, setting
@@ -53,21 +54,21 @@ def unread(c, uid):
 def bootstrap(req):
     c, u = req.db, req.user
     ct = store._load("contacts.json")
-    info = {**ctx(c), "engine": engine.engine_info(), "news_kinds": setting(c, "news_kinds", {}), "version": "0.3",
+    info = {**ctx(c), "engine": engine.engine_info(), "news_kinds": setting(c, "news_kinds", {}), "version": "0.3", "mode": config.MODE,
             "access_required": bool(CFG.access_code),
             "langs": ["az", "en", "ru"], "vendor": "Safarov Industries",
             "contact": {k: ct[k] for k in ("phone", "phone_href", "email", "website", "address")}}
     return {"user": pub_user(u), "app": info, "home": ROLE_HOME.get(u["role"]) if u else None, "unread": unread(c, u["id"]) if u else 0}
 
 
-@R("POST", "/api/auth/demo", auth=False)
+@R("POST", "/api/auth/demo", auth=False, demo=True)
 def demo_login(req):
     b = req.json()
     u, sid, headers = _login(req, b.get("role"), b.get("code"), b.get("user"))
     return json_resp({"user": pub_user(u), "home": ROLE_HOME[u["role"]], "token": sid}, headers=headers)
 
 
-@R("GET", "/demo/login", auth=False)
+@R("GET", "/demo/login", auth=False, demo=True)
 def demo_login_get(req):
     u, _, headers = _login(req, req.query.get("role", "student"), req.query.get("code"), req.query.get("user"))
     return redirect(safe_next(req.query.get("next") or "/#" + ROLE_HOME[u["role"]]), headers)

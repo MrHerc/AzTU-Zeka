@@ -10,7 +10,7 @@ BACKEND = Path(__file__).resolve().parent
 ROOT = BACKEND.parent  # repository: frontend/, content/, data/, logs/
 sys.path.insert(0, str(BACKEND))
 
-from zeka.core import migrate  # noqa: E402
+from zeka.core import config, migrate  # noqa: E402
 from zeka.legacy import api, store  # noqa: E402
 from zeka.core.security import CFG, LOOPBACK  # noqa: E402
 from zeka.core.web import make_server  # noqa: E402
@@ -50,10 +50,18 @@ def main():
     except ValueError as ex:
         ap.error(str(ex))
     exposed = args.host not in LOOPBACK
-    # The demo login is password-less: on a reachable host it must sit behind the shared access code (ZEKA_ACCESS_CODE).
-    if exposed and not CFG.access_code and os.environ.get("ZEKA_ALLOW_OPEN_DEMO") != "1":
-        ap.error(f"--host {args.host} portalı şəbəkəyə açır: ZEKA_ACCESS_CODE mühit dəyişənini təyin edin "
-                 "(və ya riski qəbul edib ZEKA_ALLOW_OPEN_DEMO=1)")
+    if config.MODE not in config.MODES:
+        ap.error(f"ZEKA_MODE={config.MODE}: yalnız demo və ya prod ola bilər")
+    if config.prod():
+        if args.reset:
+            ap.error("prod rejimində --reset qadağandır: məlumat heç vaxt silinmir")
+        if public.startswith("https://") and CFG.proxy_hops == 0:
+            ap.error("PUBLIC_URL https:// ilə başlayır, amma ZEKA_PROXY_HOPS=0: tətbiq TLS danışmır, deməli qabaqda proksi var; "
+                     "proksilərin sayını təyin edin (adətən 1)")
+    elif exposed and os.environ.get("ZEKA_ALLOW_OPEN_DEMO") != "1":
+        # The demo login is password-less: a reachable host runs ZEKA_MODE=prod, or a demo whose risk the operator accepted.
+        ap.error(f"--host {args.host}: demo rejimi şəbəkəyə açılmır. Real yerləşdirmə üçün ZEKA_MODE=prod; demonu şəbəkədə "
+                 "göstərmək üçün riski qəbul edib ZEKA_ALLOW_OPEN_DEMO=1 və ZEKA_ACCESS_CODE təyin edin")
     CFG.https = public.startswith("https://")
     if public:
         CFG.allowed_hosts = {public.split("://", 1)[1].lower()}

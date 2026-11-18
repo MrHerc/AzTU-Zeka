@@ -228,7 +228,7 @@ def student_plan_step(req):
     return iv_out(c, iv, for_student=True)
 
 
-@R("GET", "/api/demo/storyline", auth=False)
+@R("GET", "/api/demo/storyline", auth=False, demo=True)
 def demo_storyline(req):
     """Ids the 3-minute presenter needs (only the synthetic demo storyline students; no personal data)."""
     from .radar_seed import DEMO_STUDENTS

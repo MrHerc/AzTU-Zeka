@@ -11,7 +11,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from . import engine
-from ..core import migrate
+from ..core import config, migrate
 from ..core.i18n import T3, tr3
 
 ROOT = Path(__file__).resolve().parents[3]  # backend/zeka/legacy/ -> repo
@@ -305,16 +305,57 @@ def _load(name):
     return json.loads((CONTENT / name).read_text(encoding="utf-8"))
 
 
+def seed_catalog(c, s: dict | None = None):
+    """Product content every installation needs, in prod and demo alike: university profile and limits, the campus
+    knowledge base, the e-service catalogue, AI Academy, the tool catalogue and news kinds. No people, no activity."""
+    s = s or _load("seed.json")
+    for k in ("university", "faculty", "specialty"):
+        set_setting(c, k, s[k])
+    set_setting(c, "limits", {"daily_messages": 50, "pii_masking": True, "retention_days": 180, "socratic_default": True})
+    set_setting(c, "semester_start", semester_start(now().date()).isoformat())
+    for heading, text, req, label, source in _parse_kb((CONTENT / "campus_kb.md").read_text(encoding="utf-8")):
+        c.execute("INSERT INTO campus_kb(heading,text,request,action_label,source) VALUES(?,?,?,?,?)", (heading, text, req, label, source))
+
+    for i, cat in enumerate(s["service_categories"]):
+        c.execute("INSERT INTO service_categories(key,seq,name,icon,color,text) VALUES(?,?,?,?,?,?)",
+                  (cat["key"], i, cat["name"], cat["icon"], cat["color"], cat["text"]))
+    for i, rt in enumerate(s["request_types"]):
+        c.execute("INSERT INTO request_types(code,seq,category,name,icon,sla_hours,document,document_en,prefix,description,needs,outcome,"
+                  "privacy,fields,attachments,steps,answer,popular) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (rt["code"], i, rt["category"], rt["name"], rt["icon"], rt["sla_hours"], rt.get("document"), rt.get("document_en"),
+                   rt["prefix"], rt["description"], json.dumps(rt.get("needs", []), ensure_ascii=False), rt.get("outcome", ""),
+                   rt.get("privacy", ""), json.dumps(rt["fields"], ensure_ascii=False), json.dumps(rt.get("attachments"), ensure_ascii=False),
+                   json.dumps(rt["steps"], ensure_ascii=False), rt.get("answer", ""), 1 if rt.get("popular") else 0))
+    ac = _load("academy.json")
+    set_setting(c, "self_assessment", ac["self_assessment"])
+    for ti, tr in enumerate(ac["tracks"]):
+        c.execute("INSERT INTO academy_tracks(key,seq,title,icon,color,level,audience,summary,outcomes) VALUES(?,?,?,?,?,?,?,?,?)",
+                  (tr["key"], ti, tr["title"], tr["icon"], tr["color"], tr["level"], tr["audience"], tr["summary"], json.dumps(tr["outcomes"], ensure_ascii=False)))
+        for mi, m in enumerate(tr["modules"], 1):
+            c.execute(
+                "INSERT INTO academy_modules(track_key,seq,title,minutes,paragraphs,key_points,phrases,task,link,quiz) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (tr["key"], mi, m["title"], m["minutes"], json.dumps(m["paragraphs"], ensure_ascii=False), json.dumps(m.get("key_points", []), ensure_ascii=False),
+                 json.dumps(m.get("phrases", []), ensure_ascii=False), m["task"], m.get("link", ""), json.dumps(m["quiz"], ensure_ascii=False)))
+    tl = _load("tools.json")
+    set_setting(c, "tool_areas", tl["areas"])
+    set_setting(c, "dept_areas", tl["dept_areas"])
+    for i, t in enumerate(tl["tools"]):
+        c.execute("INSERT INTO tools(key,seq,name,areas,type,pricing,platform,url,summary,use_cases,steps,lesson_idea) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (t["key"], i, t["name"], json.dumps(t["areas"]), t["type"], t["pricing"], t["platform"], t["url"], t["summary"],
+                   json.dumps(t["use_cases"], ensure_ascii=False), json.dumps(t["steps"], ensure_ascii=False), t["lesson_idea"]))
+    set_setting(c, "news_kinds", _load("news.json")["kinds"])
+
+
 def seed(c):
+    """The demo: the catalogue plus synthetic people, courses, activity and documents (random.Random(42))."""
     rng = random.Random(42)
     s = _load("seed.json")
     t0 = now()
     today = t0.date()
-    for k in ("university", "faculty", "specialty", "demo_logins", "past_semesters"):
+    seed_catalog(c, s)
+    for k in ("demo_logins", "past_semesters"):
         set_setting(c, k, s[k])
-    set_setting(c, "limits", {"daily_messages": 50, "pii_masking": True, "retention_days": 180, "socratic_default": True})
     sem0 = semester_start(today)
-    set_setting(c, "semester_start", sem0.isoformat())
 
     gids = {g["name"]: c.execute("INSERT INTO study_groups(name,year) VALUES(?,?)", (g["name"], g["year"])).lastrowid for g in s["groups"]}
     uid = {}
@@ -404,9 +445,6 @@ def seed(c):
             gr.append((st, cid, "Laboratoriya / məşğələ", round(min(10, max(4, rng.gauss(10 * skill, 1.1))), 1), 10, iso(t0 - timedelta(days=2))))
     c.executemany("INSERT INTO grades(user_id,course_id,component,score,max,updated_at) VALUES(?,?,?,?,?,?)", gr)
 
-    for heading, text, req, label, source in _parse_kb((CONTENT / "campus_kb.md").read_text(encoding="utf-8")):
-        c.execute("INSERT INTO campus_kb(heading,text,request,action_label,source) VALUES(?,?,?,?,?)", (heading, text, req, label, source))
-
     # ---- question bank & quizzes
     qids = []
     for q in s["question_bank"]:
@@ -478,16 +516,6 @@ def seed(c):
                   (elm, st, anon, q, "AI tutor söhbətindən göndərilib", iso(t0 - timedelta(hours=hrs))))
 
     # ---- e-services
-    for i, cat in enumerate(s["service_categories"]):
-        c.execute("INSERT INTO service_categories(key,seq,name,icon,color,text) VALUES(?,?,?,?,?,?)",
-                  (cat["key"], i, cat["name"], cat["icon"], cat["color"], cat["text"]))
-    for i, rt in enumerate(s["request_types"]):
-        c.execute("INSERT INTO request_types(code,seq,category,name,icon,sla_hours,document,document_en,prefix,description,needs,outcome,"
-                  "privacy,fields,attachments,steps,answer,popular) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (rt["code"], i, rt["category"], rt["name"], rt["icon"], rt["sla_hours"], rt.get("document"), rt.get("document_en"),
-                   rt["prefix"], rt["description"], json.dumps(rt.get("needs", []), ensure_ascii=False), rt.get("outcome", ""),
-                   rt.get("privacy", ""), json.dumps(rt["fields"], ensure_ascii=False), json.dumps(rt.get("attachments"), ensure_ascii=False),
-                   json.dumps(rt["steps"], ensure_ascii=False), rt.get("answer", ""), 1 if rt.get("popular") else 0))
     rtypes = {rt["code"]: rt for rt in s["request_types"]}
     nigar = uid["nigar"]
     places = ["Hərbi komissarlıq", "Dövlət Sosial Müdafiə Fondu (DSMF)", "Bank", "İş yeri", "Səfirlik / viza"]
@@ -566,17 +594,9 @@ def seed(c):
                   ("Məlumatlarda səhv aşkar edildi, yeni arayış verilib.", iso(t0 - timedelta(days=2)), docs[3]["id"]))
 
     # ---- academy
-    ac = _load("academy.json")
-    set_setting(c, "self_assessment", ac["self_assessment"])
-    mod_by_track = {}
-    for ti, tr in enumerate(ac["tracks"]):
-        c.execute("INSERT INTO academy_tracks(key,seq,title,icon,color,level,audience,summary,outcomes) VALUES(?,?,?,?,?,?,?,?,?)",
-                  (tr["key"], ti, tr["title"], tr["icon"], tr["color"], tr["level"], tr["audience"], tr["summary"], json.dumps(tr["outcomes"], ensure_ascii=False)))
-        for mi, m in enumerate(tr["modules"], 1):
-            mod_by_track.setdefault(tr["key"], []).append(c.execute(
-                "INSERT INTO academy_modules(track_key,seq,title,minutes,paragraphs,key_points,phrases,task,link,quiz) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                (tr["key"], mi, m["title"], m["minutes"], json.dumps(m["paragraphs"], ensure_ascii=False), json.dumps(m.get("key_points", []), ensure_ascii=False),
-                 json.dumps(m.get("phrases", []), ensure_ascii=False), m["task"], m.get("link", ""), json.dumps(m["quiz"], ensure_ascii=False))).lastrowid)
+    mod_by_track: dict[str, list[int]] = {}   # same order as when the catalogue inserted them: track seq, module seq
+    for m in rows(c, "SELECT m.id, m.track_key FROM academy_modules m JOIN academy_tracks t ON t.key=m.track_key ORDER BY t.seq, m.seq"):
+        mod_by_track.setdefault(m["track_key"], []).append(m["id"])
     prog = []
     for i, mid in enumerate(mod_by_track["ai"][:5]):
         prog.append((uid["rauf"], mid, "completed", 100, iso(t0 - timedelta(days=30 - i * 5))))
@@ -589,13 +609,6 @@ def seed(c):
     c.executemany("INSERT OR IGNORE INTO academy_progress(user_id,module_id,status,score,completed_at) VALUES(?,?,?,?,?)", prog)
     c.execute("UPDATE users SET prefs=? WHERE id=?", (json.dumps({"self_assessment": {"ai": 3, "emi": 2, "syllabus": 3, "communication": 4, "pedagogy": 3, "research": 2, "edtech": 2}}), uid["rauf"]))
 
-    tl = _load("tools.json")
-    set_setting(c, "tool_areas", tl["areas"])
-    set_setting(c, "dept_areas", tl["dept_areas"])
-    for i, t in enumerate(tl["tools"]):
-        c.execute("INSERT INTO tools(key,seq,name,areas,type,pricing,platform,url,summary,use_cases,steps,lesson_idea) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (t["key"], i, t["name"], json.dumps(t["areas"]), t["type"], t["pricing"], t["platform"], t["url"], t["summary"],
-                   json.dumps(t["use_cases"], ensure_ascii=False), json.dumps(t["steps"], ensure_ascii=False), t["lesson_idea"]))
     for co in s["courses"]:
         for tk in co["tools"]:
             c.execute("INSERT INTO course_tools(course_id,tool_key,added_by,created_at) VALUES(?,?,?,?)",
@@ -603,7 +616,6 @@ def seed(c):
 
     # ---- news
     nw = _load("news.json")
-    set_setting(c, "news_kinds", nw["kinds"])
     news_ids = {}
     for n in nw["news"]:
         ev = n.get("event")
@@ -677,14 +689,21 @@ def init(reset: bool = False):
     engine is recreated. Raises ``migrate.MigrationError`` when the files and the database disagree.
     """
     DATA.mkdir(exist_ok=True)
-    if DB_PATH.exists() and (reset or _rebuild_reason()):
+    reason = DB_PATH.exists() and ("reset" if reset else _rebuild_reason())
+    if reason and config.prod():
+        raise migrate.MigrationError(f"{DB_PATH}: {reason}; prod mode never deletes the database (restore a backup instead)")
+    if reason:
         for p in (DB_PATH, DB_PATH.with_suffix(".db-wal"), DB_PATH.with_suffix(".db-shm")):
             if p.exists():
                 p.unlink()
     c = connect()
     try:
         migrate.apply(c, backup_dir=DATA / "backups")
-        if not row(c, "SELECT 1 FROM users LIMIT 1"):
+        if config.prod():
+            if not row(c, "SELECT 1 FROM settings WHERE key='university'"):
+                seed_catalog(c)        # product content only: accounts come from manage.py create-admin and imports
+                c.commit()
+        elif not row(c, "SELECT 1 FROM users LIMIT 1"):
             seed(c)
             c.execute(f"PRAGMA user_version={LEGACY_SCHEMA_VERSION}")
             c.commit()

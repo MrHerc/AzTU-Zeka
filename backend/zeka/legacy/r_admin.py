@@ -138,7 +138,7 @@ def admin_audit(req):
     return rows(req.db, "SELECT a.*, u.full_name FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 200")
 
 
-@R("POST", "/api/admin/reset", roles=("admin",))
+@R("POST", "/api/admin/reset", roles=("admin",), demo=True)
 def admin_reset(req):
     req.db.close()
     req.db = None

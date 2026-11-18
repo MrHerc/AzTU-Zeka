@@ -17,7 +17,8 @@ It is being turned from a demo into a product sold to universities — see "Prod
 ```bash
 python backend/run.py --port 5070                 # start (http://127.0.0.1:5070); seeds data/campus.db on first run
 python backend/run.py --reset                     # wipe and re-seed the demo database
-ZEKA_ACCESS_CODE=... python backend/run.py --host 0.0.0.0 --public-url https://host   # reachable host: access code is mandatory
+ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-url https://host   # real deployment
+python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
 python -m pytest -q                               # 698 tests, about 65 s; uses a temp database, never touches data/
@@ -37,7 +38,8 @@ Tests: `tests/unit/` (pure logic), `tests/integration/` (real HTTP server on a t
 and `test_radar.py` hold the checks ported from the old self-test). CI: `.github/workflows/ci.yml` (lint, types, JS syntax,
 i18n catalogue, pytest on Python 3.10–3.13 and Windows) and `security.yml` (gitleaks, pip-audit, bandit).
 
-Settings come from the environment (`backend/zeka/core/security.py`): `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`, `ZEKA_SESSION_HOURS`,
+Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backend/zeka/core/config.py`) and, in
+`backend/zeka/core/security.py`, `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`, `ZEKA_SESSION_HOURS`,
 `ZEKA_PROXY_HOPS`, `ZEKA_ACCESS_LOG`. `config.json` (git-ignored, copy from `config.example.json`) or the
 `AZTU_LLM_PROVIDER/BASE_URL/API_KEY/MODEL` env vars switch the AI from the offline engine to a real LLM.
 
@@ -89,14 +91,15 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   (`tests/unit/test_layers.py`). Web URLs stay `/static/...` although the files live in `frontend/`.
 - **Handlers read input through `req.body` typed accessors** (`body.str`, `body.int`, `body.obj`); a body that a handler
   does not read closes the connection. Malformed input must end as a translated 400, never a 500.
-- **The demo login is still password-less for every role.** A reachable host requires `ZEKA_ACCESS_CODE`; anyone with the
-  code can take any role, including admin. Real accounts are Task 10.
+- **The demo login is still password-less for every role.** Demo mode refuses a reachable host unless
+  `ZEKA_ALLOW_OPEN_DEMO=1`; anyone with `ZEKA_ACCESS_CODE` can take any role. In `ZEKA_MODE=prod` the demo routes
+  (`@R(..., demo=True)`) do not exist, people are never seeded and the database is never deleted. Real accounts: Task 10.
+- **Schema changes go through `backend/migrations/NNNN_name.sql`** (number = task × 10); never edit an applied file.
 - **Rate limiters and one-time document keys live in process memory** (`backend/zeka/core/security.py`, `common._DOC_KEYS`): they break
   with more than one worker (Task 7).
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).
 - `docs/ARCHITECTURE.md` and `docs/API.md` were written against the pre-merge `main`: they still say sessions never expire,
   mention `tests/selftest.py`, and lack the access code and the Radar endpoints.
-- `/api/demo/storyline` answers without the access code (ids only); it must not exist in prod mode (Task 5).
 - Timestamps are naive local time; business logic assumes Asia/Baku (Task 5: clock; Task 9: container zone).
 
 ## Branch state (2026-11-16)

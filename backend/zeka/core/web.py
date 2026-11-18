@@ -14,6 +14,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from . import config
 from .i18n import E, L, localize, norm_lang, tr
 from .security import CFG, RateLimiter, client_ip, cross_site, header_ok
 
@@ -203,8 +204,9 @@ class Router:
         regex = "^" + re.sub(r"\{(\w+)(:int)?\}", lambda m: f"(?P<{m.group(1)}>{'[0-9]+' if m.group(2) else '[^/]+'})", pattern) + "$"
         self.routes.append((method, re.compile(regex), fn, roles, auth))
 
-    def __call__(self, method, pattern, roles=None, auth=True):
+    def __call__(self, method, pattern, roles=None, auth=True, demo=False):
         def deco(fn):
+            fn.demo_only = demo        # demo-only routes do not exist in prod mode (404, not 403)
             self.add(method, pattern, fn, roles, auth)
             return fn
         return deco
@@ -213,7 +215,7 @@ class Router:
         allowed = False
         for m, rx, fn, roles, auth in self.routes:
             mt = rx.match(path)
-            if not mt:
+            if not mt or (config.prod() and getattr(fn, "demo_only", False)):
                 continue
             allowed = True
             if m == method:
