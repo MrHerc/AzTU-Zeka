@@ -3,7 +3,7 @@ import re
 
 import pytest
 
-from app import qr
+from zeka.legacy import qr
 
 # byte-mode capacity at level M (ISO/IEC 18004 table 7)
 CAPACITY_M = {1: 14, 2: 26, 3: 42, 4: 62, 5: 84, 6: 106, 7: 122, 8: 152, 9: 180, 10: 213}

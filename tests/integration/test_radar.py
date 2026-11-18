@@ -9,7 +9,7 @@ from datetime import timedelta
 
 import pytest
 
-from app import radar, store
+from zeka.legacy import radar, store
 
 AZ_LETTERS = re.compile(r"[əğıöüşçƏĞİÖÜŞÇ]")
 COURSE = 1          # ELM-2105, taught by the demo teacher

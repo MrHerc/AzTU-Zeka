@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from datetime import timedelta
 
-from .i18n import S_
+from ..core.i18n import S_
 
 CATEGORIES = [
     ("account", "user", S_("Hesab və giriş")),

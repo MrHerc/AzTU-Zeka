@@ -5,7 +5,8 @@ import socket
 
 import pytest
 
-from app import common, web
+from zeka.legacy import common
+from zeka.core import web
 
 
 def raw_exchange(server, payload: bytes, timeout=3.0) -> bytes:

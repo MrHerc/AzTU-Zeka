@@ -38,7 +38,7 @@ def test_built_locale_files_are_in_sync(tool, tmp_path, monkeypatch):
     """`python tools/i18n.py build` must not change the committed locale files."""
     monkeypatch.setattr(tool, "ROOT", tmp_path)
     tool.build()
-    for sub in ("static/locales", "app/locales"):
+    for sub in ("static/locales", "backend/zeka/core/locales"):
         for lang in ("en", "ru"):
             built = json.loads((tmp_path / sub / f"{lang}.json").read_text(encoding="utf-8"))
             committed = json.loads((ROOT / sub / f"{lang}.json").read_text(encoding="utf-8"))

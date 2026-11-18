@@ -12,8 +12,9 @@ import socket
 
 import pytest
 
-from app import security, store
-from app.r_learning import _masked_history
+from zeka.legacy import store
+from zeka.core import security
+from zeka.legacy.r_learning import _masked_history
 
 EVIL = "<script>alert(1)</script><img src=x onerror=alert(2)>"
 CODE = "zeka-test-code-7"

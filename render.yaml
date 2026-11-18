@@ -11,7 +11,7 @@ services:
     # Əlavə asılılıq yoxdur; pip-i yeniləmək kifayətdir.
     buildCommand: "python -m pip install --upgrade pip"
     # Render $PORT verir; serveri 0.0.0.0-da dinlədirik ki, xaricdən əlçatan olsun.
-    startCommand: "python run.py --host 0.0.0.0 --port $PORT"
+    startCommand: "python backend/run.py --host 0.0.0.0 --port $PORT"
     healthCheckPath: /
     envVars:
       # Yalnız major.minor: Render hər deploy-da ən son patch buraxılışını götürür və CPython təhlükəsizlik düzəlişləri avtomatik gəlir.
@@ -26,7 +26,7 @@ services:
       - key: ZEKA_PROXY_HOPS
         value: "1"
       # QR kodları və sənəd keçidləri bu ünvana yönəlsin. Render xidmətin öz xarici hostunu avtomatik doldurur
-      # (məs. zeka-aztu.onrender.com); run.py onun qarşısına https:// əlavə edir.
+      # (məs. zeka-aztu.onrender.com); backend/run.py onun qarşısına https:// əlavə edir.
       - key: PUBLIC_URL
         fromService:
           type: web

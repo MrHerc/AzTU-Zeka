@@ -6,9 +6,9 @@ real paths, so the repository's ``data/`` folder is never read or modified. The 
 pointing ``engine.ROOT`` (where ``config.json`` is looked up) at the same empty directory and clearing the
 ``AZTU_LLM_*`` environment variables, so no test can ever reach a network provider.
 
-An in-process HTTP server (``app.web.make_server`` on port 0) serves the API for integration tests.
+An in-process HTTP server (``zeka.core.web.make_server`` on port 0) serves the API for integration tests.
 
-Security settings (``app.security``): the ``ZEKA_*`` environment variables are cleared before the application is
+Security settings (``zeka.core.security``): the ``ZEKA_*`` environment variables are cleared before the application is
 imported, so no access code is required and sessions have their default lifetime. The per-client rate limits are
 lifted for the suite, which sends hundreds of requests a minute from one address; tests of the limits themselves
 ask for the ``rate_limits`` fixture.
@@ -31,14 +31,16 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+for _p in (ROOT, ROOT / "backend"):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 TMP = Path(tempfile.mkdtemp(prefix="zeka-tests-"))
-for _k in [k for k in os.environ if k.startswith("ZEKA_")]:      # read once, when app.security is imported
+for _k in [k for k in os.environ if k.startswith("ZEKA_")]:      # read once, when zeka.core.security is imported
     os.environ.pop(_k)
 
-from app import engine, security, store  # noqa: E402  (import after sys.path / before redirecting paths)
+from zeka.core import security  # noqa: E402  (import after sys.path / before redirecting paths)
+from zeka.legacy import engine, store  # noqa: E402
 
 store.DATA = TMP / "data"
 store.UPLOADS = store.DATA / "uploads"
@@ -193,8 +195,8 @@ class Server:
 
 @pytest.fixture(scope="session")
 def server():
-    from app import api
-    from app.web import make_server
+    from zeka.legacy import api
+    from zeka.core.web import make_server
 
     fresh_db()
     srv_errors: list = []

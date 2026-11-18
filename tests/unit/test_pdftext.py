@@ -1,7 +1,7 @@
 """pdftext.py — dependency-free PDF text extraction used for in-app previews of uploaded files."""
 import zlib
 
-from app import pdftext, store
+from zeka.legacy import pdftext, store
 
 
 def build_pdf(objects: list[bytes]) -> bytes:

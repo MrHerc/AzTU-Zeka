@@ -7,10 +7,10 @@ import threading
 from datetime import datetime, timedelta
 
 from . import engine, store
-from .i18n import E
-from .security import CFG
+from ..core.i18n import E
+from ..core.security import CFG
 from .store import J, iso, now, row, rows, setting
-from .web import HTTPError, Router
+from ..core.web import HTTPError, Router
 
 R = Router()
 COOKIE = "zeka_sid"

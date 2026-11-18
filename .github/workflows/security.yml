@@ -79,4 +79,4 @@ jobs:
       - name: Install scanners
         run: python -m pip install --disable-pip-version-check -r .github/security-tools/requirements.txt
       - name: bandit
-        run: bandit -r app run.py tools --severity-level medium --confidence-level medium
+        run: bandit -r backend tools --severity-level medium --confidence-level medium

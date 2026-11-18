@@ -26,9 +26,9 @@ from pathlib import Path
 # bandit B405: see _xml(): DTDs are refused before parsing
 from xml.etree import ElementTree as ET  # nosec B405
 
-from .i18n import S_
+from ..core.i18n import S_
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]  # backend/zeka/legacy/ -> repo
 
 # ---------------------------------------------------------------- text utils
 _LOWER = str.maketrans({"I": "ı", "İ": "i"})

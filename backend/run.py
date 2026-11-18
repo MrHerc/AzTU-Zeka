@@ -1,4 +1,4 @@
-"""Start the AzTU Rəqəmsal Kampus demo:  python run.py [--port 5070] [--reset] [--public-url https://zeka.example.az]"""
+"""Start the AzTU Rəqəmsal Kampus demo:  python backend/run.py [--port 5070] [--reset] [--public-url https://zeka.example.az]"""
 import argparse
 import os
 import re
@@ -6,12 +6,13 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT))
+BACKEND = Path(__file__).resolve().parent
+ROOT = BACKEND.parent  # repository: static/, content/, data/, logs/
+sys.path.insert(0, str(BACKEND))
 
-from app import api, store  # noqa: E402
-from app.security import CFG, LOOPBACK  # noqa: E402
-from app.web import make_server  # noqa: E402
+from zeka.legacy import api, store  # noqa: E402
+from zeka.core.security import CFG, LOOPBACK  # noqa: E402
+from zeka.core.web import make_server  # noqa: E402
 
 LOG_MAX = 5 * 1024 * 1024
 

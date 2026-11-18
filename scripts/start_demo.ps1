@@ -10,7 +10,7 @@ $existing = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction Sil
 if ($existing) { Write-Output "ALREADY_RUNNING pid=$($existing[0].OwningProcess) http://127.0.0.1:$port"; exit 0 }
 $out = Join-Path $logs 'server.out.log'
 $err = Join-Path $logs 'server.err.log'
-$arg = "/c cd /d `"$root`" && `"$py`" run.py --port $port 1>`"$out`" 2>`"$err`""
+$arg = "/c cd /d `"$root`" && `"$py`" backend\run.py --port $port 1>`"$out`" 2>`"$err`""
 Start-Process cmd.exe -ArgumentList $arg -WindowStyle Hidden | Out-Null
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Milliseconds 250

@@ -11,9 +11,9 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from . import engine
-from .i18n import T3, tr3
+from ..core.i18n import T3, tr3
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]  # backend/zeka/legacy/ -> repo
 DATA = ROOT / "data"
 UPLOADS = DATA / "uploads"
 DB_PATH = DATA / "campus.db"

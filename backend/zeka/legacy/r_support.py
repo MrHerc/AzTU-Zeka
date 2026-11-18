@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 
 from . import engine, store, support
 from .common import R
-from .i18n import S_, T3
+from ..core.i18n import S_, T3
 from .store import audit, iso, notify, now, row, rows
-from .web import HTTPError
+from ..core.web import HTTPError
 
 STARTED = time.time()
 DESK = ("office", "admin")          # who works the support queue

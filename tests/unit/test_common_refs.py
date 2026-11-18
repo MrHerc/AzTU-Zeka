@@ -4,8 +4,8 @@ from datetime import timedelta
 
 import pytest
 
-from app import common, refs, support
-from app.store import iso, now
+from zeka.legacy import common, refs, support
+from zeka.legacy.store import iso, now
 
 
 def test_session_cookie(monkeypatch):

@@ -4,7 +4,7 @@
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = ["backend", "."]
 addopts = "-ra --strict-markers"
 # An unclosed SQLite connection (reported by Python 3.13+) or socket fails the test instead of passing silently.
 filterwarnings = [
@@ -12,7 +12,7 @@ filterwarnings = [
     "error::pytest.PytestUnraisableExceptionWarning",
 ]
 markers = [
-    "slow: tests that spawn a subprocess (run.py start-up checks)",
+    "slow: tests that spawn a subprocess (backend/run.py start-up checks)",
 ]
 
 [tool.ruff]
@@ -28,11 +28,13 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 # Parametric quiz templates set up several physics quantities on one line (R = …; I = …; U = I * R).
 # and name them as in physics (R, I, U), which E741 flags as ambiguous.
-"app/engine.py" = ["E702", "E741"]
+"backend/zeka/legacy/engine.py" = ["E702", "E741"]
 
 [tool.mypy]
 python_version = "3.10"
-files = ["app", "run.py", "tools"]
+files = ["backend", "tools"]
+mypy_path = "backend"
+explicit_package_bases = true
 ignore_missing_imports = true
 warn_unused_ignores = true
 no_implicit_optional = false

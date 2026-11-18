@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from app import engine
+from zeka.legacy import engine
 
 
 @pytest.fixture

@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from app import web
-from app.web import Body, HTTPError, Request, Router, to_int
+from zeka.core import web
+from zeka.core.web import Body, HTTPError, Request, Router, to_int
 
 
 # ---------------------------------------------------------------- router

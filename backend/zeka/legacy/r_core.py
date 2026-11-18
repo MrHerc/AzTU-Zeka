@@ -8,10 +8,10 @@ import urllib.parse
 
 from . import engine, pdftext, store
 from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, session_cutoff, _sid
-from .i18n import norm_lang, tr
-from .security import CFG, LIMITS, access_code_ok, safe_next
+from ..core.i18n import norm_lang, tr
+from ..core.security import CFG, LIMITS, access_code_ok, safe_next
 from .store import J, audit, iso, now, row, rows, setting
-from .web import HTTPError, Response, json_resp, redirect
+from ..core.web import HTTPError, Response, json_resp, redirect
 
 
 def _login(req, role, code, user=None):

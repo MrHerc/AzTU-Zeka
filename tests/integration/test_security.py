@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from app import common
+from zeka.legacy import common
 
 
 # ---------------------------------------------------------------- authentication

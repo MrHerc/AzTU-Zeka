@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from app import store
+from zeka.legacy import store
 
 CERT = {"purpose": "Səfirlik / viza", "lang": "İngilis dili", "copies": "1", "delivery": "Elektron (QR kodlu PDF)"}
 

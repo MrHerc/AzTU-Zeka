@@ -9,7 +9,7 @@ import re
 
 from .engine import (Cites, _NUM_EXAMPLE, _is_example, _pick, _socratic_level, code_blocks, formulas, glossary,
                      llm_chat, plain, split_sentences, terms, top_sentences)
-from .i18n import L, S, S_
+from ..core.i18n import L, S, S_
 
 _DIRECT = re.compile(r"(cavab\w* (de|yaz|ver|göstər)|hazır cavab|həll\w* (yaz|ver|de|göstər)|sadəcə cavab|tam həll|"
                      r"give me the answer|just (give|tell)( me)? the answer|full solution|solve it for me|"

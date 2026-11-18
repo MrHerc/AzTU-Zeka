@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app import engine, store
+from zeka.legacy import engine, store
 
 CONTENT = Path(__file__).resolve().parents[2] / "content"
 FIELD_TYPES = {"text", "textarea", "radio", "select", "number", "date", "daterange", "course", "courses", "absences"}

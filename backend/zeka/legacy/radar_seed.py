@@ -21,7 +21,7 @@ import random
 from datetime import datetime, time, timedelta
 
 from . import engine, radar, store, tutor
-from .i18n import S, T3
+from ..core.i18n import S, T3
 from .store import iso, notify, row, rows
 
 STORY = {

@@ -1,4 +1,4 @@
-"""run.py — command line, public URL handling and a real start-up of the entry point used by Render."""
+"""backend/run.py — command line, public URL handling and a real start-up of the entry point used by Render."""
 import os
 import shutil
 import signal
@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "backend"))
 
 import run  # noqa: E402
 
@@ -40,13 +40,13 @@ def _env(**extra):
 @pytest.mark.slow
 def test_help_survives_a_non_utf8_output_stream():
     # Windows gives redirected output the ANSI code page, which has no "ə"; the help text used to crash with UnicodeEncodeError
-    p = subprocess.run([sys.executable, str(ROOT / "run.py"), "--help"], env=_env(PYTHONIOENCODING="cp1251"), capture_output=True, timeout=120)
+    p = subprocess.run([sys.executable, str(ROOT / "backend" / "run.py"), "--help"], env=_env(PYTHONIOENCODING="cp1251"), capture_output=True, timeout=120)
     assert p.returncode == 0 and "sıfırdan" in p.stdout.decode("utf-8", "replace"), p.stderr.decode("utf-8", "replace")[-300:]
 
 
 @pytest.mark.slow
 def test_invalid_public_url_is_a_usage_error(tmp_path):
-    p = subprocess.run([sys.executable, str(ROOT / "run.py"), "--public-url", "https://x.az/path"], env=_env(), capture_output=True, timeout=120, cwd=tmp_path)
+    p = subprocess.run([sys.executable, str(ROOT / "backend" / "run.py"), "--public-url", "https://x.az/path"], env=_env(), capture_output=True, timeout=120, cwd=tmp_path)
     assert p.returncode == 2 and "sxem və hostdan" in p.stderr.decode("utf-8", "replace")
 
 
@@ -60,12 +60,11 @@ def _free_port():
 def test_server_starts_from_a_clean_checkout_like_on_render(tmp_path):
     """The Render start command on an empty disk: seeds the database, serves the portal, uses PORT/HOST/PUBLIC_URL."""
     app_dir = tmp_path / "zeka"
-    for name in ("app", "static", "content"):
+    for name in ("backend", "static", "content"):
         shutil.copytree(ROOT / name, app_dir / name, ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copy(ROOT / "run.py", app_dir / "run.py")
     port = _free_port()
     env = _env(PORT=str(port), HOST="127.0.0.1", PUBLIC_URL="zeka-aztu.onrender.com", PYTHONIOENCODING="utf-8")
-    proc = subprocess.Popen([sys.executable, "run.py"], cwd=app_dir, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen([sys.executable, "backend/run.py"], cwd=app_dir, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
         deadline = time.time() + 60

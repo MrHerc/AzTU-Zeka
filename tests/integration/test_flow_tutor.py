@@ -1,7 +1,7 @@
 """AI tutor (Socratic / explain / practice), forwarding to the teacher, limits and the campus assistant."""
 import pytest
 
-from app import store
+from zeka.legacy import store
 
 
 def ask(client, msg, mode="explain", course=1, **kw):

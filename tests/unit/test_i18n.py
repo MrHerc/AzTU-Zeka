@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from app import i18n
-from app.i18n import L, S, T3, canon, is_i18n, join3, localize, norm_lang, num3, tr, tr3
+from zeka.core import i18n
+from zeka.core.i18n import L, S, T3, canon, is_i18n, join3, localize, norm_lang, num3, tr, tr3
 
 
 @pytest.mark.parametrize("v, out", [("az", "az"), ("EN", "en"), ("ru-RU", "ru"), (" en ", "en"), ("de", None), ("", None), (None, None), (5, None)])

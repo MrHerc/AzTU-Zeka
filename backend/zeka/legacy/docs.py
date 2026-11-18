@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 from .engine import translit
-from .i18n import S
+from ..core.i18n import S
 from .qr import qr_svg
 
 e = html.escape

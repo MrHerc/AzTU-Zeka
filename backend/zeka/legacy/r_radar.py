@@ -5,9 +5,9 @@ import json
 
 from . import radar
 from .common import R
-from .i18n import E, T3
+from ..core.i18n import E, T3
 from .store import J, audit, iso, notify, now, row, rows
-from .web import HTTPError
+from ..core.web import HTTPError
 
 VIEW = ("teacher", "office", "leader", "admin")
 ACT = ("teacher", "office", "admin")           # leadership reads the radar; teachers and the dean's office act on it

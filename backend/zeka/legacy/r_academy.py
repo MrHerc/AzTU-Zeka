@@ -7,9 +7,9 @@ import re
 
 from . import engine, refs, store
 from .common import R, course_access, ctx, make_key
-from .i18n import S_, T3
+from ..core.i18n import S_, T3
 from .store import J, audit, iso, notify, now, row, rows, setting
-from .web import HTTPError, html_resp, to_int
+from ..core.web import HTTPError, html_resp, to_int
 
 VOCAB = [S_("Sertifikat")]  # stored document titles look like "Sertifikat: <track>" and are translated part by part on display
 
@@ -303,7 +303,7 @@ def syllabus_save(req):
 @R("POST", "/api/syllabus/{cid:int}/link", roles=("teacher",))
 def syllabus_link(req):
     co = course_access(req, req.params["cid"])
-    from .security import LIMITS
+    from ..core.security import LIMITS
     if not LIMITS["link"].hit(f"u{req.user['id']}"):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     return {"url": f"/syllabus/{co['id']}?k={make_key('syl', co['id'], req.user['id'])}"}

@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from app import engine
+from zeka.legacy import engine
 
 MCQ = {"qtype": "mcq", "answer": 1, "options": ["Alfa", "Beta", "Qamma", "Delta"]}
 TF = {"qtype": "tf", "answer": True, "options": []}

@@ -1,7 +1,7 @@
 """tutor.py — the offline grounded tutor and campus assistant, the LLM adapter and practice formatting."""
 import pytest
 
-from app import engine, tutor
+from zeka.legacy import engine, tutor
 
 COURSE = {"name": "Elektrik dövrələrinin nəzəriyyəsi", "tutor_rules": "SI vahidləri"}
 

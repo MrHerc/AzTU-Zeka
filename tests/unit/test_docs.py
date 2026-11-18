@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from app import docs
+from zeka.legacy import docs
 
 CTX = {"university": {"name": "Azərbaycan Texniki Universiteti", "name_en": "Azerbaijan Technical University", "short": "AzTU", "platform": "Zəka",
                       "semester": "Payız", "semester_en": "Autumn 2026", "semester_dates": "15.09–31.12", "address": "Bakı, H. Cavid 25", "site": "aztu.edu.az"},

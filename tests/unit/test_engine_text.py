@@ -1,7 +1,7 @@
 """engine.py — Azerbaijani-aware text utilities, PII masking, transliteration."""
 import pytest
 
-from app import engine
+from zeka.legacy import engine
 
 
 # ---------------------------------------------------------------- casing / folding / tokens

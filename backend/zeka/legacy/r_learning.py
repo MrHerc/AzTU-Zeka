@@ -11,10 +11,10 @@ from datetime import datetime, timedelta
 from . import engine, refs, store, tutor
 from .common import (R, check_limit, cite_list, course_access, history, kb_cite_list, msg_out, q_load,
                      save_msg, search_chunks, usage, week_index)
-from .i18n import E, S, S_, T3
-from .security import LIMITS
+from ..core.i18n import E, S, S_, T3
+from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows, setting
-from .web import HTTPError
+from ..core.web import HTTPError
 
 QUIZ_GRACE = timedelta(minutes=2)       # network / clock slack after a quiz time limit
 

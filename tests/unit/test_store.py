@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 import pytest
 
-from app import engine, pdftext, store
+from zeka.legacy import engine, pdftext, store
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 JPG = b"\xff\xd8\xff\xe0" + b"\x00" * 32

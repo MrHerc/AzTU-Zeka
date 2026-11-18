@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-from app import api
+from zeka.legacy import api
 
 WEIRD = ["abc", "", 1.5, -1, 10 ** 30, True, None, [], ["x"], {}, {"a": 1}]
 SKIP = {"logout", "admin_reset"}                   # would end the shared sessions / reseed the database

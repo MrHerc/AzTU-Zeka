@@ -4,7 +4,7 @@ import zipfile
 
 import pytest
 
-from app import engine
+from zeka.legacy import engine
 
 
 # ---------------------------------------------------------------- BM25

@@ -1,5 +1,5 @@
 """Quizzes: student attempts and limits; teacher Test Studio → approve → publish → results."""
-from app import store
+from zeka.legacy import store
 
 
 def correct_answers(qids):

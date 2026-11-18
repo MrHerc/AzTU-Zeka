@@ -5,9 +5,9 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from .common import R, STAFF
-from .i18n import T3
+from ..core.i18n import T3
 from .store import J, audit, iso, notify, now, row, rows, setting
-from .web import HTTPError, Response
+from ..core.web import HTTPError, Response
 
 KINDS = ("news", "event", "announcement", "opportunity", "career", "campus")
 TONES = ("navy", "blue", "coral", "green", "amber", "violet", "teal")

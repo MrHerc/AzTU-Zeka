@@ -5,11 +5,11 @@ import json
 
 from . import engine, store
 from .common import R, session_cookie, week_index
-from .i18n import T3
+from ..core.i18n import T3
 from .r_learning import course_insights
 from .r_services import office_summary
 from .store import J, audit, row, rows, setting
-from .web import json_resp
+from ..core.web import json_resp
 
 LABELS = [{"az": f"{i}-{'ci' if i in (1, 2, 5, 7, 8) else 'cü' if i in (3, 4) else 'cı'} h.", "en": f"Wk {i}", "ru": f"Нед. {i}"} for i in range(1, 9)]
 

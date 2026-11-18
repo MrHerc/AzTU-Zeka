@@ -9,4 +9,4 @@ EXPOSE 5070
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=6 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5070/api/bootstrap', timeout=2)"
 # --reset: every start gives a clean, consistent demo (data is generated relative to today)
-CMD ["python", "run.py", "--host", "0.0.0.0", "--port", "5070", "--reset"]
+CMD ["python", "backend/run.py", "--host", "0.0.0.0", "--port", "5070", "--reset"]

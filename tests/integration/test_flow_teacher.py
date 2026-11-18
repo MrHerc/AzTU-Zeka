@@ -4,7 +4,7 @@ import io
 import json
 import zipfile
 
-from app import store
+from zeka.legacy import store
 
 MD = ("# Test\n\n## Əsas anlayışlar\n- **Transformator** — dəyişən cərəyanın gərginliyini çevirən qurğudur.\n"
       "- **Generator** — mexaniki enerjini elektrik enerjisinə çevirən maşındır.\n")

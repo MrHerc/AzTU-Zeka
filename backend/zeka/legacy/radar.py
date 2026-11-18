@@ -25,7 +25,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 
 from . import engine
-from .i18n import S_, T3, num3
+from ..core.i18n import S_, T3, num3
 from .store import J, iso, now, row, rows, setting
 
 WEIGHTS = {"attendance": 30, "assessment": 30, "concept": 25, "engagement": 15}

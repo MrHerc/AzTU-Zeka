@@ -14,4 +14,4 @@ URL="http://127.0.0.1:$PORT/?demo=1"
   elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$URL" >/dev/null 2>&1
   else echo "Brauzerdə açın / open in a browser: $URL"; fi ) &
 echo "Zəka demo: $URL  (Ctrl+C — dayandır / stop)"
-exec "$PY" run.py --reset --port "$PORT"
+exec "$PY" backend/run.py --reset --port "$PORT"
