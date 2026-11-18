@@ -251,7 +251,7 @@ def course_attendance(req):
     co = course_access(req, req.params["id"])
     lessons = rows(c, "SELECT l.*, SUM(a.status='present') present, SUM(a.status='late') late, SUM(a.status='absent') absent, "
                       "SUM(a.status='excused') excused FROM lessons l LEFT JOIN attendance a ON a.lesson_id=l.id WHERE l.course_id=? "
-                      "GROUP BY l.id ORDER BY l.day DESC, l.start DESC LIMIT 12", (co["id"],))
+                      "AND l.day<=? GROUP BY l.id ORDER BY l.day DESC, l.start DESC LIMIT 12", (co["id"], now().date().isoformat()))
     excused = rows(c, "SELECT u.full_name student, l.day, l.kind, a.request_id FROM attendance a JOIN lessons l ON l.id=a.lesson_id "
                       "JOIN users u ON u.id=a.user_id WHERE l.course_id=? AND a.status='excused' ORDER BY l.day DESC LIMIT 20", (co["id"],))
     return {"lessons": lessons, "excused": excused}

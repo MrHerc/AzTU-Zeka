@@ -153,6 +153,16 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `GET` | `/r/{code}` | public | The page behind a room's QR code (Task 18): the room, the lesson in progress and the next one; 60 per minute per client address |
 | `GET` | `/api/facilities/buildings/{id}/qr` | `directory.manage` | A printable sheet with every active room's QR code (HTML) |
 | `POST` | `/api/facilities/link-rooms` | `directory.manage` | Link timetable rows to rooms by their text; report the texts that name no room |
+| `GET` | `/api/timetable?term_id=&group_id=&teacher_id=` | `directory.read` | Timetable rows of a term (default: the current one) with unit, teacher, groups, room, weeks and hours (Task 19) |
+| `POST` | `/api/timetable` | `timetable.manage` | A row of a teaching unit: `{"unit_id", "weekday", "start", "end", "room", "weeks", "academic_hours"}`; `409` with `conflicts` on a clash |
+| `PUT` | `/api/timetable/{id}` | `timetable.manage` | Change a row; its future lessons nobody recorded follow, and their students are told |
+| `POST` | `/api/timetable/{id}/deactivate` | `timetable.manage` | Take a row out; its future unrecorded lessons are deleted |
+| `POST` | `/api/timetable/generate` | `timetable.manage` | Make the lessons of a term's rows (`{"term_id"}`, default current); idempotent |
+| `GET` | `/api/lessons?day=&group_id=&teacher_id=` | `directory.read` | The lessons of one day |
+| `POST` | `/api/lessons/{id}/cancel` | `timetable.manage` | `{"reason"}`; `409` once attendance is recorded; the lesson's students are told |
+| `POST` | `/api/lessons/{id}/move` | `timetable.manage` | `{"day", "start", "end", "room"?}`; checked for clashes on that day; the students are told |
+| `GET` / `POST` / `DELETE` | `/api/me/calendar` | any | Whether one has a calendar feed / a new secret feed address (shown once; the old one stops) / revoke it |
+| `GET` | `/ical/{token}` | public (the token) | The feed as iCalendar (RFC 5545), lessons from 60 days back to 200 ahead; 30 per minute per address |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
 
 ### Bulk import (Task 16)
@@ -187,6 +197,27 @@ code, `<building name>, <number>` or `<room name>, <number>`. A text that two ro
 `/r/{code}` is public and shows no one's name: the room, its building, kind, capacity, floor and accessibility, the
 lesson in progress and the next one within 14 days (course, kind, time), on teaching days of the current term that are
 not holidays. It refreshes itself every 5 minutes, so a tablet on the door stays current.
+
+### Timetable and lessons (Task 19)
+
+A timetable row belongs to a teaching unit; its kind and teacher come from the unit, its term from the unit's course.
+It repeats on its weekday every week, or in odd or even weeks (week 1 is the Monday-to-Sunday week of the term's first
+teaching day). Saving a row checks the other active rows of the term on that weekday: the same room (by room id once
+the text names a room, so "EK-220" and "Əsas korpus, 220" are one room), the same teacher, or a shared group, where a
+whole group (unit without subgroup) meets each of its subgroups and subgroup 1 does not meet subgroup 2. A clash
+answers `409 {"error", "conflicts": [{"what": "room" | "teacher" | "group", "groups", "id", "course", "kind", "start",
+"end", "room", "teacher"}]}`.
+
+Making lessons (`POST /api/timetable/generate`) creates one lesson per row per teaching day of the term (between
+`teaching_start` and `teaching_end`, in the row's weeks, not on a `calendar.holidays` day) with the row's academic hours
+and the unit's teacher. A lesson keeps the slot it was made for (`slot_day`, `slot_start`); a unit has one lesson per
+slot (unique index), so making them again creates nothing, also after a lesson was moved. A lesson is `scheduled` or
+`cancelled`; cancelling or moving it is refused once attendance is written, and notifies the students on the lesson's
+list: an enrolment in force that day, the unit's groups (any, when it names none) and its subgroup.
+
+The calendar feed is a secret address `/ical/<token>`; only the token's SHA-256 is stored. It holds a student's lessons
+(as above) or a teacher's own, with `DTSTART;TZID=Asia/Baku` (the zone of `ZEKA_TZ`, with its `VTIMEZONE`), `LOCATION`,
+and `STATUS:CANCELLED` for a cancelled lesson; a calendar that subscribes to it sees every change on its next fetch.
 
 ### University settings (Task 17)
 

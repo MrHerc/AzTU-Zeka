@@ -35,6 +35,7 @@ async function req(method, url, body) {
   if (!r.ok) {
     const err = new Error((data && data.error) || t("Xəta baş verdi ({status})", { status: r.status }));
     err.status = r.status;
+    err.data = data;            // e.g. the clashes of a refused timetable row (Task 19)
     lastFailStatus = r.status;
     // a wrong password is answered on the form itself: re-rendering the login page would wipe what was typed
     if (r.status === 401 && !url.includes("/api/bootstrap") && !url.startsWith("/api/auth/")) { location.hash = "#/login"; }

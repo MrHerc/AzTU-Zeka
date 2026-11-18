@@ -16,6 +16,7 @@ import "./radar.js";
 import "./admin-directory.js";
 import "./admin-import.js";
 import "./admin-settings.js";
+import "./timetable-admin.js";
 import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;
@@ -262,6 +263,8 @@ route("/profile", async (el) => {
             : me.role === "student" ? html`<button class="btn btn-sm btn-ghost" id="mfa-off" style="align-self:flex-start">${t("Söndür")}</button>`
             : html`<p class="small muted" style="margin:0">${t("İşçi hesabında məcburidir. Telefonu itirsəniz, administrator sıfırlayır.")}</p>`}</div></div>
         ${S.app.sso && S.app.sso.enabled ? html`<div class="card"><div class="card-h"><h3>${ic("link", 17)} ${t("Universitet hesabı (SSO)")}</h3></div><div class="card-b stack" id="sso-box"><span class="small muted">…</span></div></div>` : ""}
+        ${["student", "teacher", "dept_head"].includes(me.role) ? html`<div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Təqvim lenti")}</h3></div>
+          <div class="card-b stack" id="cal-box"><span class="small muted">…</span></div></div>` : ""}
         <div class="card"><div class="card-h"><h3>${ic("lock", 17)} ${t("Sessiyalarım")}</h3></div><div class="card-b stack" id="sessions-box"><span class="small muted">…</span></div></div>
         <div class="card"><div class="card-h"><h3>${ic("compass", 17)} ${t("Bələdçilər")}</h3><span class="badge b-blue">${done} / ${tours.length}</span></div><div class="card-b stack">
           <div class="small muted">${t("Səhifə bələdçilərinin neçəsini keçdiyinizi göstərir.")}</div>
@@ -304,6 +307,29 @@ route("/profile", async (el) => {
   };
   drawSso();
   ssoNotice();
+  // Task 19: a secret calendar address (iCal) for Google Calendar, Outlook or a phone; shown once, replaced or revoked here
+  const drawCal = async (url) => {
+    const box = $("#cal-box", el);
+    if (!box) return;
+    const active = url ? true : (await api.get("/api/me/calendar")).active;
+    mount(box, html`<p class="small muted" style="margin:0">${t("Dərslərinizi Google Calendar, Outlook və ya telefonun təqviminə əlavə edin. Ləğv və köçürmələr orada da görünür.")}</p>
+      ${url ? html`<input class="input" id="cal-url" readonly value="${url}" aria-label="${t("Təqvim ünvanı")}">
+        <p class="small muted" style="margin:0">${t("Ünvanı indi kopyalayın: o bir dəfə göstərilir və şəxsidir, heç kimə verməyin.")}</p>
+        <button class="btn btn-sm" id="cal-copy" style="align-self:flex-start">${ic("copy", 15)} ${t("Kopyala")}</button>` : ""}
+      <div class="row wrap"><button class="btn btn-sm" id="cal-new">${active ? t("Yeni ünvan (köhnəsi işləməz)") : t("Ünvan yarat")}</button>
+        ${active ? html`<button class="btn btn-sm btn-ghost" id="cal-off">${t("Lenti söndür")}</button>` : ""}</div>`);
+  };
+  drawCal();
+  on(el, "click", "#cal-new", async () => {
+    try { drawCal((await api.post("/api/me/calendar")).url); } catch (err) { toast(err.message, "err"); }
+  });
+  on(el, "click", "#cal-off", async () => {
+    try { await api.del("/api/me/calendar"); toast(t("Təqvim lenti söndürüldü"), "ok"); drawCal(); } catch (err) { toast(err.message, "err"); }
+  });
+  on(el, "click", "#cal-copy", async () => {
+    try { await navigator.clipboard.writeText($("#cal-url", el).value); toast(t("Kopyalandı"), "ok"); }
+    catch { $("#cal-url", el).select(); }
+  });
   on(el, "click", "#sso-link", async (e, b) => {
     b.classList.add("loading");
     try { location.href = (await api.post("/api/auth/sso/link")).url; }

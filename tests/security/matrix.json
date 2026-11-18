@@ -26,6 +26,13 @@
   "perm": null,
   "slow": false
  },
+ "DELETE /api/me/calendar": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "DELETE /api/me/sessions/{id:int}": {
   "access": "any",
   "audit_read": null,
@@ -350,6 +357,21 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/lessons": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.read",
+  "slow": false
+ },
  "GET /api/materials/{id:int}": {
   "access": "any",
   "audit_read": null,
@@ -368,6 +390,13 @@
   "access": [
    "student"
   ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/me/calendar": {
+  "access": "any",
   "audit_read": null,
   "demo": false,
   "perm": null,
@@ -656,6 +685,21 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/timetable": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.read",
+  "slow": false
+ },
  "GET /api/tools": {
   "access": [
    "admin",
@@ -689,6 +733,13 @@
   "slow": false
  },
  "GET /healthz": {
+  "access": "public",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /ical/{token}": {
   "access": "public",
   "audit_read": null,
   "demo": false,
@@ -1046,6 +1097,33 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/lessons/{id:int}/cancel": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/lessons/{id:int}/move": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/me/calendar": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/me/role": {
   "access": "any",
   "audit_read": null,
@@ -1255,6 +1333,36 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/timetable": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/timetable/generate": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/timetable/{id:int}/deactivate": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
  "POST /api/tutor/{cid:int}/ask": {
   "access": [
    "student",
@@ -1371,6 +1479,16 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "PUT /api/timetable/{id:int}": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
   "slow": false
  }
 }

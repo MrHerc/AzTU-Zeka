@@ -448,16 +448,19 @@ Korpus və otaq ekranı ayrıca `facilities.js` deyil, "Struktur və reyestr" s�
 **Description:** Tədris şöbəsi cədvəl sətirlərini yaradır və dəyişir: tədris vahidi, gün, saat, otaq, həftə nümunəsi, akademik saat sayı (növ və müəllim vahiddən gəlir). Saxlananda toqquşma yoxlanır: otaq, vahidin müəllimi və vahidin hər (qrup, yarımqrup) cütü üzrə. Bütöv qrup öz yarımqrupları ilə toqquşur; 1-ci yarımqrup 2-ci yarımqrupla toqquşmur. Otaq `timetable.room` kodu kimi saxlanır, toqquşma normallaşdırılmış kodla yoxlanır; `rooms` cədvəlinə bağlama Task 18-dədir. Dərslər yalnız `teaching_start` ilə `teaching_end` arasında yaradılır, bayram günləri buraxılır; dərs yaradılanda akademik saat cədvəl sətrindən, `lessons.teacher_id` vahiddən köçürülür. Yaradılma (tədris vahidi, tarix, başlama saatı) açarı üzrə idempotentdir. Davam edən semestrdə kəsid tarixi (`journal.cutover_date`, Task 17; idxaldan sonra `as_of`, Task 20) və ondan əvvəlki dərslər plan saatı üçün yaradılır, amma qeyd üçün açılmır; onların davamiyyəti Task 38 idxalından gəlir. Dərsin ləğvi və ya köçürülməsi qeydiyyatdakılara bildiriş göndərir. İstifadəçi üzrə ləğv edilə bilən tokenli iCal lenti.
 
 **Acceptance criteria:**
-- [ ] Toqquşan sətir rədd olunur və toqquşmanın nə ilə olduğu yazılır
-- [ ] 3 qrupluq mühazirə axını, ikinci müəllimin üç məşğələsi və iki yarımqrupda laboratoriya olan fənn toqquşmasız saxlanır; eyni qrupun eyni saatdakı ikinci dərsi rədd olunur
-- [ ] Yaradılan dərslər həftə nümunəsinə uyğundur və bayramları buraxır
-- [ ] Dərs yaradılmasının təkrarı dublikat yaratmır: (tədris vahidi, tarix, başlama saatı) üzrə bir dərs var
-- [ ] `teaching_end`-dən sonrakı tarixə dərs yaradılmır
-- [ ] iCal lenti RFC 5545 sahələrini və `TZID=Asia/Baku` daşıyır; dəyişiklikdən sonra yenilənir
+- [x] Toqquşan sətir rədd olunur və toqquşmanın nə ilə olduğu yazılır
+- [x] 3 qrupluq mühazirə axını, ikinci müəllimin üç məşğələsi və iki yarımqrupda laboratoriya olan fənn toqquşmasız saxlanır; eyni qrupun eyni saatdakı ikinci dərsi rədd olunur
+- [x] Yaradılan dərslər həftə nümunəsinə uyğundur və bayramları buraxır
+- [x] Dərs yaradılmasının təkrarı dublikat yaratmır: (tədris vahidi, tarix, başlama saatı) üzrə bir dərs var (köçürülmüş dərs öz plan slotunu saxlayır)
+- [x] `teaching_end`-dən sonrakı tarixə dərs yaradılmır
+- [x] iCal lenti RFC 5545 sahələrini və `TZID=Asia/Baku` daşıyır; dəyişiklikdən sonra yenilənir
+
+Qeyd: kəsid tarixindən əvvəlki dərslərin "qeyd üçün açılmaması" Task 20-də yoxlanır (dərs yaradılır, qeyd qaydası jurnaldadır).
+Demo: hər fənnin hər dərs növü bütün demo qrupları üçün bir tədris vahididir; semestrin bütün dərsləri yaradılır.
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_timetable_conflicts.py tests/integration/test_timetable.py -q`
-- [ ] Əl yoxlaması: lent Google Calendar və Outlook-a əlavə olunur
+- [x] `python -m pytest tests/unit/test_timetable_conflicts.py tests/integration/test_timetable.py -q`
+- [ ] Əl yoxlaması: lent Google Calendar və Outlook-a əlavə olunur (sahib; xarici xidmət, buradan yoxlanmadı)
 
 **Dependencies:** Task 15 (dilim 2: tədris vahidi), Task 17
 **Files likely touched:** `backend/zeka/modules/timetable/{domain,service,repo,routes}.py`, `backend/migrations/0190_timetable.sql` (`timetable.unit_id`, `timetable.academic_hours`, həftə nümunəsi, `lessons.unit_id`, `lessons.teacher_id`, `lessons.academic_hours`, iCal tokeni), `frontend/js/timetable-admin.js`

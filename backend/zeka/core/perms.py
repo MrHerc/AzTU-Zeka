@@ -24,6 +24,7 @@ PERMS: dict[str, tuple[str, ...]] = {
     # academic office. Reading them: the registry offices, leadership, and a dean's office for its own faculty.
     "students.status": ("academic_office",),
     "students.status.read": ("academic_office", "admin", "office", "leader"),
+    "timetable.manage": ("admin", "academic_office"),     # timetable rows, making lessons, cancelling and moving them (Task 19)
 }
 
 SCOPE_TYPES = ("faculty", "department", "course")

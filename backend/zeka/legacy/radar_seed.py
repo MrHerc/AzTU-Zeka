@@ -46,7 +46,9 @@ class Ctx:
         self.group = row(c, "SELECT id FROM study_groups WHERE name='İT-25-1'")["id"]
 
     def lessons(self, code):
-        return rows(self.c, "SELECT * FROM lessons WHERE course_id=? ORDER BY day, start", (self.course[code]["id"],))
+        """The lessons held so far (Task 19 also makes the rest of the term's lessons, which have no attendance yet)."""
+        return rows(self.c, "SELECT * FROM lessons WHERE course_id=? AND day<? ORDER BY day, start",
+                    (self.course[code]["id"], self.t0.date().isoformat()))
 
     def q(self, code, topic, qtype):
         return row(self.c, "SELECT * FROM questions WHERE course_id=? AND topic=? AND qtype=? AND origin='manual' ORDER BY id",

@@ -1,0 +1,18 @@
+{
+ "Həftələr: hər həftə, tək və ya cüt həftələr": "Недели: каждая, нечётные или чётные",
+ "Akademik saat 1 ilə {n} arasında olmalıdır": "Академических часов должно быть от 1 до {n}",
+ "Otağı yazın": "Укажите помещение",
+ "Semestr tapılmadı": "Семестр не найден",
+ "Dərs tapılmadı": "Занятие не найдено",
+ "Bu dərsin davamiyyəti yazılıb: onu ləğv etmək olmaz": "Посещаемость этого занятия записана: его нельзя отменить",
+ "Dərs artıq ləğv edilib": "Занятие уже отменено",
+ "Ləğvin səbəbini yazın": "Укажите причину отмены",
+ "Bu dərsin davamiyyəti yazılıb: onu köçürmək olmaz": "Посещаемость этого занятия записана: его нельзя перенести",
+ "Zəka: dərs cədvəli": "Zəka: расписание",
+ "Dərs ləğv edildi: {course}": "Занятие отменено: {course}",
+ "Dərsin vaxtı dəyişdi: {course}": "Время занятия изменено: {course}",
+ "Tədris vahidi tapılmadı": "Учебная единица не найдена",
+ "Dərs cədvəli dəyişdi: {course}": "Расписание изменено: {course}",
+ "Dərs cədvəldən çıxarıldı: {course}": "Занятие убрано из расписания: {course}",
+ "Dərs keçmiş tarixə köçürülə bilməz": "Занятие нельзя перенести на прошедшую дату"
+}

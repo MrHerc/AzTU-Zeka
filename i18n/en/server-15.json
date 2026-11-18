@@ -1,0 +1,18 @@
+{
+ "Həftələr: hər həftə, tək və ya cüt həftələr": "Weeks: every week, odd or even weeks",
+ "Akademik saat 1 ilə {n} arasında olmalıdır": "Academic hours must be between 1 and {n}",
+ "Otağı yazın": "Enter the room",
+ "Semestr tapılmadı": "Term not found",
+ "Dərs tapılmadı": "Lesson not found",
+ "Bu dərsin davamiyyəti yazılıb: onu ləğv etmək olmaz": "Attendance is recorded for this lesson: it cannot be cancelled",
+ "Dərs artıq ləğv edilib": "The lesson is already cancelled",
+ "Ləğvin səbəbini yazın": "Enter the reason for the cancellation",
+ "Bu dərsin davamiyyəti yazılıb: onu köçürmək olmaz": "Attendance is recorded for this lesson: it cannot be moved",
+ "Zəka: dərs cədvəli": "Zəka: timetable",
+ "Dərs ləğv edildi: {course}": "Lesson cancelled: {course}",
+ "Dərsin vaxtı dəyişdi: {course}": "Lesson time changed: {course}",
+ "Tədris vahidi tapılmadı": "Teaching unit not found",
+ "Dərs cədvəli dəyişdi: {course}": "Timetable changed: {course}",
+ "Dərs cədvəldən çıxarıldı: {course}": "Lesson removed from the timetable: {course}",
+ "Dərs keçmiş tarixə köçürülə bilməz": "A lesson cannot be moved to a past date"
+}

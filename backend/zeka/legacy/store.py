@@ -397,6 +397,15 @@ def seed_catalog(c, s: dict | None = None):
     set_setting(c, "news_kinds", _load("news.json")["kinds"])
 
 
+UNIT_OF_LABEL = {"Mühazirə": "lecture", "Məşğələ": "seminar", "Laboratoriya": "lab"}
+
+
+def _seed_future_lessons(c, term_id: int):
+    """The rest of the demo term's lessons, made as Task 19 makes them (the past ones above carry topics and attendance)."""
+    from ..modules.timetable import repo as timetable_repo, service as timetable     # here: those modules import this one
+    timetable.make_lessons(c, timetable_repo.term_rows(c, term_id), row(c, "SELECT * FROM academic_terms WHERE id=?", (term_id,)))
+
+
 def _seed_rooms(c, f: dict, stamp: str):
     """The demo's buildings and rooms (Task 18), then the timetable rows linked to them by their text."""
     from ..modules.facilities import service as facilities      # here, not at the top: that module imports this one
@@ -483,10 +492,16 @@ def seed(c):
             mats[co["code"]].append(info["id"])
             for ch in rows(c, "SELECT id, heading FROM chunks WHERE material_id=?", (info["id"],)):
                 chunk_by.setdefault((info["id"], re.sub(r"\s*\(\d+\)$", "", ch["heading"])), ch["id"])
+        units: dict[str, int] = {}
         for wd, st_, en_, kind, room in co["schedule"]:
-            c.execute("INSERT INTO timetable(course_id,weekday,start,end,kind,room) VALUES(?,?,?,?,?,?)", (cid, wd, st_, en_, kind, room))
+            if kind not in units:             # Task 19: one teaching unit per kind, for the whole stream of the demo's groups
+                units[kind] = c.execute("INSERT INTO teaching_units(course_id,kind,teacher_id,active,created_at,updated_at) "
+                                        "VALUES(?,?,?,1,?,?)", (cid, UNIT_OF_LABEL[kind], uid[co["teacher"]], stamp, stamp)).lastrowid
+                c.executemany("INSERT INTO teaching_unit_groups(unit_id,group_id) VALUES(?,?)", [(units[kind], g) for g in gids.values()])
+            c.execute("INSERT INTO timetable(course_id,weekday,start,end,kind,room,unit_id,academic_hours,weeks,updated_at) "
+                      "VALUES(?,?,?,?,?,?,?,2,'all',?)", (cid, wd, st_, en_, kind, room, units[kind], stamp))
     _seed_rooms(c, s["facilities"], stamp)
-    tt = rows(c, "SELECT t.*, co.code FROM timetable t JOIN courses co ON co.id=t.course_id")
+    tt = rows(c, "SELECT t.*, co.code, co.teacher_id FROM timetable t JOIN courses co ON co.id=t.course_id")
     titles = {code: [m[1] for m in next(x for x in s["courses"] if x["code"] == code)["materials"]] for code in course_ids}
     lesson_count = {}
     d = sem0
@@ -498,10 +513,13 @@ def seed(c):
                 lesson_count[t["course_id"]] = n + 1
                 topics = titles[t["code"]]
                 topic = topics[min(n // 3, len(topics) - 1)].split(". ", 1)[-1]
-                lid = c.execute("INSERT INTO lessons(course_id,day,start,end,kind,room,topic) VALUES(?,?,?,?,?,?,?)",
-                                (t["course_id"], d.isoformat(), t["start"], t["end"], t["kind"], t["room"], topic)).lastrowid
+                lid = c.execute("INSERT INTO lessons(course_id,day,start,end,kind,room,topic,unit_id,teacher_id,academic_hours,"
+                                "timetable_id,room_id,slot_day,slot_start) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                                (t["course_id"], d.isoformat(), t["start"], t["end"], t["kind"], t["room"], topic, t["unit_id"],
+                                 t["teacher_id"], t["academic_hours"], t["id"], t["room_id"], d.isoformat(), t["start"])).lastrowid
                 lessons.append((lid, d, t["course_id"]))
         d += timedelta(days=1)
+    _seed_future_lessons(c, term_id)
     # Demo student was ill on the last Monday and Tuesday before today.
     last_mon = today - timedelta(days=(today.isoweekday() - 1) or 7)
     if (today - last_mon).days < 2:

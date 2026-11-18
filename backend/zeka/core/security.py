@@ -134,6 +134,7 @@ LIMITS = {
     "password_fail": RateLimiter(100, 900),
     "sso": RateLimiter(30, 60),             # single sign-on starts per client per minute
     "room": RateLimiter(60, 60),            # public room pages (QR codes on the doors, Task 18) per client per minute
+    "ical": RateLimiter(30, 60),            # calendar feed fetches (Task 19) per client per minute
 }
 for _name, _lim in LIMITS.items():
     _lim.name = _name
