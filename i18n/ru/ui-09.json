@@ -1,0 +1,28 @@
+{
+ "İki addımlı giriş": "Двухэтапный вход",
+ "Qoşulmayıb": "Не настроен",
+ "Girişdə parolla yanaşı telefonunuzdakı kod soruşulur.": "При входе, кроме пароля, запрашивается код с вашего телефона.",
+ "Parolunuz oğurlansa belə, telefonunuz olmadan hesabınıza daxil olmaq mümkün olmayacaq.": "Даже если пароль украдут, без вашего телефона войти в учётную запись не удастся.",
+ "Qoş": "Включить",
+ "Söndür": "Отключить",
+ "İşçi hesabında məcburidir. Telefonu itirsəniz, administrator sıfırlayır.": "Обязателен для сотрудников. Если вы потеряете телефон, администратор сбросит настройку.",
+ "İkinci addımı söndür": "Отключить двухэтапный вход",
+ "Tətbiqdəki 6 rəqəmli kod": "6-значный код из приложения",
+ "İkinci addım söndürüldü": "Двухэтапный вход отключён",
+ "İkinci addım": "Второй шаг",
+ "Autentifikator tətbiqindəki 6 rəqəmli kodu yazın. Telefon yanınızda deyilsə, bərpa kodlarından birini yazın.": "Введите 6-значный код из приложения-аутентификатора. Если телефона нет под рукой, введите один из кодов восстановления.",
+ "Bərpa kodu istifadə olundu. Qalan: {n}": {
+  "one": "Использован код восстановления. Остался {n}",
+  "few": "Использован код восстановления. Осталось {n}",
+  "many": "Использован код восстановления. Осталось {n}"
+ },
+ "İkinci addımı qoşun": "Настройте двухэтапный вход",
+ "İşçi hesabları üçün ikinci addım məcburidir.": "Для учётных записей сотрудников двухэтапный вход обязателен.",
+ "Telefonunuzda autentifikator tətbiqini açın (Google Authenticator, Microsoft Authenticator, FreeOTP) və QR kodu skan edin.": "Откройте на телефоне приложение-аутентификатор (Google Authenticator, Microsoft Authenticator, FreeOTP) и отсканируйте QR-код.",
+ "Skan etmək mümkün deyil? Açarı əl ilə yazın": "Не получается отсканировать? Введите ключ вручную",
+ "Bərpa kodlarınız": "Ваши коды восстановления",
+ "Telefonu itirsəniz, bu kodlarla daxil olacaqsınız. Hər kod bir dəfə işləyir. Onları çap edin və ya etibarlı yerdə saxlayın: bir daha göstərilməyəcək.": "Если вы потеряете телефон, вы войдёте с помощью этих кодов. Каждый код работает один раз. Распечатайте их или сохраните в надёжном месте: больше они показаны не будут.",
+ "Kodları köçür": "Скопировать коды",
+ "Köçürüldü": "Скопировано",
+ "Saxladım, davam et": "Я сохранил(а) их, продолжить"
+}

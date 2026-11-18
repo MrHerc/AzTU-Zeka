@@ -1,6 +1,6 @@
 import { S, api, html, raw, mount, on, ic, toast, modal, matchRoute, currentPath, go, route, pageHead, fmtDateTime, openDoc, $, $$, t, tl, LANG,
   loading, empty, failed, infoTip, routeProgress, initMotion, REDUCED, ago, TOURS } from "./core.js";
-import { shell, setActiveNav, ROLES, HOME, ROLE_LABEL, refreshBadges, switchLang, setCollapsed, notifIcon, passwordModal } from "./shell.js";
+import { shell, setActiveNav, ROLES, HOME, ROLE_LABEL, refreshBadges, switchLang, setCollapsed, notifIcon, passwordModal, mfaVerifyModal, mfaEnrollModal } from "./shell.js";
 import { LANGS } from "./i18n.js";
 import { startTour, tourDone, startPageTour, maybeHint, clearHint, tourCatalog } from "./tour.js";
 import "./student.js";
@@ -141,6 +141,8 @@ async function render() {
   if (!S.user) { try { const b = await api.get("/api/bootstrap"); S.user = b.user; S.app = b.app; } catch { S.user = null; } }
   if (!S.user) { root.dataset.shell = ""; return loginPage(root); }
   if (S.user.must_change) { root.dataset.shell = ""; mount(root, html`<div class="login"></div>`); return passwordModal(true); }
+  if (S.user.scope === "mfa") { root.dataset.shell = ""; mount(root, html`<div class="login"></div>`); return mfaVerifyModal(); }
+  if (S.user.scope === "mfa_enroll") { root.dataset.shell = ""; mount(root, html`<div class="login"></div>`); return mfaEnrollModal(true); }
   if (path === "/" || path === "/login") return go(HOME[S.user.role]);
   if (root.dataset.shell !== `${S.user.role}:${S.user.id}:${LANG}`) shell(root);
   const r = matchRoute(path);
@@ -210,6 +212,11 @@ route("/profile", async (el) => {
           <div class="set-row"><div><b>${t("Sol panel")}</b><div class="small muted">${t("Yığılmış rejimdə yalnız ikonlar görünür. Qısayol: [")}</div></div>
             <div class="seg" role="group"><button class="${!collapsed ? "active" : ""}" data-sb="open">${t("Açıq")}</button><button class="${collapsed ? "active" : ""}" data-sb="collapsed">${t("Yığılmış")}</button></div></div>
         </div></div>
+        <div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("İki addımlı giriş")}</h3><span class="badge ${S.user.mfa_enabled ? "b-green" : "b-gray"}">${S.user.mfa_enabled ? t("Aktiv") : t("Qoşulmayıb")}</span></div><div class="card-b stack">
+          <p class="small muted" style="margin:0">${S.user.mfa_enabled ? t("Girişdə parolla yanaşı telefonunuzdakı kod soruşulur.") : t("Parolunuz oğurlansa belə, telefonunuz olmadan hesabınıza daxil olmaq mümkün olmayacaq.")}</p>
+          ${!S.user.mfa_enabled ? html`<button class="btn btn-sm" id="mfa-on" style="align-self:flex-start">${t("Qoş")}</button>`
+            : me.role === "student" ? html`<button class="btn btn-sm btn-ghost" id="mfa-off" style="align-self:flex-start">${t("Söndür")}</button>`
+            : html`<p class="small muted" style="margin:0">${t("İşçi hesabında məcburidir. Telefonu itirsəniz, administrator sıfırlayır.")}</p>`}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("lock", 17)} ${t("Sessiyalarım")}</h3></div><div class="card-b stack" id="sessions-box"><span class="small muted">…</span></div></div>
         <div class="card"><div class="card-h"><h3>${ic("compass", 17)} ${t("Bələdçilər")}</h3><span class="badge b-blue">${done} / ${tours.length}</span></div><div class="card-b stack">
           <div class="small muted">${t("Səhifə bələdçilərinin neçəsini keçdiyinizi göstərir.")}</div>
@@ -240,6 +247,13 @@ route("/profile", async (el) => {
     drawSessions();
   });
   drawSessions();
+  on(el, "click", "#mfa-on", () => mfaEnrollModal(false));
+  on(el, "click", "#mfa-off", () => modal({ title: t("İkinci addımı söndür"), size: "sm",
+    body: html`<div class="field"><label class="label" for="mfa-off-code">${t("Tətbiqdəki 6 rəqəmli kod")}</label><input class="input" id="mfa-off-code" inputmode="numeric" autocomplete="one-time-code"></div>`,
+    actions: [{ label: t("Söndür"), cls: "btn-danger", onClick: async (w) => {
+      try { await api.post("/api/auth/mfa/disable", { code: w.querySelector("#mfa-off-code").value }); S.user.mfa_enabled = false; toast(t("İkinci addım söndürüldü"), "ok"); go("/profile"); }
+      catch (err) { toast(err.message, "err"); return false; }
+    } }] }));
   on(el, "click", "#tour", () => { go(HOME[me.role]); setTimeout(() => startTour(true), 700); });
   on(el, "click", "[data-theme-set]", (e, b) => { if ((S.theme === "dark") !== (b.dataset.themeSet === "dark")) document.getElementById("theme")?.click(); $$("[data-theme-set]", el).forEach((x) => x.classList.toggle("active", x === b)); });
   on(el, "click", "[data-sb]", (e, b) => { setCollapsed(null, b.dataset.sb === "collapsed"); $$("[data-sb]", el).forEach((x) => x.classList.toggle("active", x === b)); });

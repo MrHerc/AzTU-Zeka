@@ -141,3 +141,67 @@ def session_limits(role: str, overrides: dict | None = None) -> tuple[int, int]:
 def session_expired(role: str, created_at, last_seen, now, overrides: dict | None = None) -> bool:
     idle, absolute = session_limits(role, overrides)
     return (now - last_seen).total_seconds() > idle or (now - created_at).total_seconds() > absolute
+
+
+# ---------------------------------------------------------------- second factor (Task 12)
+MFA_ROLES = ("teacher", "office", "leader", "admin")    # every role that writes grades or manages: a second factor is required
+STEP, DIGITS, DRIFT = 30, 6, 1                           # RFC 6238: 30-second steps, 6 digits, one step either side
+MFA_ATTEMPTS = 5                                         # wrong codes in one pending sign-in before it is cancelled
+RECOVERY_CODES = 10
+# What a session may reach while it waits for its second factor, or while its account must first enrol one.
+SCOPE_OPEN = {
+    "mfa": ("/api/auth/mfa/verify", "/api/auth/logout", "/api/bootstrap"),
+    "mfa_enroll": ("/api/auth/mfa/", "/api/auth/password", "/api/auth/logout", "/api/bootstrap"),
+}
+
+
+def hotp(key: bytes, counter: int, digits: int = DIGITS) -> str:
+    """RFC 4226: HMAC-SHA1 of the 8-byte counter, dynamic truncation, the last ``digits`` decimal digits."""
+    mac = hmac.new(key, counter.to_bytes(8, "big"), hashlib.sha1).digest()
+    offset = mac[-1] & 0x0F
+    value = int.from_bytes(mac[offset:offset + 4], "big") & 0x7FFFFFFF
+    return str(value % 10 ** digits).zfill(digits)
+
+
+def totp_key(secret_b32: str) -> bytes:
+    padded = secret_b32.strip().replace(" ", "").upper()
+    return base64.b32decode(padded + "=" * (-len(padded) % 8))
+
+
+def totp_match(secret_b32: str, code: str, now: float, last_step: int | None) -> int | None:
+    """The 30-second step the code belongs to (now ±1 step), only if it is newer than the last accepted step."""
+    code = "".join(code.split())
+    if not (code.isdigit() and len(code) == DIGITS):
+        return None
+    key, current = totp_key(secret_b32), int(now) // STEP
+    for step in range(current - DRIFT, current + DRIFT + 1):
+        if (last_step is None or step > last_step) and hmac.compare_digest(hotp(key, step), code):
+            return step
+    return None
+
+
+def new_totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode().rstrip("=")
+
+
+def _pct(text: str) -> str:
+    """Percent-encoding of an URI component (RFC 3986 unreserved characters stay as they are)."""
+    return "".join(chr(b) if chr(b).isalnum() and b < 128 or chr(b) in "-._~" else f"%{b:02X}" for b in text.encode("utf-8"))
+
+
+def otpauth_uri(secret_b32: str, account: str, issuer: str = "AzTU Zəka") -> str:
+    label = _pct(issuer) + ":" + _pct(account)
+    return f"otpauth://totp/{label}?secret={secret_b32}&issuer={_pct(issuer)}&algorithm=SHA1&digits={DIGITS}&period={STEP}"
+
+
+def recovery_codes() -> list[str]:
+    alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
+    return ["-".join("".join(secrets.choice(alphabet) for _ in range(5)) for _ in range(2)) for _ in range(RECOVERY_CODES)]
+
+
+def recovery_hash(code: str) -> str:
+    return hashlib.sha256("".join(code.lower().replace("-", "").split()).encode()).hexdigest()
+
+
+def is_recovery_code(code: str) -> bool:
+    return len("".join(code.replace("-", "").split())) == 10

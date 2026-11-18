@@ -1,0 +1,27 @@
+{
+ "İki addımlı giriş": "Two-step sign-in",
+ "Qoşulmayıb": "Not set up",
+ "Girişdə parolla yanaşı telefonunuzdakı kod soruşulur.": "At sign-in you are asked for the code from your phone as well as your password.",
+ "Parolunuz oğurlansa belə, telefonunuz olmadan hesabınıza daxil olmaq mümkün olmayacaq.": "Even if your password is stolen, nobody can sign in to your account without your phone.",
+ "Qoş": "Turn on",
+ "Söndür": "Turn off",
+ "İşçi hesabında məcburidir. Telefonu itirsəniz, administrator sıfırlayır.": "Mandatory for staff accounts. If you lose your phone, an administrator resets it.",
+ "İkinci addımı söndür": "Turn off two-step sign-in",
+ "Tətbiqdəki 6 rəqəmli kod": "6-digit code from the app",
+ "İkinci addım söndürüldü": "Two-step sign-in turned off",
+ "İkinci addım": "Second step",
+ "Autentifikator tətbiqindəki 6 rəqəmli kodu yazın. Telefon yanınızda deyilsə, bərpa kodlarından birini yazın.": "Enter the 6-digit code from your authenticator app. If you do not have your phone, enter one of your recovery codes.",
+ "Bərpa kodu istifadə olundu. Qalan: {n}": {
+  "one": "Recovery code used. {n} left",
+  "other": "Recovery code used. {n} left"
+ },
+ "İkinci addımı qoşun": "Set up two-step sign-in",
+ "İşçi hesabları üçün ikinci addım məcburidir.": "Two-step sign-in is mandatory for staff accounts.",
+ "Telefonunuzda autentifikator tətbiqini açın (Google Authenticator, Microsoft Authenticator, FreeOTP) və QR kodu skan edin.": "Open an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, FreeOTP) and scan the QR code.",
+ "Skan etmək mümkün deyil? Açarı əl ilə yazın": "Cannot scan? Enter the key by hand",
+ "Bərpa kodlarınız": "Your recovery codes",
+ "Telefonu itirsəniz, bu kodlarla daxil olacaqsınız. Hər kod bir dəfə işləyir. Onları çap edin və ya etibarlı yerdə saxlayın: bir daha göstərilməyəcək.": "If you lose your phone, you will sign in with these codes. Each code works once. Print them or keep them somewhere safe: they will not be shown again.",
+ "Kodları köçür": "Copy codes",
+ "Köçürüldü": "Copied",
+ "Saxladım, davam et": "I have saved them, continue"
+}

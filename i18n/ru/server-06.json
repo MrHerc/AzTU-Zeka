@@ -1,0 +1,16 @@
+{
+ "Əvvəlcə ikinci addımı tamamlayın": "Сначала пройдите второй шаг",
+ "İkinci addım tələb olunmur": "Второй шаг не требуется",
+ "İkinci addım artıq qoşulub": "Двухэтапный вход уже настроен",
+ "Əvvəlcə QR kodu yaradın": "Сначала создайте QR-код",
+ "İşçi hesabında ikinci addım məcburidir": "Для учётных записей сотрудников двухэтапный вход обязателен",
+ "İkinci addım qoşulmayıb": "Двухэтапный вход не настроен",
+ "Sıfırlamanın səbəbini yazın": "Укажите причину сброса",
+ "Çox sayda yanlış kod: giriş ləğv olundu. Parolu yenidən daxil edin.": "Слишком много неверных кодов: вход отменён. Введите пароль ещё раз.",
+ "Kod yanlışdır. Qalan cəhd: {n}": {
+  "one": "Неверный код. Осталась {n} попытка",
+  "few": "Неверный код. Осталось {n} попытки",
+  "many": "Неверный код. Осталось {n} попыток"
+ },
+ "Kod yanlışdır. Tətbiqdəki ən son kodu yazın.": "Неверный код. Введите последний код из приложения."
+}

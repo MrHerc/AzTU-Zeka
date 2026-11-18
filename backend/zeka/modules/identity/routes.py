@@ -7,6 +7,7 @@ from __future__ import annotations
 from ...core.i18n import S
 from ...core.web import HTTPError, json_resp
 from ...legacy.common import R, ROLE_HOME, pub_user, rotate_session, session_cookie, start_session
+from ...legacy.qr import qr_svg
 from ...legacy.store import audit
 from . import domain, repo, service
 
@@ -34,8 +35,9 @@ def login(req):
         return _blocked(req, value)
     if status == "wrong":       # the same answer for an unknown account, a wrong password and a disabled account
         return json_resp({"error": S("İstifadəçi adı və ya parol yanlışdır", req.lang)}, 401)
-    _, headers = start_session(req, value, "parol")
-    return json_resp({"user": pub_user(value), "home": ROLE_HOME.get(value["role"], "/")}, headers=headers)
+    scope = service.scope_after_password(value)       # the second factor, or its enrolment, comes next for staff
+    _, headers = start_session(req, value, "parol", scope=scope)
+    return json_resp({"user": {**pub_user(value), "scope": scope}, "home": ROLE_HOME.get(value["role"], "/")}, headers=headers)
 
 
 @R("POST", "/api/auth/password")
@@ -49,7 +51,8 @@ def change_password(req):
     if status == "weak":
         raise HTTPError(400, value)
     repo.end_sessions(req.db, req.user["id"], keep=req.user["session_id"])    # other devices sign in again
-    return json_resp({"ok": True, "user": pub_user(repo.user(req.db, req.user["id"]))}, headers=rotate_session(req))
+    user = {**pub_user(repo.user(req.db, req.user["id"])), "scope": req.user.get("session_scope") or "full"}   # enrolment may follow
+    return json_resp({"ok": True, "user": user}, headers=rotate_session(req))
 
 
 @R("GET", "/api/me/sessions")
@@ -94,4 +97,69 @@ def unlock(req):
         raise HTTPError(400, "Kilidin açılma səbəbini yazın")
     u = _target(req)
     service.unlock(req.db, req.user, u, reason)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- second factor (Task 12)
+def _code(req) -> str:
+    return req.json().text("code", 40)
+
+
+@R("POST", "/api/auth/mfa/verify")
+def mfa_verify(req):
+    if req.user.get("session_scope") != "mfa":
+        raise HTTPError(409, "İkinci addım tələb olunmur")
+    status, value = service.verify_second_factor(req.db, req.user, req.user["session_id"], _code(req), req.ip)
+    if status == "blocked":
+        return _blocked(req, value)
+    if status == "cancelled":
+        return json_resp({"error": S("Çox sayda yanlış kod: giriş ləğv olundu. Parolu yenidən daxil edin.", req.lang)}, 401,
+                         headers=[session_cookie(expire=True)])
+    if status == "wrong":
+        return json_resp({"error": S("Kod yanlışdır. Qalan cəhd: {n}", req.lang, n=value)}, 401)
+    left = repo.recovery_left(req.db, req.user["id"]) if value == "recovery" else None
+    return json_resp({"ok": True, "user": {**pub_user(repo.user(req.db, req.user["id"])), "scope": "full"}, "recovery_left": left},
+                     headers=rotate_session(req))          # a new id once the second factor is in
+
+
+@R("POST", "/api/auth/mfa/enroll")
+def mfa_enroll(req):
+    out = service.start_enrollment(req.db, req.user)
+    if out is None:
+        raise HTTPError(409, "İkinci addım artıq qoşulub")
+    return {**out, "qr": qr_svg(out["uri"], scale=5)}
+
+
+@R("POST", "/api/auth/mfa/confirm")
+def mfa_confirm(req):
+    status, value = service.confirm_enrollment(req.db, req.user, req.user.get("session_id"), _code(req), req.ip)
+    if status == "blocked":
+        return _blocked(req, value)
+    if status == "none":
+        raise HTTPError(409, "Əvvəlcə QR kodu yaradın")
+    if status == "wrong":
+        return json_resp({"error": S("Kod yanlışdır. Tətbiqdəki ən son kodu yazın.", req.lang)}, 401)
+    headers = rotate_session(req) if req.user.get("session_id") else []
+    return json_resp({"ok": True, "recovery_codes": value, "user": {**pub_user(repo.user(req.db, req.user["id"])), "scope": "full"}},
+                     headers=headers)
+
+
+@R("POST", "/api/auth/mfa/disable")
+def mfa_disable(req):
+    status = service.disable_second_factor(req.db, req.user, _code(req), req.ip)
+    if status == "forbidden":
+        raise HTTPError(403, "İşçi hesabında ikinci addım məcburidir")
+    if status == "none":
+        raise HTTPError(409, "İkinci addım qoşulmayıb")
+    if status == "wrong":
+        return json_resp({"error": S("Kod yanlışdır. Tətbiqdəki ən son kodu yazın.", req.lang)}, 401)
+    return {"ok": True}
+
+
+@R("POST", "/api/admin/users/{id:int}/mfa-reset", roles=("admin",))
+def mfa_reset(req):
+    reason = req.json().text("reason", 500)
+    if len(reason) < 3:
+        raise HTTPError(400, "Sıfırlamanın səbəbini yazın")
+    service.reset_second_factor(req.db, req.user, _target(req), reason)
     return {"ok": True}

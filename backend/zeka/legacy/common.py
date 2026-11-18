@@ -113,6 +113,9 @@ def before(req, roles, auth):
         req.user = None
     if not req.user and req.path.startswith(("/doc/", "/api/files/", "/syllabus/")) and req.query.get("k"):
         req.user = _key_user(req)
+    scope = req.user.get("session_scope") if req.user else None
+    if scope in identity.SCOPE_OPEN and not req.path.startswith(identity.SCOPE_OPEN[scope]):
+        raise HTTPError(403, "Əvvəlcə ikinci addımı tamamlayın")
     if req.user and req.user["must_change"] and not req.path.startswith(MUST_CHANGE_OPEN):
         raise HTTPError(403, "Əvvəlcə müvəqqəti parolu dəyişin")
     if auth and not req.user:
@@ -164,6 +167,8 @@ def pub_user(u):
         return None
     out = {k: u[k] for k in ("id", "username", "full_name", "role", "title", "color", "consent_at")}
     out["must_change"] = bool(u.get("must_change"))
+    out["scope"] = u.get("session_scope") or "full"            # mfa / mfa_enroll: the second factor comes first (Task 12)
+    out["mfa_enabled"] = bool(u.get("totp_enabled_at"))
     out["prefs"] = J(u.get("prefs"), {}) or {}
     return out
 

@@ -242,13 +242,15 @@ Qeyd (2026-11-18): `content/password-blocklist.txt` qısa siyahıdır (≈100); 
 **Description:** RFC 6238 (HMAC-SHA1, 30 saniyə, 6 rəqəm, ±1 pəncərə), təkrar istifadəyə qarşı son sayğac saxlanır. Qoşulma mövcud `qr.py` ilə `otpauth://` QR-i göstərir. 10 bərpa kodu, hash ilə. Qiymət yazan və ya idarə edən hər rol üçün məcburi; tələbə üçün könüllü. Yanlış TOTP və bərpa kodu Task 10-dakı (hesab, ünvan) sayğacına düşür. TOTP toxumu bazada açıq saxlanır (stdlib-də simmetrik şifr yoxdur); bu Task 41 təhdid modelində qəbul edilmiş risk kimi yazılır; sahib `cryptography` icazəsi versə mühit açarı ilə şifrələnir.
 
 **Acceptance criteria:**
-- [ ] RFC 6238 test vektorları keçir
-- [ ] İkinci amili olmayan işçi yalnız qoşulma marşrutlarına çata bilən sessiya alır
-- [ ] Eyni kod öz pəncərəsində iki dəfə qəbul olunmur; bərpa kodu bir dəfə işləyir
-- [ ] 5 ardıcıl yanlış TOTP və ya bərpa kodu gözləyən girişi ləğv edir (parol addımı təkrarlanır); bundan sonra düzgün kod da rədd olunur
+- [x] RFC 6238 test vektorları keçir
+- [x] İkinci amili olmayan işçi yalnız qoşulma marşrutlarına çata bilən sessiya alır
+- [x] Eyni kod öz pəncərəsində iki dəfə qəbul olunmur; bərpa kodu bir dəfə işləyir
+- [x] 5 ardıcıl yanlış TOTP və ya bərpa kodu gözləyən girişi ləğv edir (parol addımı təkrarlanır); bundan sonra düzgün kod da rədd olunur
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_totp.py tests/integration/test_mfa.py -q`
+- [x] `python -m pytest tests/unit/test_totp.py tests/integration/test_mfa.py -q`
+
+Qeyd (2026-11-18): bərpa kodu ilə də giriş və 5 yanlış koddan sonra ləğv brauzerdə yoxlanıb. Parolu düz yazmaq gözləyən ikinci addımda sayğacı sıfırlamır (əks halda hər düz parol 5 yeni kod təxmini verərdi); sayğac yalnız ikinci addım keçəndə sıfırlanır.
 
 **Dependencies:** Task 11
 **Files likely touched:** `backend/zeka/modules/identity/{domain,service,routes}.py`, `frontend/js/main.js`, `backend/migrations/0120_totp.sql`

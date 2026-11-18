@@ -14,7 +14,7 @@ import pytest
 from zeka.legacy import api
 
 WEIRD = ["abc", "", 1.5, -1, 10 ** 30, True, None, [], ["x"], {}, {"a": 1}]
-SKIP = {"logout", "admin_reset", "temporary_password"}   # would end the shared sessions, reseed, or force a password change
+SKIP = {"logout", "admin_reset", "temporary_password", "mfa_reset"}   # end the shared sessions, reseed, force a change
 _FIELD = re.compile(r'(?:\bb|body|raw|req\.json\(\))\.(?:get|text|integer|number|array|ids|obj)\("(\w+)"|\bb\["(\w+)"\]')
 
 

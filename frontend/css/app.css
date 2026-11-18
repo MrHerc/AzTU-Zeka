@@ -938,3 +938,10 @@ table { max-width: 100%; }
 .ref-ext { color: var(--faint); flex: none; margin-top: 8px; }
 .ref-item:hover .ref-ext, .ref-item:focus-visible .ref-ext { color: var(--link); }
 @media (prefers-reduced-motion: reduce) { .ref-item { transition: none; } }
+
+/* second factor (Task 12) */
+.mfa-qr { display: flex; justify-content: center; padding: 8px; background: #fff; border-radius: 12px; }
+.mfa-qr svg { width: 200px; height: 200px; }
+.mfa-secret { display: block; margin-top: 6px; font-size: 15px; letter-spacing: .06em; word-break: break-all; }
+.mfa-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mfa-codes code { font-size: 15px; padding: 6px 8px; border: 1px solid var(--border, #d8dce6); border-radius: 8px; text-align: center; }

@@ -1,0 +1,15 @@
+{
+ "Əvvəlcə ikinci addımı tamamlayın": "Complete the second step first",
+ "İkinci addım tələb olunmur": "No second step is required",
+ "İkinci addım artıq qoşulub": "Two-step sign-in is already set up",
+ "Əvvəlcə QR kodu yaradın": "Create the QR code first",
+ "İşçi hesabında ikinci addım məcburidir": "Two-step sign-in is mandatory for staff accounts",
+ "İkinci addım qoşulmayıb": "Two-step sign-in is not set up",
+ "Sıfırlamanın səbəbini yazın": "Enter the reason for the reset",
+ "Çox sayda yanlış kod: giriş ləğv olundu. Parolu yenidən daxil edin.": "Too many wrong codes: the sign-in was cancelled. Enter your password again.",
+ "Kod yanlışdır. Qalan cəhd: {n}": {
+  "one": "Wrong code. {n} attempt left",
+  "other": "Wrong code. {n} attempts left"
+ },
+ "Kod yanlışdır. Tətbiqdəki ən son kodu yazın.": "Wrong code. Enter the latest code from the app."
+}

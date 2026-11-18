@@ -110,6 +110,11 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/auth/password` | any | Change one's own password; the only route open to a temporary password |
 | `POST` | `/api/admin/users/{id}/temp-password` | admin | Issue a one-time password; the account must change it |
 | `POST` | `/api/admin/users/{id}/unlock` | admin | Lift a lock or block, with a reason (audited) |
+| `POST` | `/api/auth/mfa/verify` | pending | Second step of a sign-in: a 6-digit TOTP code or a recovery code |
+| `POST` | `/api/auth/mfa/enroll` | any | New TOTP secret with its `otpauth://` URI and QR (SVG); staff must enrol before anything else |
+| `POST` | `/api/auth/mfa/confirm` | any | Confirm the secret with a code; returns 10 one-time recovery codes once |
+| `POST` | `/api/auth/mfa/disable` | student | Turn the second factor off (staff cannot) |
+| `POST` | `/api/admin/users/{id}/mfa-reset` | admin | Lost device: clear the second factor and end the account's sessions, with a reason |
 | `GET` | `/api/me/sessions` | any | One's own sessions: created, last active, address, browser, current |
 | `DELETE` | `/api/me/sessions/{id}` | any | End one of one's own sessions (`404` for another person's) |
 | `POST` | `/api/me/sessions/end-others` | any | End every session but the current one |
@@ -124,6 +129,15 @@ Failures are counted per account and client (IPv6: its /64): 10 in 15 minutes bl
 15 minutes, and 100 consecutive failures lock the account for 15 minutes. Both answer `429` with `Retry-After`, are
 checked before the password is hashed, and are written to the audit log. Hashing: scrypt (n=2^15, r=8, p=1); a hash
 with older parameters is replaced at the next sign-in.
+
+### Second factor (Task 12)
+
+After the right password, `POST /api/auth/login` answers `user.scope`: `full`, `mfa` (a TOTP or recovery code comes
+next; the session reaches only `/api/auth/mfa/verify`, `/api/auth/logout` and `/api/bootstrap`) or `mfa_enroll` (a staff
+account without a second factor: only `/api/auth/mfa/*`, `/api/auth/password`, logout and bootstrap). TOTP follows RFC 6238
+(HMAC-SHA1, 30 s, 6 digits, one step either side); a step is accepted once. Wrong codes count with wrong passwords for the
+account and address (Task 10), and five wrong codes end the pending sign-in: the password step starts again. Passing the
+second factor gives the session a new id. Recovery codes work once and are stored as SHA-256.
 
 ### `POST /api/auth/password`
 
@@ -789,7 +803,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-123 routes, in the order the router matches them, except that the Task 10–11 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+128 routes, in the order the router matches them, except that the Task 10–12 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -801,6 +815,11 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/auth/password` | any |
 | POST | `/api/admin/users/{id}/temp-password` | admin |
 | POST | `/api/admin/users/{id}/unlock` | admin |
+| POST | `/api/auth/mfa/verify` | pending |
+| POST | `/api/auth/mfa/enroll` | any |
+| POST | `/api/auth/mfa/confirm` | any |
+| POST | `/api/auth/mfa/disable` | student |
+| POST | `/api/admin/users/{id}/mfa-reset` | admin |
 | GET | `/api/me/sessions` | any |
 | DELETE | `/api/me/sessions/{id}` | any |
 | POST | `/api/me/sessions/end-others` | any |

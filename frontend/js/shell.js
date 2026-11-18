@@ -335,3 +335,62 @@ export function passwordModal(forced = false) {
     } }],
   });
 }
+
+// Second factor (Task 12): the code at sign-in, and the enrolment that staff must finish first.
+export function mfaVerifyModal() {
+  modal({
+    title: t("İkinci addım"), dismissable: false,
+    body: html`<div class="stack"><p class="muted" style="margin:0">${t("Autentifikator tətbiqindəki 6 rəqəmli kodu yazın. Telefon yanınızda deyilsə, bərpa kodlarından birini yazın.")}</p>
+      <div class="field"><label class="label" for="mfa-code">${t("Kod")}</label>
+        <input class="input" id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="20" spellcheck="false"></div></div>`,
+    actions: [
+      { label: t("Çıxış"), onClick: async () => { await api.post("/api/auth/logout").catch(() => {}); S.user = null; go("/login"); } },
+      { label: t("Təsdiqlə"), cls: "btn-primary", onClick: async (w) => {
+        try {
+          const r = await api.post("/api/auth/mfa/verify", { code: w.querySelector("#mfa-code").value });
+          S.user = r.user;
+          if (r.recovery_left !== null && r.recovery_left !== undefined) toast(t("Bərpa kodu istifadə olundu. Qalan: {n}", { n: r.recovery_left }), "warn");
+          go(HOME[S.user.role]);
+        } catch (err) {
+          toast(err.message, "err");
+          const b = await api.get("/api/bootstrap").catch(() => ({}));
+          if (!b.user) { S.user = null; go("/login"); return; }       // five wrong codes ended the pending sign-in
+          w.querySelector("#mfa-code").select();
+          return false;
+        }
+      } }],
+  });
+}
+
+export async function mfaEnrollModal(forced = false) {
+  let data;
+  try { data = await api.post("/api/auth/mfa/enroll"); } catch (err) { toast(err.message, "err"); return; }
+  modal({
+    title: t("İkinci addımı qoşun"), dismissable: !forced,
+    body: html`<div class="stack">
+      ${forced ? html`<p class="notice warn" style="margin:0">${t("İşçi hesabları üçün ikinci addım məcburidir.")}</p>` : ""}
+      <p class="muted" style="margin:0">${t("Telefonunuzda autentifikator tətbiqini açın (Google Authenticator, Microsoft Authenticator, FreeOTP) və QR kodu skan edin.")}</p>
+      <div class="mfa-qr">${raw(data.qr)}</div>
+      <details><summary class="small">${t("Skan etmək mümkün deyil? Açarı əl ilə yazın")}</summary><code class="mfa-secret">${data.secret.match(/.{1,4}/g).join(" ")}</code></details>
+      <div class="field"><label class="label" for="mfa-code">${t("Tətbiqdəki 6 rəqəmli kod")}</label>
+        <input class="input" id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8"></div></div>`,
+    actions: [{ label: t("Təsdiqlə"), cls: "btn-primary", onClick: async (w) => {
+      try {
+        const r = await api.post("/api/auth/mfa/confirm", { code: w.querySelector("#mfa-code").value });
+        S.user = r.user;
+        recoveryModal(r.recovery_codes);
+      } catch (err) { toast(err.message, "err"); return false; }
+    } }],
+  });
+}
+
+function recoveryModal(codes) {
+  modal({
+    title: t("Bərpa kodlarınız"), dismissable: false,
+    body: html`<div class="stack"><p class="muted" style="margin:0">${t("Telefonu itirsəniz, bu kodlarla daxil olacaqsınız. Hər kod bir dəfə işləyir. Onları çap edin və ya etibarlı yerdə saxlayın: bir daha göstərilməyəcək.")}</p>
+      <div class="mfa-codes">${codes.map((c) => html`<code>${c}</code>`)}</div></div>`,
+    actions: [
+      { label: t("Kodları köçür"), onClick: () => { navigator.clipboard?.writeText(codes.join("\n")); toast(t("Köçürüldü"), "ok"); return false; } },
+      { label: t("Saxladım, davam et"), cls: "btn-primary", onClick: () => { document.getElementById("root").dataset.shell = ""; go(HOME[S.user.role]); } }],
+  });
+}
