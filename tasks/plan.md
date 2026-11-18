@@ -69,7 +69,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T05 İş rejimləri: demo və prod — `af5259e`, `c96880e`
 - [x] T06 Handler qapısı və çox proses — `b2ecc6f`, `83eeebb`
 - [x] T07 Proses-lokal vəziyyəti bazaya köçür — `95a348c` və dilim 2 (indekslər, ölçmə)
-- [ ] T08 Backup və bərpa
+- [x] T08 Backup və bərpa — `backend/zeka/core/backup.py`, `docs/runbooks/backup.md`
 - [ ] T09 Yerləşdirmə: Docker, Caddy, sağlamlıq yoxlaması
 
 ### Checkpoint A · saat 10

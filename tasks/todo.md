@@ -154,15 +154,15 @@ Saat (plan A19). `core/clock.py`: `now()` (UTC, ofsetli) və `local()` (`ZEKA_TZ
 **Description:** `infra/backup.sh` `backend/manage.py backup` əmrini çağırır: `sqlite3.Connection.backup()` tək addımda (və ya `VACUUM INTO`) ardıcıl nüsxə; `sqlite3` CLI istifadə olunmur (100 səhifəlik addımlar başqa bağlantının hər commit-ində nüsxəni yenidən başladır). Yükləmələrdən yalnız əvvəlki dəstlərdə olmayan fayllar (məzmun ünvanlıdır), sıxılma, `openssl enc -aes-256-cbc -pbkdf2` ilə şifrələmə, SHA-256 manifest. Sonra dəst `BACKUP_REMOTE`-a (ölkə daxilində ikinci host) göndərilir və manifest orada yoxlanır; prod rejimində `BACKUP_REMOTE` boşdursa və ya göndərmə alınmırsa skript xəta ilə bitir. Saxlama: 7 gündəlik, 4 həftəlik. `infra/restore.sh` manifesti yoxlayır, yeni qovluğa bərpa edir, `PRAGMA integrity_check` işlədir.
 
 **Acceptance criteria:**
-- [ ] Təmiz qovluğa bərpa hər cədvəldə eyni sətir sayını və hər yükləmə üçün eyni SHA-256-nı verir
-- [ ] Açar faylı olmadan backup uğursuz bitir, şifrəsiz fayl yaratmır
-- [ ] Başqa proses hər 20 ms-dən bir commit edərkən backup yazı getməyən bazadakı müddətin 3 mislindən tez bitir; bərpada `integrity_check` keçir
-- [ ] Göndərmə uğursuz olanda skript sıfırdan fərqli kodla bitir; uzaq tərəfdə manifest yoxlanır
-- [ ] CI-da backup → bərpa sınağı işləyir
+- [x] Təmiz qovluğa bərpa hər cədvəldə eyni sətir sayını və hər yükləmə üçün eyni SHA-256-nı verir
+- [x] Açar faylı olmadan backup uğursuz bitir, şifrəsiz fayl yaratmır
+- [x] Başqa proses hər 20 ms-dən bir commit edərkən backup yazı getməyən bazadakı müddətin 3 mislindən tez bitir; bərpada `integrity_check` keçir
+- [x] Göndərmə uğursuz olanda skript sıfırdan fərqli kodla bitir; uzaq tərəfdə manifest yoxlanır
+- [x] CI-da backup → bərpa sınağı işləyir
 
 **Verification:**
-- [ ] `infra/backup.sh && infra/restore.sh backups/latest.enc /tmp/restore-test`
-- [ ] `python -m pytest tests/migration/test_backup_restore.py -q`
+- [x] `infra/backup.sh && infra/restore.sh backups/latest.enc /tmp/restore-test`
+- [x] `python -m pytest tests/migration/test_backup_restore.py -q`
 
 **Dependencies:** Task 4
 **Files likely touched:** `infra/backup.sh`, `infra/restore.sh`, `backend/manage.py`, `tests/migration/test_backup_restore.py`, `.github/workflows/ci.yml`

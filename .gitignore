@@ -22,3 +22,5 @@ pitch/
 *.sqlite
 *.sqlite3
 *.zip
+# Şifrəli backup dəstləri (infra/backup.sh)
+backups/
