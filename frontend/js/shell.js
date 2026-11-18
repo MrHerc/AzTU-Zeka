@@ -1,7 +1,11 @@
 import { S, api, html, raw, mount, on, ic, icon, toast, modal, go, avatar, ago, esc, $, $$, t, LANG, currentPath, tourFor, REDUCED } from "./core.js";
 import { LANGS, setLang } from "./i18n.js";
 
-export const HOME = { student: "/student", teacher: "/teacher", office: "/office", leader: "/leader", admin: "/admin" };
+export const HOME = { student: "/student", teacher: "/teacher", office: "/office", leader: "/leader", admin: "/admin",
+  dept_head: "/teacher", academic_office: "/office", proctor: "/teacher" };
+// New roles (Task 13) use the navigation of the closest existing role until their own pages arrive.
+const NAV_ROLE = { dept_head: "teacher", academic_office: "office", proctor: "teacher" };
+const navRole = (r) => NAV_ROLE[r] || r;
 export const ROLES = [
   ["student", t("Tələbə"), t("Aysel Məmmədova · İT-25-1"), "cap", "ic-blue"],
   ["teacher", t("Müəllim"), t("Dos. Rauf Əliyev · Elektronika"), "book", "ic-navy"],
@@ -9,7 +13,8 @@ export const ROLES = [
   ["leader", t("Rəhbərlik"), t("Rektorluq · pilot paneli"), "chart", "ic-amber"],
   ["admin", t("Administrator"), t("İT mərkəzi · platforma"), "sliders", "ic-coral"],
 ];
-export const ROLE_LABEL = Object.fromEntries(ROLES.map((r) => [r[0], r[1]]));
+export const ROLE_LABEL = { ...Object.fromEntries(ROLES.map((r) => [r[0], r[1]])),
+  dept_head: t("Kafedra müdiri"), academic_office: t("Tədris şöbəsi"), proctor: t("İmtahan nəzarətçisi") };
 
 const UNI = [t("Universitet"), [["news", t("Xəbərlər və tədbirlər"), "/news", "news"], ["trophy", t("Nailiyyətlər"), "/achievements"], ["phone", t("Əlaqə"), "/contact"]]];
 const UNI_STAFF = [t("Universitet"), [["trophy", t("Nailiyyətlər"), "/achievements"], ["phone", t("Əlaqə"), "/contact"]]];
@@ -66,7 +71,7 @@ export function shell(root) {
           <div class="brand-txt"><div class="brand-name">Az<span>TU</span> ${t("Rəqəmsal Kampus")}</div><div class="brand-by">by <b>Safarov Industries</b></div></div></a>
         <button class="sb-close icon-btn" id="sb-close" aria-label="${t("Menyunu bağla")}">${ic("x", 18)}</button>
       </div>
-      <nav class="nav" id="nav">${NAV[u.role].map(([sec, items]) => html`<div class="nav-section"><span>${sec}</span></div>${items.map(([i, l, p, b]) =>
+      <nav class="nav" id="nav">${NAV[navRole(u.role)].map(([sec, items]) => html`<div class="nav-section"><span>${sec}</span></div>${items.map(([i, l, p, b]) =>
         html`<a class="nav-item" href="#${p}" data-path="${p}" data-label="${l}">${ic(i, 18)}<span class="nav-l">${l}</span>${b ? html`<span class="count hidden" data-badge="${b}"></span>` : ""}</a>`)}`)}</nav>
       <div class="sidebar-foot">
         <div class="engine-pill" title="${S.app.engine.label}"><span class="dot ${S.app.engine.mode === "demo" ? "amber" : ""}"></span><span class="sf-l">${S.app.engine.label}</span></div>
@@ -89,7 +94,7 @@ export function shell(root) {
       </header>
       <div id="content"></div>
     </div>
-    <nav class="bottom-nav" aria-label="${t("Sürətli naviqasiya")}">${BOTTOM[u.role].map(([i, l, p]) => html`<a href="#${p}" data-path="${p}">${ic(i, 20)}<span>${l}</span></a>`)}
+    <nav class="bottom-nav" aria-label="${t("Sürətli naviqasiya")}">${BOTTOM[navRole(u.role)].map(([i, l, p]) => html`<a href="#${p}" data-path="${p}">${ic(i, 20)}<span>${l}</span></a>`)}
       <button id="bn-menu" aria-label="${t("Bütün bölmələr")}">${ic("menu", 20)}<span>${t("Menyu")}</span></button></nav>
     <button class="fab-feedback" id="fab-feedback" aria-label="${t("Rəy bildir")}" title="${t("Rəy bildir")}">${ic("smile", 19)}<span>${t("Rəy")}</span></button>
   </div>`);
@@ -213,6 +218,20 @@ function userMenu(host) {
   on(dd, "click", "[data-switch]", (e, b) => { closeDropdowns(); if (b.dataset.switch !== S.user.role) switchRole(b.dataset.switch); });
   on(dd, "click", "#um-theme", () => { closeDropdowns(); toggleTheme(); });
   on(dd, "click", "#um-password", () => { closeDropdowns(); passwordModal(false); });
+  if (S.app.mode === "prod") {                       // more than one role (Task 13): choose the one to act in
+    api.get("/api/me/roles").then((r) => {
+      if (r.roles.length < 2) return;
+      const box = document.createElement("div");
+      mount(box, html`<div class="menu-sep"></div><div class="menu-label">${t("Rolu dəyiş")}</div>${[...new Set(r.roles.map((x) => x.role))].map((k) =>
+        html`<button class="menu-item" data-role-to="${k}">${ROLE_LABEL[k] || k}${k === r.active ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}`);
+      dd.querySelector("#logout")?.before(...box.childNodes);
+    }).catch(() => {});
+    on(dd, "click", "[data-role-to]", async (e, b) => {
+      closeDropdowns();
+      try { const r = await api.post("/api/me/role", { role: b.dataset.roleTo }); S.user.role = r.role; document.getElementById("root").dataset.shell = ""; go(r.home); }
+      catch (err) { toast(err.message, "err"); }
+    });
+  }
   on(dd, "click", "#logout", async () => { closeDropdowns(); await api.post("/api/auth/logout"); S.user = null; go("/login"); });
 }
 
@@ -242,9 +261,9 @@ function helpMenu(host) {
 // ---------------------------------------------------------------- command palette (Ctrl+K)
 export function palette() {
   if (!S.user || document.querySelector(".palette-back")) return;
-  const pages = NAV[S.user.role].flatMap(([sec, items]) => items.map(([i, l, p]) => ({ group: t("Səhifələr"), title: l, sub: sec, link: p, icon: i })));
+  const pages = NAV[navRole(S.user.role)].flatMap(([sec, items]) => items.map(([i, l, p]) => ({ group: t("Səhifələr"), title: l, sub: sec, link: p, icon: i })));
   pages.push({ group: t("Səhifələr"), title: t("Profil və tənzimləmələr"), sub: "", link: "/profile", icon: "user" }, { group: t("Səhifələr"), title: t("Bildirişlər"), sub: "", link: "/notifications", icon: "bell" });
-  const quick = (QUICK[S.user.role] || []).map(([i, l, p]) => ({ group: t("Sürətli əməliyyatlar"), title: l, sub: "", link: p, icon: i }));
+  const quick = (QUICK[navRole(S.user.role)] || []).map(([i, l, p]) => ({ group: t("Sürətli əməliyyatlar"), title: l, sub: "", link: p, icon: i }));
   const back = document.createElement("div");
   back.className = "palette-back";
   back.innerHTML = `<div class="palette" role="dialog" aria-modal="true" aria-label="${esc(t("Axtarış"))}"><div class="palette-in">${icon("search", 18)}<input id="pq" placeholder="${esc(t("Nə axtarırsınız? Məsələn: arayış, Kirxhof, hakaton"))}" autocomplete="off" aria-label="${esc(t("Axtarış sorğusu"))}"><span class="kbd">Esc</span></div>

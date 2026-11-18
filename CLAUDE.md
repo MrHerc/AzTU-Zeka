@@ -22,7 +22,7 @@ ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-u
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 846 tests, about 2.5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 858 tests, about 2.5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -114,6 +114,10 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   the next number, e.g. `0071`); never edit an applied file: the server refuses to start on a changed checksum.
 - **Process memory is per worker.** State that must hold across `--workers` lives in the database: one-time keys (`doc_keys`),
   named rate limiters (`security.LIMITS` → `rate_hits`, own short transaction), search-index changes (`index_changes`).
+- **Every route is in `tests/security/matrix.json`** (who may call it, demo, slow, `perm`, `audit_read`). A new or changed
+  route fails `tests/security/test_authz_matrix.py` until you run `python tests/security/test_authz_matrix.py` and review
+  the diff. Roles and permissions: `backend/zeka/core/perms.py`; `@R(..., perm="roles.grant")` instead of `roles=`.
+  A person has a primary role (`users.role`) plus `role_grants` with a scope; a session acts in one (`sessions.role`).
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).

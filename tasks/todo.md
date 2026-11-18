@@ -282,16 +282,18 @@ Dekanlıq əhatəsi (dilim 2). Bu gün hər `office`, `leader` və `admin` istif
 Oxu auditi (dilim 2). Bu gün başqasının müraciətini və sənədini açmaq audit yazmır (`docs/CODEMAP.md` L7). Başqasının sənədini, əlavə faylını, qiymət siyahısını və ya risk profilini (Radar) qaytaran marşrut `@R(..., audit_read="<növ>")` ilə işarələnir; nüvə hər uğurlu cavabda audit hadisəsi yazır: oxuyan, məlumatın sahibi, obyekt, vaxt. Hadisə öz qısa tranzaksiyasında yazılır (Task 7). İstifadəçinin öz məlumatını oxuması yazılmır. Sonrakı tapşırıqların eyni növ marşrutları (Task 21-in qiymət siyahısı, Task 22-nin göndərişi) eyni işarəni daşıyır.
 
 **Acceptance criteria:**
-- [ ] Matrisdə olmayan yeni marşrut test dəstini yıxır
-- [ ] Legacy marşrutlarda mövcud beş rolun (`student`, `teacher`, `office`, `leader`, `admin`) matrisi Task 13-dən əvvəlki ilə eynidir
+- [x] Matrisdə olmayan yeni marşrut test dəstini yıxır
+- [x] Legacy marşrutlarda mövcud beş rolun (`student`, `teacher`, `office`, `leader`, `admin`) matrisi Task 13-dən əvvəlki ilə eynidir
 - [ ] `dept_head` yalnız öz kafedrasının məlumatını görür və dəyişir. `teacher`-in əhatəsi rəhbəri olduğu (`courses.teacher_id`) və ya tədris vahidi (`teaching_units`, Task 15) daşıdığı fənndir; jurnala yalnız öz vahidlərinin və ona keçirilmiş dərslərin (`lessons.teacher_id`) siyahısı üzrə yazır
-- [ ] Çox rollu istifadəçi aktiv rolu dəyişəndə sessiya id-si yenilənir və audit yazılır
+- [x] Çox rollu istifadəçi aktiv rolu dəyişəndə sessiya id-si yenilənir və audit yazılır
 - [ ] A fakültəsinin `office` istifadəçisi B fakültəsinin tələbəsinin müraciətinə (`GET /api/requests/{id}`), sənədinə (`/doc/{id}`) və əlavə faylına (`GET /api/files/{id}`) 404 alır, öz fakültəsində 200; `GET /api/requests` siyahısında B fakültəsinin sətri yoxdur; əhatəsiz `office` hesabının siyahısı boşdur
 - [ ] Başqasının sənədinin, əlavə faylının, qiymət siyahısının və Radar risk profilinin oxunması audit jurnalına oxuyan, sahib və obyekt id-si ilə yazılır; öz məlumatının oxunması yazılmır
-- [ ] `tests/security/matrix.json` hər marşrutun `audit_read` dəyərini saxlayır; marşrut cədvəli ilə fərq test dəstini yıxır
+- [x] `tests/security/matrix.json` hər marşrutun `audit_read` dəyərini saxlayır; marşrut cədvəli ilə fərq test dəstini yıxır
 
 **Verification:**
 - [ ] `python -m pytest tests/security/test_authz_matrix.py tests/security/test_staff_scope.py -q`
+
+Qeyd (2026-11-18): dilim 1 hazırdır (`core/perms.py`, `0130_role_grants.sql`, matris 128 marşrutla Task 13-dən əvvəl qeydə alınıb, yalnız 5 yeni marşrut əlavə olunub, `tests/security/test_roles.py`). Dilim 2 (dekanlıq əhatəsi, oxu auditi, `dept_head` əhatəsi) Task 15 dilim 1-dən sonra.
 
 **Dependencies:** Task 11; dilim 2 Task 15 (dilim 1: fakültə cədvəli) birləşdiriləndən sonra
 **Files likely touched:** `backend/zeka/core/perms.py`, `backend/zeka/core/web.py`, `backend/zeka/core/audit.py`, `backend/zeka/modules/identity/repo.py`, `backend/migrations/0130_role_grants.sql`, `backend/zeka/legacy/{common,r_services,r_core,r_radar}.py`, `tests/security/matrix.json`, `tests/security/test_authz_matrix.py`, `tests/security/test_staff_scope.py`

@@ -16,7 +16,9 @@ from ..core.web import HTTPError, Router
 R = Router()
 COOKIE = "zeka_sid"
 BASE_URL = {"value": "http://127.0.0.1:5070"}
-ROLE_HOME = {"student": "/student", "teacher": "/teacher", "office": "/office", "leader": "/leader", "admin": "/admin"}
+ROLE_HOME = {"student": "/student", "teacher": "/teacher", "office": "/office", "leader": "/leader", "admin": "/admin",
+             # new roles (Task 13) start from the closest existing home until their own pages arrive
+             "dept_head": "/teacher", "academic_office": "/office", "proctor": "/teacher"}
 STAFF = ("office", "admin", "leader")
 
 # Tests (ZEKA_TX_GUARD=1): a request may hold SQLite's single write lock for at most 200 ms (Task 7).
@@ -75,10 +77,14 @@ def _own_commit(req):
 
 def _session_user(req, sid: str):
     u = row(req.db, "SELECT u.*, s.id AS session_id, s.created_at AS session_created, s.last_seen AS session_seen, "
-                    "s.scope AS session_scope, s.mfa_at AS session_mfa FROM sessions s JOIN users u ON u.id=s.user_id "
-                    "WHERE s.id_hash=?", (identity.session_hash(sid),))
+                    "s.scope AS session_scope, s.mfa_at AS session_mfa, s.role AS session_role FROM sessions s "
+                    "JOIN users u ON u.id=s.user_id WHERE s.id_hash=?", (identity.session_hash(sid),))
     if not u:
         return None
+    u["primary_role"] = u["role"]
+    if u["session_role"] and u["session_role"] != u["role"] and \
+            row(req.db, "SELECT 1 FROM role_grants WHERE user_id=? AND role=? LIMIT 1", (u["id"], u["session_role"])):
+        u["role"] = u["session_role"]            # the role this session acts in (Task 13); a revoked grant falls back
     t, seen = now(), datetime.fromisoformat(u["session_seen"])
     idle, absolute = session_limits(req.db, u["role"])
     if (t - seen).total_seconds() > idle or (t - datetime.fromisoformat(u["session_created"])).total_seconds() > absolute:

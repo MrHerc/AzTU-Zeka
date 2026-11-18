@@ -129,3 +129,25 @@ def recovery_left(c, uid: int) -> int:
 def reset_totp(c, uid: int):
     c.execute("UPDATE users SET totp_secret=NULL, totp_last=NULL, totp_enabled_at=NULL WHERE id=?", (uid,))
     c.execute("DELETE FROM recovery_codes WHERE user_id=?", (uid,))
+
+
+# ---------------------------------------------------------------- roles (Task 13)
+def roles_of(c, u) -> list[dict]:
+    """The primary role first, then every granted role with its scope."""
+    primary = u.get("primary_role") or u["role"]
+    return [{"id": None, "role": primary, "scope_type": None, "scope_id": None, "primary": True}] + [
+        {**g, "primary": False} for g in rows(c, "SELECT id, role, scope_type, scope_id FROM role_grants WHERE user_id=? "
+                                                 "ORDER BY role, scope_type, scope_id", (u["id"],))]
+
+
+def set_session_role(c, session_id: int, role: str | None):
+    c.execute("UPDATE sessions SET role=? WHERE id=?", (role, session_id))
+
+
+def grant_role(c, uid: int, role: str, scope_type: str | None, scope_id: int | None, by: int) -> int:
+    return c.execute("INSERT INTO role_grants(user_id,role,scope_type,scope_id,granted_by,granted_at) VALUES(?,?,?,?,?,?)",
+                     (uid, role, scope_type, scope_id, by, iso(now()))).lastrowid
+
+
+def grant(c, uid: int, grant_id: int):
+    return row(c, "SELECT * FROM role_grants WHERE id=? AND user_id=?", (grant_id, uid))

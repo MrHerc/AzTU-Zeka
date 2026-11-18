@@ -17,7 +17,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import clock, config
+from . import clock, config, perms
 from .i18n import E, L, localize, norm_lang, tr
 from .security import CFG, RateLimiter, client_ip, cross_site, header_ok
 
@@ -232,11 +232,16 @@ class Router:
         regex = "^" + re.sub(r"\{(\w+)(:int)?\}", lambda m: f"(?P<{m.group(1)}>{'[0-9]+' if m.group(2) else '[^/]+'})", pattern) + "$"
         self.routes.append((method, re.compile(regex), fn, roles, auth))
 
-    def __call__(self, method, pattern, roles=None, auth=True, demo=False, slow=False):
+    def __call__(self, method, pattern, roles=None, auth=True, demo=False, slow=False, perm=None, audit_read=None):
+        if perm and roles:
+            raise ValueError(f"{method} {pattern}: give roles= or perm=, not both")
+
         def deco(fn):
             fn.demo_only = demo        # demo-only routes do not exist in prod mode (404, not 403)
             fn.slow = slow             # waits on an outside service: runs under SLOW, not GATE
-            self.add(method, pattern, fn, roles, auth)
+            fn.perm = perm             # Task 13: a permission from core/perms.py, checked as the roles that hold it
+            fn.audit_read = audit_read  # Task 13: reading another person's data of this kind is written to the audit log
+            self.add(method, pattern, fn, perms.roles_for(perm) if perm else roles, auth)
             return fn
         return deco
 

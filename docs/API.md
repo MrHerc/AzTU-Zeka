@@ -116,6 +116,11 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/auth/mfa/disable` | student | Turn the second factor off (staff cannot) |
 | `POST` | `/api/admin/users/{id}/mfa-reset` | admin | Lost device: clear the second factor and end the account's sessions, with a reason |
 | `GET` | `/api/me/sessions` | any | One's own sessions: created, last active, address, browser, current |
+| `GET` | `/api/me/roles` | any | The primary role and every granted role with its scope; the active one |
+| `POST` | `/api/me/role` | any | Act in another held role; the session gets a new id (audited) |
+| `GET` | `/api/admin/users/{id}/roles` | `roles.grant` | A user's roles |
+| `POST` | `/api/admin/users/{id}/roles` | `roles.grant` | Grant a role, optionally scoped to a faculty, department or course (audited) |
+| `DELETE` | `/api/admin/users/{id}/roles/{gid}` | `roles.grant` | Revoke a grant; sessions acting in it fall back at once (audited) |
 | `DELETE` | `/api/me/sessions/{id}` | any | End one of one's own sessions (`404` for another person's) |
 | `POST` | `/api/me/sessions/end-others` | any | End every session but the current one |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
@@ -803,7 +808,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-128 routes, in the order the router matches them, except that the Task 10–12 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+133 routes, in the order the router matches them, except that the Task 10–13 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -821,6 +826,11 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/auth/mfa/disable` | student |
 | POST | `/api/admin/users/{id}/mfa-reset` | admin |
 | GET | `/api/me/sessions` | any |
+| GET | `/api/me/roles` | any |
+| POST | `/api/me/role` | any |
+| GET | `/api/admin/users/{id}/roles` | admin |
+| POST | `/api/admin/users/{id}/roles` | admin |
+| DELETE | `/api/admin/users/{id}/roles/{gid}` | admin |
 | DELETE | `/api/me/sessions/{id}` | any |
 | POST | `/api/me/sessions/end-others` | any |
 | GET | `/healthz` | public |

@@ -15,6 +15,7 @@ import secrets
 import unicodedata
 
 from ...core.i18n import E
+from ...core.perms import STAFF_ROLES
 
 N, R, P = 2 ** 15, 8, 1        # 32 MiB and about 110 ms per hash on the reference machine
 DKLEN = 32
@@ -144,7 +145,7 @@ def session_expired(role: str, created_at, last_seen, now, overrides: dict | Non
 
 
 # ---------------------------------------------------------------- second factor (Task 12)
-MFA_ROLES = ("teacher", "office", "leader", "admin")    # every role that writes grades or manages: a second factor is required
+MFA_ROLES = STAFF_ROLES                                  # every role that writes grades or manages: a second factor is required
 STEP, DIGITS, DRIFT = 30, 6, 1                           # RFC 6238: 30-second steps, 6 digits, one step either side
 MFA_ATTEMPTS = 5                                         # wrong codes in one pending sign-in before it is cancelled
 RECOVERY_CODES = 10
