@@ -8,6 +8,8 @@ one; the comment above each assertion is the name the check had there. Two of th
 * "sec: late quiz answers are not graded" submits the correct answers (the original sent option 0 for every
   question), so a graded late attempt cannot pass unnoticed.
 """
+import hashlib
+import re
 import socket
 
 import pytest
@@ -153,10 +155,11 @@ def test_bad_ids_are_400(student):
 # ---------------------------------------------------------------- session lifetime
 def test_an_expired_session_is_no_longer_accepted(app_db):
     c = app_db.client()
-    token = c.post("/api/auth/demo", {"role": "student"}).json["token"]
+    cookie = c.post("/api/auth/demo", {"role": "student"}).headers["Set-Cookie"]
+    token = re.search(r"zeka_sid=([^;]+)", cookie).group(1)
     # sec: fresh session works
     assert c.get("/api/me").status == 200
-    set_time("sessions", "created_at", "sid", token)
+    set_time("sessions", "created_at", "id_hash", hashlib.sha256(token.encode()).hexdigest())   # only the hash is stored
     # sec: expired session rejected
     assert c.get("/api/me").status == 401
 

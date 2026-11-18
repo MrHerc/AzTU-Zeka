@@ -4,7 +4,7 @@
 # trusted_proxies is not set on purpose: Caddy then replaces any X-Forwarded-For a client sends with the client's own
 # address, and the app (ZEKA_PROXY_HOPS=1) takes the last entry. Another proxy in front of Caddy changes both together.
 #
-# No access log here: Caddy would write the X-Session header and the one-time ?k= keys. The app logs every request as
+# No access log here: Caddy would write request headers and the one-time ?k= keys. The app logs every request as
 # JSON on stdout, without the query string.
 {$SITE_ADDRESS} {
 	request_body {

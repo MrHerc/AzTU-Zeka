@@ -50,7 +50,6 @@ async function become(role, user) {
   if (same) return;
   const code = $("#access-code");       // login page, when the server asks for the demo access code (ZEKA_ACCESS_CODE)
   const r = await api.post("/api/auth/demo", { role, ...(user ? { user } : {}), code: code ? code.value : "" });
-  sessionStorage.setItem("zeka-sid", r.token);
   S.user = r.user;
   document.getElementById("root").dataset.shell = "";
 }

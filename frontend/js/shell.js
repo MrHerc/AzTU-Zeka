@@ -213,12 +213,11 @@ function userMenu(host) {
   on(dd, "click", "[data-switch]", (e, b) => { closeDropdowns(); if (b.dataset.switch !== S.user.role) switchRole(b.dataset.switch); });
   on(dd, "click", "#um-theme", () => { closeDropdowns(); toggleTheme(); });
   on(dd, "click", "#um-password", () => { closeDropdowns(); passwordModal(false); });
-  on(dd, "click", "#logout", async () => { closeDropdowns(); await api.post("/api/auth/logout"); sessionStorage.removeItem("zeka-sid"); S.user = null; go("/login"); });
+  on(dd, "click", "#logout", async () => { closeDropdowns(); await api.post("/api/auth/logout"); S.user = null; go("/login"); });
 }
 
 export async function switchRole(role) {
   const r = await api.post("/api/auth/demo", { role });
-  sessionStorage.setItem("zeka-sid", r.token);
   S.user = r.user;
   document.getElementById("root").dataset.shell = "";
   go(r.home);

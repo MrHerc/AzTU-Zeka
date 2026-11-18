@@ -78,6 +78,7 @@ def issue_temporary(c, admin, target) -> str:
     password = domain.temporary_password()
     repo.set_password(c, target["id"], domain.hash_password(password), must_change=True)
     repo.unlock(c, target)
+    repo.end_sessions(c, target["id"])                  # whoever was signed in with the old password is out
     audit(c, admin["id"], "temp_password", "user", target["username"])
     return password
 

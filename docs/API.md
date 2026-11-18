@@ -98,7 +98,7 @@ In the tables below, "any" means any signed-in user. "Staff" means `office`, `le
 
 ## Authentication and session
 
-Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MODE=demo`, the default); with `ZEKA_MODE=prod` the routes `POST /api/auth/demo`, `GET /demo/login`, `GET /api/demo/storyline` and `POST /api/admin/reset` answer `404`, and accounts sign in with a password (`POST /api/auth/login`, below). `GET /api/bootstrap` reports the mode as `app.mode`. When the server runs with `ZEKA_ACCESS_CODE`, a visitor must send that shared code to sign in; `GET /api/bootstrap` reports this as `app.access_required`. The session id is returned both as an `HttpOnly` cookie and in the response body. Clients send it back either as the cookie `zeka_sid` or as the header `X-Session`. A session expires `ZEKA_SESSION_HOURS` hours after it was created (default 12); after that the server answers `401`. Logout deletes the session.
+Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MODE=demo`, the default); with `ZEKA_MODE=prod` the routes `POST /api/auth/demo`, `GET /demo/login`, `GET /api/demo/storyline` and `POST /api/admin/reset` answer `404`, and accounts sign in with a password (`POST /api/auth/login`, below). `GET /api/bootstrap` reports the mode as `app.mode`. When the server runs with `ZEKA_ACCESS_CODE`, a visitor must send that shared code to sign in; `GET /api/bootstrap` reports this as `app.access_required`. The session id travels only in the `HttpOnly` cookie `zeka_sid` (never in a response body; the `X-Session` header is ignored since Task 11), and the database keeps only its SHA-256. A session ends after an idle time and an absolute age that depend on the role: staff 1 hour idle and 24 hours in all, students 8 hours idle and 30 days (the setting `session_limits` overrides them); after that the server answers `401`. Signing in, a password change and, later, the second factor give the session a new id. Logout deletes the session; `GET /api/me/sessions` lists one's own sessions, which can be ended one by one or all but the current one.
 
 | Method | Path | Access | Purpose |
 |---|---|---|---|
@@ -110,6 +110,9 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/auth/password` | any | Change one's own password; the only route open to a temporary password |
 | `POST` | `/api/admin/users/{id}/temp-password` | admin | Issue a one-time password; the account must change it |
 | `POST` | `/api/admin/users/{id}/unlock` | admin | Lift a lock or block, with a reason (audited) |
+| `GET` | `/api/me/sessions` | any | One's own sessions: created, last active, address, browser, current |
+| `DELETE` | `/api/me/sessions/{id}` | any | End one of one's own sessions (`404` for another person's) |
+| `POST` | `/api/me/sessions/end-others` | any | End every session but the current one |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
 
 ### `POST /api/auth/login`
@@ -786,7 +789,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-120 routes, in the order the router matches them, except that the Task 10 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+123 routes, in the order the router matches them, except that the Task 10–11 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -798,6 +801,9 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/auth/password` | any |
 | POST | `/api/admin/users/{id}/temp-password` | admin |
 | POST | `/api/admin/users/{id}/unlock` | admin |
+| GET | `/api/me/sessions` | any |
+| DELETE | `/api/me/sessions/{id}` | any |
+| POST | `/api/me/sessions/end-others` | any |
 | GET | `/healthz` | public |
 | POST | `/api/consent` | any |
 | GET | `/api/me` | any |

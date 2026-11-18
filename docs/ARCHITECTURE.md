@@ -123,7 +123,7 @@ sequenceDiagram
   participant S as SQLite
   participant L as i18n.localize
 
-  B->>W: GET /api/courses (Cookie or X-Session, X-Lang)
+  B->>W: GET /api/courses (Cookie, X-Lang)
   W->>W: parse path and query, build Request (lang from X-Lang or ?lang, default az; client address)
   W->>W: Transfer-Encoding (501), bad or conflicting Content-Length (400), body over 16 MB (413)
   alt static path (/, /static/*, /favicon.ico)
@@ -133,7 +133,7 @@ sequenceDiagram
     W->>W: Router.match → handler, params, roles, auth (404/405)
     W->>C: before(req, roles, auth)
     C->>S: open connection (WAL, foreign keys on)
-    C->>S: SELECT user by session id, session created within ZEKA_SESSION_HOURS
+    C->>S: SELECT user by the SHA-256 of the session id; idle and absolute limits of the role
     C->>C: one-time key for /doc, /syllabus, /api/files when no session
     C-->>W: 401 if auth required and no user, 403 if role not allowed
     W->>H: handler(req)
@@ -159,7 +159,7 @@ Static files are served from `frontend/` under `/static/` (plus `/` for `index.h
 
 **Demo login.** `POST /api/auth/demo {"role": ..., "code": ..., "user": ...}` looks up the demo username for that role in the `demo_logins` setting. When `ZEKA_ACCESS_CODE` is set, a visitor without a valid session must send that code, which is compared in constant time; a visitor who already has a valid session may switch roles without it. A wrong code answers 403 and writes a `login_denied` audit entry. With the role `student`, `user` selects a student by username instead of the demo student (the Radar demo storyline uses it). The login deletes the browser's previous session and every expired session, creates a row in `sessions` with a random id from `secrets.token_urlsafe(32)`, writes an audit entry and returns the user, the role home path and the session id. `GET /demo/login?role=...&code=...&user=...&next=...` does the same and redirects to `next`, or to the role home page when `next` is absent; a `next` that is not a same-site relative path (`security.safe_next()`) redirects to `/`. Both login routes exist only in demo mode, and no other route creates a session, so in prod mode nobody can sign in yet; `backend/manage.py create-admin` creates an administrator account, whose sign-in is not implemented yet.
 
-**Session transport.** The session id is set as the cookie `zeka_sid` (`HttpOnly; SameSite=Lax; Path=/; Max-Age=<ZEKA_SESSION_HOURS × 3600>`, plus `Secure` when the public URL starts with `https://`). The client also keeps the id in `sessionStorage` and sends it as the `X-Session` header, so the application works where cookies are blocked. A session has an absolute lifetime of `ZEKA_SESSION_HOURS` hours from its creation (default 12, accepted range 1 to 720); `before()` ignores older sessions, and their rows are deleted at the next login. Logout deletes the session row and expires the cookie.
+**Session transport.** The session id is set only as the cookie `zeka_sid` (`HttpOnly; SameSite=Lax; Path=/; Max-Age=<absolute limit of the role>`, plus `Secure` when the public URL starts with `https://`); it is never in a response body and the old `X-Session` header is ignored (Task 11). The `sessions` table keeps the SHA-256 of the id, the creation and last-use times, the client address and browser. `before()` ends a session that was idle longer than its role allows (staff 1 h, students 8 h) or is older than the absolute limit (staff 24 h, students 30 days); the setting `session_limits` overrides both. `last_seen` is written at most once a minute, in its own short transaction. Signing in and a password change give the session a new id (`rotate_session`). Logout deletes the session row and expires the cookie.
 
 **Roles.** `student`, `teacher`, `office` (dean's office and registrar), `leader` (rector's office) and `admin`. Each route declares `roles` and `auth`; `before()` returns 401 when a login is required and missing, and 403 when the role is not in the list. Apart from the two login routes, five routes are public: `/api/bootstrap`, `/api/achievements`, `/api/contact`, the verification page `/verify/{code}` and, in demo mode only, `/api/demo/storyline`.
 
@@ -416,7 +416,7 @@ The application is a set of ES modules in `frontend/js/`, loaded by `frontend/in
 
 | Module | Responsibility |
 |---|---|
-| `core.js` | Shared state `S`, the `html` tagged template (escapes interpolated values; `raw()` opts out), `mount`, event delegation, the `api` client (adds `X-Lang` and `X-Session`, redirects to login on 401), the hash router with `:param` and optional `:param?` segments, the page-tour registry, date and number formatting, status badges, toasts, modals and confirmation dialogs |
+| `core.js` | Shared state `S`, the `html` tagged template (escapes interpolated values; `raw()` opts out), `mount`, event delegation, the `api` client (adds `X-Lang`; the session is the cookie; redirects to login on 401), the hash router with `:param` and optional `:param?` segments, the page-tour registry, date and number formatting, status badges, toasts, modals and confirmation dialogs |
 | `shell.js` | Role definitions, navigation per role, header, badges, language switch, theme, sidebar state |
 | `main.js` | Boot, login page (with the access code field when `app.access_required` is true), consent dialog, route rendering with view transitions, profile and notification pages, error capture, an overflow audit mode (`?audit=1`) for automated layout checks |
 | `student.js`, `services.js`, `news.js`, `teacher.js`, `academy.js`, `staff.js`, `support.js`, `guide.js`, `achievements.js` | Pages per area |

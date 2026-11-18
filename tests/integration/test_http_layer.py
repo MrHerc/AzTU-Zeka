@@ -75,9 +75,9 @@ def test_invalid_content_length_is_400_and_closes_the_connection(app_db, value):
 
 
 def test_oversized_body_is_413_without_reading_it(app_db, monkeypatch):
-    token = app_db.client().post("/api/auth/demo", {"role": "student"}).json["token"]
+    token = re.search(r"zeka_sid=([^;]+)", app_db.client().post("/api/auth/demo", {"role": "student"}).headers["Set-Cookie"]).group(1)
     monkeypatch.setattr(web, "MAX_BODY", 1000)
-    payload = (f"POST /api/files HTTP/1.1\r\nHost: t\r\nX-Session: {token}\r\nContent-Type: application/json\r\n"
+    payload = (f"POST /api/files HTTP/1.1\r\nHost: t\r\nCookie: zeka_sid={token}\r\nContent-Type: application/json\r\n"
                "Content-Length: 5000000\r\n\r\n").encode()
     data = raw_exchange(app_db, payload)
     assert statuses(data) == [413] and b"Connection: close" in data

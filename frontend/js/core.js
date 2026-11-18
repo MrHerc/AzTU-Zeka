@@ -27,8 +27,6 @@ let lastFailStatus = null;
 async function req(method, url, body) {
   lastFailStatus = null;
   const opt = { method, headers: { "X-Lang": LANG }, credentials: "same-origin" };
-  const sid = sessionStorage.getItem("zeka-sid");
-  if (sid) opt.headers["X-Session"] = sid;
   if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
   let r;
   try { r = await fetch(url, opt); } catch { const e = new Error(t("Serverlə əlaqə yoxdur. İnternet bağlantısını yoxlayın.")); e.status = 0; lastFailStatus = 0; throw e; }

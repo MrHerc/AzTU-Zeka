@@ -25,6 +25,7 @@ import json
 import multiprocessing
 import os
 import random
+import re
 import socket
 import subprocess
 import sys
@@ -134,7 +135,11 @@ def sessions(port: int, data: Path) -> tuple[list[str], list[int]]:
         conn.request("POST", "/api/auth/demo", body=json.dumps({"role": "student", "user": u}),
                      headers={"Content-Type": "application/json", "Origin": f"http://127.0.0.1:{port}"})
         r = conn.getresponse()
-        tokens.append(json.loads(r.read())["token"])
+        r.read()
+        m = re.search(r"zeka_sid=[^;]+", r.getheader("Set-Cookie") or "")   # the session is only in the cookie
+        if not m:
+            raise SystemExit(f"demo login for {u} returned no session cookie (HTTP {r.status})")
+        tokens.append(m.group(0))
         conn.close()
     return tokens, news
 
@@ -150,7 +155,7 @@ def client(args) -> list[tuple[float, int]]:
     def user(n):
         rng = random.Random(seed * 1000 + n)
         conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
-        base = {"X-Session": tokens[n % len(tokens)], "X-Lang": "az", "Origin": f"http://127.0.0.1:{port}"}
+        base = {"Cookie": tokens[n % len(tokens)], "X-Lang": "az", "Origin": f"http://127.0.0.1:{port}"}
         mine = []
         while time.time() < stop_at:
             _, method, path = rng.choices(mix, weights=[w for w, _, _ in mix])[0]

@@ -96,7 +96,6 @@ async function loginPage(root) {
     try {
       const code = $("#access-code", root);
       const r = await api.post("/api/auth/demo", { role: b.dataset.role, code: code ? code.value : "" });
-      sessionStorage.setItem("zeka-sid", r.token);
       S.user = r.user;
       go(r.home);
     } catch (err) { b.classList.remove("loading"); toast(err.message, "err"); }
@@ -211,6 +210,7 @@ route("/profile", async (el) => {
           <div class="set-row"><div><b>${t("Sol panel")}</b><div class="small muted">${t("Yığılmış rejimdə yalnız ikonlar görünür. Qısayol: [")}</div></div>
             <div class="seg" role="group"><button class="${!collapsed ? "active" : ""}" data-sb="open">${t("Açıq")}</button><button class="${collapsed ? "active" : ""}" data-sb="collapsed">${t("Yığılmış")}</button></div></div>
         </div></div>
+        <div class="card"><div class="card-h"><h3>${ic("lock", 17)} ${t("Sessiyalarım")}</h3></div><div class="card-b stack" id="sessions-box"><span class="small muted">…</span></div></div>
         <div class="card"><div class="card-h"><h3>${ic("compass", 17)} ${t("Bələdçilər")}</h3><span class="badge b-blue">${done} / ${tours.length}</span></div><div class="card-b stack">
           <div class="small muted">${t("Səhifə bələdçilərinin neçəsini keçdiyinizi göstərir.")}</div>
           <div class="progress"><span style="width:${tours.length ? Math.round((100 * done) / tours.length) : 0}%"></span></div>
@@ -218,6 +218,28 @@ route("/profile", async (el) => {
             <button class="btn btn-sm" data-go="/guide">${ic("buoy", 15)} ${t("Bələdçi mərkəzi")}</button>
             <button class="btn btn-sm btn-ghost" id="reset-tours">${ic("refresh", 15)} ${t("Bələdçiləri sıfırla")}</button></div></div></div>
       </div></div>`);
+  const drawSessions = async () => {
+    const box = $("#sessions-box", el);
+    if (!box) return;
+    const list = await api.get("/api/me/sessions");
+    mount(box, html`${list.map((s) => html`<div class="set-row"><div><b>${agentLabel(s.agent)}</b>${s.current ? html` <span class="badge b-green">${t("Bu cihaz")}</span>` : ""}
+        <div class="small muted">${t("Son fəaliyyət")}: ${fmtDateTime(s.last_seen)} · ${t("Daxil olub")}: ${fmtDateTime(s.created_at)}${s.ip ? ` · ${s.ip}` : ""}</div></div>
+        <button class="btn btn-sm ${s.current ? "btn-ghost" : ""}" data-end-session="${s.id}">${s.current ? t("Çıxış") : t("Sonlandır")}</button></div>`)}
+      ${list.length > 1 ? html`<button class="btn btn-sm btn-danger" id="end-others" style="align-self:flex-start">${t("Digər bütün sessiyaları sonlandır")}</button>` : ""}
+      <p class="small muted" style="margin:0">${t("Tanımadığınız sessiya görsəniz, onu sonlandırın və parolunuzu dəyişin.")}</p>`);
+  };
+  on(el, "click", "[data-end-session]", async (e, b) => {
+    const r = await api.del(`/api/me/sessions/${b.dataset.endSession}`);
+    if (r.current) { S.user = null; go("/login"); return; }
+    toast(t("Sessiya sonlandırıldı"), "ok");
+    drawSessions();
+  });
+  on(el, "click", "#end-others", async () => {
+    const r = await api.post("/api/me/sessions/end-others");
+    toast(t("{n} sessiya sonlandırıldı", { n: r.ended }), "ok");
+    drawSessions();
+  });
+  drawSessions();
   on(el, "click", "#tour", () => { go(HOME[me.role]); setTimeout(() => startTour(true), 700); });
   on(el, "click", "[data-theme-set]", (e, b) => { if ((S.theme === "dark") !== (b.dataset.themeSet === "dark")) document.getElementById("theme")?.click(); $$("[data-theme-set]", el).forEach((x) => x.classList.toggle("active", x === b)); });
   on(el, "click", "[data-sb]", (e, b) => { setCollapsed(null, b.dataset.sb === "collapsed"); $$("[data-sb]", el).forEach((x) => x.classList.toggle("active", x === b)); });
@@ -231,6 +253,14 @@ route("/profile", async (el) => {
     body: html`<p style="margin:0">${t("Demo versiyada razılıq geri götürülmür. Pilot mərhələsində bu əməliyyat AI funksiyalarını söndürəcək və söhbət tarixçənizin silinməsi üçün sorğu yaradacaq.")}</p>`,
     actions: [{ label: t("Aydındır"), cls: "btn-primary" }] }));
 });
+
+function agentLabel(ua = "") {
+  const b = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome"
+    : /Safari\//.test(ua) ? "Safari" : t("Brauzer");
+  const o = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Mac OS X/.test(ua) ? "macOS"
+    : /Linux/.test(ua) ? "Linux" : "";
+  return o ? `${b} · ${o}` : b;
+}
 
 // ---------------------------------------------------------------- notifications
 route("/notifications", async (el, p, q) => {

@@ -22,10 +22,12 @@ def test_public_routes(anon, path):
     assert anon.get(path).status == 200
 
 
-def test_session_token_header_works_like_the_cookie(app_db):
-    token = app_db.client().post("/api/auth/demo", {"role": "teacher"}).json["token"]
-    r = app_db.client().get("/api/me", headers={"X-Session": token})
-    assert r.status == 200 and r.json["role"] == "teacher"
+def test_the_session_travels_only_in_the_cookie(app_db):
+    r = app_db.client().post("/api/auth/demo", {"role": "teacher"})
+    sid = re.search(r"zeka_sid=([^;]+)", r.headers["Set-Cookie"]).group(1)
+    assert "token" not in r.json and sid not in r.text            # never in a response body (Task 11)
+    assert app_db.client().get("/api/me", headers={"X-Session": sid}).status == 401
+    assert app_db.client().get("/api/me", headers={"Cookie": f"zeka_sid={sid}"}).json["role"] == "teacher"
 
 
 def test_logout_invalidates_the_session(app_db):

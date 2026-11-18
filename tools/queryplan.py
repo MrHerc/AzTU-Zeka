@@ -65,7 +65,7 @@ def main(argv=None) -> int:
             for _, method, path in loadtest.READ:
                 conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
                 try:
-                    status = loadtest.call(conn, method, path, None, {"X-Session": token, "Origin": f"http://127.0.0.1:{port}"})
+                    status = loadtest.call(conn, method, path, None, {"Cookie": token, "Origin": f"http://127.0.0.1:{port}"})
                 finally:
                     conn.close()
                 if status != 200:

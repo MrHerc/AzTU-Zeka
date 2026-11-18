@@ -1,0 +1,16 @@
+{
+ "Sessiyalarım": "Мои сеансы",
+ "Bu cihaz": "Это устройство",
+ "Son fəaliyyət": "Последняя активность",
+ "Sonlandır": "Завершить",
+ "Digər bütün sessiyaları sonlandır": "Завершить все остальные сеансы",
+ "Tanımadığınız sessiya görsəniz, onu sonlandırın və parolunuzu dəyişin.": "Если вы видите незнакомый сеанс, завершите его и смените пароль.",
+ "Sessiya sonlandırıldı": "Сеанс завершён",
+ "{n} sessiya sonlandırıldı": {
+  "one": "Завершён {n} сеанс",
+  "few": "Завершено {n} сеанса",
+  "many": "Завершено {n} сеансов"
+ },
+ "Brauzer": "Браузер",
+ "Daxil olub": "Вход"
+}

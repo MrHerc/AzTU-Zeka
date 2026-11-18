@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from ...legacy.store import iso, now, row
+from ...legacy.store import iso, now, row, rows
 from . import domain
 
 
@@ -67,3 +67,17 @@ def set_password(c, uid: int, password_hash: str, must_change: bool):
 def unlock(c, u):
     c.execute("UPDATE users SET failed_count=0, locked_until=NULL WHERE id=?", (u["id"],))
     c.execute("DELETE FROM login_blocks WHERE account IN (?, ?)", (u["username"], u["email"] or u["username"]))
+
+
+# ---------------------------------------------------------------- sessions (Task 11)
+def sessions_of(c, uid: int) -> list:
+    return rows(c, "SELECT id, created_at, last_seen, ip, agent FROM sessions WHERE user_id=? ORDER BY last_seen DESC", (uid,))
+
+
+def end_session(c, uid: int, session_id: int) -> bool:
+    return c.execute("DELETE FROM sessions WHERE id=? AND user_id=?", (session_id, uid)).rowcount == 1
+
+
+def end_sessions(c, uid: int, keep: int | None = None) -> int:
+    """End every session of the account except ``keep``; returns how many ended."""
+    return c.execute("DELETE FROM sessions WHERE user_id=? AND id IS NOT ?", (uid, keep)).rowcount

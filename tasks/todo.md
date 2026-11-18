@@ -226,12 +226,12 @@ Qeyd (2026-11-18): `content/password-blocklist.txt` qısa siyahıdır (≈100); 
 **Description:** Sessiya id-sinin SHA-256-sı saxlanır. `last_seen`, `scope`, `mfa_at` sütunları. Boş və mütləq müddət rola görə: işçi 1 saat və 24 saat, tələbə 8 saat və 30 gün (tenant ayarı). `X-Session` başlığı və JSON-dakı token silinir, yalnız kuki qalır. Giriş və hüquq dəyişikliyində id yenilənir. "Sessiyalarım" siyahısı və ləğv.
 
 **Acceptance criteria:**
-- [ ] Baza nüsxəsində istifadə edilə bilən sessiya tokeni yoxdur
-- [ ] Boş və mütləq müddət serverdə tətbiq olunur (saat irəli çəkilən test)
-- [ ] `X-Session` başlığı nəzərə alınmır; girişdən və MFA-dan sonra sessiya id-si dəyişir
+- [x] Baza nüsxəsində istifadə edilə bilən sessiya tokeni yoxdur
+- [x] Boş və mütləq müddət serverdə tətbiq olunur (saat irəli çəkilən test)
+- [x] `X-Session` başlığı nəzərə alınmır; girişdən və MFA-dan sonra sessiya id-si dəyişir
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_sessions.py -q`
+- [x] `python -m pytest tests/integration/test_sessions.py -q`
 
 **Dependencies:** Task 10
 **Files likely touched:** `backend/zeka/modules/identity/{service,repo}.py`, `backend/migrations/0110_sessions.sql`, `backend/zeka/legacy/common.py`, `frontend/js/core.js`, `frontend/js/main.js`

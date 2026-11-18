@@ -22,7 +22,7 @@ ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-u
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 808 tests, about 2.5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 816 tests, about 2.5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -47,7 +47,7 @@ i18n catalogue, pytest on Python 3.10–3.13 and Windows) and `security.yml` (gi
 Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backend/zeka/core/config.py`), `ZEKA_TZ`
 (default `Asia/Baku`; `backend/zeka/core/clock.py`), `ZEKA_DATA` (database and uploads, default `data/`), `ZEKA_WORKERS`,
 `ZEKA_HANDLERS`/`ZEKA_SLOW`/`ZEKA_QUEUE_WAIT` (the handler gate in `backend/zeka/core/web.py`) and, in
-`backend/zeka/core/security.py`, `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`, `ZEKA_SESSION_HOURS`,
+`backend/zeka/core/security.py`, `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`,
 `ZEKA_PROXY_HOPS`, `ZEKA_ACCESS_LOG`. `config.json` (git-ignored, copy from `config.example.json`) or the
 `AZTU_LLM_PROVIDER/BASE_URL/API_KEY/MODEL` env vars switch the AI from the offline engine to a real LLM.
 
@@ -55,7 +55,7 @@ Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backen
 
 **Request path.** `backend/run.py` → `backend/zeka/core/web.py` (hand-written HTTP server on `http.server`, regex `Router`, `Request`/`Response`,
 security headers) → `before()` in `backend/zeka/legacy/common.py` (opens a SQLite connection per request, resolves the session from the
-`zeka_sid` cookie or `X-Session` header, enforces `roles=`/`auth=` from the route decorator) → handler → `after()`
+`zeka_sid` cookie only (the database keeps its SHA-256; idle/absolute limits per role), enforces `roles=`/`auth=` from the route decorator) → handler → `after()`
 (commit on success, rollback on exception). Handlers return a `dict`/`list`; the dispatcher runs `i18n.localize()` over it
 and serialises JSON. Raise `HTTPError(status, "Azerbaijani message")` for errors. At most `ZEKA_HANDLERS` (2) handlers run at
 once per process (`slow=True` routes, which wait on the network, have their own 4 slots); a request that waits longer than
@@ -108,7 +108,8 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   seeds people or deletes the database, and signs in with passwords: `backend/zeka/modules/identity/` (scrypt, NIST
   policy, throttling per account and client in `login_blocks`, temporary passwords with `must_change`). A refused
   sign-in is *returned* as a 401/429 response, not raised, so the failure count commits. `manage.py create-admin` prints
-  a temporary password. Sessions are still plain ids with `X-Session` until Task 11.
+  a temporary password. Sessions (Task 11): cookie only, SHA-256 in `sessions.id_hash`, `rotate_session()` after a privilege
+  change, `_own_commit()` for bookkeeping writes in `before()` so a request stays a reader.
 - **Schema changes go through `backend/migrations/NNNN_name.sql`** (number = task × 10, a second file of the same task takes
   the next number, e.g. `0071`); never edit an applied file: the server refuses to start on a changed checksum.
 - **Process memory is per worker.** State that must hold across `--workers` lives in the database: one-time keys (`doc_keys`),

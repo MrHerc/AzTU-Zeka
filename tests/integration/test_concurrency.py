@@ -2,6 +2,7 @@
 import http.client
 import json
 import os
+import re
 import signal
 import socket
 import subprocess
@@ -110,12 +111,12 @@ def test_the_load_tool_runs(capsys):
 
 def test_a_slow_request_body_never_holds_a_handler_slot(app_db, monkeypatch):
     monkeypatch.setattr(web, "QUEUE_WAIT", 1.0)
-    token = app_db.client().post("/api/auth/demo", {"role": "student"}).json["token"]
+    token = re.search(r"zeka_sid=([^;]+)", app_db.client().post("/api/auth/demo", {"role": "student"}).headers["Set-Cookie"]).group(1)
     stalled = []
     for _ in range(web.HANDLERS + 1):           # more half-sent uploads than there are slots
         s = socket.create_connection(("127.0.0.1", app_db.port))
         s.sendall(b"PUT /api/me/prefs HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n"
-                  b"X-Session: " + token.encode() + b"\r\nContent-Length: 50\r\n\r\n{")
+                  b"Cookie: zeka_sid=" + token.encode() + b"\r\nContent-Length: 50\r\n\r\n{")
         stalled.append(s)
     try:
         time.sleep(0.3)

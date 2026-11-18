@@ -323,7 +323,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                     req.params = params
                     # a slow upload waits here on its own thread, never inside a handler slot; a request that cannot pass
                     # auth (no credential at all) is still answered without its body being read, then its connection closed
-                    if req.length and (not auth or self.headers.get("Cookie") or self.headers.get("X-Session")):
+                    if req.length and (not auth or self.headers.get("Cookie")):
                         req.raw = self.rfile.read(req.length)
                         req.body_read = True
                     sem = SLOW if getattr(fn, "slow", False) else GATE

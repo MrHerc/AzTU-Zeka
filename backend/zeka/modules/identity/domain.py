@@ -106,3 +106,38 @@ def temporary_password() -> str:
     """One-time password an administrator hands over: 4 groups of 5 letters and digits (no 0/o/1/l), 23 characters."""
     alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
     return "-".join("".join(secrets.choice(alphabet) for _ in range(5)) for _ in range(4))
+
+
+# ---------------------------------------------------------------- sessions (Task 11)
+STUDENT_ROLES = ("student",)
+SESSION_LIMITS = {                       # (idle, absolute) in seconds; a tenant setting overrides them (Task 17)
+    "staff": (60 * 60, 24 * 60 * 60),
+    "student": (8 * 60 * 60, 30 * 24 * 60 * 60),
+}
+SEEN_EVERY = 60                          # last_seen is written at most this often per session
+MAX_IDLE = 24 * 60 * 60                  # the longest idle time any setting allows: older sessions are deleted
+
+
+def session_hash(sid: str) -> str:
+    """What the database keeps instead of the session id."""
+    return hashlib.sha256(sid.encode("utf-8")).hexdigest()
+
+
+def new_session_id() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def session_limits(role: str, overrides: dict | None = None) -> tuple[int, int]:
+    kind = "student" if role in STUDENT_ROLES else "staff"
+    idle, absolute = SESSION_LIMITS[kind]
+    o = (overrides or {}).get(kind) or {}
+    if isinstance(o.get("idle_minutes"), int) and 5 <= o["idle_minutes"] <= 24 * 60:
+        idle = o["idle_minutes"] * 60
+    if isinstance(o.get("absolute_hours"), int) and 1 <= o["absolute_hours"] <= 90 * 24:
+        absolute = o["absolute_hours"] * 3600
+    return idle, absolute
+
+
+def session_expired(role: str, created_at, last_seen, now, overrides: dict | None = None) -> bool:
+    idle, absolute = session_limits(role, overrides)
+    return (now - last_seen).total_seconds() > idle or (now - created_at).total_seconds() > absolute

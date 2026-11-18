@@ -79,7 +79,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 ### Faza 2 — Kimlik və reyestr · saat 10–22
 
 - [x] T10 Hesablar və parol — `backend/zeka/modules/identity/`
-- [ ] T11 Sessiya sərtləşdirməsi
+- [x] T11 Sessiya sərtləşdirməsi — `0110_sessions.sql`, `tests/integration/test_sessions.py`
 - [ ] T12 İşçi rolları üçün TOTP
 - [ ] T13 Rol və icazə modeli
 - [ ] T14 SSO: ümumi OIDC müştərisi

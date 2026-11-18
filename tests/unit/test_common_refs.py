@@ -10,8 +10,9 @@ from zeka.legacy.store import iso, now
 
 def test_session_cookie(monkeypatch):
     monkeypatch.setitem(common.BASE_URL, "value", "http://127.0.0.1:5070")
-    name, value = common.session_cookie("abc")
-    assert name == "Set-Cookie" and value == "zeka_sid=abc; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200"
+    name, value = common.session_cookie("abc", max_age=86400)          # the absolute limit of the role
+    assert name == "Set-Cookie" and value == "zeka_sid=abc; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400"
+    assert common.session_cookie("abc")[1] == "zeka_sid=abc; HttpOnly; SameSite=Lax; Path=/"
     monkeypatch.setitem(common.BASE_URL, "value", "https://zeka.example.az")
     assert common.session_cookie(expire=True)[1] == "zeka_sid=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure"
 

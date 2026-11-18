@@ -57,9 +57,8 @@ async function rsvp(id) {
 }
 
 async function downloadIcs(id) {
-  const sid = sessionStorage.getItem("zeka-sid");
   let resp;
-  try { resp = await fetch(`/api/news/${id}/ics`, { headers: sid ? { "X-Session": sid } : {}, credentials: "same-origin" }); }
+  try { resp = await fetch(`/api/news/${id}/ics`, { credentials: "same-origin" }); }
   catch { return toast(t("Serverlə əlaqə yoxdur. İnternet bağlantısını yoxlayın."), "err"); }
   if (!resp.ok) return toast(t("Təqvim faylı yaradılmadı"), "err");
   const url = URL.createObjectURL(await resp.blob());

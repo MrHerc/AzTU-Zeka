@@ -129,7 +129,7 @@ route("/admin", async (el) => {
   });
   $("#reset", el).addEventListener("click", async () => {
     if (!(await confirmBox(t("Demo məlumatlarını sıfırlamaq?"), t("Bütün demo dəyişiklikləri silinəcək və ilkin vəziyyət bərpa olunacaq. Bu əməliyyat geri qaytarılmır."), t("Sıfırla"), true))) return;
-    try { await api.post("/api/admin/reset"); sessionStorage.removeItem("zeka-sid"); toast(t("Demo məlumatları sıfırlandı"), "ok"); setTimeout(() => location.reload(), 700); }
+    try { await api.post("/api/admin/reset"); toast(t("Demo məlumatları sıfırlandı"), "ok"); setTimeout(() => location.reload(), 700); }
     catch (err) { toast(err.message, "err"); }
   });
 });

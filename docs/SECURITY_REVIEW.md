@@ -210,7 +210,7 @@ the log rotates at 5 MB. Public hosts get a one-line access log on stdout (clien
 |---|---|---|
 | L-1 | **CSV formula injection** in the feedback export: user comments starting with `=`, `+`, `-` or `@` ran as formulas in Excel or LibreOffice (CWE-1236). | Fixed: such cells get a `'` prefix and all cells are quoted. |
 | L-2 | The LLM `base_url` scheme was not restricted, so `urlopen` would also follow `file://`. The admin "test LLM" error could echo request details. | Fixed: https only (http only for localhost). The API key is masked in the error. |
-| L-3 | The session token is also returned in JSON, kept in `sessionStorage` and accepted via `X-Session`, so script running in the page could read it, defeating `HttpOnly`. | Open: kept because the cookie-less fallback is used for embedded viewing. The strict CSP mitigates it. Recommended: drop the header fallback when SSO arrives. |
+| L-3 | The session token is also returned in JSON, kept in `sessionStorage` and accepted via `X-Session`, so script running in the page could read it, defeating `HttpOnly`. | Closed (Task 11, 2026-11-18): the id travels only in the `HttpOnly` cookie, `X-Session` is ignored, and the database keeps only its SHA-256. |
 | L-4 | One-time document links carry the key in the URL query. | Accepted: single use, 5-minute expiry, `Referrer-Policy: same-origin`, and the access log omits query strings. |
 | L-5 | `POST /api/admin/reset` lets any admin, meaning anyone with the access code, wipe the shared demo. | Open: product decision. Recommended: disable it on public deployments or require a second confirmation code. |
 | L-6 | The login page said the server runs only on 127.0.0.1 even when it was public. | Fixed: the text depends on the deployment mode. |

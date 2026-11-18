@@ -7,6 +7,7 @@ import base64
 import http.client
 import json
 import os
+import re
 import signal
 import socket
 import subprocess
@@ -28,12 +29,13 @@ class Conn:
     def call(self, method, path, body=None):
         headers = {"Origin": f"http://127.0.0.1:{self.port}"}
         if self.token:
-            headers["X-Session"] = self.token
+            headers["Cookie"] = f"zeka_sid={self.token}"
         if body is not None:
             headers["Content-Type"] = "application/json"
         self.http.request(method, path, body=None if body is None else json.dumps(body), headers=headers)
         r = self.http.getresponse()
         raw = r.read()
+        self.cookie = r.getheader("Set-Cookie") or ""
         return r.status, (json.loads(raw) if raw and r.getheader("Content-Type", "").startswith("application/json") else raw)
 
     def worker(self):
@@ -59,7 +61,7 @@ def login(port, role):
     try:
         status, body = c.call("POST", "/api/auth/demo", {"role": role})
         assert status == 200, body
-        return body["token"]
+        return re.search(r"zeka_sid=([^;]+)", c.cookie).group(1)
     finally:
         c.close()
 

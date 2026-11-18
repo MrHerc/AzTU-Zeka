@@ -6,7 +6,8 @@ from __future__ import annotations
 
 from ...core.i18n import S
 from ...core.web import HTTPError, json_resp
-from ...legacy.common import R, ROLE_HOME, pub_user, start_session
+from ...legacy.common import R, ROLE_HOME, pub_user, rotate_session, session_cookie, start_session
+from ...legacy.store import audit
 from . import domain, repo, service
 
 PASSWORD_INPUT_MAX = 1024          # longer input is refused before any hashing
@@ -47,7 +48,29 @@ def change_password(req):
         return json_resp({"error": S("Hazırkı parol yanlışdır", req.lang)}, 403)
     if status == "weak":
         raise HTTPError(400, value)
-    return {"ok": True, "user": pub_user(repo.user(req.db, req.user["id"]))}
+    repo.end_sessions(req.db, req.user["id"], keep=req.user["session_id"])    # other devices sign in again
+    return json_resp({"ok": True, "user": pub_user(repo.user(req.db, req.user["id"]))}, headers=rotate_session(req))
+
+
+@R("GET", "/api/me/sessions")
+def my_sessions(req):
+    return [{**s, "current": s["id"] == req.user.get("session_id")} for s in repo.sessions_of(req.db, req.user["id"])]
+
+
+@R("DELETE", "/api/me/sessions/{id:int}")
+def end_session(req):
+    if not repo.end_session(req.db, req.user["id"], req.params["id"]):       # only one's own sessions
+        raise HTTPError(404, "Sessiya tapılmadı")
+    audit(req.db, req.user["id"], "session_ended", "session", str(req.params["id"]))
+    current = req.params["id"] == req.user.get("session_id")
+    return json_resp({"ok": True, "current": current}, headers=[session_cookie(expire=True)] if current else [])
+
+
+@R("POST", "/api/me/sessions/end-others")
+def end_other_sessions(req):
+    n = repo.end_sessions(req.db, req.user["id"], keep=req.user.get("session_id"))
+    audit(req.db, req.user["id"], "sessions_ended", "session", str(n))
+    return {"ended": n}
 
 
 def _target(req):

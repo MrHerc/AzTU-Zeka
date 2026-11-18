@@ -1,0 +1,15 @@
+{
+ "Sessiyalarım": "My sessions",
+ "Bu cihaz": "This device",
+ "Son fəaliyyət": "Last active",
+ "Sonlandır": "End",
+ "Digər bütün sessiyaları sonlandır": "End all other sessions",
+ "Tanımadığınız sessiya görsəniz, onu sonlandırın və parolunuzu dəyişin.": "If you see a session you do not recognise, end it and change your password.",
+ "Sessiya sonlandırıldı": "Session ended",
+ "{n} sessiya sonlandırıldı": {
+  "one": "{n} session ended",
+  "other": "{n} sessions ended"
+ },
+ "Brauzer": "Browser",
+ "Daxil olub": "Signed in"
+}

@@ -8,8 +8,8 @@ import time
 from datetime import datetime, timedelta
 
 from . import engine, store
+from ..modules.identity import domain as identity
 from ..core.i18n import E
-from ..core.security import CFG
 from .store import J, iso, now, row, rows, setting
 from ..core.web import HTTPError, Router
 
@@ -25,33 +25,70 @@ TX_GUARD_EXEMPT = ("/api/admin/reset",)
 
 
 def _sid(req):
-    return req.cookies.get(COOKIE) or req.headers.get("X-Session")
+    """The session id, from the HttpOnly cookie only (Task 11: no header, never in a response body)."""
+    return req.cookies.get(COOKIE)
 
 
-def session_cutoff() -> str:
-    """Sessions created before this moment have expired (absolute lifetime, ZEKA_SESSION_HOURS)."""
-    return iso(now() - timedelta(hours=CFG.session_hours))
+def session_limits(c, role: str) -> tuple[int, int]:
+    """(idle, absolute) seconds for a role; the tenant setting ``session_limits`` overrides the defaults."""
+    return identity.session_limits(role, setting(c, "session_limits", {}) or {})
 
 
-def session_cookie(value: str = "", expire: bool = False) -> tuple:
+def session_cookie(value: str = "", expire: bool = False, max_age: int = 0) -> tuple:
     """Session cookie header; Secure when the portal is published over HTTPS (run.py --public-url https://...)."""
-    attrs = "; Max-Age=0" if expire else f"; Max-Age={CFG.session_hours * 3600}"
+    attrs = "; Max-Age=0" if expire else f"; Max-Age={max_age}" if max_age else ""
     if BASE_URL["value"].startswith("https://"):
         attrs += "; Secure"
     return ("Set-Cookie", f"{COOKIE}={value}; HttpOnly; SameSite=Lax; Path=/{attrs}")
 
 
-def start_session(req, u, how: str) -> tuple[str, list]:
-    """A new session for ``u`` (the browser's previous one ends); returns the session id and its cookie header."""
+def start_session(req, u, how: str, scope: str = "full") -> tuple[str, list]:
+    """A new session for ``u`` (the browser's previous one ends); returns the session id and its cookie header.
+    Only the id's SHA-256 is stored."""
     c = req.db
     old = _sid(req)
-    if old:                                   # no parallel sessions per browser
-        c.execute("DELETE FROM sessions WHERE sid=?", (old,))
-    c.execute("DELETE FROM sessions WHERE created_at<?", (session_cutoff(),))
-    sid = secrets.token_urlsafe(32)
-    c.execute("INSERT INTO sessions(sid,user_id,created_at) VALUES(?,?,?)", (sid, u["id"], iso(now())))
+    if old:                                   # no parallel sessions per browser; a sign-in always gets a fresh id
+        c.execute("DELETE FROM sessions WHERE id_hash=?", (identity.session_hash(old),))
+    t = now()
+    c.execute("DELETE FROM sessions WHERE last_seen<?", (iso(t - timedelta(seconds=identity.MAX_IDLE)),))
+    sid = identity.new_session_id()
+    c.execute("INSERT INTO sessions(id_hash,user_id,created_at,last_seen,scope,ip,agent) VALUES(?,?,?,?,?,?,?)",
+              (identity.session_hash(sid), u["id"], iso(t), iso(t), scope, req.ip, (req.headers.get("User-Agent") or "")[:200]))
     store.audit(c, u["id"], "login", "session", how)
-    return sid, [session_cookie(sid)]
+    return sid, [session_cookie(sid, max_age=session_limits(c, u["role"])[1])]
+
+
+def rotate_session(req) -> list:
+    """A new id for the current session after a privilege change (second factor, role, password): the old id stops
+    working at once. Returns the cookie header."""
+    sid = identity.new_session_id()
+    req.db.execute("UPDATE sessions SET id_hash=? WHERE id=?", (identity.session_hash(sid), req.user["session_id"]))
+    return [session_cookie(sid, max_age=session_limits(req.db, req.user["role"])[1])]
+
+
+def _own_commit(req):
+    """Commit a bookkeeping write at once (session use, a spent key): the request itself may stay a reader."""
+    req.db.commit()
+    if _TX_GUARD:
+        req.first_write = None
+
+
+def _session_user(req, sid: str):
+    u = row(req.db, "SELECT u.*, s.id AS session_id, s.created_at AS session_created, s.last_seen AS session_seen, "
+                    "s.scope AS session_scope, s.mfa_at AS session_mfa FROM sessions s JOIN users u ON u.id=s.user_id "
+                    "WHERE s.id_hash=?", (identity.session_hash(sid),))
+    if not u:
+        return None
+    t, seen = now(), datetime.fromisoformat(u["session_seen"])
+    idle, absolute = session_limits(req.db, u["role"])
+    if (t - seen).total_seconds() > idle or (t - datetime.fromisoformat(u["session_created"])).total_seconds() > absolute:
+        req.db.execute("DELETE FROM sessions WHERE id=?", (u["session_id"],))
+        _own_commit(req)
+        return None
+    if (t - seen).total_seconds() > identity.SEEN_EVERY:
+        req.db.execute("UPDATE sessions SET last_seen=? WHERE id=?", (iso(t), u["session_id"]))
+        _own_commit(req)
+    return u
 
 
 # A session of an account that must change its (temporary) password reaches only these paths.
@@ -71,8 +108,7 @@ def before(req, roles, auth):
     store.sync_indexes(req.db)
     sid = _sid(req)
     if sid:
-        req.user = row(req.db, "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.sid=? AND s.created_at>=?",
-                       (sid, session_cutoff()))
+        req.user = _session_user(req, sid)
     if req.user and req.user["status"] != "active":             # a disabled account's sessions end at once
         req.user = None
     if not req.user and req.path.startswith(("/doc/", "/api/files/", "/syllabus/")) and req.query.get("k"):
@@ -111,7 +147,7 @@ def _key_user(req):
     kind = "doc" if req.path.startswith("/doc/") else "syl" if req.path.startswith("/syllabus/") else "file"
     # DELETE ... RETURNING: of two processes holding the same key, only one gets the row back
     entry = req.db.execute("DELETE FROM doc_keys WHERE key=? RETURNING kind, obj_id, user_id, expires_at", (req.query.get("k"),)).fetchone()
-    req.db.commit()                                 # the key is spent even if this request fails later
+    _own_commit(req)                                # the key is spent even if this request fails later
     if not entry or entry["expires_at"] < iso(now()) or entry["kind"] != kind or str(entry["obj_id"]) != req.path.rstrip("/").rsplit("/", 1)[-1]:
         return None
     return row(req.db, "SELECT * FROM users WHERE id=?", (entry["user_id"],))

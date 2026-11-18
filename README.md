@@ -230,7 +230,6 @@ ZEKA_ACCESS_CODE="long-random-code" python backend/run.py --host 0.0.0.0 --publi
 |---|---|
 | `ZEKA_ACCESS_CODE` | Code a new visitor enters on the login page; required on any address other than this computer |
 | `ZEKA_ALLOW_OPEN_DEMO=1` | Start on a network address without a code (not recommended) |
-| `ZEKA_SESSION_HOURS` | Session lifetime in hours (default 12) |
 | `ZEKA_PROXY_HOPS` | Number of trusted reverse proxies in front of the app, for the client address in `X-Forwarded-For` (Render: 1) |
 | `ZEKA_ACCESS_LOG` | `1` or `0` turns the request log on stdout on or off (default: on for network addresses); one JSON object per request |
 
@@ -270,7 +269,7 @@ This is a demonstration build, not a production system.
 - All people, courses, grades, requests, tickets and feedback are synthetic and regenerated with a fixed random seed. The achievements and contact details are real and sourced from the university's official site.
 - Issued documents carry a DEMO watermark and have no legal validity.
 - Some values on the leadership dashboard are fixed illustrative numbers rather than computed from data: weekly active students and teachers, the test preparation time reduction, the satisfaction score and trend, the learning gain, the cost per student, and the earlier weeks of the request time, citation and academy series. Computed from data are the tutor question counts, the current citation rate, academy completion and request processing time, attendance, test averages, and the feedback scores and NPS on the feedback dashboard.
-- Sessions expire after 12 hours (`ZEKA_SESSION_HOURS`), and chat history older than the retention setting is deleted at start-up and when the settings are saved. The default tutor mode setting is stored but not enforced in this version.
+- Sessions end after 1 hour idle / 24 hours for staff and 8 hours idle / 30 days for students (setting `session_limits`); only a hash of the session id is stored, and chat history older than the retention setting is deleted at start-up and when the settings are saved. The default tutor mode setting is stored but not enforced in this version.
 - The server is a single process with SQLite and in-memory indexes; it is sized for a department pilot, not for a whole university.
 - Consent cannot be withdrawn in the demo; the profile page explains what the pilot behaviour will be.
 - The repository has no licence file. Contact Safarov Industries for terms of use.

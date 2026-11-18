@@ -7,7 +7,7 @@ import json
 import urllib.parse
 
 from . import engine, pdftext, store
-from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, start_session, _sid
+from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, start_session
 from ..core import clock, config
 from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
@@ -66,7 +66,7 @@ def healthz(req):
 def demo_login(req):
     b = req.json()
     u, sid, headers = _login(req, b.get("role"), b.get("code"), b.get("user"))
-    return json_resp({"user": pub_user(u), "home": ROLE_HOME[u["role"]], "token": sid}, headers=headers)
+    return json_resp({"user": pub_user(u), "home": ROLE_HOME[u["role"]]}, headers=headers)   # the id is only in the cookie
 
 
 @R("GET", "/demo/login", auth=False, demo=True)
@@ -77,7 +77,7 @@ def demo_login_get(req):
 
 @R("POST", "/api/auth/logout")
 def logout(req):
-    req.db.execute("DELETE FROM sessions WHERE sid=?", (_sid(req),))
+    req.db.execute("DELETE FROM sessions WHERE id=?", (req.user["session_id"],))
     return json_resp({"ok": True}, headers=[session_cookie(expire=True)])
 
 

@@ -331,8 +331,7 @@ export async function requestDetailPage(el, id) {
           const res = await api.post(`/api/requests/${id}/action`, { action: "issue" }); toast(t("Sənəd verildi: {reg}", { reg: res.document.reg_no }), "ok"); reload(); } }] });
       const fr = m.el.querySelector("#pv");
       try {
-        const sid = sessionStorage.getItem("zeka-sid");
-        const resp = await fetch(`/api/requests/${id}/preview`, { headers: sid ? { "X-Session": sid } : {}, credentials: "same-origin" });
+        const resp = await fetch(`/api/requests/${id}/preview`, { credentials: "same-origin" });
         if (!resp.ok) throw new Error(t("Önizləmə yüklənmədi"));
         fr.srcdoc = await resp.text();
         fr.addEventListener("load", () => { fr.hidden = false; m.el.querySelector(".viewer-load")?.remove(); }, { once: true });

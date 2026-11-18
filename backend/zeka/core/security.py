@@ -4,7 +4,6 @@ Configuration comes from environment variables and is finalised by run.py:
 
 * ``ZEKA_ACCESS_CODE``      – shared code required for the password-less demo login (mandatory on a public host).
 * ``ZEKA_ALLOW_OPEN_DEMO``  – "1" lets a public host run without an access code (not recommended).
-* ``ZEKA_SESSION_HOURS``    – absolute session lifetime in hours (default 12).
 * ``ZEKA_PROXY_HOPS``       – number of trusted reverse proxies in front of the app (X-Forwarded-For), default 0.
 * ``ZEKA_ACCESS_LOG``       – "1"/"0" forces the per-request access log on or off (default: on for public hosts).
 """
@@ -32,7 +31,6 @@ def _env_int(name: str, default: int, lo: int, hi: int) -> int:
 
 CFG = SimpleNamespace(
     access_code=os.environ.get("ZEKA_ACCESS_CODE", "").strip(),
-    session_hours=_env_int("ZEKA_SESSION_HOURS", 12, 1, 24 * 30),
     proxy_hops=_env_int("ZEKA_PROXY_HOPS", 0, 0, 5),
     https=False,             # set by run.py when the public URL is HTTPS (HSTS, Secure cookie)
     allowed_hosts=set(),     # extra host[:port] values accepted in the Origin header (the public URL)

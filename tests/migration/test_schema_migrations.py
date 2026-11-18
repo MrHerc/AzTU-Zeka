@@ -115,7 +115,13 @@ def _to_baseline(c):
     base.executescript((migrate.DIR / "0001_baseline.sql").read_text(encoding="utf-8"))
     keep = set(base.execute("SELECT type, name FROM sqlite_master"))
     columns = {t: {r[1] for r in base.execute(f'PRAGMA table_info("{t}")')} for kind, t in keep if kind == "table"}
+    create = dict(base.execute("SELECT name, sql FROM sqlite_master WHERE type='table'"))
     base.close()
+    for t, allowed in columns.items():                    # a table a later migration rebuilt: back to its old, empty form
+        now_cols = {r[1] for r in c.execute(f'PRAGMA table_info("{t}")')}
+        if not allowed <= now_cols:
+            c.execute(f'DROP TABLE "{t}"')
+            c.execute(create[t])
     have = c.execute("SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
     for kind in ("index", "table"):                       # later indexes first: one of them uses a later column
         for k, name in have:
