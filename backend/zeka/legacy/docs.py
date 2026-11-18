@@ -1,4 +1,4 @@
-"""Printable documents and the public verification page (server-rendered, AzTU branded)."""
+"""Printable documents and the public verification page (server-rendered, in the university's name: Task 17)."""
 from __future__ import annotations
 
 import html
@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 
 from .engine import translit
+from ..core import tenant
 from ..core.i18n import S
 from .qr import qr_svg
 
@@ -54,7 +55,7 @@ def _page(title: str, body: str) -> str:
 
 
 def _head(uni, unit_az, unit_en, en):
-    return f"""<header class="doc-head"><img class="crest" src="/static/img/brand/icon.png" alt="AzTU">
+    return f"""<header class="doc-head"><img class="crest" src="/static/img/brand/icon.png" alt="{e(uni['short'])}">
   <div><div class="org">{e((uni['name_en'] if en else uni['name']).upper())}</div>
   <div class="sub">{e(unit_en if en else unit_az)} · {e(uni['address'])} · {e(uni['site'])}</div></div></header>"""
 
@@ -126,8 +127,18 @@ def transcript_body(holder, data, ctx, rows_, en):
     avg = tot_w / tot_cr if tot_cr else 0
     out.append(f"<p class='noindent'><b>{'Total credits' if en else 'Cəmi kredit'}:</b> {tot_cr} · <b>{'Weighted average score' if en else 'Orta çəkili bal'}:</b> "
                f"{avg:.1f}{'' if en else ''}</p>")
-    out.append(f"<p class='muted noindent'>{'Grading scale: A 91–100, B 81–90, C 71–80, D 61–70, E 51–60, F below 51. Scores are synthetic (demo).' if en else 'Qiymət şkalası: A 91–100, B 81–90, C 71–80, D 61–70, E 51–60, F 51-dən aşağı. Ballar sintetikdir (demo).'}</p>")
+    out.append(f"<p class='muted noindent'>{e(scale_text(ctx.get('grading') or tenant.DEFAULTS['grading'], en))} {'Scores are synthetic (demo).' if en else 'Ballar sintetikdir (demo).'}</p>")
     return "".join(out)
+
+
+def scale_text(grading: dict, en: bool) -> str:
+    """The printed scale (each letter from its lower edge to the next one, F below the pass mark), from the setting."""
+    sc, parts = grading["scale"], []
+    for i, (mark, low) in enumerate(sc):
+        high = 100 if i == 0 else sc[i - 1][1] - 1
+        parts.append(f"{mark} {low:g}–{high:g}")
+    tail = f"F below {grading['pass_mark']:g}" if en else f"F: {grading['pass_mark']:g} baldan aşağı"
+    return ("Grading scale: " if en else "Qiymət şkalası: ") + ", ".join(parts) + f", {tail}."
 
 
 def leave_body(holder, data, ctx, doc):
@@ -153,7 +164,7 @@ def render_document(doc: dict, holder: dict, issuer: dict, ctx: dict, transcript
         full = f"{holder['full_name']} {holder.get('patronymic') or ''}".strip()
         body = f"""
 <div class="cert">
-  <img class="cert-logo" src="/static/img/brand/logo-dark.png" alt="AzTU">
+  <img class="cert-logo" src="/static/img/brand/logo-dark.png" alt="{e(uni['short'])}">
   <div class="cert-org">{e(uni['name'])} · {e(uni['platform'])} AI Akademiya</div>
   <h1>SERTİFİKAT</h1>
   <p class="cert-lead">Bu sertifikat təsdiq edir ki,</p>
@@ -180,7 +191,7 @@ def render_document(doc: dict, holder: dict, issuer: dict, ctx: dict, transcript
 <div class="paper">
   <div class="watermark">DEMO</div>
   {_head(uni, 'Tədris hissəsi', "Registrar's Office", en)}
-  <div class="doc-meta"><span>№ {e(doc['reg_no'])}</span><span>{'Baku' if en else 'Bakı'}, {dmy(doc['issued_at'])}</span></div>
+  <div class="doc-meta"><span>№ {e(doc['reg_no'])}</span><span>{e(uni.get('city_en' if en else 'city') or '')}, {dmy(doc['issued_at'])}</span></div>
   <h1>{e(title)}</h1>
   <div class="doc-body"><p>{content}</p></div>
   {f'<p class="copies">{"Copies" if en else "Nüsxə sayı"}: {e(copies)}</p>' if copies and copies != "1" else ''}
@@ -219,7 +230,7 @@ def render_verify(doc: dict | None, holder: dict | None, ctx: dict, lang: str = 
                 f'<div class="v-icon">✕</div><h1>{e(s("Sənəd ləğv edilib"))}</h1>'
                 f'<p>{e(s("{date} tarixində ləğv edilib. Səbəb: {reason}", date=dmy(doc["revoked_at"]), reason=doc["revoked_reason"] or "—"))}</p>')
         card = f'<div class="v-card {"good" if ok else "bad"}">{head}<table>{rows_html}</table></div>'
-    body = f"""<div class="verify"><div class="v-brand"><img src="/static/img/brand/icon.png" alt="AzTU" class="v-logo">
+    body = f"""<div class="verify"><div class="v-brand"><img src="/static/img/brand/icon.png" alt="{e(uni['short'])}" class="v-logo">
 <div><b>{e(uni['name'])}</b><br><span>{e(s("Sənədlərin onlayn doğrulanması"))}</span></div></div>
 {card}<p class="v-note">{e(s("Şəxsi məlumatların qorunması məqsədilə yalnız minimal məlumat göstərilir. DEMO versiya."))}</p></div>"""
-    return _page(s("Sənəd doğrulama · AzTU"), body)
+    return _page(s("Sənəd doğrulama · {x}", x=uni["short"]), body)

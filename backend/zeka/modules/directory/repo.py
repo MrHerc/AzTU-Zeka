@@ -129,3 +129,9 @@ def end_open_enrollments(c, student_id: int, day: str) -> int:
 
 def move_to_group(c, student_id: int, group_id: int):
     c.execute("UPDATE users SET group_id=? WHERE id=?", (group_id, student_id))
+
+
+def current_term(c, day: str):
+    """The active term whose teaching has started by ``day``, the latest such; None before the first."""
+    return row(c, "SELECT * FROM academic_terms WHERE active=1 AND teaching_start<=? ORDER BY teaching_start DESC, id DESC LIMIT 1",
+               (day,))

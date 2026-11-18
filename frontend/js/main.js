@@ -15,6 +15,7 @@ import "./achievements.js";
 import "./radar.js";
 import "./admin-directory.js";
 import "./admin-import.js";
+import "./admin-settings.js";
 import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;

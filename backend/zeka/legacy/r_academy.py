@@ -7,6 +7,7 @@ import re
 
 from . import engine, refs, store
 from .common import R, course_access, ctx, make_key
+from ..core import tenant
 from ..core.i18n import S_, T3
 from .store import J, audit, iso, notify, now, row, rows, setting
 from ..core.web import HTTPError, html_resp, to_int
@@ -14,8 +15,6 @@ from ..core.web import HTTPError, html_resp, to_int
 VOCAB = [S_("Sertifikat")]  # stored document titles look like "Sertifikat: <track>" and are translated part by part on display
 
 e = html.escape
-PREREQ = {"ELM-2105": "Fizika I, Ali riyaziyyat I", "KOMP-1102": "İnformatikanın əsasları", "RİY-1101": "—", "FİZ-1103": "Ali riyaziyyat I (paralel)",
-          "QRF-1104": "—", "İNG-1105": "Xarici dil II"}
 
 
 def _cert(c, uid, track):
@@ -161,6 +160,8 @@ def _lc(s):
 
 
 def build_syllabus(c, co, weeks=15):
+    rules = tenant.load(c)                    # Task 17: the university's scheme and attendance limit
+    grading = rules["grading"]
     teacher = row(c, "SELECT full_name, title FROM users WHERE id=?", (co["teacher_id"],))
     weekly = rows(c, "SELECT kind, COUNT(*) n FROM timetable WHERE course_id=? GROUP BY kind", (co["id"],))
     pairs = sum(w["n"] for w in weekly)
@@ -204,16 +205,17 @@ def build_syllabus(c, co, weeks=15):
     return {
         "course": {"name": co["name"], "code": co["code"], "credits": co["credits"], "teacher": teacher["full_name"] if teacher else "",
                    "teacher_title": teacher["title"] if teacher else "", "semester": setting(c, "university")["semester"],
-                   "prereq": PREREQ.get(co["code"], "—"), "language": "İngilis dili" if co["code"].startswith("İNG") else "Azərbaycan dili"},
+                   "prereq": co.get("prereq") or "—", "language": "İngilis dili" if co["code"].startswith("İNG") else "Azərbaycan dili"},
         "description": co["description"] + " Fənn nəzəri biliklərin mühəndislik məsələlərinin həllində tətbiqinə yönəlib.",
         "workload": {"total": total, "contact": contact, "independent": max(total - contact, 0), "weeks": weeks, "pairs": pairs},
         "outcomes": outcomes[:6],
         "plan": plan,
-        "assessment": [["Davamiyyət", 10], ["Sərbəst işlər (2 × 5)", 10], ["Laboratoriya / məşğələ", 10], ["Kollokviumlar (2 × 10)", 20], ["Semestr imtahanı", 50]],
+        "assessment": [[x["name"], x["max"]] for x in grading["components"]] + [[grading["exam"]["name"], grading["exam"]["max"]]],
         "materials": [m["title"] for m in mats] + ["[Əsas dərslik — müəllim tərəfindən əlavə edilməlidir]"],
         "tools": tl + ["Zəka AI tutor və Test studiyası"],
         "policies": [
-            "Davamiyyət: buraxılmış dərslər ümumi saatların 25%-ni keçərsə, tələbə imtahana buraxılmaya bilər. Üzrlü səbəblər Zəka platformasında sənədlə təsdiqlənir.",
+            f"Davamiyyət: buraxılmış dərslər ümumi saatların {rules['attendance']['limit_percent']:g}%-ni keçərsə, tələbə imtahana buraxılmaya bilər. "
+            "Üzrlü səbəblər Zəka platformasında sənədlə təsdiqlənir.",
             "Tapşırıqlar: gecikmiş tapşırıqlar üçün hər gecikmiş gün üçün balın 10%-i çıxılır (ən çox 3 gün).",
             "Akademik dürüstlük: köçürmə və plagiat qadağandır; aşkar edildikdə iş qiymətləndirilmir.",
             "Süni intellekt: AI tutordan izah və məşq üçün istifadə etmək olar; AI-ın yazdığı mətni və ya həlli öz işi kimi təqdim etmək qadağandır. AI istifadəsi tapşırıqda açıqlanmalıdır.",
@@ -328,7 +330,7 @@ def syllabus_page(req):
     ass = "".join(f"<tr><td>{e(a)}</td><td>{e(str(b))}</td></tr>" for a, b in d["assessment"])
     w = {k: e(str(d["workload"][k])) for k in ("total", "contact", "independent")}
     body = f"""<div class="toolbar no-print"{' hidden' if req.query.get('embed') == '1' else ''}><button id="print-btn">🖨 Çap et / PDF kimi saxla</button></div>
-<div class="paper syllabus"><header class="doc-head"><img class="crest" src="/static/img/brand/icon.png" alt="AzTU">
+<div class="paper syllabus"><header class="doc-head"><img class="crest" src="/static/img/brand/icon.png" alt="{e(uni['short'])}">
 <div><div class="org">{e(uni['name'].upper())}</div><div class="sub">Fənn proqramı (sillabus) · {e(str(d['course']['semester']))}</div></div></header>
 <h1>{e(str(d['course']['name']))}</h1>
 <table class="meta"><tr><th>Fənnin kodu</th><td>{e(str(d['course']['code']))}</td><th>Kredit (AKTS)</th><td>{e(str(d['course']['credits']))}</td></tr>

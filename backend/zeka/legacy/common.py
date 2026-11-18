@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from . import engine, store
 from ..modules.identity import domain as identity
+from ..core import tenant
 from ..core.i18n import E
 from .store import J, iso, now, row, rows, setting
 from ..core.web import HTTPError, Router
@@ -193,7 +194,7 @@ def _key_user(req):
 def ctx(c):
     uni = setting(c, "university")
     return {"university": uni, "faculty": setting(c, "faculty"), "specialty": setting(c, "specialty"),
-            "semester": uni["semester"], "base_url": BASE_URL["value"]}
+            "semester": uni["semester"], "base_url": BASE_URL["value"], "grading": tenant.load(c)["grading"]}
 
 
 def pub_user(u):

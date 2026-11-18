@@ -157,3 +157,8 @@ def record_status(c, user, student, values: dict) -> tuple[str, object]:
     audit(c, user["id"], "status_" + values["kind"], "user",
           f"{student['username']} · №{values['order_no']} · {values['order_date']} → {values['effective_date']}")
     return "ok", eid
+
+
+def current_term(c) -> dict | None:
+    """For other modules (attendance limits, Radar, the syllabus): the term in progress or the last one begun."""
+    return repo.current_term(c, today())

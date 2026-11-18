@@ -85,7 +85,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T14 SSO: ümumi OIDC müştərisi
 - [x] T15 Struktur və reyestr idarəsi
 - [x] T16 Kütləvi idxal
-- [ ] T17 Tenant ayarları
+- [x] T17 Tenant ayarları
 
 ### Checkpoint B · saat 22
 - [ ] Prod rejimində parolsuz yol yoxdur; rol × marşrut matrisi yaşıl

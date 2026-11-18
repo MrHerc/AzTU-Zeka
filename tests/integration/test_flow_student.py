@@ -70,7 +70,8 @@ def test_schedule(student):
 
 def test_attendance_and_absences(student):
     a = student.get("/api/attendance").json
-    assert len(a["courses"]) == 6 and a["semester_start"]
+    assert len(a["courses"]) == 6 and a["term"]["teaching_start"] <= a["term"]["teaching_end"]     # Task 17: a term
+    assert all(x["limit_percent"] == 25 and x["planned"] > 0 for x in a["courses"])
     absent = [r for r in a["records"] if r["status"] == "absent"]
     assert len(absent) == 6 and all(r["pending_request"] is None for r in absent)
     days = sorted({r["day"] for r in absent})

@@ -146,6 +146,8 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/admin/import` | admin | Bulk import of one file (below); `dry_run` is true unless it is sent as `false` |
 | `POST` | `/api/admin/activation-codes` | admin | One-time activation codes for a faculty's students without a password, as CSV, shown once |
 | `POST` | `/api/auth/activate` | public | `{"student_no", "code", "password"}`: a student chooses a password with the code and is signed in |
+| `GET` | `/api/admin/settings` | admin | The university settings by section (Task 17) |
+| `PUT` | `/api/admin/settings/{section}` | admin | `{"value": {...}}`: check and save one section (audited `settings_change`) |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
 
 ### Bulk import (Task 16)
@@ -163,6 +165,19 @@ since the import and the file says otherwise is a conflict: it is listed with it
 `prefer_source` overwrites it and writes `import_overwrite` to the audit log. The write is one `BEGIN IMMEDIATE`
 transaction and the report gives `lock_ms`. An import never changes an account whose role is not student or teacher,
 and never creates an account from Forma №3 (an unknown teacher, course or group is a conflict).
+
+### University settings (Task 17)
+
+Sections: `university` (profile: name, short name, city, address, site, current period), `grading` (components with
+their maximum points, one of them optionally the attendance component; the exam's maximum and minimum; the pass mark;
+the letter scale from the top down, ending at the pass mark; components and exam add up to 100), `attendance`
+(`limit_percent`, `excused_counts_toward_limit`, `points_rule` as `[missed % up to, points]` rows), `journal`
+(`cutover_date`), `calendar` (`lesson_times`, `holidays`), `registry` (`prefix` of new document numbers), `sessions`
+(idle minutes and absolute hours for staff and students), `sso` (Task 14; no secret), `activation` (`days`). The rules
+live in `backend/zeka/core/tenant.py`; `/api/grades` returns each course's `result` (`semester`, `exam`, `total`,
+`letter`, `passed`, `reason`: `exam_min` below the exam minimum, `pass_mark` below the pass mark) from the scheme, and
+`/api/attendance` the limit from the attendance rules and the weeks of the current term. Semester dates are
+`academic_terms` rows, not settings.
 
 Activation codes: 12 base32 characters (60 bits) shown as `XXXX-XXXX-XXXX`; only their SHA-256 is stored; a code works
 once, only with its student number, until `activation_days` (setting, default 14); a new batch for a faculty revokes the
@@ -895,7 +910,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-156 routes, in the order the router matches them, except that the Task 10–16 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+158 routes, in the order the router matches them, except that the Task 10–17 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -943,6 +958,8 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/admin/import` | admin |
 | POST | `/api/admin/activation-codes` | admin |
 | POST | `/api/auth/activate` | public |
+| GET | `/api/admin/settings` | admin |
+| PUT | `/api/admin/settings/{section}` | admin |
 | GET | `/healthz` | public |
 | POST | `/api/consent` | any |
 | GET | `/api/me` | any |

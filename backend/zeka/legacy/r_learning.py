@@ -11,7 +11,9 @@ from datetime import datetime, timedelta
 from . import engine, refs, store, tutor
 from .common import (R, check_limit, cite_list, course_access, history, kb_cite_list, msg_out, q_load,
                      save_msg, search_chunks, usage, week_index)
+from ..core import tenant
 from ..core.i18n import E, S, S_, T3
+from ..modules.directory import service as directory
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows, setting
 from ..core.web import HTTPError
@@ -37,7 +39,6 @@ def _masked_history(hist, enabled):
     return [{**m, "content": engine.mask_pii(m["content"])[0]} if m["role"] == "user" else m for m in hist]
 
 WEEKDAYS = ["", S_("Bazar ertəsi"), S_("Çərşənbə axşamı"), S_("Çərşənbə"), S_("Cümə axşamı"), S_("Cümə"), S_("Şənbə"), S_("Bazar")]
-SEM_WEEKS = 15
 
 
 # ---------------------------------------------------------------- courses
@@ -71,10 +72,13 @@ def att_summary(c, uid, course_id):
                "SUM(a.status='excused') excused FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE a.user_id=? AND l.course_id=?",
             (uid, course_id))
     weekly = row(c, "SELECT COUNT(*) n FROM timetable WHERE course_id=?", (course_id,))["n"]
-    planned = weekly * SEM_WEEKS
+    rules = tenant.load(c)["attendance"]                     # Task 17: the university's limit, not a constant
+    planned = weekly * tenant.teaching_weeks(directory.current_term(c))
     out = {k: r[k] or 0 for k in ("total", "present", "late", "absent", "excused")}
     out["planned"] = planned
-    out["limit"] = int(planned * 0.25)
+    out["limit_percent"] = rules["limit_percent"]
+    out["limit"] = int(planned * rules["limit_percent"] / 100)
+    out["counted"] = out["absent"] + (out["excused"] if rules["excused_counts_toward_limit"] else 0)
     out["rate"] = round(100 * (out["present"] + out["late"]) / out["total"]) if out["total"] else 100
     return out
 
@@ -192,7 +196,9 @@ def attendance(req):
             pending[int(lid)] = r["id"]
     for r in records:
         r["pending_request"] = pending.get(r["lesson_id"])
-    return {"courses": out, "records": records, "semester_start": setting(c, "semester_start")}
+    term = directory.current_term(c)
+    return {"courses": out, "records": records, "limit_percent": tenant.load(c)["attendance"]["limit_percent"],
+            "term": {k: term[k] for k in ("code", "name", "teaching_start", "teaching_end")} if term else None}
 
 
 @R("GET", "/api/me/absences", roles=("student",))
@@ -211,22 +217,28 @@ def my_absences(req):
 @R("GET", "/api/grades", roles=("student",))
 def grades(req):
     c, u = req.db, req.user
-    comps = [("Davamiyyət", 10), ("Sərbəst iş 1", 5), ("Sərbəst iş 2", 5), ("Laboratoriya / məşğələ", 10), ("Kollokvium 1", 10), ("Kollokvium 2", 10)]
+    settings = tenant.load(c)                                 # Task 17: the scheme is the university's setting
+    grading, rule = settings["grading"], settings["attendance"]["points_rule"]
     out = []
     for co in my_courses(c, u):
         got = {g["component"]: g for g in rows(c, "SELECT * FROM grades WHERE user_id=? AND course_id=?", (u["id"], co["id"]))}
         a = att_summary(c, u["id"], co["id"])
-        items = []
-        for name, mx in comps:
-            if name == "Davamiyyət":
-                score = round(mx * (a["present"] + a["late"] + a["excused"]) / a["total"], 1) if a["total"] else None
+        items, scores = [], {}
+        for comp in grading["components"]:
+            name, mx = comp["name"], comp["max"]
+            if comp.get("attendance"):
+                score = tenant.attendance_points(a["present"] + a["late"] + a["excused"], a["total"], mx, rule)
                 items.append({"name": name, "max": mx, "score": score, "note": "cari göstərici"})
             else:
                 g = got.get(name)
-                items.append({"name": name, "max": mx, "score": g["score"] if g else None, "note": "" if g else "hələ keçirilməyib"})
-        cur = sum(i["score"] or 0 for i in items)
+                score = g["score"] if g else None
+                items.append({"name": name, "max": mx, "score": score, "note": "" if g else "hələ keçirilməyib"})
+            scores[name] = score
+        exam = got.get(grading["exam"]["name"])
+        result = tenant.outcome(scores, exam["score"] if exam else None, grading)
         out.append({"id": co["id"], "name": co["name"], "code": co["code"], "color": co["color"], "credits": co["credits"],
-                    "items": items, "semester": round(cur, 1), "exam": None})
+                    "items": items, "semester": round(result["semester"], 1), "exam": result["exam"], "result": result,
+                    "exam_max": grading["exam"]["max"], "exam_min": grading["exam"]["min"]})
     past = store.transcript_rows(c, u["id"])
     flat = [r for s in past for r in s["courses"]]
     gpa = round(sum(r["score"] * r["credits"] for r in flat) / sum(r["credits"] for r in flat), 1) if flat else None
@@ -794,10 +806,11 @@ def quiz_results(req):
         raise HTTPError(404, "Test tapılmadı")
     course_access(req, qz["course_id"])
     ats = rows(c, "SELECT * FROM attempts WHERE quiz_id=? AND finished_at IS NOT NULL", (qz["id"],))
-    buckets, per_q = [0] * 6, {}
+    lows, labels = tenant.bands(tenant.load(c)["grading"]["scale"])
+    buckets, per_q = [0] * len(labels), {}
     for a in ats:
         p = 100 * a["score"] / a["max_score"] if a["max_score"] else 0
-        buckets[0 if p <= 50 else min(5, int((p - 51) // 10) + 1)] += 1
+        buckets[tenant.band(p, lows)] += 1
         for d in J(a["details"], []):
             s = per_q.setdefault(d["qid"], [0, 0])
             s[0] += 1
@@ -808,4 +821,4 @@ def quiz_results(req):
         n, k = per_q.get(qid, [0, 0])
         qs.append({"id": qid, "text": q["text"], "topic": q["topic"], "bloom": q["bloom"], "n": n, "correct_rate": round(100 * k / n) if n else None})
     return {"quiz": quiz_out(c, qz), "attempts": len(ats), "avg": round(sum(100 * a["score"] / a["max_score"] for a in ats) / len(ats)) if ats else None,
-            "buckets": buckets, "labels": ["0–50", "51–60", "61–70", "71–80", "81–90", "91–100"], "questions": qs}
+            "buckets": buckets, "labels": labels, "questions": qs}

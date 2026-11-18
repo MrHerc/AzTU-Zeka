@@ -87,6 +87,15 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/admin/settings": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/admin/status": {
   "access": [
    "admin"
@@ -1255,6 +1264,15 @@
   "slow": false
  },
  "PUT /api/admin/settings": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "PUT /api/admin/settings/{section}": {
   "access": [
    "admin"
   ],

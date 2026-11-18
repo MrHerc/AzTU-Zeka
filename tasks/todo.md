@@ -392,12 +392,19 @@ hər iki tərtibatı bu oxuyucu ilə yoxlanmayıb (fayllar repoda yoxdur): sahib
 **Description:** Universitet profili, loqo, qiymət sxemi (komponentlər, çəkilər, imtahan minimumu, keçid balı, hərf şkalası), davamiyyət həddi, `attendance.excused_counts_toward_limit` (üzrlü qayıb həddə sayılırmı; susmaya görə sayılır, SPEC Assumptions 11), `attendance.points_rule` (buraxılmış saat faizi → davamiyyət balı cədvəli), `journal.cutover_date` (kəsid tarixi: cari semestrdə jurnalın Zəka-da başladığı gün; boşdursa və ya cari tədris dövründən kənardırsa kəsid yoxdur; SPEC Open Questions 9), dərs saatları, reyestr prefiksi, bayram günləri ayarlara keçir. Semestr tarixləri ayar deyil: `academic_terms`-dədir (Task 15). `semester_start` ayarından istifadə edən kod (`r_learning.py:188`, `radar.py:82`, `store.py:397-398`) cari `academic_terms` sətrinə keçir. `SEM_WEEKS` (`r_learning.py:40`) ayara çevrilmir, silinir. Admin ekranı. Kodda sabit yazılmış AzTU dəyərləri çıxarılır: `r_academy.py` (`PREREQ` fənnin sahəsinə keçir, Task 23-də sillabusun prerekvizit sahəsi olur), `docs.py`, `r_learning.py`, `store.py`, `student.js`.
 
 **Acceptance criteria:**
-- [ ] Sxemi 30/10/10/50 və imtahan minimumu 17-yə dəyişmək kodu dəyişmədən hesablanan nəticəni dəyişir
-- [ ] Sadalanan fayllarda köhnə sabitlər qalmır
-- [ ] İkinci, uydurma universitet konfiqurasiyası ilə inteqrasiya testləri keçir
+- [x] Sxemi 30/10/10/50 və imtahan minimumu 17-yə dəyişmək kodu dəyişmədən hesablanan nəticəni dəyişir
+- [x] Sadalanan fayllarda köhnə sabitlər qalmır
+- [x] İkinci, uydurma universitet konfiqurasiyası ilə inteqrasiya testləri keçir
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_tenant_settings.py -q`
+- [x] `python -m pytest tests/integration/test_tenant_settings.py -q` (10 test)
+
+Qeyd (2026-11-18): `core/tenant.py` (susmaya görə neytral; AzTU dəyərləri `content/seed.json` → `tenant`), `modules/tenant`
+(admin marşrutları), `frontend/js/admin-settings.js`, `0170_course_prereq.sql`. `semester_start` ayarı yoxdur: demo cari
+semestri `academic_terms` sətri kimi yaradır, kod `directory.service.current_term()` oxuyur; `SEM_WEEKS` silindi (həftələr
+semestrin tədris dövründən). Radarın qayıb siqnalı da universitetin həddinə bağlandı. Sillabusun qiymətləndirmə cədvəli və
+davamiyyət qaydası sxemdən gəlir. Edilməyib: loqonun yüklənməsi (hələ `/static/img/brand`), `journal.cutover_date`,
+`lesson_times` və `holidays` yalnız saxlanır və yoxlanır, onları Task 19–20 oxuyacaq.
 
 **Dependencies:** Task 15 (dilim 1: struktur və semestr)
 **Files likely touched:** `backend/zeka/core/tenant.py`, `backend/zeka/legacy/{r_academy,docs,r_learning,store,radar}.py`, `backend/migrations/0170_course_prereq.sql` (`courses.prereq`), `frontend/js/admin-settings.js`, `frontend/js/student.js`

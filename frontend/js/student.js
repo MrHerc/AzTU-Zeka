@@ -157,7 +157,7 @@ route("/student/course/:id", async (el, p) => {
         <div class="card" data-tour="attendance-card"><div class="card-h"><h3>${ic("calcheck", 17)} ${t("Davamiyyət")}</h3><a class="small" href="#/student/attendance">${t("Ətraflı")} ${ic("arrow", 13)}</a></div><div class="card-b">
           <div class="row">${ring(a.rate, 74, a.rate < 80 ? "var(--red)" : "var(--green)")}<div class="grow small"><div>${t("Keçirilib")}: <b>${num(a.total)}</b> ${t("dərs")}</div>
             <div>${t("Qayıb")}: <b style="color:var(--red)">${num(a.absent)}</b> · ${t("Üzrlü")}: <b>${num(a.excused)}</b> · ${t("Gecikmə")}: <b>${num(a.late)}</b></div>
-            <div class="muted">${t("İcazə verilən həd: {n} dərs (25%)", { n: a.limit })}</div></div></div></div></div>
+            <div class="muted">${t("İcazə verilən hədd: {n} dərs ({p}%)", { n: a.limit, p: a.limit_percent })}</div></div></div></div></div>
         <div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Dərs cədvəli")}</h3></div><div class="card-b list">${c.schedule.length ? c.schedule.map((x) => html`<div class="list-item">
           <div class="grow"><b class="small">${x.weekday_name}</b> <span class="small muted">${x.start}–${x.end}</span><div class="tiny muted">${x.room}</div></div><span class="badge ${kindTone(x.kind)}">${x.kind}</span></div>`)
           : empty("calendar", t("Cədvəl məlumatı yoxdur"))}</div></div>
@@ -200,7 +200,7 @@ route("/student/campus", async (el) => {
       { info: t("Köməkçi ümumi qaydalar üzrə məlumat verir. Lazım gəldikdə müraciəti elə bu söhbətdən yarada bilərsiniz.") })}<div id="chat" data-tour="campus-chat"></div>`);
   await chatView($("#chat", el), {
     kind: "campus", suggestions: [t("Xəstə olmuşam, qayıbı necə üzrlü edim?"), t("Arayışı necə ala bilərəm?"), t("Qiymətləndirmə sistemi necədir?"), t("Yataqxanaya necə müraciət edim?"), t("İmtahanı başqa vaxta keçirmək olar?")],
-    title: t("AzTU kampus köməkçisi"), text: t("Arayış, qayıb, akademik məzuniyyət, qiymətləndirmə, təqaüd və digər mövzularda soruşa bilərsiniz. Lazım olduqda müraciəti elə buradan yaradacağıq."),
+    title: t("{x} kampus köməkçisi", { x: S.app.university.short }), text: t("Arayış, qayıb, akademik məzuniyyət, qiymətləndirmə, təqaüd və digər mövzularda soruşa bilərsiniz. Lazım olduqda müraciəti elə buradan yaradacağıq."),
   });
 });
 
@@ -277,8 +277,9 @@ route("/student/attempt/:id", async (el, p) => {
   mount(el, loading());
   let r;
   try { r = await api.get(`/api/attempts/${p.id}`); } catch (e) { return mount(el, failed(e.message)); }
-  const color = r.percent >= 81 ? "#0e9f6e" : r.percent >= 51 ? "#2b5aa8" : "#d64045";
-  const verdict = r.percent >= 81 ? t("Əla nəticə.") : r.percent >= 51 ? t("Yaxşıdır — səhv etdiyiniz mövzuları tutorla təkrarlayın.") : t("Narahat olmayın — izahlara baxın və tutorla məşq edin.");
+  const pass = S.app.grading.pass_mark, good = (S.app.grading.scale[1] || S.app.grading.scale[0])[1];   // the university's scale (Task 17)
+  const color = r.percent >= good ? "#0e9f6e" : r.percent >= pass ? "#2b5aa8" : "#d64045";
+  const verdict = r.percent >= good ? t("Əla nəticə.") : r.percent >= pass ? t("Yaxşıdır — səhv etdiyiniz mövzuları tutorla təkrarlayın.") : t("Narahat olmayın — izahlara baxın və tutorla məşq edin.");
   mount(el, html`${pageHead(r.quiz.title, t("{course} · {dt}", { course: r.quiz.course, dt: fmtDateTime(r.finished_at) }), html`<button class="btn" data-go="/student/quizzes">${ic("back", 15)} ${t("Testlər")}</button>`,
       crumbsS([t("Testlər"), "/student/quizzes"], [t("Nəticə")]))}
     <div class="grid g-21">
@@ -326,7 +327,7 @@ route("/student/attendance", async (el) => {
   const days = [...new Set(abs.map((r) => r.day))].sort();
   mount(el, html`${pageHead(t("Davamiyyət"), t("Cari semestr üzrə iştirakınız. Üzrlü səbəb varsa, təsdiqedici sənədi yükləyin."),
       abs.length ? html`<button class="btn btn-accent" id="excuse-all">${ic("heart", 16)} ${t("Qayıbları üzrlü et ({n})", { n: abs.length })}</button>` : "", crumbsS([t("Davamiyyət")]),
-      { info: t("Tibbi sənədləri yalnız dekanlıq görür; müəllim yalnız qayıbın “üzrlü” olduğunu görür. Buraxılmış dərslər ümumi saatların 25%-ni keçərsə, imtahana buraxılmaya bilərsiniz.") })}
+      { info: t("Tibbi sənədləri yalnız dekanlıq görür; müəllim yalnız qayıbın “üzrlü” olduğunu görür. Buraxılmış dərslər ümumi saatların {p}%-ni keçərsə, imtahana buraxılmaya bilərsiniz.", { p: a.limit_percent }) })}
     <div class="grid g-3" data-tour="att-courses">${a.courses.map((c) => html`<div class="card pad slide-up"><div class="row"><span class="course-ic sm2" style="background:${c.color}">${c.code.split("-")[0]}</span>
       <b class="small grow">${c.name}</b><b style="color:${c.rate < 80 ? "var(--red)" : "var(--green)"}">${num(c.rate)}%</b></div>
       <div class="row wrap mt small"><span class="badge b-green">${t("{n} iştirak", { n: c.present })}</span><span class="badge b-red">${t("{n} qayıb", { n: c.absent })}</span><span class="badge b-blue">${t("{n} üzrlü", { n: c.excused })}</span><span class="badge b-amber">${t("{n} gecikmə", { n: c.late })}</span></div>

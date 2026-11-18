@@ -12,7 +12,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from . import engine
-from ..core import clock, config, migrate, security
+from ..core import clock, config, migrate, security, tenant
 from ..core.i18n import T3, tr3
 
 ROOT = Path(__file__).resolve().parents[3]  # backend/zeka/legacy/ -> repo
@@ -262,8 +262,9 @@ _CODE_ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 def issue_document(c, kind, holder_id, title, data, issued_by, prefix, request_id=None, issued_at=None) -> dict:
     when = issued_at or now()
     year = when.year
-    seq = (row(c, "SELECT COUNT(*) AS n FROM documents WHERE reg_no LIKE ?", (f"AzTU-{prefix}-{year}-%",))["n"]) + 1
-    reg_no = f"AzTU-{prefix}-{year}-{seq:06d}"
+    register = tenant.load(c)["registry"]["prefix"]
+    seq = (row(c, "SELECT COUNT(*) AS n FROM documents WHERE reg_no LIKE ?", (f"{register}-{prefix}-{year}-%",))["n"]) + 1
+    reg_no = f"{register}-{prefix}-{year}-{seq:06d}"
     while True:
         code = "".join(secrets.choice(_CODE_ALPHA) for _ in range(8))
         code = f"{code[:4]}-{code[4:]}"
@@ -281,19 +282,16 @@ def issue_document(c, kind, holder_id, title, data, issued_by, prefix, request_i
 def transcript_rows(c, user_id: int) -> list[dict]:
     """Deterministic synthetic grades of previous semesters for a student."""
     sems = setting(c, "past_semesters", [])
+    scale = tenant.load(c)["grading"]["scale"]
     rng = random.Random(user_id * 7919)
     out = []
     for s in sems:
         items = []
         for az, en, cr in s["courses"]:
             score = rng.randint(64, 98) if user_id != 1 else rng.randint(78, 98)
-            items.append({"name": az, "name_en": en, "credits": cr, "score": score, "letter": letter(score)})
+            items.append({"name": az, "name_en": en, "credits": cr, "score": score, "letter": tenant.letter(score, scale)})
         out.append({"name": s["name"], "name_en": s["name_en"], "courses": items})
     return out
-
-
-def letter(score: float) -> str:
-    return "A" if score >= 91 else "B" if score >= 81 else "C" if score >= 71 else "D" if score >= 61 else "E" if score >= 51 else "F"
 
 
 # ---------------------------------------------------------------- seeding
@@ -344,7 +342,8 @@ def _parse_kb(md: str):
     return entries
 
 
-def semester_start(today: date) -> date:
+def demo_term_start(today: date) -> date:
+    """The first teaching day of the demo's current term: mid-September or mid-February, at least three weeks back."""
     cands = [date(today.year, 9, 15), date(today.year, 2, 15), date(today.year - 1, 9, 15)]
     start = max(d for d in cands if d <= today)
     if (today - start).days < 14:
@@ -363,7 +362,8 @@ def seed_catalog(c, s: dict | None = None):
     for k in ("university", "faculty", "specialty"):
         set_setting(c, k, s[k])
     set_setting(c, "limits", {"daily_messages": 50, "pii_masking": True, "retention_days": 180, "socratic_default": True})
-    set_setting(c, "semester_start", semester_start(now().date()).isoformat())
+    if s.get("tenant"):
+        set_setting(c, "tenant", s["tenant"])
     for heading, text, req, label, source in _parse_kb((CONTENT / "campus_kb.md").read_text(encoding="utf-8")):
         c.execute("INSERT INTO campus_kb(heading,text,request,action_label,source) VALUES(?,?,?,?,?)", (heading, text, req, label, source))
 
@@ -406,7 +406,7 @@ def seed(c):
     seed_catalog(c, s)
     for k in ("demo_logins", "past_semesters"):
         set_setting(c, k, s[k])
-    sem0 = semester_start(today)
+    sem0 = demo_term_start(today)
 
     # the structure (Task 15): one faculty and its specialty; the groups belong to them
     stamp = iso(t0)
@@ -416,6 +416,12 @@ def seed(c):
                      (fid, "KM-050616", s["specialty"]["name"], stamp, stamp)).lastrowid
     gids = {g["name"]: c.execute("INSERT INTO study_groups(name,year,faculty_id,specialty_id) VALUES(?,?,?,?)",
                                  (g["name"], g["year"], fid, spid)).lastrowid for g in s["groups"]}
+    # the current term (Task 17: semester dates are a term, not a setting): 15 teaching weeks, then the exam session
+    t_end = sem0 + timedelta(weeks=15) - timedelta(days=1)
+    term_id = c.execute("INSERT INTO academic_terms(code,name,teaching_start,teaching_end,exam_start,exam_end,active,created_at,updated_at) "
+                        "VALUES(?,?,?,?,?,?,1,?,?)", (f"{sem0.year}-{'P' if sem0.month >= 8 else 'Y'}", s["university"]["semester"],
+                                                     sem0.isoformat(), t_end.isoformat(), (t_end + timedelta(days=5)).isoformat(),
+                                                     (t_end + timedelta(days=30)).isoformat(), stamp, stamp)).lastrowid
     uid = {}
     for u in s["users"]:
         uid[u["username"]] = c.execute(
@@ -450,11 +456,11 @@ def seed(c):
     # ---- courses, materials, timetable, lessons
     course_ids, mats, chunk_by = {}, {}, {}
     for co in s["courses"]:
-        cid = c.execute("INSERT INTO courses(code,name,teacher_id,credits,color,description,suggestions,tutor_modes,tutor_rules)"
-                        " VALUES(?,?,?,?,?,?,?,?,?)",
+        cid = c.execute("INSERT INTO courses(code,name,teacher_id,credits,color,description,suggestions,tutor_modes,tutor_rules,"
+                        "prereq,term_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                         (co["code"], co["name"], uid[co["teacher"]], co["credits"], co["color"], co["description"],
                          json.dumps(co["suggestions"], ensure_ascii=False), json.dumps(["socratic", "explain", "practice"]),
-                         "Vahidləri həmişə SI sistemində göstər." if co["code"] == "ELM-2105" else "")).lastrowid
+                         "Vahidləri həmişə SI sistemində göstər." if co["code"] == "ELM-2105" else "", co.get("prereq"), term_id)).lastrowid
         course_ids[co["code"]] = cid
         c.executemany("INSERT INTO enrollments(user_id,course_id) VALUES(?,?)", [(st, cid) for st in students])
         mats[co["code"]] = []

@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 import pytest
 
+from zeka.core import tenant
 from zeka.legacy import engine, pdftext, store
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
@@ -47,12 +48,12 @@ def test_next_office_time(dt, expected):
     (date(2026, 4, 1), date(2026, 2, 15)),
 ])
 def test_semester_start(today, expected):
-    assert store.semester_start(today) == expected
+    assert store.demo_term_start(today) == expected
 
 
 @pytest.mark.parametrize("score, letter", [(100, "A"), (91, "A"), (90.9, "B"), (81, "B"), (71, "C"), (61, "D"), (51, "E"), (50.9, "F"), (0, "F")])
 def test_letter_grades(score, letter):
-    assert store.letter(score) == letter
+    assert tenant.letter(score, tenant.DEFAULTS["grading"]["scale"]) == letter      # Task 17: a setting
 
 
 def test_json_helper():
@@ -154,7 +155,7 @@ def test_transcript_rows_are_deterministic(db):
     assert a == b and len(a) == 2
     for sem in a:
         for r in sem["courses"]:
-            assert 64 <= r["score"] <= 98 and r["letter"] == store.letter(r["score"]) and r["credits"] > 0
+            assert 64 <= r["score"] <= 98 and r["letter"] == tenant.letter(r["score"], tenant.load(db)["grading"]["scale"]) and r["credits"] > 0
     assert all(r["score"] >= 78 for s in store.transcript_rows(db, 1) for r in s["courses"])   # the demo student
 
 

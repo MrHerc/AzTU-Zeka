@@ -26,7 +26,9 @@ from datetime import datetime, timedelta
 
 from . import engine
 from ..core.i18n import S_, T3, num3
-from .store import J, iso, now, row, rows, setting
+from ..core import tenant
+from ..modules.directory import service as directory
+from .store import J, iso, now, row, rows
 
 WEIGHTS = {"attendance": 30, "assessment": 30, "concept": 25, "engagement": 15}
 LEVELS = (("high", 50), ("watch", 30), ("ok", 0))
@@ -79,8 +81,9 @@ class Frame:
 
     def __init__(self, c, course_ids=None):
         self.now = now()
-        start = setting(c, "semester_start")
-        self.semester_start = datetime.fromisoformat(start) if start else self.now - timedelta(days=56)
+        term = directory.current_term(c)                    # Task 17: the term, not a setting
+        self.semester_start = datetime.fromisoformat(term["teaching_start"]) if term else self.now - timedelta(days=56)
+        self.absence_limit = tenant.load(c)["attendance"]["limit_percent"] / 100     # the university's limit (Task 17)
         self.courses = {co["id"]: co for co in rows(c, "SELECT * FROM courses ORDER BY id") if not course_ids or co["id"] in course_ids}
         self.students = {u["id"]: u for u in rows(c, "SELECT u.id, u.full_name, u.color, u.username, g.name grp FROM users u "
                                                       "LEFT JOIN study_groups g ON g.id=u.group_id WHERE u.role='student' ORDER BY u.id")}
@@ -150,7 +153,7 @@ def _attendance(frame: Frame, sid: int, cid: int, as_of: datetime) -> dict:
     recent = sum(1 for a in att if a[2] == "absent" and a[0] > since)
     rate = absent / total if total else 0.0
     conf = clamp(total / 8)
-    value = clamp(0.6 * clamp(rate / 0.25) + 0.4 * clamp(streak / 4)) * conf
+    value = clamp(0.6 * clamp(rate / frame.absence_limit) + 0.4 * clamp(streak / 4)) * conf
     ev = []
     if absent:
         ev.append(T3("{absent} üzrsüz qayıb / {total} dərs ({rate}%)", absent=absent, total=total, rate=pct(rate)))
