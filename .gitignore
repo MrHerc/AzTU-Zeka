@@ -24,3 +24,6 @@ pitch/
 *.zip
 # Şifrəli backup dəstləri (infra/backup.sh)
 backups/
+!.env.example
+# Sirr faylları: backup açarı və ssh açarı (infra/compose.yml)
+infra/secrets/

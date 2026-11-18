@@ -94,7 +94,7 @@ def main():
             f.write(f"[{clock.local():%Y-%m-%d %H:%M:%S}] {msg}\n")
 
     shown = f"  ·  ictimai ünvan: {public}" if public else ""
-    if exposed and not CFG.access_code:
+    if exposed and not CFG.access_code and not config.prod():      # prod has no demo login to protect
         shown += "  ·  DİQQƏT: giriş kodu yoxdur (ZEKA_ALLOW_OPEN_DEMO=1)"
     if args.workers > 1:
         shown += f"  ·  {args.workers} proses"

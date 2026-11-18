@@ -232,7 +232,9 @@ ZEKA_ACCESS_CODE="long-random-code" python backend/run.py --host 0.0.0.0 --publi
 | `ZEKA_ALLOW_OPEN_DEMO=1` | Start on a network address without a code (not recommended) |
 | `ZEKA_SESSION_HOURS` | Session lifetime in hours (default 12) |
 | `ZEKA_PROXY_HOPS` | Number of trusted reverse proxies in front of the app, for the client address in `X-Forwarded-For` (Render: 1) |
-| `ZEKA_ACCESS_LOG` | `1` or `0` turns the request log on stdout on or off (default: on for network addresses) |
+| `ZEKA_ACCESS_LOG` | `1` or `0` turns the request log on stdout on or off (default: on for network addresses); one JSON object per request |
+
+A real deployment (prod mode behind Caddy with TLS, backups to a second host) is described in [docs/runbooks/deploy.md](docs/runbooks/deploy.md) and [docs/runbooks/backup.md](docs/runbooks/backup.md).
 
 The server refuses cross-site requests, accepts request bodies only as `application/json`, and rate-limits logins, AI calls, uploads and document links. LLM keys belong in environment variables or `config.json`, never in the repository. The review behind these controls and its open items are in [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md); to report a vulnerability see [SECURITY.md](SECURITY.md).
 
@@ -243,7 +245,7 @@ Zəka Radar is an early-warning view for teachers, the dean's office and leaders
 A presenter panel walks through this in about three minutes. One command starts it with fresh demo data:
 
 ```bash
-docker compose -f infra/compose.yml up --build      # then open http://localhost:5070/?demo=1
+docker compose -f infra/compose.demo.yml up --build # then open http://localhost:5070/?demo=1
 ./demo.sh                      # macOS / Linux
 demo.bat                       # Windows
 ```
@@ -336,7 +338,7 @@ i18n/                  Translation sources (en/, ru/), extraction output, transl
 tools/i18n.py          Lint, extract, build and report translation coverage
 tests/                 pytest suite: unit/ and integration/, shared fixtures in conftest.py
 scripts/               Windows start and stop scripts
-infra/                 Dockerfile and compose.yml (one-command demo container)
+infra/                 Dockerfile, compose.yml (Caddy + app, prod), compose.demo.yml, Caddyfile, backup.sh, restore.sh
 demo.sh, demo.bat      One-command demo without Docker
 render.yaml            Render blueprint
 config.example.json    LLM configuration template

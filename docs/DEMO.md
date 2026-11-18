@@ -17,15 +17,15 @@ qara qutu bal göstərir. Zəka hər balı sübutla izah edir, qərarı insana s
 
 | Mühit | Əmr | Sonra açın |
 |---|---|---|
-| Docker | `docker compose -f infra/compose.yml up --build` | http://localhost:5070/?demo=1 |
+| Docker | `docker compose -f infra/compose.demo.yml up --build` | http://localhost:5070/?demo=1 |
 | macOS / Linux (Python 3.10+) | `./demo.sh` | brauzer özü açılır |
 | Windows (Python 3.10+) | `demo.bat` (iki dəfə klikləyin) | brauzer özü açılır |
 | İstənilən OS, əl ilə | `python backend/run.py --reset --port 5070` | http://127.0.0.1:5070/?demo=1 |
 
-- Başqa port: `PORT=8080 ./demo.sh` və ya `infra/compose.yml`-də `"127.0.0.1:8080:5070"`.
+- Başqa port: `PORT=8080 ./demo.sh` və ya `infra/compose.demo.yml`-də `"127.0.0.1:8080:5070"`.
 - Docker-də port yalnız bu kompüterdə (127.0.0.1) açılır və giriş kodu tələb olunmur. Şəbəkədən əlçatan serverdə
-  `ZEKA_ACCESS_CODE` təyin edin (`infra/compose.yml`-dəki qeydə baxın): kodsuz `backend/run.py --host 0.0.0.0` başlamır.
-- Dayandırmaq: `Ctrl+C` (Docker-də `docker compose -f infra/compose.yml down`).
+  `ZEKA_ACCESS_CODE` təyin edin (`infra/compose.demo.yml`-dəki qeydə baxın; real yerləşdirmə: `docs/runbooks/deploy.md`): kodsuz `backend/run.py --host 0.0.0.0` başlamır.
+- Dayandırmaq: `Ctrl+C` (Docker-də `docker compose -f infra/compose.demo.yml down`).
 - `?demo=1` ünvanı təqdimat panelini avtomatik başladır; ingiliscə təqdimat üçün `?lang=en&demo=1`, rusca üçün `?lang=ru&demo=1`. Giriş səhifəsində **“3 dəqiqəlik demo ssenarisi”** düyməsi
   və profil menyusunda eyni adlı bənd də var.
 
@@ -102,7 +102,7 @@ Rollar: müəllim yalnız öz fənlərini görür; dekanlıq və rəhbərlik ham
 
 ## English quick start
 
-1. Run one of: `docker compose -f infra/compose.yml up --build` · `./demo.sh` (macOS/Linux) · `demo.bat` (Windows) · `python backend/run.py --reset --port 5070`.
+1. Run one of: `docker compose -f infra/compose.demo.yml up --build` · `./demo.sh` (macOS/Linux) · `demo.bat` (Windows) · `python backend/run.py --reset --port 5070`.
 2. Open http://localhost:5070/?lang=en&demo=1 to present in English (`?lang=ru&demo=1` for Russian). The scripts open the Azerbaijani version, http://localhost:5070/?demo=1.
 3. Follow the presenter panel (bottom-left). **Next** switches role, opens the right screen and highlights what to show; the panel tells you what to say.
 4. The 8 steps take about 2:45: leadership sees risk → teacher sees who and why → one-click support plan grounded in the

@@ -70,7 +70,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T06 Handler qapısı və çox proses — `b2ecc6f`, `83eeebb`
 - [x] T07 Proses-lokal vəziyyəti bazaya köçür — `95a348c` və dilim 2 (indekslər, ölçmə)
 - [x] T08 Backup və bərpa — `backend/zeka/core/backup.py`, `docs/runbooks/backup.md`
-- [ ] T09 Yerləşdirmə: Docker, Caddy, sağlamlıq yoxlaması
+- [x] T09 Yerləşdirmə: Docker, Caddy, sağlamlıq yoxlaması — `docs/runbooks/deploy.md`
 
 ### Checkpoint A · saat 10
 - [ ] Bütün testlər yaşıl; `docker compose up` ilə HTTPS açılır; yenidən başlatma məlumatı saxlayır

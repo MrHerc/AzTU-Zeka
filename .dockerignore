@@ -9,3 +9,9 @@ __pycache__/
 pitch/
 aztu-ai-campus.zip
 tests/
+backups/
+.env
+infra/.env
+infra/secrets/
+.claude/
+*.db

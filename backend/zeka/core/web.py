@@ -17,7 +17,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import config
+from . import clock, config
 from .i18n import E, L, localize, norm_lang, tr
 from .security import CFG, RateLimiter, client_ip, cross_site, header_ok
 
@@ -335,8 +335,10 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
             # An unread request body would be parsed as the next request on this keep-alive connection.
             close = bool(req.length and not req.body_read) or resp.status in (400, 413, 501) and not req.body_read
             self._send(resp, close)
-            if CFG.access_log:
-                print(f'{req.ip} "{method} {path}" {resp.status} {round((time.monotonic() - started) * 1000)}ms', flush=True)
+            if CFG.access_log:                         # one JSON object per line: a path cannot forge a second entry
+                print(json.dumps({"time": clock.now().isoformat(timespec="milliseconds"), "ip": req.ip, "method": method,
+                                  "path": path, "status": resp.status, "ms": round((time.monotonic() - started) * 1000),
+                                  "worker": os.getpid()}, ensure_ascii=False), flush=True)
 
         def _error(self, path, status, message, lang):
             msg = L(message, lang) if isinstance(message, dict) else tr(message, lang)

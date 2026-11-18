@@ -1,4 +1,5 @@
 """Run modes (tasks/todo.md, Task 5): demo routes do not exist in prod, prod never seeds people nor deletes data."""
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -6,7 +7,7 @@ from pathlib import Path
 import pytest
 
 import manage
-from zeka.core import config, migrate
+from zeka.core import config, migrate, security
 from zeka.legacy import store
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -82,3 +83,15 @@ def _run(env, *args):
 def test_unsafe_start_up_is_refused(env, args, needle):
     code, err = _run(env, *args)
     assert code == 2 and needle in err, err[-400:]
+
+
+def test_the_access_log_is_one_json_object_per_request_and_a_path_cannot_forge_a_line(anon, monkeypatch, capsys):
+    monkeypatch.setattr(security.CFG, "access_log", True)
+    capsys.readouterr()
+    anon.get('/api/no-such%0a{"ip":%20"6.6.6.6",%20"status":%20200}?k=secret-key')
+    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+    entries = [json.loads(ln) for ln in lines]
+    forged = [e for e in entries if e["path"].startswith("/api/no-such")]
+    assert len(forged) == 1 and forged[0]["status"] == 404 and forged[0]["ip"] == "127.0.0.1"
+    assert "\n" in forged[0]["path"] and "secret-key" not in "".join(lines)        # no query string in the log
+    assert {"time", "method", "ms", "worker"} <= set(forged[0])

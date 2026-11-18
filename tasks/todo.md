@@ -173,18 +173,20 @@ Saat (plan A19). `core/clock.py`: `now()` (UTC, ofsetli) və `local()` (`ZEKA_TZ
 **Description:** `infra/Dockerfile` (root olmayan istifadəçi, sağlamlıq yoxlaması), `infra/compose.yml` (tətbiq + Caddy; həcmlər: məlumat, backup, sertifikat), `infra/Caddyfile` (TLS, HSTS, sorğu ölçüsü həddi 16 MB), `infra/.env.example`. Giriş jurnalı JSON formatında stdout-a. `compose.yml`-də tətbiq servisinin `ports:` bəndi yoxdur (yalnız daxili şəbəkə); `ZEKA_MODE=prod`, `PUBLIC_URL` və `ZEKA_PROXY_HOPS=1` `.env.example`-dədir. Caddyfile-da `trusted_proxies` təyin olunmur. Qabaqda ikinci proksi olarsa hop sayı və `trusted_proxies` birlikdə dəyişir (runbook). `compose.yml`-də hər servis üçün log həddi var (`logging: max-size 50m, max-file 5`). `infra/Dockerfile`-də `ENV TZ=Asia/Baku` (log vaxtı və kənar `datetime.now()` üçün ehtiyat); `.env.example`-də `ZEKA_TZ` və `BACKUP_REMOTE`.
 
 **Acceptance criteria:**
-- [ ] `docker compose up -d` sonra `https://localhost/healthz` 200 qaytarır; HSTS, CSP, `nosniff` başlıqları var
-- [ ] `docker inspect` hər konteyner üçün log həddini göstərir
-- [ ] `docker compose -f infra/compose.yml exec app python -c "import time; print(time.strftime('%z'))"` `+0400` çap edir; `/healthz`-dəki `server_time` hostun `date -u` çıxışından 2 saniyədən çox fərqlənmir
-- [ ] Konteyner root kimi işləmir; `docker compose restart` məlumatı saxlayır
-- [ ] `.env.example`-dəki hər dəyişən `docs/runbooks/deploy.md`-də izah olunub
-- [ ] Caddy arxasında giriş jurnalındakı müştəri ünvanı Caddy konteynerinin ünvanı deyil; müştərinin özü göndərdiyi `X-Forwarded-For: 1.2.3.4` jurnalda ünvan kimi görünmür; tətbiqin portu hostdan açılmır
+- [x] `docker compose up -d` sonra `https://localhost/healthz` 200 qaytarır; HSTS, CSP, `nosniff` başlıqları var
+- [x] `docker inspect` hər konteyner üçün log həddini göstərir
+- [x] `docker compose -f infra/compose.yml exec app python -c "import time; print(time.strftime('%z'))"` `+0400` çap edir; `/healthz`-dəki `server_time` hostun `date -u` çıxışından 2 saniyədən çox fərqlənmir
+- [x] Konteyner root kimi işləmir; `docker compose restart` məlumatı saxlayır
+- [x] `.env.example`-dəki hər dəyişən `docs/runbooks/deploy.md`-də izah olunub
+- [x] Caddy arxasında giriş jurnalındakı müştəri ünvanı Caddy konteynerinin ünvanı deyil; müştərinin özü göndərdiyi `X-Forwarded-For: 1.2.3.4` jurnalda ünvan kimi görünmür; tətbiqin portu hostdan açılmır
 
 **Verification:**
-- [ ] `docker compose -f infra/compose.yml up -d && curl -sk -D- https://localhost/healthz`
-- [ ] `docker compose -f infra/compose.yml exec app id -u` (0 deyil)
-- [ ] `docker inspect -f '{{.Name}} {{.HostConfig.LogConfig.Config}}' $(docker compose -f infra/compose.yml ps -q)`: hər sətirdə `max-size:50m` və `max-file:5`
-- [ ] `curl -sk -H 'X-Forwarded-For: 1.2.3.4' https://localhost/healthz`, sonra `docker compose -f infra/compose.yml logs app | grep -c '1.2.3.4'` 0 qaytarır və jurnaldakı ünvan `docker compose -f infra/compose.yml exec caddy hostname -i` çıxışından fərqlidir; `curl -s -m 3 http://localhost:5070/healthz` qoşula bilmir
+- [x] `docker compose -f infra/compose.yml up -d && curl -sk -D- https://localhost/healthz`
+- [x] `docker compose -f infra/compose.yml exec app id -u` (0 deyil)
+- [x] `docker inspect -f '{{.Name}} {{.HostConfig.LogConfig.Config}}' $(docker compose -f infra/compose.yml ps -q)`: hər sətirdə `max-size:50m` və `max-file:5`
+- [x] `curl -sk -H 'X-Forwarded-For: 1.2.3.4' https://localhost/healthz`, sonra `docker compose -f infra/compose.yml logs app | grep -c '1.2.3.4'` 0 qaytarır və jurnaldakı ünvan `docker compose -f infra/compose.yml exec caddy hostname -i` çıxışından fərqlidir; `curl -s -m 3 http://localhost:5070/healthz` qoşula bilmir
+
+Qeyd (2026-11-18): yoxlamalar `SITE_ADDRESS=localhost` ilə keçdi. Sınaq mühiti Debian paket serverini bağladığı üçün image `openssh-client` qurulmadan yoxlanıb; ssh göndərişi testdə saxta ssh ilə yoxlanır. Demo `infra/compose.demo.yml`-ə köçdü.
 
 **Dependencies:** Task 5, Task 6
 **Files likely touched:** `infra/Dockerfile`, `infra/compose.yml`, `infra/Caddyfile`, `infra/.env.example`, `docs/runbooks/deploy.md`

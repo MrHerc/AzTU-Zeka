@@ -22,7 +22,7 @@ ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-u
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 743 tests, about 2 min; uses a temp database, never touches data/
+python -m pytest -q                               # 758 tests, about 2 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -34,7 +34,9 @@ python tools/i18n.py extract              # refresh i18n/source/*, write untrans
 python tools/i18n.py build                # i18n/{en,ru}/*.json -> frontend/locales/*.json + backend/zeka/core/locales/*.json
 python tools/i18n.py stats                # coverage per language (must stay 100%)
 
-docker compose -f infra/compose.yml up --build                 # demo container (loopback only, resets data on every start)
+docker compose -f infra/compose.demo.yml up --build            # demo container (loopback only, resets data on every start)
+docker compose -f infra/compose.yml up -d --build              # prod: Caddy (TLS) + app, infra/.env, docs/runbooks/deploy.md
+infra/backup.sh && infra/restore.sh backups/latest.enc /tmp/restore-test   # encrypted backup, docs/runbooks/backup.md
 ```
 
 Tests: `tests/unit/` (pure logic), `tests/integration/` (real HTTP server on a temp database; `test_security_review.py`

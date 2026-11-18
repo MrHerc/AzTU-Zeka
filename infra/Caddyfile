@@ -1,0 +1,15 @@
+# TLS in front of the app (infra/compose.yml). SITE_ADDRESS is the public host name: Caddy gets and renews its certificate
+# (ACME); for the university's own certificate use "tls /path/cert.pem /path/key.pem" (docs/runbooks/deploy.md).
+#
+# trusted_proxies is not set on purpose: Caddy then replaces any X-Forwarded-For a client sends with the client's own
+# address, and the app (ZEKA_PROXY_HOPS=1) takes the last entry. Another proxy in front of Caddy changes both together.
+#
+# No access log here: Caddy would write the X-Session header and the one-time ?k= keys. The app logs every request as
+# JSON on stdout, without the query string.
+{$SITE_ADDRESS} {
+	request_body {
+		max_size 16MB
+	}
+	encode zstd gzip
+	reverse_proxy app:5070
+}
