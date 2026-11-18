@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: "22"
       - name: JavaScript syntax check
-        run: for f in static/js/*.js; do node --check "$f"; done
+        run: for f in frontend/js/*.js; do node --check "$f"; done
       - name: Translation catalogue is complete and built
         # Compares parsed JSON: the extractor's key order differs between Python versions, the content must not.
         run: |

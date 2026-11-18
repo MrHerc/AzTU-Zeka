@@ -200,7 +200,7 @@ def server():
 
     fresh_db()
     srv_errors: list = []
-    srv = make_server(0, api.R, ROOT / "static", api.before, api.after, log=srv_errors.append)
+    srv = make_server(0, api.R, ROOT / "frontend", api.before, api.after, log=srv_errors.append)
     port = srv.server_address[1]
     api.BASE_URL["value"] = f"http://127.0.0.1:{port}"
     thread = threading.Thread(target=srv.serve_forever, daemon=True)

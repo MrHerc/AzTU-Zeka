@@ -2,7 +2,7 @@
 
   python tools/i18n.py lint [files…]     report UI text that is not wrapped in t() (JS) or S/E/T3/S_ (Python)
   python tools/i18n.py extract           write i18n/source/{ui,server,content}.json and i18n/todo/<chunk>.json (untranslated)
-  python tools/i18n.py build             merge i18n/<lang>/*.json into static/locales/<lang>.json and backend/zeka/core/locales/<lang>.json
+  python tools/i18n.py build             merge i18n/<lang>/*.json into frontend/locales/<lang>.json and backend/zeka/core/locales/<lang>.json
   python tools/i18n.py stats             coverage per language
 
 Translation files: i18n/en/*.json and i18n/ru/*.json, each a flat object {"<az source>": "<translation>"}.
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-JS_DIR = ROOT / "static" / "js"
+JS_DIR = ROOT / "frontend" / "js"
 PY_DIR = ROOT / "backend" / "zeka"
 CONTENT = ROOT / "content"
 I18N = ROOT / "i18n"
@@ -490,9 +490,9 @@ def build():
         for k in ui:            # UI strings may also appear in server responses (statuses, labels)
             if k in tr and k not in app:
                 app[k] = tr[k]
-        (ROOT / "static" / "locales").mkdir(parents=True, exist_ok=True)
+        (ROOT / "frontend" / "locales").mkdir(parents=True, exist_ok=True)
         (ROOT / "backend" / "zeka" / "core" / "locales").mkdir(parents=True, exist_ok=True)
-        (ROOT / "static" / "locales" / f"{lg}.json").write_text(json.dumps(static, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        (ROOT / "frontend" / "locales" / f"{lg}.json").write_text(json.dumps(static, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         (ROOT / "backend" / "zeka" / "core" / "locales" / f"{lg}.json").write_text(json.dumps(app, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         def cov(d, tr=tr):
             return f"{sum(1 for k in d if k in tr)}/{len(d)}"

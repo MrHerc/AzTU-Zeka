@@ -2,6 +2,10 @@
 
 Durable map of the Zəka (AzTU Rəqəmsal Kampus) code base: what exists, how real it is, where it lives, and what will hurt you.
 
+> **Paths moved (Task 3, 2026-11-18):** `app/web.py`, `app/i18n.py`, `app/security.py` → `backend/zeka/core/`; every other
+> `app/*.py` → `backend/zeka/legacy/`; `run.py` → `backend/run.py`; `static/` → `frontend/` (URLs stay `/static/...`);
+> `Dockerfile`, `docker-compose.yml` → `infra/`. Line numbers below are unchanged by the move.
+
 ## 1. How to use this map
 
 1. Find the area in section 2 (what exists and how mature it is), then check section 6 (landmines) for the same files before changing them.

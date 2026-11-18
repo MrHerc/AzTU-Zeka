@@ -15,7 +15,7 @@ Only the latest commit on `main` (the deployed demo) receives security fixes.
 ## Scope and deployment notes
 
 Zəka is a **demo**: the login is password-less by design (SSO arrives in the pilot) and all data is synthetic.
-On any host reachable from a network the server must run with `ZEKA_ACCESS_CODE` set; `run.py` refuses to start
+On any host reachable from a network the server must run with `ZEKA_ACCESS_CODE` set; `backend/run.py` refuses to start
 without it. See [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) for the current review, the configuration
 reference and the open items.
 

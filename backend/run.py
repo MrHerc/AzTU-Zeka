@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parent
-ROOT = BACKEND.parent  # repository: static/, content/, data/, logs/
+ROOT = BACKEND.parent  # repository: frontend/, content/, data/, logs/
 sys.path.insert(0, str(BACKEND))
 
 from zeka.legacy import api, store  # noqa: E402
@@ -69,7 +69,7 @@ def main():
         with open(path, "a", encoding="utf-8") as f:
             f.write(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {msg}\n")
 
-    srv = make_server(args.port, api.R, ROOT / "static", api.before, api.after, log, host=args.host)
+    srv = make_server(args.port, api.R, ROOT / "frontend", api.before, api.after, log, host=args.host)
     shown = f"  ·  ictimai ünvan: {public}" if public else ""
     if exposed and not CFG.access_code:
         shown += "  ·  DİQQƏT: giriş kodu yoxdur (ZEKA_ALLOW_OPEN_DEMO=1)"

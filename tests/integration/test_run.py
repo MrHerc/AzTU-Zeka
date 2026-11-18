@@ -60,7 +60,7 @@ def _free_port():
 def test_server_starts_from_a_clean_checkout_like_on_render(tmp_path):
     """The Render start command on an empty disk: seeds the database, serves the portal, uses PORT/HOST/PUBLIC_URL."""
     app_dir = tmp_path / "zeka"
-    for name in ("backend", "static", "content"):
+    for name in ("backend", "frontend", "content"):
         shutil.copytree(ROOT / name, app_dir / name, ignore=shutil.ignore_patterns("__pycache__"))
     port = _free_port()
     env = _env(PORT=str(port), HOST="127.0.0.1", PUBLIC_URL="zeka-aztu.onrender.com", PYTHONIOENCODING="utf-8")
