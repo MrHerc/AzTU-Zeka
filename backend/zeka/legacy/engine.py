@@ -356,7 +356,7 @@ def llm_chat(system: str, messages: list[dict], max_tokens: int = 900) -> str:
     if not c["enabled"]:
         raise RuntimeError("LLM konfiqurasiya edilməyib")
     provider = c.get("provider", "openai")
-    timeout = float(c.get("timeout", 40))
+    timeout = min(float(c.get("timeout", 15)), 15.0)   # a stuck provider cannot hold a SLOW slot for long
     if provider == "anthropic":
         url = (c.get("base_url") or "https://api.anthropic.com").rstrip("/") + "/v1/messages"
         body = {"model": c["model"], "max_tokens": max_tokens, "system": system, "messages": messages}

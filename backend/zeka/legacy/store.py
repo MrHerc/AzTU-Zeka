@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 import re
 import secrets
@@ -15,7 +16,7 @@ from ..core import clock, config, migrate
 from ..core.i18n import T3, tr3
 
 ROOT = Path(__file__).resolve().parents[3]  # backend/zeka/legacy/ -> repo
-DATA = ROOT / "data"
+DATA = Path(os.environ.get("ZEKA_DATA") or ROOT / "data")   # database and uploads; a volume in Docker
 UPLOADS = DATA / "uploads"
 DB_PATH = DATA / "campus.db"
 CONTENT = ROOT / "content"

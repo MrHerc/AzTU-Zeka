@@ -4,9 +4,12 @@ from __future__ import annotations
 import html
 import json
 import math
+import os
 import mimetypes
 import re
+import socket
 import sys
+import threading
 import time
 import traceback
 import urllib.parse
@@ -196,6 +199,25 @@ def redirect(location, headers=None):
     return Response(b"", 302, "text/plain", [("Location", location)] + (headers or []))
 
 
+# Handler gate (tasks/todo.md, Task 6). Measured on the demo: an unbounded number of handler threads contending for
+# the GIL and SQLite gave 47 req/s at 20 clients and errors at 300; two at a time gave 226 req/s and none.
+HANDLERS = max(1, int(os.environ.get("ZEKA_HANDLERS", "2")))
+SLOW_HANDLERS = max(1, int(os.environ.get("ZEKA_SLOW", "4")))   # routes that wait on the network (slow=True) never take a GATE slot
+QUEUE_WAIT = float(os.environ.get("ZEKA_QUEUE_WAIT", "10"))      # seconds a request may wait for a slot before a 503
+GATE = threading.BoundedSemaphore(HANDLERS)
+SLOW = threading.BoundedSemaphore(SLOW_HANDLERS)
+
+
+def drain(timeout: float = QUEUE_WAIT) -> bool:
+    """Graceful stop: wait until no handler runs (every slot is free). The caller exits afterwards; slots stay taken."""
+    deadline = time.monotonic() + timeout
+    for sem, n in ((GATE, HANDLERS), (SLOW, SLOW_HANDLERS)):
+        for _ in range(n):
+            if not sem.acquire(timeout=max(0.0, deadline - time.monotonic())):
+                return False
+    return True
+
+
 class Router:
     def __init__(self):
         self.routes = []
@@ -204,9 +226,10 @@ class Router:
         regex = "^" + re.sub(r"\{(\w+)(:int)?\}", lambda m: f"(?P<{m.group(1)}>{'[0-9]+' if m.group(2) else '[^/]+'})", pattern) + "$"
         self.routes.append((method, re.compile(regex), fn, roles, auth))
 
-    def __call__(self, method, pattern, roles=None, auth=True, demo=False):
+    def __call__(self, method, pattern, roles=None, auth=True, demo=False, slow=False):
         def deco(fn):
             fn.demo_only = demo        # demo-only routes do not exist in prod mode (404, not 403)
+            fn.slow = slow             # waits on an outside service: runs under SLOW, not GATE
             self.add(method, pattern, fn, roles, auth)
             return fn
         return deco
@@ -248,7 +271,7 @@ def _body_length(req: Request) -> int:
     return req.content_length()
 
 
-def make_server(port: int, router: Router, static_dir: Path, before, after, log=print, host: str = "127.0.0.1"):
+def make_server(port: int, router: Router, static_dir: Path, before, after, log=print, host: str = "127.0.0.1", reuse_port: bool = False):
     static_dir = static_dir.resolve()
 
     class Handler(BaseHTTPRequestHandler):
@@ -282,17 +305,25 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                             raise HTTPError(415, "Content-Type application/json olmalıdır")
                     fn, params, roles, auth = router.match(method, path)
                     req.params = params
+                    sem = SLOW if getattr(fn, "slow", False) else GATE
+                    if not sem.acquire(timeout=QUEUE_WAIT):
+                        raise HTTPError(503, "Server məşğuldur, bir neçə saniyədən sonra yenidən cəhd edin")
                     try:
-                        before(req, roles, auth)      # inside the try: a 401/403 must still close the DB connection
-                        resp = fn(req)
-                        after(req, ok=True)
-                    except BaseException:
-                        after(req, ok=False)
-                        raise
-                    if isinstance(resp, (dict, list)):
-                        resp = json_resp(resp if req.raw_i18n else localize(resp, req.lang))
+                        try:
+                            before(req, roles, auth)      # inside the try: a 401/403 must still close the DB connection
+                            resp = fn(req)
+                            after(req, ok=True)
+                        except BaseException:
+                            after(req, ok=False)
+                            raise
+                        if isinstance(resp, (dict, list)):
+                            resp = json_resp(resp if req.raw_i18n else localize(resp, req.lang))
+                    finally:
+                        sem.release()
             except HTTPError as e:
                 resp = self._error(path, e.status, e.message, req.lang)
+                if e.status == 503:
+                    resp.headers.append(("Retry-After", "5"))
             except (ValueError, TypeError) as ex:      # malformed input that a handler did not validate explicitly
                 if _TRACE_LIMIT.hit("trace"):
                     log(f"400 {method} {path}: {type(ex).__name__}: {str(ex)[:200]}")
@@ -357,6 +388,16 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
         def do_DELETE(self):
             self._dispatch("DELETE")
 
-    srv = ThreadingHTTPServer((host, port), Handler)
+    class Server(ThreadingHTTPServer):
+        # socketserver's default listen backlog is 5: at 300 simultaneous clients the kernel dropped connection attempts
+        # and clients hung in SYN retries for up to a minute (measured: 94 connection errors, p99 61 s).
+        request_queue_size = 1024
+
+        def server_bind(self):
+            if reuse_port:              # several worker processes share the port; the kernel spreads connections
+                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            super().server_bind()
+
+    srv = Server((host, port), Handler)
     srv.daemon_threads = True
     return srv

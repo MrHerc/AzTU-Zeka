@@ -1,6 +1,7 @@
 """Core routes: auth, profile, notifications, search, guide, files."""
 from __future__ import annotations
 
+import os
 import base64
 import json
 import secrets
@@ -8,7 +9,7 @@ import urllib.parse
 
 from . import engine, pdftext, store
 from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, session_cookie, session_cutoff, _sid
-from ..core import config
+from ..core import clock, config
 from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
 from .store import J, audit, iso, now, row, rows, setting
@@ -59,6 +60,13 @@ def bootstrap(req):
             "langs": ["az", "en", "ru"], "vendor": "Safarov Industries",
             "contact": {k: ct[k] for k in ("phone", "phone_href", "email", "website", "address")}}
     return {"user": pub_user(u), "app": info, "home": ROLE_HOME.get(u["role"]) if u else None, "unread": unread(c, u["id"]) if u else 0}
+
+
+@R("GET", "/healthz", auth=False)
+def healthz(req):
+    """Liveness for the proxy and the supervisor: the database answers; which worker answered; the university clock."""
+    req.db.execute("SELECT 1")
+    return {"ok": True, "worker": os.getpid(), "server_time": clock.now().isoformat(timespec="seconds"), "tz": clock.TZ_NAME}
 
 
 @R("POST", "/api/auth/demo", auth=False, demo=True)

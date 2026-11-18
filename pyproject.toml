@@ -4,7 +4,7 @@
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
-pythonpath = ["backend", "."]
+pythonpath = ["backend", ".", "tools"]
 addopts = "-ra --strict-markers"
 # An unclosed SQLite connection (reported by Python 3.13+) or socket fails the test instead of passing silently.
 filterwarnings = [

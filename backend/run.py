@@ -2,7 +2,10 @@
 import argparse
 import os
 import re
+import signal
 import sys
+import threading
+import time
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parent
@@ -12,6 +15,7 @@ sys.path.insert(0, str(BACKEND))
 from zeka.core import clock, config, migrate  # noqa: E402
 from zeka.legacy import api, store  # noqa: E402
 from zeka.core.security import CFG, LOOPBACK  # noqa: E402
+from zeka.core import web  # noqa: E402
 from zeka.core.web import make_server  # noqa: E402
 
 LOG_MAX = 5 * 1024 * 1024
@@ -43,7 +47,13 @@ def main():
     ap.add_argument("--reset", action="store_true", help="demo məlumatlarını sıfırdan yarat")
     ap.add_argument("--public-url", default=os.environ.get("PUBLIC_URL", ""), metavar="URL",
                     help="serverdə portalın ictimai ünvanı (məs. https://zeka.example.az): sənədlərin QR kodları bu ünvana yönəlir")
+    ap.add_argument("--workers", type=int, default=int(os.environ.get("ZEKA_WORKERS", "1")),
+                    help="eyni portu paylaşan proseslərin sayı (Linux/macOS; susmaya görə 1)")
     args = ap.parse_args()
+    if not 1 <= args.workers <= 64:
+        ap.error("--workers 1 ilə 64 arasında olmalıdır")
+    if args.workers > 1 and not hasattr(os, "fork"):
+        ap.error("--workers > 1 yalnız Linux və macOS-da işləyir")
     try:
         public = normalize_public_url(args.public_url)
     except ValueError as ex:
@@ -82,17 +92,83 @@ def main():
         with open(path, "a", encoding="utf-8") as f:
             f.write(f"[{clock.local():%Y-%m-%d %H:%M:%S}] {msg}\n")
 
-    srv = make_server(args.port, api.R, ROOT / "frontend", api.before, api.after, log, host=args.host)
     shown = f"  ·  ictimai ünvan: {public}" if public else ""
     if exposed and not CFG.access_code:
         shown += "  ·  DİQQƏT: giriş kodu yoxdur (ZEKA_ALLOW_OPEN_DEMO=1)"
-    print(f"AzTU Rəqəmsal Kampus demo: http://127.0.0.1:{args.port}{shown}  (dayandırmaq üçün Ctrl+C)", flush=True)
+    if args.workers > 1:
+        shown += f"  ·  {args.workers} proses"
+    print(f"AzTU Rəqəmsal Kampus ({config.MODE}): http://127.0.0.1:{args.port}{shown}  (dayandırmaq üçün Ctrl+C)", flush=True)
+    if args.workers == 1:
+        srv = make_server(args.port, api.R, ROOT / "frontend", api.before, api.after, log, host=args.host)
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            srv.server_close()
+        return
+    supervise(args, log)
+
+
+def worker(args, log):
+    """One forked worker: build this process's search indexes first, then bind the shared port; stop on SIGTERM."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)            # Ctrl+C reaches the supervisor, which stops the workers
+    c = store.connect()
+    try:
+        store.build_indexes(c)                              # until the port is bound, the other workers take the traffic
+    finally:
+        c.close()
+    srv = make_server(args.port, api.R, ROOT / "frontend", api.before, api.after, log, host=args.host, reuse_port=True)
+    signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=srv.shutdown, daemon=True).start())
     try:
         srv.serve_forever()
-    except KeyboardInterrupt:
-        pass
     finally:
-        srv.server_close()
+        srv.server_close()                                   # stop accepting, then let the running handlers finish
+        web.drain()
+
+
+def supervise(args, log):
+    """Start the workers, restart any that dies, stop them all on SIGTERM or Ctrl+C."""
+    children: dict[int, float] = {}
+    stopping = False
+
+    def spawn():
+        pid = os.fork()
+        if pid == 0:
+            code = 0
+            try:
+                worker(args, log)
+            except BaseException as ex:                        # noqa: BLE001  a worker must never return into the supervisor loop
+                log(f"worker {os.getpid()} failed: {type(ex).__name__}: {ex}")
+                code = 1
+            os._exit(code)
+        children[pid] = time.monotonic()
+
+    def stop(*_):
+        nonlocal stopping
+        stopping = True
+        for pid in list(children):
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    for _ in range(args.workers):
+        spawn()
+    while children:
+        try:
+            pid, status = os.wait()
+        except ChildProcessError:
+            break
+        started = children.pop(pid, None)
+        if stopping or started is None:
+            continue
+        log(f"worker {pid} exited (status {status}); restarting")
+        if time.monotonic() - started < 2:                   # a worker that dies at once: do not spin
+            time.sleep(1)
+        spawn()
 
 
 if __name__ == "__main__":

@@ -122,7 +122,7 @@ def cfg_key() -> str:
     return engine.llm_config().get("api_key") or "\0"
 
 
-@R("POST", "/api/admin/test-llm", roles=("admin",))
+@R("POST", "/api/admin/test-llm", roles=("admin",), slow=True)
 def admin_test_llm(req):
     if not engine.llm_config()["enabled"]:
         return {"ok": False, "message": T3("LLM konfiqurasiya edilməyib (config.json). Demo mühərrik işləyir.")}

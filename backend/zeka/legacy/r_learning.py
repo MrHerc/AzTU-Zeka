@@ -322,7 +322,7 @@ def tutor_history(req):
     return {"course": course_card(req.db, course), "messages": [msg_out(m) for m in hs], "usage": usage(req.db, req.user), "engine": engine.engine_info()}
 
 
-@R("POST", "/api/tutor/{cid:int}/ask", roles=("student", "teacher"))
+@R("POST", "/api/tutor/{cid:int}/ask", roles=("student", "teacher"), slow=True)
 def tutor_ask(req):
     c, u = req.db, req.user
     course = course_access(req, req.params["cid"])
