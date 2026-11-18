@@ -11,6 +11,7 @@ from ..core.i18n import E, T3, canon
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows
 from ..core.web import HTTPError, html_resp
+from ..modules.directory import domain as directory_rules, service as directory
 
 OPEN = ("submitted", "in_progress", "returned")
 DONE = ("ready", "rejected", "cancelled")
@@ -394,6 +395,14 @@ def request_action(req):
     elif action == "issue":
         if r["status"] == "returned":
             raise HTTPError(409, "Müraciət tələbəyə qaytarılıb")
+        order = None
+        if rt["code"] == "academic_leave":         # Task 15: the leave is an order; the certificate prints its number and date
+            order, problem = directory_rules.status_event({"kind": "academic_leave", "order_no": b.get("order_no"),
+                                                           "order_date": b.get("order_date"), "effective_date": b.get("effective_date"),
+                                                           "note": f"#{r['id']}"})
+            if problem:
+                raise HTTPError(400, problem)
+            data = {**data, "order_no": order["order_no"], "order_date": order["order_date"], "effective_date": order["effective_date"]}
         if rt.get("document"):
             st = row(c, "SELECT * FROM users WHERE id=?", (r["student_id"],))
             title = rt["document"]
@@ -405,6 +414,10 @@ def request_action(req):
             c.execute("UPDATE requests SET status='ready', step=?, answer=?, updated_at=? WHERE id=?", (len(steps) - 1, answer, t, r["id"]))
             msg = "Müraciətiniz təmin edildi"
         _apply_outcome(c, r, rt, data, u)
+        if order:
+            status, problem = directory.record_status(c, u, row(c, "SELECT * FROM users WHERE id=?", (r["student_id"],)), order)
+            if status != "ok":
+                raise HTTPError(400, problem)
         c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], "issued", note, t))
         notify(c, r["student_id"], "request", msg, rt["name"], link)
         audit(c, u["id"], "document_issue" if rt.get("document") else "request_complete", "request", f"#{r['id']} {rt['name']}")

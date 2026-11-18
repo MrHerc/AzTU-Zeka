@@ -133,7 +133,10 @@ def transcript_body(holder, data, ctx, rows_, en):
 def leave_body(holder, data, ctx, doc):
     sp = ctx["specialty"]
     full = f"{holder['full_name']} {holder.get('patronymic') or ''}".strip()
-    return (f"Rektorun {dmy(doc['issued_at'])} tarixli əmrindən çıxarış:</p>"
+    # Task 15: the order's own number and date, not the day the extract was printed (a preview has no order yet)
+    order = (f"{dmy(data['order_date'])} tarixli {e(data['order_no'])} nömrəli" if data.get("order_no") and data.get("order_date")
+             else "… tarixli … nömrəli")
+    return (f"Rektorun {order} əmrindən çıxarış:</p>"
             f"<p>“{e(sp['name'])}” ixtisası üzrə {az_ordinal(int(holder.get('year') or 2))} kurs tələbəsi (qrup {e(holder.get('group') or '—')}) "
             f"<b>{e(full)}</b> {e((data.get('reason') or '').lower())} səbəbindən {e(data.get('start') or '')}ndən başlayaraq "
             f"{e(data.get('period') or '')} müddətinə akademik məzuniyyətə buraxılsın.</p>"

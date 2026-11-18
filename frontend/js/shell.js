@@ -35,8 +35,8 @@ export const NAV = {
   leader: [[t("Rəhbərlik"), [["chart", t("Pilot paneli"), "/leader"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["inbox", t("E-xidmətlər"), "/office", "office"], ["qr", t("Sənəd reyestri"), "/office/registry"]]],
            [t("Kommunikasiya"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["news", t("Xəbər lenti"), "/news"]]],
            UNI_STAFF, [t("Nəzarət"), [["list", t("Audit jurnalı"), "/admin/audit"]]], [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["ticket", t("Dəstək"), "/support", "support"]]]],
-  academic_office: [[t("Tədris şöbəsi"), [["layers", t("Struktur və semestrlər"), "/admin/directory"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
-  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["layers", t("Struktur və semestrlər"), "/admin/directory"], ["activity", t("Zəka Radar"), "/radar"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
+  academic_office: [[t("Tədris şöbəsi"), [["layers", t("Struktur və reyestr"), "/admin/directory"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
+  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["layers", t("Struktur və reyestr"), "/admin/directory"], ["activity", t("Zəka Radar"), "/radar"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
           [t("Məzmun"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["inbox", t("Müraciətlər"), "/office", "office"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
 };
 // Mobile bottom bar: 4 primary destinations per role (+ menu)

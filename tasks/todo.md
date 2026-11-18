@@ -331,15 +331,22 @@ Tədris vahidi (dilim 2, `0151_directory_units.sql`): `teaching_units(id, course
 Status əmrləri (dilim 2, `0151_directory_units.sql`): `student_status_events(id, student_id, kind, order_no, order_date, effective_date, from_group_id, to_group_id, note, entered_by, created_at, reported_at)`. `kind`: `admission | group_change | transfer_in | transfer_out | academic_leave | expulsion | reinstatement | graduation`. Cədvələ yalnız əlavə olunur; düzəliş səbəbi yazılan yeni hadisədir. `enrollments`-ə `begin_date` və `end_date` əlavə olunur (OneRoster `beginDate`/`endDate`); Task 16 idxalı və Task 37 dövrə testi onları daşıyır. Akademik status son hadisədən çıxarılır və Task 10-dakı hesab statusundan (`users.status`) ayrıdır. Legacy `r_services` və `docs.leave_body`: `academic_leave` müraciətinin `issue` addımı `order_no` və `order_date` tələb edir və hadisəni yazır; arayışda verilmə tarixi yox, həmin əmrin nömrəsi və tarixi çap olunur. Hadisəni ekrandan kimin daxil etdiyi sahibin qərarıdır (SPEC Open Questions 17); qərara qədər yalnız `academic_office`. `issue` addımının icazəsi bu tapşırıqda dəyişmir; addımların rollarını Task 46 təyin edir.
 
 **Acceptance criteria:**
-- [ ] Hər varlıq üçün yaratma, dəyişmə, deaktiv etmə doğrulama və audit ilə işləyir; silmə yoxdur
+- [x] Hər varlıq üçün yaratma, dəyişmə, deaktiv etmə doğrulama və audit ilə işləyir; silmə yoxdur
 - [x] `teaching_end < exam_start` şərtini pozan semestr tərcümə olunmuş səbəblə rədd olunur
-- [ ] Deaktiv istifadəçi girə bilmir, tarixçəsi qalır
-- [ ] Əmr nömrəsi, əmr tarixi və qüvvəyə minmə tarixi olmadan status dəyişmir; akademik məzuniyyət və xaric qüvvəyə minmə tarixindən sonrakı dərs siyahılarından tələbəni çıxarır, əvvəlki davamiyyət və ballar qalır; məzuniyyətdəki tələbə hesabına girir və öz sənədlərini görür
+- [x] Deaktiv istifadəçi girə bilmir, tarixçəsi qalır
+- [x] Əmr nömrəsi, əmr tarixi və qüvvəyə minmə tarixi olmadan status dəyişmir; akademik məzuniyyət və xaric qüvvəyə minmə tarixindən sonrakı dərs siyahılarından tələbəni çıxarır, əvvəlki davamiyyət və ballar qalır; məzuniyyətdəki tələbə hesabına girir və öz sənədlərini görür
 - [x] Siyahılar serverdə səhifələnir (səhifədə ≤ 50) və serverdə axtarılır
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_directory_admin.py tests/integration/test_student_status.py -q`
-- [ ] Əl yoxlaması: admin kimi fakültə → kafedra → qrup → tələbə yarat, tələbə kimi gir
+- [x] `python -m pytest tests/integration/test_directory_admin.py tests/integration/test_student_status.py -q` (16 + 11 test)
+- [ ] Əl yoxlaması: admin kimi fakültə → kafedra → qrup → tələbə yarat, tələbə kimi gir (API ilə testdə keçir: yaratma, müvəqqəti parol, giriş, deaktiv; brauzerdə yalnız siyahılar, qeydiyyat, status və vahid pəncərələri açılıb)
+
+Qeyd (2026-11-18, dilim 2): `0151_directory_units.sql`; `users`, `courses`, `units` generik direktoriyaya qoşuldu; hesabları yalnız
+admin idarə edir (`users.manage`), tədris şöbəsi reyestri oxuyur və fənn/qeydiyyat/vahid idarə edir. Dərs siyahısı:
+`GET /api/courses/{id}/roster?day=` (`begin_date <= gün < end_date`). Status əmrləri yalnız əlavə olunur (trigger). Qrup
+dəyişikliyi əmr yazılanda tətbiq olunur (gələcək tarixli köçürmə Task 37-nin planlayıcısını gözləyir). Arayış siyahıları
+(müəllim seçimi, fənn seçimi) ilk 50 sətri göstərir; axtarışlı seçim T16-dan sonra. Legacy oxucular (Radar, test
+bildirişləri, fənnin tələbə sayı) hələ `end_date`-ə baxmır.
 
 Qeyd (2026-11-18): dilim 1 hazırdır — `modules/directory`, `0150_directory.sql`, `frontend/js/admin-directory.js`, `tests/integration/test_directory_admin.py`; fakültə, kafedra, ixtisas, qrup və semestr yaradılır, dəyişir, deaktiv edilir (silmə yoxdur, audit var). İstifadəçi, fənn, qeydiyyat, tədris vahidi və status əmrləri dilim 2-dədir.
 

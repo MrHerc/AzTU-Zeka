@@ -1,7 +1,8 @@
-"""The university's structure (tasks/todo.md, Task 15, slice 1): which fields each entity has and their rules. No I/O.
+"""The university's structure and registry (tasks/todo.md, Task 15): which fields each entity has and their rules. No I/O.
 
-Field kinds: ``code`` (2-30 letters, digits, ``.``, ``_``, ``-``), ``text`` (2-200 characters), ``date`` (YYYY-MM-DD),
-``year`` (1990-2100), ``ref:<entity>`` (a required id of another entity), ``ref?:<entity>`` (optional), ``degree``.
+Field kinds: ``code`` (2-30 letters, digits, ``.``, ``_``, ``-``), ``code?`` (optional), ``text`` (2-200 characters),
+``date`` (YYYY-MM-DD), ``year`` (1990-2100), ``int:lo:hi`` / ``int?:lo:hi``, ``ref:<entity>`` (a required id of another
+entity), ``ref?:<entity>`` (optional), ``degree``, ``login`` (a user name), ``role``, ``email?``, ``unit_kind``.
 """
 from __future__ import annotations
 
@@ -9,26 +10,63 @@ import re
 from datetime import date
 
 from ...core.i18n import E
+from ...core.perms import ROLES
 
 PAGE = 50
 DEGREES = ("bachelor", "master", "phd")
+UNIT_KINDS = ("lecture", "seminar", "lab")             # mühazirə, məşğələ, laboratoriya
+TEACHING_ROLES = ("teacher", "dept_head")
 CODE = re.compile(r"^[0-9A-Za-zƏəİıÖöÜüĞğŞşÇç._-]{2,30}$")
+LOGIN = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
+EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
+# What a user list or a saved user returns: never the password hash, the TOTP secret or the failure counters.
+USER_COLUMNS = ("id, username, full_name, role, group_id, student_no, email, department_id, status, must_change, "
+                "(status='active') AS active")
 
 ENTITIES: dict[str, dict] = {
-    "faculties": {"table": "faculties", "order": "name", "search": ("code", "name"),
+    "faculties": {"table": "faculties", "order": "name", "search": ("code", "name"), "unique": ("code",),
                   "fields": {"code": "code", "name": "text"}},
-    "departments": {"table": "departments", "order": "name", "search": ("code", "name"),
-                    "fields": {"faculty_id": "ref:faculties", "code": "code", "name": "text"}},
-    "specialties": {"table": "specialties", "order": "name", "search": ("code", "name"),
+    "departments": {"table": "departments", "order": "name", "search": ("code", "name"), "unique": ("code",),
+                    "fields": {"faculty_id": "ref:faculties", "code": "code", "name": "text"}, "filters": ("faculty_id",)},
+    "specialties": {"table": "specialties", "order": "name", "search": ("code", "name"), "unique": ("code",),
                     "fields": {"faculty_id": "ref:faculties", "department_id": "ref?:departments", "code": "code",
                                "name": "text", "degree": "degree"}},
-    "groups": {"table": "study_groups", "order": "name", "search": ("name",),
+    "groups": {"table": "study_groups", "order": "name", "search": ("name",), "unique": ("name",), "stamps": False,
                "fields": {"name": "code", "year": "year", "faculty_id": "ref:faculties", "specialty_id": "ref?:specialties"}},
-    "terms": {"table": "academic_terms", "order": "teaching_start DESC", "search": ("code", "name"),
+    "terms": {"table": "academic_terms", "order": "teaching_start DESC", "search": ("code", "name"), "unique": ("code",),
               "fields": {"code": "code", "name": "text", "teaching_start": "date", "teaching_end": "date",
                          "exam_start": "date", "exam_end": "date"}},
+    # slice 2: people, courses (a course row of a term is the offering), teaching units
+    "users": {"table": "users", "order": "full_name", "search": ("username", "full_name", "student_no", "email"),
+              "unique": ("username", "email", "student_no"), "stamps": False, "columns": USER_COLUMNS,
+              "active": ("status", "active", "disabled"), "perm": "users.manage", "filters": ("role", "group_id"),
+              "fields": {"username": "login", "full_name": "text", "role": "role", "group_id": "ref?:groups",
+                         "student_no": "code?", "email": "email?", "department_id": "ref?:departments"}},
+    "courses": {"table": "courses", "order": "name", "search": ("code", "name"), "unique": (),
+                "filters": ("term_id", "department_id", "teacher_id"), "ref_roles": {"teacher_id": TEACHING_ROLES},
+                "fields": {"code": "code", "name": "text", "teacher_id": "ref?:users", "credits": "int:0:60",
+                           "department_id": "ref?:departments", "term_id": "ref?:terms"}},
+    "units": {"table": "teaching_units", "order": "id", "search": (), "unique": (), "filters": ("course_id",),
+              "ref_roles": {"teacher_id": TEACHING_ROLES},
+              "fields": {"course_id": "ref:courses", "kind": "unit_kind", "teacher_id": "ref?:users", "subgroup": "int?:1:9"}},
 }
-UNIQUE = {"faculties": "code", "departments": "code", "specialties": "code", "groups": "name", "terms": "code"}
+
+
+def unique(entity: str) -> tuple[str, ...]:
+    return ENTITIES[entity]["unique"]
+
+
+def active_column(entity: str) -> tuple[str, object, object]:
+    """(column, value when active, value when not)."""
+    return ENTITIES[entity].get("active", ("active", 1, 0))
+
+
+def _int(field: str, v, lo: int, hi: int, optional: bool):
+    if v in (None, "") and optional:
+        return None, None
+    if isinstance(v, bool) or not isinstance(v, int) or not lo <= v <= hi:
+        return None, E("«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır", field=field, lo=lo, hi=hi)
+    return v, None
 
 
 def _value(kind: str, field: str, v):
@@ -44,21 +82,45 @@ def _value(kind: str, field: str, v):
         if isinstance(v, bool) or not isinstance(v, int) or not 1990 <= v <= 2100:
             return None, E("«{field}» sahəsində il 1990 ilə 2100 arasında olmalıdır", field=field)
         return v, None
+    if kind.startswith("int"):
+        _, lo, hi = kind.split(":")
+        return _int(field, v, int(lo), int(hi), kind.startswith("int?"))
+    if kind.endswith("?") and v in (None, ""):
+        return None, None
     if not isinstance(v, str):
         return None, E("«{field}» sahəsi doldurulmalıdır", field=field)
     v = " ".join(v.split())
-    if kind == "code" and not CODE.fullmatch(v):
+    if kind.rstrip("?") == "code" and not CODE.fullmatch(v):
         return None, E("«{field}» sahəsində kod 2–30 hərf, rəqəm, nöqtə, defis və ya alt xətdən ibarət olmalıdır", field=field)
     if kind == "text" and not 2 <= len(v) <= 200:
         return None, E("«{field}» sahəsi 2–200 simvol olmalıdır", field=field)
     if kind == "degree" and v not in DEGREES:
         return None, E("«{field}» sahəsində dərəcə bakalavr, magistr və ya doktorantura olmalıdır", field=field)
+    if kind == "login":
+        v = v.lower()
+        if not LOGIN.fullmatch(v):
+            return None, E("İstifadəçi adı 3–40 kiçik latın hərfi, rəqəm, nöqtə, defis və ya alt xətdən ibarət olmalıdır")
+    if kind == "role" and v not in ROLES:
+        return None, E("Naməlum rol")
+    if kind == "email?":
+        v = v.lower()
+        if len(v) > 254 or not EMAIL.fullmatch(v):
+            return None, E("E-poçt ünvanı düzgün deyil")
+    if kind == "unit_kind" and v not in UNIT_KINDS:
+        return None, E("Dərsin növü mühazirə, məşğələ və ya laboratoriya olmalıdır")
     if kind == "date":
-        try:
-            date.fromisoformat(v)
-        except ValueError:
-            return None, E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field=field)
+        problem = date_problem(field, v)
+        if problem:
+            return None, problem
     return v, None
+
+
+def date_problem(field: str, v) -> dict | None:
+    try:
+        date.fromisoformat(v)
+        return None if len(v) == 10 else E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field=field)
+    except (TypeError, ValueError):
+        return E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field=field)
 
 
 def clean(entity: str, body: dict, partial: bool = False) -> tuple[dict, dict | None]:
@@ -82,9 +144,67 @@ def record_problem(entity: str, record: dict) -> dict | None:
             return E("Başlanğıc tarixi bitmə tarixindən əvvəl olmalıdır")
         if not te < es:
             return E("Tədris dövrü imtahan sessiyası başlamazdan əvvəl bitməlidir")
+    if entity == "users" and record.get("role") != "student" and (record.get("group_id") or record.get("student_no")):
+        return E("Qrup və tələbə bileti nömrəsi yalnız tələbəyə verilir")
     return None
 
 
 def refs(entity: str) -> dict[str, str]:
     """{field: referenced entity} of the entity's reference fields."""
     return {f: k.split(":", 1)[1] for f, k in ENTITIES[entity]["fields"].items() if k.startswith("ref")}
+
+
+# ---------------------------------------------------------------- enrolments and status orders (slice 2)
+STATUS_KINDS = ("admission", "group_change", "transfer_in", "transfer_out", "academic_leave", "expulsion",
+                "reinstatement", "graduation")
+ENDS_STUDY = ("transfer_out", "academic_leave", "expulsion", "graduation")     # the enrolments end on the effective date
+MOVES_GROUP = ("group_change", "transfer_in")                                   # these name the new group
+STATUS_AFTER = {"admission": "active", "transfer_in": "active", "reinstatement": "active", "academic_leave": "on_leave",
+                "expulsion": "expelled", "transfer_out": "transferred", "graduation": "graduated"}
+
+
+def enrollment(body: dict) -> tuple[dict, dict | None]:
+    """user_id, group_id (NULL: the student's own group), subgroup, begin_date from a request body."""
+    out: dict = {}
+    for field, kind in (("user_id", "ref:users"), ("group_id", "ref?:groups"), ("subgroup", "int?:1:9")):
+        out[field], problem = _value(kind, field, body.get(field))
+        if problem:
+            return {}, problem
+    begin = body.get("begin_date")
+    if begin not in (None, ""):
+        problem = date_problem("begin_date", begin)
+        if problem:
+            return {}, problem
+    out["begin_date"] = begin or None
+    return out, None
+
+
+def status_event(body: dict) -> tuple[dict, dict | None]:
+    """A status order from a request body: kind, order number, order date and effective date are all required."""
+    kind = body.get("kind")
+    if kind not in STATUS_KINDS:
+        return {}, E("Əmrin növü düzgün deyil")
+    order_no = " ".join(str(body.get("order_no") or "").split())
+    if not 1 <= len(order_no) <= 50:
+        return {}, E("Əmrin nömrəsini yazın")
+    for field in ("order_date", "effective_date"):
+        problem = date_problem(field, body.get(field)) if body.get(field) else E("«{field}» sahəsi doldurulmalıdır", field=field)
+        if problem:
+            return {}, problem
+    to_group, problem = _value("ref?:groups", "to_group_id", body.get("to_group_id"))
+    if problem:
+        return {}, problem
+    if kind in MOVES_GROUP and to_group is None:
+        return {}, E("Yeni qrupu seçin")
+    note = " ".join(str(body.get("note") or "").split())[:500] or None
+    return {"kind": kind, "order_no": order_no, "order_date": body.get("order_date"), "effective_date": body.get("effective_date"),
+            "to_group_id": to_group if kind in MOVES_GROUP else None, "note": note}, None
+
+
+def academic_status(events: list[dict], today: str) -> str:
+    """The student's status on ``today`` from their orders (by effective date, then entry order). No order: active."""
+    status = "active"
+    for ev in sorted(events, key=lambda e: (e["effective_date"], e["id"])):
+        if ev["effective_date"] <= today:
+            status = STATUS_AFTER.get(ev["kind"], status)
+    return status

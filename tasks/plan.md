@@ -83,7 +83,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T12 İşçi rolları üçün TOTP — `0120_totp.sql`, `tests/integration/test_mfa.py`
 - [ ] T13 Rol və icazə modeli
 - [x] T14 SSO: ümumi OIDC müştərisi
-- [ ] T15 Struktur və reyestr idarəsi
+- [x] T15 Struktur və reyestr idarəsi
 - [ ] T16 Kütləvi idxal
 - [ ] T17 Tenant ayarları
 

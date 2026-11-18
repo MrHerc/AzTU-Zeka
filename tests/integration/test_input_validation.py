@@ -33,7 +33,11 @@ def _routes():
 
 @pytest.fixture(scope="module")
 def clients(app_db):
-    return {r: app_db.client(r) for r in ("student", "teacher", "office", "leader", "admin")}
+    out = {r: app_db.client(r) for r in ("student", "teacher", "office", "leader", "admin")}
+    out["admin"].post(f"/api/admin/users/{out['office'].user['id']}/roles", {"role": "academic_office"})
+    registrar = app_db.client("office")            # a granted role (Task 13): the academic office's routes are fuzzed too
+    assert registrar.post("/api/me/role", {"role": "academic_office"}).status == 200
+    return {**out, "academic_office": registrar}
 
 
 @pytest.mark.parametrize("method, path, role, fields", _routes())

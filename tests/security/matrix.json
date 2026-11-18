@@ -209,11 +209,59 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/courses/{id:int}/roster": {
+  "access": [
+   "academic_office",
+   "admin",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/demo/storyline": {
   "access": "public",
   "audit_read": null,
   "demo": true,
   "perm": null,
+  "slow": false
+ },
+ "GET /api/directory/courses/{id:int}/enrollments": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
+  "slow": false
+ },
+ "GET /api/directory/students/{id:int}/status": {
+  "access": [
+   "academic_office",
+   "admin",
+   "leader",
+   "office"
+  ],
+  "audit_read": "student_status",
+  "demo": false,
+  "perm": "students.status.read",
+  "slow": false
+ },
+ "GET /api/directory/units/{id:int}/groups": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.read",
   "slow": false
  },
  "GET /api/directory/{entity}": {
@@ -829,6 +877,35 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/directory/courses/{id:int}/enrollments": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
+  "slow": false
+ },
+ "POST /api/directory/courses/{id:int}/enrollments/{uid:int}/end": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
+  "slow": false
+ },
+ "POST /api/directory/students/{id:int}/status": {
+  "access": [
+   "academic_office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "students.status",
+  "slow": false
+ },
  "POST /api/directory/{entity}": {
   "access": [
    "academic_office",
@@ -1168,6 +1245,16 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "PUT /api/directory/units/{id:int}/groups": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "directory.manage",
   "slow": false
  },
  "PUT /api/directory/{entity}/{id:int}": {

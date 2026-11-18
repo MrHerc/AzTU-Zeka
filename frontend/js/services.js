@@ -326,9 +326,16 @@ export async function requestDetailPage(el, id) {
     if (r.has_document) {
       const m = modal({ title: t("Sənədin önizləməsi"), size: "xl", cls: "viewer", body: html`<div class="notice ai mb">${ic("sparkles", 16)}<div>${t("Sənəd seçilmiş təyinat və dilə uyğun şablondan avtomatik yaradıldı. Təsdiqdən sonra reyestr nömrəsi, QR kod və bütövlük imzası əlavə olunacaq.")}</div></div>
         <div class="viewer-stage"><div class="viewer-load">${spinner(22)}</div><iframe class="viewer-frame doc-frame" id="pv" title="${esc(t("Sənədin önizləməsi"))}" hidden></iframe></div>
+        ${r.type_code === "academic_leave" ? html`<div class="row wrap mt-sm" id="leave-order"><b class="small">${t("Rektorun əmri")}:</b>
+          <input class="input input-sm" id="lo-no" placeholder="${t("Əmrin nömrəsi")}" aria-label="${t("Əmrin nömrəsi")}" style="max-width:160px">
+          <label class="small">${t("Əmrin tarixi")} <input class="input input-sm" id="lo-date" type="date"></label>
+          <label class="small">${t("Qüvvəyə minir")} <input class="input input-sm" id="lo-eff" type="date"></label></div>` : ""}
         <div class="tiny muted mt-sm">${t("Pilotda bu addımda ASAN İmza / SİMA ilə gücləndirilmiş elektron imza əlavə olunacaq.")}</div>`,
-        actions: [{ label: t("Geri"), cls: "btn-ghost" }, { html: `${ic("shield", 15).__html} ${esc(t("Elektron təsdiqlə və ver"))}`, cls: "btn-success", onClick: async () => {
-          const res = await api.post(`/api/requests/${id}/action`, { action: "issue" }); toast(t("Sənəd verildi: {reg}", { reg: res.document.reg_no }), "ok"); reload(); } }] });
+        actions: [{ label: t("Geri"), cls: "btn-ghost" }, { html: `${ic("shield", 15).__html} ${esc(t("Elektron təsdiqlə və ver"))}`, cls: "btn-success", onClick: async (w) => {
+          const order = r.type_code === "academic_leave" ? { order_no: w.querySelector("#lo-no").value, order_date: w.querySelector("#lo-date").value,
+            effective_date: w.querySelector("#lo-eff").value } : {};
+          try { const res = await api.post(`/api/requests/${id}/action`, { action: "issue", ...order }); toast(t("Sənəd verildi: {reg}", { reg: res.document.reg_no }), "ok"); reload(); }
+          catch (err) { toast(err.message, "err"); return false; } } }] });
       const fr = m.el.querySelector("#pv");
       try {
         const resp = await fetch(`/api/requests/${id}/preview`, { credentials: "same-origin" });

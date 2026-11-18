@@ -84,6 +84,11 @@ def issue_temporary(c, admin, target) -> str:
     return password
 
 
+def end_all_sessions(c, uid: int) -> int:
+    """For other modules: the account signs in again (a changed role, a deactivated account)."""
+    return repo.end_sessions(c, uid)
+
+
 def unlock(c, admin, target, reason: str):
     repo.unlock(c, target)
     audit(c, admin["id"], "account_unlocked", "user", f"{target['username']} · {reason}")

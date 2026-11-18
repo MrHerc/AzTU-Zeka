@@ -1,0 +1,18 @@
+{
+ "… tarixli … nömrəli": "dated … No. …",
+ "Qrup və tələbə bileti nömrəsi yalnız tələbəyə verilir": "A group and a student ID number are given to students only",
+ "«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır": "«{field}» must be a whole number from {lo} to {hi}",
+ "Dərsin növü mühazirə, məşğələ və ya laboratoriya olmalıdır": "The class type must be lecture, seminar or laboratory",
+ "Əmrin növü düzgün deyil": "The order type is not valid",
+ "Əmrin nömrəsini yazın": "Enter the order number",
+ "Yeni qrupu seçin": "Choose the new group",
+ "İstifadəçi adı 3–40 kiçik latın hərfi, rəqəm, nöqtə, defis və ya alt xətdən ibarət olmalıdır": "A user name is 3–40 lower-case Latin letters, digits, dots, hyphens or underscores",
+ "E-poçt ünvanı düzgün deyil": "The e-mail address is not valid",
+ "Öz hesabınızın rolunu dəyişə və ya onu deaktiv edə bilməzsiniz": "You cannot change the role of your own account or deactivate it",
+ "Tələbə bu fənnə artıq qeydiyyatdadır": "The student is already enrolled in this course",
+ "«{field}» sahəsində müəllim seçin": "Choose a teacher in «{field}»",
+ "Qrupların siyahısı düzgün deyil": "The list of groups is not valid",
+ "Yalnız aktiv tələbə qeydiyyata alınır": "Only an active student can be enrolled",
+ "Bitmə tarixi başlanğıc tarixindən sonra olmalıdır": "The end date must be after the start date",
+ "Status əmri yalnız tələbəyə verilir": "Status orders apply to students only"
+}

@@ -128,11 +128,19 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `GET` | `/api/admin/users/{id}/roles` | `roles.grant` | A user's roles |
 | `POST` | `/api/admin/users/{id}/roles` | `roles.grant` | Grant a role, optionally scoped to a faculty, department or course (audited) |
 | `DELETE` | `/api/admin/users/{id}/roles/{gid}` | `roles.grant` | Revoke a grant; sessions acting in it fall back at once (audited) |
-| `GET` | `/api/directory/{entity}` | `directory.read` | Faculties, departments, specialties, groups or terms: `?q=` search, `?page=` (50 a page), `?active=1/0` |
-| `POST` | `/api/directory/{entity}` | `directory.manage` | Create (validated, unique code, audited) |
-| `PUT` | `/api/directory/{entity}/{id}` | `directory.manage` | Change (rules checked on the merged row, e.g. teaching ends before the exam session) |
-| `POST` | `/api/directory/{entity}/{id}/deactivate` | `directory.manage` | Deactivate; there is no delete |
+| `GET` | `/api/directory/{entity}` | `directory.read` | `faculties`, `departments`, `specialties`, `groups`, `terms`, `users`, `courses`, `units`: `?q=` search, `?page=` (50 a page), `?active=1/0`, filters such as `?role=`, `?group_id=`, `?term_id=`, `?course_id=`; `users` only for `directory.manage` and never with password or TOTP columns |
+| `POST` | `/api/directory/{entity}` | `directory.manage` | Create (validated, unique code, audited); `users` only for `users.manage` |
+| `PUT` | `/api/directory/{entity}/{id}` | `directory.manage` | Change (rules checked on the merged row, e.g. teaching ends before the exam session); a changed role ends the account's sessions; one's own role cannot be changed |
+| `POST` | `/api/directory/{entity}/{id}/deactivate` | `directory.manage` | Deactivate; there is no delete. A deactivated account cannot sign in and its sessions end; its history stays |
 | `POST` | `/api/directory/{entity}/{id}/activate` | `directory.manage` | Activate again |
+| `GET` | `/api/directory/units/{id}/groups` | `directory.read` | The groups a teaching unit (lecture, seminar, lab) is for |
+| `PUT` | `/api/directory/units/{id}/groups` | `directory.manage` | Replace them: `{"group_ids": [..]}` |
+| `GET` | `/api/directory/courses/{id}/enrollments` | `directory.manage` | Enrolments with group (own group when empty), subgroup, `begin_date`, `end_date` |
+| `POST` | `/api/directory/courses/{id}/enrollments` | `directory.manage` | Enrol an active student: `{"user_id", "group_id"?, "subgroup"?, "begin_date"?}`; `409` when enrolled |
+| `POST` | `/api/directory/courses/{id}/enrollments/{uid}/end` | `directory.manage` | End an enrolment on `{"end_date"}`; nothing is deleted |
+| `GET` | `/api/courses/{id}/roster?day=` | teacher (own course), admin, academic_office | The lesson list on a day: enrolments with `begin_date <= day < end_date` of active accounts |
+| `GET` | `/api/directory/students/{id}/status` | `students.status.read` | The student's status today and every status order; a dean's office only for its faculty; the read is audited |
+| `POST` | `/api/directory/students/{id}/status` | `students.status` | Add a status order (below) |
 | `DELETE` | `/api/me/sessions/{id}` | any | End one of one's own sessions (`404` for another person's) |
 | `POST` | `/api/me/sessions/end-others` | any | End every session but the current one |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
@@ -182,6 +190,21 @@ linked by their owner (`POST /api/auth/sso/link` from a session that passed the 
 administrator. No account is created: an unknown person gets `sso=not_found`. After the provider, a staff session still
 needs the local second factor (`scope` `mfa` or `mfa_enroll`) unless the provider's `amr`/`acr` names a trusted value.
 Redirect reasons: `not_found`, `failed`, `expired`, `cancelled`, `off`; for linking, `/#/profile?sso=linked|taken|expired`.
+
+### Status orders (Task 15)
+
+`POST /api/directory/students/{id}/status` with `{"kind", "order_no", "order_date", "effective_date", "to_group_id"?,
+"note"?}`. `kind` is one of `admission`, `group_change`, `transfer_in`, `transfer_out`, `academic_leave`, `expulsion`,
+`reinstatement`, `graduation`; the order number, the order date and the effective date (`YYYY-MM-DD`) are all required,
+and `group_change` / `transfer_in` name the new group. Orders are only added (database triggers refuse a change or a
+delete; only `reported_at` may be set later); a wrong order is corrected by a new one whose note gives the reason. The
+status of a day comes from the orders in force on it: `active`, `on_leave`, `expelled`, `transferred`, `graduated`.
+Leave, expulsion, transfer out and graduation end the student's open enrolments on the effective date, so the student
+leaves the lesson lists from that day while earlier attendance and grades stay; the account itself stays active (a
+student on leave signs in and sees their own documents). Only the academic office enters orders on this screen until
+the owner decides (SPEC, Open Questions 17). Issuing an `academic_leave` request (`POST /api/requests/{id}/action`,
+`"issue"`) needs `order_no`, `order_date` and `effective_date` too, writes the order, and the extract prints the order's
+number and date.
 
 ### `POST /api/auth/password`
 
@@ -847,7 +870,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-145 routes, in the order the router matches them, except that the Task 10–15 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+153 routes, in the order the router matches them, except that the Task 10–15 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -882,6 +905,14 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | PUT | `/api/directory/{entity}/{id}` | admin, academic_office |
 | POST | `/api/directory/{entity}/{id}/deactivate` | admin, academic_office |
 | POST | `/api/directory/{entity}/{id}/activate` | admin, academic_office |
+| GET | `/api/directory/units/{id}/groups` | staff |
+| PUT | `/api/directory/units/{id}/groups` | admin, academic_office |
+| GET | `/api/directory/courses/{id}/enrollments` | admin, academic_office |
+| POST | `/api/directory/courses/{id}/enrollments` | admin, academic_office |
+| POST | `/api/directory/courses/{id}/enrollments/{uid}/end` | admin, academic_office |
+| GET | `/api/courses/{id}/roster` | teacher, admin, academic_office |
+| GET | `/api/directory/students/{id}/status` | academic_office, admin, office, leader |
+| POST | `/api/directory/students/{id}/status` | academic_office |
 | DELETE | `/api/me/sessions/{id}` | any |
 | POST | `/api/me/sessions/end-others` | any |
 | GET | `/healthz` | public |

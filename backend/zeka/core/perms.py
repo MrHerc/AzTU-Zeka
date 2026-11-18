@@ -20,6 +20,10 @@ PERMS: dict[str, tuple[str, ...]] = {
     "users.manage": ("admin",),
     "directory.read": STAFF_ROLES,                         # structure lists (Task 15)
     "directory.manage": ("admin", "academic_office"),      # create, change, deactivate structure and terms
+    # Task 15, slice 2. Who enters status orders on screen is the owner's decision (SPEC, Open Q 17); until then only the
+    # academic office. Reading them: the registry offices, leadership, and a dean's office for its own faculty.
+    "students.status": ("academic_office",),
+    "students.status.read": ("academic_office", "admin", "office", "leader"),
 }
 
 SCOPE_TYPES = ("faculty", "department", "course")
