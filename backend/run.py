@@ -10,6 +10,7 @@ BACKEND = Path(__file__).resolve().parent
 ROOT = BACKEND.parent  # repository: frontend/, content/, data/, logs/
 sys.path.insert(0, str(BACKEND))
 
+from zeka.core import migrate  # noqa: E402
 from zeka.legacy import api, store  # noqa: E402
 from zeka.core.security import CFG, LOOPBACK  # noqa: E402
 from zeka.core.web import make_server  # noqa: E402
@@ -57,7 +58,10 @@ def main():
     if public:
         CFG.allowed_hosts = {public.split("://", 1)[1].lower()}
     CFG.access_log = os.environ.get("ZEKA_ACCESS_LOG", "1" if exposed else "0") == "1"
-    store.init(reset=args.reset)
+    try:
+        store.init(reset=args.reset)
+    except migrate.MigrationError as ex:     # files and database disagree: never start on a guessed schema
+        sys.exit(f"Verilənlər bazasının sxemi: {ex}")
     api.BASE_URL["value"] = public or f"http://127.0.0.1:{args.port}"
     log_dir = ROOT / "logs"
     log_dir.mkdir(exist_ok=True)

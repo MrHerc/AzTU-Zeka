@@ -215,7 +215,7 @@ def test_init_keeps_an_up_to_date_database(db):
     assert store.row(db, "SELECT COUNT(*) n FROM audit WHERE action='marker'")["n"] == 1
 
 
-def test_init_rebuilds_an_outdated_schema(db):
+def test_init_never_drops_a_migrated_database_for_its_version(db):
     db.execute("INSERT INTO audit(ts,user_id,action) VALUES('x', 1, 'marker')")
     db.execute("PRAGMA user_version=1")
     db.commit()
@@ -223,8 +223,22 @@ def test_init_rebuilds_an_outdated_schema(db):
     store.init()
     c = store.connect()
     try:
+        assert store.row(c, "SELECT COUNT(*) n FROM audit WHERE action='marker'")["n"] == 1
+    finally:
+        c.close()
+
+
+def test_init_rebuilds_a_pre_migration_demo_of_another_version(db):
+    db.execute("INSERT INTO audit(ts,user_id,action) VALUES('x', 1, 'marker')")
+    db.execute("DROP TABLE schema_migrations")
+    db.execute("PRAGMA user_version=1")
+    db.commit()
+    db.close()
+    store.init()
+    c = store.connect()
+    try:
         assert store.row(c, "SELECT COUNT(*) n FROM audit WHERE action='marker'")["n"] == 0
-        assert c.execute("PRAGMA user_version").fetchone()[0] == store.SCHEMA_VERSION
+        assert c.execute("PRAGMA user_version").fetchone()[0] == store.LEGACY_SCHEMA_VERSION
     finally:
         c.close()
 
