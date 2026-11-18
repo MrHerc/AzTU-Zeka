@@ -115,6 +115,11 @@ def _value(kind: str, field: str, v):
     return v, None
 
 
+def field_value(kind: str, field: str, v):
+    """One field checked by its kind (for other modules, e.g. the import of Task 16): (clean value, None) or (None, reason)."""
+    return _value(kind, field, v)
+
+
 def date_problem(field: str, v) -> dict | None:
     try:
         date.fromisoformat(v)

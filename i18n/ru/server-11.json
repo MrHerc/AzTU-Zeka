@@ -1,0 +1,17 @@
+{
+ "Faylda məcburi sütunlar yoxdur: {cols}": "В файле нет обязательных столбцов: {cols}",
+ "sourcedId 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır": "sourcedId: 1–64 буквы, цифры и символы ._:@/-",
+ "Rol student və ya teacher olmalıdır": "Роль: student или teacher",
+ "enabledUser true və ya false olmalıdır": "enabledUser: true или false",
+ "Tələbənin bilet nömrəsi (identifier) yazılmalıdır": "Для студента нужен номер студенческого билета (identifier)",
+ "Təşkilatın növü faculty və ya department olmalıdır": "Тип организации: faculty или department",
+ "Kafedranın fakültəsi (parentSourcedId) yazılmalıdır": "Для кафедры нужен факультет (parentSourcedId)",
+ "Həftə günü 1 ilə 7 arasında olmalıdır": "День недели: от 1 до 7",
+ "Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır": "Время занятия в формате ЧЧ:ММ, окончание позже начала",
+ "{what} tapılmadı: {value}": "{what} не найден(а): {value}",
+ "sourcedId faylda təkrarlanır (sətir {n})": "sourcedId повторяется в файле (строка {n})",
+ "Bu hesab idxalla dəyişdirilmir": "Эта учётная запись не изменяется импортом",
+ "«{field}» dəyəri artıq başqa sətirdədir: {value}": "Значение «{field}» уже есть в другой строке: {value}",
+ "Zəka-da dəyişdirilib; mənbənin dəyəri yazılmadı": "Изменено в Zəka; значение источника не записано",
+ "Tələbə bileti nömrəsi və ya aktivləşdirmə kodu yanlışdır": "Неверный номер студенческого билета или код активации"
+}

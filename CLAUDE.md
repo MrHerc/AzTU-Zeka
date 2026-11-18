@@ -20,9 +20,12 @@ python backend/run.py --reset                     # wipe and re-seed the demo da
 python backend/run.py --workers 4                 # N processes on one port (Linux/macOS, SO_REUSEPORT); /healthz names the worker
 ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-url https://host   # real deployment
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
+python backend/manage.py import --kind users --source old-sis --file F.csv [--dry-run] [--prefer source]   # Task 16
+python backend/manage.py activation-codes --faculty CODE --out codes.csv   # one-time student codes for a dean's office
+python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 948 tests, about 2.5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 964 tests, about 2.5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done

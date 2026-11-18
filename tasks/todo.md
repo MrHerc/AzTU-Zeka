@@ -365,16 +365,23 @@ OneRoster 1.2 CSV sütun adları və Azərbaycanca başlıq qarşılıqları qə
 **Forma №3 (2026-11-18, sahibin qərarı):** `--kind teaching-load` kafedranın akademik yük faylını (`.xlsx`) oxuyur və tədris vahidlərini yaradır. Format və oxuma qaydaları `docs/forms/forma-3.md`-dədir: iki tərtibat (bir vərəqdə müəllim blokları; hər müəllimə bir vərəq), başlıq mətnlə tapılır, boş fənn adlı sətir əvvəlki fənnin davamıdır, birləşmiş mühazirə axını bütün qrupları əhatə edən bir vahiddir, `Digər dərs yüklərini aparan müəllimlər` ikinci müəllimdir. Oxuyucu standart kitabxana ilə yazılır (`zipfile`, `xml.etree`), Office faylları üçün mövcud ölçü və DTD qoruyucuları ilə; yeni asılılıq yoxdur. Müəllim adı reyestrdəki istifadəçiyə uyğunlaşdırılır; tapılmayan ad konflikt hesabatına düşür, hesab yaradılmır.
 
 **Acceptance criteria:**
-- [ ] Hər iki tərtibatda uydurma Forma №3 nümunəsi (`tests/fixtures/forma3_blocks.xlsx`, `tests/fixtures/forma3_sheets.xlsx`) gözlənilən tədris vahidlərini verir: axın, yarımqrup, ikinci müəllim, `Cəmi` və `SAAT HESABI` sətirlərinin keçilməsi daxil; real fayllar repoya düşmür
-- [ ] 10 000 sətirlik istifadəçi faylı 60 saniyədən tez idxal olunur; təkrar işlətmə 0 dəyişiklik bildirir
-- [ ] 3 səhv sətri olan fayl heç nə yazmır və 3 sətri nömrə və səbəblə göstərir
-- [ ] Zəka-da dəyişdirilmiş sətir təkrar idxalda üstünə yazılmır, konflikt hesabatında sətir nömrəsi ilə görünür; `--prefer source` üstünə yazır və audit hadisəsi yazır
-- [ ] Doğrulama yazma tranzaksiyasından əvvəl bitir; yazma tək `BEGIN IMMEDIATE` tranzaksiyasıdır və kilid müddəti idxal hesabatında çıxır: 10 000 sətirdə ≤ 1 s. Admin ekranı ≤ 20 000 sətir qəbul edir; böyük fayl yalnız `manage.py` ilə
-- [ ] Aktivləşdirmə kodu bir dəfə işləyir və müddəti bitəndə rədd olunur; düzgün kod başqa tələbə nömrəsi ilə rədd olunur; bazada açıq kod yoxdur (yalnız hash); bir ünvandan 10 yanlış koddan sonra 429, başqa ünvandan düzgün kod işləyir
+- [x] Hər iki tərtibatda uydurma Forma №3 nümunəsi (`tests/fixtures/forma3_blocks.xlsx`, `tests/fixtures/forma3_sheets.xlsx`) gözlənilən tədris vahidlərini verir: axın, yarımqrup, ikinci müəllim, `Cəmi` və `SAAT HESABI` sətirlərinin keçilməsi daxil; real fayllar repoya düşmür
+- [x] 10 000 sətirlik istifadəçi faylı 60 saniyədən tez idxal olunur; təkrar işlətmə 0 dəyişiklik bildirir
+- [x] 3 səhv sətri olan fayl heç nə yazmır və 3 sətri nömrə və səbəblə göstərir
+- [x] Zəka-da dəyişdirilmiş sətir təkrar idxalda üstünə yazılmır, konflikt hesabatında sətir nömrəsi ilə görünür; `--prefer source` üstünə yazır və audit hadisəsi yazır
+- [x] Doğrulama yazma tranzaksiyasından əvvəl bitir; yazma tək `BEGIN IMMEDIATE` tranzaksiyasıdır və kilid müddəti idxal hesabatında çıxır: 10 000 sətirdə ≤ 1 s. Admin ekranı ≤ 20 000 sətir qəbul edir; böyük fayl yalnız `manage.py` ilə
+- [x] Aktivləşdirmə kodu bir dəfə işləyir və müddəti bitəndə rədd olunur; düzgün kod başqa tələbə nömrəsi ilə rədd olunur; bazada açıq kod yoxdur (yalnız hash); bir ünvandan 10 yanlış koddan sonra 429, başqa ünvandan düzgün kod işləyir
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_import.py -q`
-- [ ] `python backend/manage.py import --kind users --source test --file tests/fixtures/users_10k.csv --dry-run`
+- [x] `python -m pytest tests/integration/test_import.py -q` (13 test)
+- [x] `python backend/manage.py import --kind users --source test --file tests/fixtures/users_10k.csv --dry-run` (təmiz demo bazasında: 10 000 yeni, 0,12 s; real idxal 0,33 s, kilid 208 ms; təkrar 0 dəyişiklik; 10 120 aktivləşdirmə kodu)
+
+Qeyd (2026-11-18): `modules/integration/` (`tables.py` CSV/XLSX oxuyucusu, `forma3.py`, `domain.py`, `importer.py`, `repo.py`,
+`routes.py`), `0160_import.sql`, `frontend/js/admin-import.js`, giriş səhifəsində "Tələbə hesabını aktivləşdir". Konflikt
+idxal anındakı sahələrin hash-i (`import_links.source_hash`) ilə tapılır; heç vaxt idxal olunmamış sətrin yalnız boş
+sahələri doldurulursa konflikt sayılmır. Forma №3-də fənn adla (bir neçə semestrdə eyni ad varsa semestrin adı ilə),
+müəllim "Soyad Ad Ata adı" sözləri ilə, qrup adla tapılır; tapılmayan konflikt hesabatına düşür. Real AzTU fayllarının
+hər iki tərtibatı bu oxuyucu ilə yoxlanmayıb (fayllar repoda yoxdur): sahib ilk real idxalı quru sınaqla etməlidir.
 
 **Dependencies:** Task 15 (dilim 1: struktur və semestr); `classes` və `enrollments` növləri dilim 2-nin miqrasiyasından (`teaching_units`, `enrollments.begin_date`) sonra
 **Files likely touched:** `backend/zeka/modules/integration/importer.py`, `backend/migrations/0160_import.sql` (`import_links` cədvəli, (`kind`, `source_system`, `source_id`) üzrə unikal; aktivləşdirmə kodları), `backend/manage.py`, `frontend/js/admin-import.js`, `tests/fixtures/*.csv`

@@ -143,7 +143,32 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/directory/students/{id}/status` | `students.status` | Add a status order (below) |
 | `DELETE` | `/api/me/sessions/{id}` | any | End one of one's own sessions (`404` for another person's) |
 | `POST` | `/api/me/sessions/end-others` | any | End every session but the current one |
+| `POST` | `/api/admin/import` | admin | Bulk import of one file (below); `dry_run` is true unless it is sent as `false` |
+| `POST` | `/api/admin/activation-codes` | admin | One-time activation codes for a faculty's students without a password, as CSV, shown once |
+| `POST` | `/api/auth/activate` | public | `{"student_no", "code", "password"}`: a student chooses a password with the code and is signed in |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
+
+### Bulk import (Task 16)
+
+`POST /api/admin/import` with `{"kind", "source", "filename", "content_b64", "dry_run", "prefer_source"}`, or
+`python backend/manage.py import --kind K --source S --file F [--dry-run] [--prefer source]` for files over the screen's
+20 000 rows. Kinds: `users`, `orgs` (faculties and departments), `terms`, `courses`, `classes` (teaching units),
+`enrollments` (`role=teacher` sets the unit's teacher; `role=student` enrols in the unit's course with its group,
+subgroup, `beginDate`, `endDate`), `timetable`, and `teaching-load` (Forma №3 `.xlsx`, `docs/forms/forma-3.md`).
+Columns are OneRoster 1.2 CSV names or Azerbaijani headings; CSV is UTF-8 with commas, semicolons or tabs; XLSX is read
+with the standard library and the Office reader's size and DTD guards. Every row is checked and resolved first; one
+refused row and nothing is written (`errors`: row number and reason). A row is linked to its source by `import_links`
+(`kind`, `source_system`, `sourcedId`), so a second run of the same file changes nothing. A linked row that Zəka changed
+since the import and the file says otherwise is a conflict: it is listed with its row and fields and not overwritten;
+`prefer_source` overwrites it and writes `import_overwrite` to the audit log. The write is one `BEGIN IMMEDIATE`
+transaction and the report gives `lock_ms`. An import never changes an account whose role is not student or teacher,
+and never creates an account from Forma №3 (an unknown teacher, course or group is a conflict).
+
+Activation codes: 12 base32 characters (60 bits) shown as `XXXX-XXXX-XXXX`; only their SHA-256 is stored; a code works
+once, only with its student number, until `activation_days` (setting, default 14); a new batch for a faculty revokes the
+unused codes of the old one. Wrong codes count per (student number, address) like wrong passwords: 10 in 15 minutes
+answer `429` for that address; a wrong attempt does not spend the code. `manage.py activation-codes --faculty CODE
+--out FILE` writes the same CSV (mode 600) for the dean's office.
 
 ### `POST /api/auth/login`
 
@@ -870,7 +895,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-153 routes, in the order the router matches them, except that the Task 10–15 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+156 routes, in the order the router matches them, except that the Task 10–16 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -915,6 +940,9 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/directory/students/{id}/status` | academic_office |
 | DELETE | `/api/me/sessions/{id}` | any |
 | POST | `/api/me/sessions/end-others` | any |
+| POST | `/api/admin/import` | admin |
+| POST | `/api/admin/activation-codes` | admin |
+| POST | `/api/auth/activate` | public |
 | GET | `/healthz` | public |
 | POST | `/api/consent` | any |
 | GET | `/api/me` | any |

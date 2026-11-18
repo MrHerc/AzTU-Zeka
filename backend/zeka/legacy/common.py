@@ -23,7 +23,7 @@ STAFF = ("office", "admin", "leader")
 
 # Tests (ZEKA_TX_GUARD=1): a request may hold SQLite's single write lock for at most 200 ms (Task 7).
 _TX_GUARD = os.environ.get("ZEKA_TX_GUARD") == "1"
-TX_GUARD_EXEMPT = ("/api/admin/reset",)
+TX_GUARD_EXEMPT = ("/api/admin/reset", "/api/admin/import")     # the import reports its own lock time (Task 16)
 
 
 def _sid(req):

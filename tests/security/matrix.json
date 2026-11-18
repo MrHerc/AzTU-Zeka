@@ -703,6 +703,24 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/admin/activation-codes": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/admin/import": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/admin/reset": {
   "access": [
    "admin"
@@ -770,6 +788,13 @@
   "access": [
    "student"
   ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/auth/activate": {
+  "access": "public",
   "audit_read": null,
   "demo": false,
   "perm": null,

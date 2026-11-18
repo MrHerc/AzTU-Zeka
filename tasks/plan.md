@@ -84,7 +84,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] T13 Rol və icazə modeli
 - [x] T14 SSO: ümumi OIDC müştərisi
 - [x] T15 Struktur və reyestr idarəsi
-- [ ] T16 Kütləvi idxal
+- [x] T16 Kütləvi idxal
 - [ ] T17 Tenant ayarları
 
 ### Checkpoint B · saat 22

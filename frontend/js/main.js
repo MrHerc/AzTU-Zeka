@@ -14,6 +14,7 @@ import "./support.js";
 import "./achievements.js";
 import "./radar.js";
 import "./admin-directory.js";
+import "./admin-import.js";
 import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;
@@ -75,7 +76,24 @@ function passwordLogin() {
         <input class="input" id="login-pass" name="password" type="password" autocomplete="current-password" required></div>
       <button class="btn btn-primary btn-block" type="submit">${ic("lock", 16)} ${t("Daxil ol")}</button>
       <p class="small muted" style="margin:0">${t("Parolu unutmusunuzsa, dekanlığa və ya İT xidmətinə müraciət edin: müvəqqəti parol verəcəklər.")}</p>
+      <button class="btn btn-ghost btn-sm" type="button" id="activate-open" style="align-self:flex-start">${ic("lock", 15)} ${t("Tələbə hesabını aktivləşdir")}</button>
     </form>`;
+}
+function activateModal() {
+  modal({ title: t("Hesabın aktivləşdirilməsi"), size: "sm", body: html`<div class="stack">
+      <p class="small muted" style="margin:0">${t("Dekanlığın verdiyi birdəfəlik kodu və tələbə bileti nömrənizi yazın, sonra parol seçin.")}</p>
+      <div class="field"><label class="label" for="act-no">${t("Tələbə bileti №")}</label><input class="input" id="act-no" autocomplete="username" spellcheck="false"></div>
+      <div class="field"><label class="label" for="act-code">${t("Aktivləşdirmə kodu")}</label><input class="input" id="act-code" autocomplete="one-time-code" spellcheck="false" placeholder="XXXX-XXXX-XXXX"></div>
+      <div class="field"><label class="label" for="act-pass">${t("Yeni parol (ən azı 15 simvol)")}</label><input class="input" id="act-pass" type="password" autocomplete="new-password"></div>
+      <div class="field"><label class="label" for="act-pass2">${t("Parolu təkrarlayın")}</label><input class="input" id="act-pass2" type="password" autocomplete="new-password"></div></div>`,
+    actions: [{ label: t("Aktivləşdir"), cls: "btn-primary", onClick: async (w) => {
+      const pass = w.querySelector("#act-pass").value;
+      if (pass !== w.querySelector("#act-pass2").value) { toast(t("Parollar eyni deyil"), "err"); return false; }
+      try {
+        const r = await api.post("/api/auth/activate", { student_no: w.querySelector("#act-no").value, code: w.querySelector("#act-code").value, password: pass });
+        S.user = r.user; toast(t("Hesab aktivləşdirildi"), "ok"); go(r.home);
+      } catch (err) { toast(err.message, "err"); return false; }
+    } }] });
 }
 async function loginPage(root) {
   const uni = S.app.university;
@@ -105,6 +123,7 @@ async function loginPage(root) {
       <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>`}
     </div></div></div>`);
   ssoNotice();
+  on(root, "click", "#activate-open", activateModal);
   on(root, "submit", "#login-form", async (e, f) => {
     e.preventDefault();
     const btn = $("button[type=submit]", f);

@@ -89,6 +89,30 @@ def end_all_sessions(c, uid: int) -> int:
     return repo.end_sessions(c, uid)
 
 
+# For other modules (activation codes, Task 16): the same throttling, policy and password store as a sign-in.
+def throttle_wait(c, account: str, ip: str, t: float) -> float:
+    return repo.block_wait(c, account, domain.client_key(ip), t)
+
+
+def throttle_failure(c, account: str, ip: str, t: float) -> bool:
+    blocked = repo.record_failure(c, account, domain.client_key(ip), t)
+    if blocked:
+        audit(c, None, "login_blocked", "user", f"{account} · {domain.client_key(ip)}")
+    return blocked
+
+
+def account(c, uid: int):
+    return repo.user(c, uid)
+
+
+def password_problem(u, password: str) -> dict | None:
+    return domain.policy_problem(password, mfa=bool(u["totp_enabled_at"]), context=context_words(u), blocklist=blocklist())
+
+
+def set_password(c, uid: int, password_hash: str):
+    repo.set_password(c, uid, password_hash, must_change=False)
+
+
 def unlock(c, admin, target, reason: str):
     repo.unlock(c, target)
     audit(c, admin["id"], "account_unlocked", "user", f"{target['username']} · {reason}")

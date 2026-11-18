@@ -1,4 +1,5 @@
-"""Administration commands:  python backend/manage.py status | migrate | create-admin | backup | restore  (--help for each)"""
+"""Administration commands:  python backend/manage.py status | migrate | create-admin | backup | restore | import |
+activation-codes  (--help for each)"""
 import argparse
 import os
 import re
@@ -12,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from zeka.core import backup, config, migrate  # noqa: E402
 from zeka.legacy import store  # noqa: E402
 from zeka.modules.identity import domain as identity  # noqa: E402
+from zeka.modules.integration import domain as integration_rules, importer, tables  # noqa: E402
 
 
 def main(argv=None) -> int:
@@ -30,7 +32,21 @@ def main(argv=None) -> int:
     rs.add_argument("set", help="zeka-YYYYMMDD-HHMMSS.enc or latest.enc")
     rs.add_argument("--to", required=True, help="new or empty directory: campus.db and uploads/ are written there")
     rs.add_argument("--key-file", default=os.environ.get("BACKUP_KEY_FILE", ""))
+    im = sub.add_parser("import", help="bulk import of one CSV/XLSX file, all or nothing (Task 16)")
+    im.add_argument("--kind", required=True, choices=integration_rules.KINDS)
+    im.add_argument("--source", required=True, help="name of the source system, e.g. old-sis")
+    im.add_argument("--file", required=True)
+    im.add_argument("--dry-run", action="store_true", help="check and compare only: nothing is written")
+    im.add_argument("--prefer", choices=("zeka", "source"), default="zeka",
+                    help="source: overwrite rows changed in Zəka since the last import (audited)")
+    ac = sub.add_parser("activation-codes", help="one-time activation codes for a faculty's students, as CSV (Task 16)")
+    ac.add_argument("--faculty", required=True, help="faculty code")
+    ac.add_argument("--out", required=True, help="CSV file to write (handed to the dean's office)")
     args = ap.parse_args(argv)
+    if args.cmd == "import":
+        return run_import(args.kind, args.source, Path(args.file), args.dry_run, args.prefer == "source")
+    if args.cmd == "activation-codes":
+        return run_activation_codes(args.faculty, Path(args.out))
     if args.cmd == "create-admin":
         return create_admin(args.username, args.name)
     if args.cmd == "backup":
@@ -124,6 +140,62 @@ def create_admin(username: str, name: str) -> int:
         c.close()
     print(f"created administrator {username} (id {uid})")
     print(f"temporary password (shown once, must be changed at the first sign-in): {password}")
+    return 0
+
+
+
+def _az(v) -> str:
+    return v.get("az", "") if isinstance(v, dict) else str(v)          # reasons are i18n dicts
+
+
+def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source: bool) -> int:
+    """Exit 0: imported (or checked); 1: refused rows, nothing written; 2: the file or the database cannot be used."""
+    try:
+        store.init()
+    except migrate.MigrationError as ex:
+        print(f"error: {ex}", file=sys.stderr)
+        return 2
+    c = store.connect()
+    try:
+        report = importer.run(c, kind, source, path.name, path.read_bytes(), dry_run=dry_run, prefer_source=prefer_source)
+    except (OSError, tables.TableError) as ex:
+        print(f"error: {ex}", file=sys.stderr)
+        return 2
+    finally:
+        c.close()
+    tail = " · dry run, nothing written" if dry_run else f" · write lock {report['lock_ms']} ms" if report["written"] else ""
+    print(f"{kind} from {source}: {report['rows']} rows · new {report['inserted']} · changed {report['updated']} · "
+          f"unchanged {report['unchanged']} · conflicts {len(report['conflicts'])} · refused {report['error_count']} · "
+          f"{report['seconds']} s{tail}")
+    for e in report["errors"]:
+        print(f"  row {e['row']}: {_az(e['reason'])}")
+    for x in report["conflicts"][:200]:
+        print(f"  conflict, row {x['row']}: {_az(x['reason'])}" + (f" ({', '.join(x['fields'])})" if x.get("fields") else ""))
+    return 1 if report["error_count"] else 0
+
+
+def run_activation_codes(faculty_code: str, out: Path) -> int:
+    import csv
+    if out.exists():
+        print(f"error: {out} exists; codes are written once, to a new file", file=sys.stderr)
+        return 2
+    store.init()
+    c = store.connect()
+    try:
+        f = store.row(c, "SELECT id FROM faculties WHERE code=?", (faculty_code,))
+        if not f:
+            print(f"error: no faculty {faculty_code}", file=sys.stderr)
+            return 2
+        items = importer.issue_codes(c, None, f["id"])
+        with open(out, "x", newline="", encoding="utf-8") as fh:
+            os.chmod(out, 0o600)
+            w = csv.writer(fh)
+            w.writerow(["student_no", "full_name", "group", "username", "code", "expires_at"])
+            w.writerows([[x["student_no"], x["full_name"], x["group"], x["username"], x["code"], x["expires_at"]] for x in items])
+        c.commit()                                     # the codes count only once the file holding them is written
+    finally:
+        c.close()
+    print(f"{len(items)} codes written to {out}; the earlier unused codes of these students no longer work")
     return 0
 
 

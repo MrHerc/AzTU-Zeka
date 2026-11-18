@@ -1,0 +1,17 @@
+{
+ "Faylda məcburi sütunlar yoxdur: {cols}": "Required columns are missing from the file: {cols}",
+ "sourcedId 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır": "sourcedId must be 1–64 letters, digits and ._:@/- characters",
+ "Rol student və ya teacher olmalıdır": "The role must be student or teacher",
+ "enabledUser true və ya false olmalıdır": "enabledUser must be true or false",
+ "Tələbənin bilet nömrəsi (identifier) yazılmalıdır": "A student needs a student ID number (identifier)",
+ "Təşkilatın növü faculty və ya department olmalıdır": "The organisation type must be faculty or department",
+ "Kafedranın fakültəsi (parentSourcedId) yazılmalıdır": "A department needs its faculty (parentSourcedId)",
+ "Həftə günü 1 ilə 7 arasında olmalıdır": "The weekday must be from 1 to 7",
+ "Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır": "Class times must be HH:MM and end after they start",
+ "{what} tapılmadı: {value}": "{what} not found: {value}",
+ "sourcedId faylda təkrarlanır (sətir {n})": "sourcedId repeats in the file (row {n})",
+ "Bu hesab idxalla dəyişdirilmir": "This account is not changed by an import",
+ "«{field}» dəyəri artıq başqa sətirdədir: {value}": "The «{field}» value is already on another row: {value}",
+ "Zəka-da dəyişdirilib; mənbənin dəyəri yazılmadı": "Changed in Zəka; the source's value was not written",
+ "Tələbə bileti nömrəsi və ya aktivləşdirmə kodu yanlışdır": "The student ID number or the activation code is wrong"
+}
