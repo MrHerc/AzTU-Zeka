@@ -150,6 +150,7 @@ class Request:
         self.ip = client_ip(handler)
         self.length = 0             # validated Content-Length (set by the dispatcher)
         self.body_read = False
+        self.raw: bytes | None = None   # the body, read by the dispatcher before a handler slot is taken
 
     def content_length(self) -> int:
         raw = (self.headers.get("Content-Length") or "").strip()
@@ -163,9 +164,11 @@ class Request:
 
     def json(self) -> Body:
         if self._json is None:
-            length = self.content_length()
-            body = self.handler.rfile.read(length) if length else b"{}"
+            if self.raw is None:
+                length = self.content_length()
+                self.raw = self.handler.rfile.read(length) if length else b""
             self.body_read = True
+            body = self.raw or b"{}"
             try:
                 data = json.loads(body.decode("utf-8") or "{}", parse_constant=_reject_constant)
             except ValueError:
@@ -208,14 +211,17 @@ GATE = threading.BoundedSemaphore(HANDLERS)
 SLOW = threading.BoundedSemaphore(SLOW_HANDLERS)
 
 
+_INFLIGHT = [0]                 # requests between parsing and the last byte of their response
+_IDLE = threading.Condition()
+_STOPPING = [False]
+
+
 def drain(timeout: float = QUEUE_WAIT) -> bool:
-    """Graceful stop: wait until no handler runs (every slot is free). The caller exits afterwards; slots stay taken."""
-    deadline = time.monotonic() + timeout
-    for sem, n in ((GATE, HANDLERS), (SLOW, SLOW_HANDLERS)):
-        for _ in range(n):
-            if not sem.acquire(timeout=max(0.0, deadline - time.monotonic())):
-                return False
-    return True
+    """Graceful stop after the listening socket is closed: every answer from now on closes its keep-alive connection, and
+    this returns once every started request has been answered (its response written), or after ``timeout``."""
+    _STOPPING[0] = True
+    with _IDLE:
+        return _IDLE.wait_for(lambda: _INFLIGHT[0] == 0, timeout=timeout)
 
 
 class Router:
@@ -287,6 +293,16 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
             pass
 
         def _dispatch(self, method):
+            with _IDLE:
+                _INFLIGHT[0] += 1
+            try:
+                self._answer(method)
+            finally:
+                with _IDLE:
+                    _INFLIGHT[0] -= 1
+                    _IDLE.notify_all()
+
+        def _answer(self, method):
             started = time.monotonic()
             parts = urllib.parse.urlsplit(self.path)
             path = urllib.parse.unquote(parts.path)
@@ -305,6 +321,11 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                             raise HTTPError(415, "Content-Type application/json olmalıdır")
                     fn, params, roles, auth = router.match(method, path)
                     req.params = params
+                    # a slow upload waits here on its own thread, never inside a handler slot; a request that cannot pass
+                    # auth (no credential at all) is still answered without its body being read, then its connection closed
+                    if req.length and (not auth or self.headers.get("Cookie") or self.headers.get("X-Session")):
+                        req.raw = self.rfile.read(req.length)
+                        req.body_read = True
                     sem = SLOW if getattr(fn, "slow", False) else GATE
                     if not sem.acquire(timeout=QUEUE_WAIT):
                         raise HTTPError(503, "Server məşğuldur, bir neçə saniyədən sonra yenidən cəhd edin")
@@ -334,11 +355,13 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                 resp = json_resp({"error": tr("Daxili server xətası", req.lang)}, 500)
             # An unread request body would be parsed as the next request on this keep-alive connection.
             close = bool(req.length and not req.body_read) or resp.status in (400, 413, 501) and not req.body_read
-            self._send(resp, close)
-            if CFG.access_log:                         # one JSON object per line: a path cannot forge a second entry
-                print(json.dumps({"time": clock.now().isoformat(timespec="milliseconds"), "ip": req.ip, "method": method,
-                                  "path": path, "status": resp.status, "ms": round((time.monotonic() - started) * 1000),
-                                  "worker": os.getpid()}, ensure_ascii=False), flush=True)
+            self._send(resp, close or _STOPPING[0])
+            if CFG.access_log:      # one JSON object per line, written at once: a path cannot forge or split an entry
+                sys.stdout.write(json.dumps({"time": clock.now().isoformat(timespec="milliseconds"), "ip": req.ip,
+                                             "method": method, "path": path, "status": resp.status,
+                                             "ms": round((time.monotonic() - started) * 1000), "worker": os.getpid()},
+                                            ensure_ascii=False) + "\n")
+                sys.stdout.flush()
 
         def _error(self, path, status, message, lang):
             msg = L(message, lang) if isinstance(message, dict) else tr(message, lang)

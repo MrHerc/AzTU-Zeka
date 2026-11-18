@@ -22,6 +22,7 @@ import contextlib
 import gzip
 import hashlib
 import hmac
+import io
 import json
 import os
 import re
@@ -31,6 +32,7 @@ import sqlite3
 import subprocess  # nosec B404 - openssl and ssh with fixed argument lists, never a shell
 import tarfile
 import tempfile
+import zlib
 from datetime import datetime
 from pathlib import Path
 
@@ -114,7 +116,7 @@ def decrypt(src: Path, dst: Path, key_file) -> None:
         try:
             with open(dst, "wb") as out, gzip.GzipFile(fileobj=p.stdout, mode="rb") as z:
                 shutil.copyfileobj(z, out, CHUNK)
-        except (OSError, EOFError) as ex:
+        except (OSError, EOFError, zlib.error) as ex:
             p.kill()
             p.wait()
             dst.unlink(missing_ok=True)
@@ -175,6 +177,15 @@ def _write_index(dest: Path, index: dict[str, str]) -> None:
     tmp.replace(dest / "uploads" / "index.tsv")
 
 
+def _manifest(path: Path) -> dict:
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["db_sha256"], doc["uploads"]                    # noqa: B018  both keys must be there
+    except (OSError, ValueError, KeyError, TypeError) as ex:
+        raise BackupError(f"{path.name} cannot be read: {ex}") from None
+    return doc
+
+
 def sets(dest: Path) -> dict[datetime, str]:
     """{time: name without extension} of every complete set (its manifest exists)."""
     out = {}
@@ -202,20 +213,27 @@ def create(db_path: Path, uploads: Path, dest: Path, key_file) -> dict:
         encrypt(plain, work / f"{name}.enc", key_file)
         plain.unlink()
         index = _index(dest)
-        needed = sorted(p.name[:-4] for p in uploads.glob("*.bin") if re.fullmatch(r"[0-9a-f]{64}", p.name[:-4])) if uploads.exists() else []
-        for digest in needed:
+        found = sorted(p.name[:-4] for p in uploads.glob("*.bin") if re.fullmatch(r"[0-9a-f]{64}", p.name[:-4])) if uploads.exists() else []
+        needed, damaged = [], []
+        for digest in found:
             if digest in index and (dest / "uploads" / f"{digest}.enc").exists():
+                needed.append(digest)
+                continue
+            if sha256(uploads / f"{digest}.bin") != digest:    # a half-written or damaged upload would break every restore
+                damaged.append(digest)
                 continue
             enc = work / f"{digest}.enc"
             encrypt(uploads / f"{digest}.bin", enc, key_file)
             index[digest] = sha256(enc)
             enc.replace(dest / "uploads" / f"{digest}.enc")
+            needed.append(digest)
         _write_index(dest, index)
         manifest = {"format": 1, "created_at": clock.local().isoformat(timespec="seconds"), "db": f"{name}.enc",
-                    "db_sha256": sha256(work / f"{name}.enc"), "tables": counts, "uploads": needed}
+                    "db_sha256": sha256(work / f"{name}.enc"), "tables": counts, "uploads": needed, "damaged": damaged}
         manifest["hmac"] = _sign(key, manifest)
+        (work / f"{name}.json").write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="utf-8")
         (work / f"{name}.enc").replace(dest / f"{name}.enc")
-        (dest / f"{name}.json").write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding="utf-8")
+        (work / f"{name}.json").replace(dest / f"{name}.json")    # last and atomic: a set exists once its manifest does
     finally:
         shutil.rmtree(work, ignore_errors=True)
     latest = dest / "latest.enc"
@@ -235,7 +253,7 @@ def prune(dest: Path) -> list[str]:
     gone, needed = [], set()
     for when, name in all_sets.items():
         if when in kept:
-            needed.update(json.loads((dest / f"{name}.json").read_text(encoding="utf-8"))["uploads"])
+            needed.update(_manifest(dest / f"{name}.json")["uploads"])
             continue
         for ext in ("json", "enc"):
             (dest / f"{name}.{ext}").unlink(missing_ok=True)
@@ -255,7 +273,7 @@ def _files(dest: Path) -> dict[str, str]:
     out = {}
     for name in sets(dest).values():
         out[f"{name}.json"] = sha256(dest / f"{name}.json")
-        out[f"{name}.enc"] = json.loads((dest / f"{name}.json").read_text(encoding="utf-8"))["db_sha256"]
+        out[f"{name}.enc"] = _manifest(dest / f"{name}.json")["db_sha256"]
     for digest, enc in _index(dest).items():
         out[f"uploads/{digest}.enc"] = enc
     return out
@@ -266,33 +284,54 @@ def _allowed(rel: str) -> bool:
     return (head == "" and bool(SET.match(tail))) or (head == "uploads" and bool(UPLOAD.match(tail)))
 
 
+def _removals(have: set[str], files: dict[str, str]) -> list[str]:
+    """Names to delete on the second host. Retention runs over the sets of both sides, so a lost or new local directory
+    never wipes the history there; uploads are pruned only when every set kept there is also known here."""
+    def stamp(rel: str) -> datetime:
+        return datetime.strptime(SET.match(rel).group(1), "%Y%m%d-%H%M%S")  # type: ignore[union-attr]
+
+    remote = {stamp(r) for r in have if "/" not in r}
+    local = {stamp(r) for r in files if "/" not in r}
+    kept = keep(list(remote | local))
+    out = [r for r in have if "/" not in r and stamp(r) not in kept]
+    if remote & kept <= local:
+        out += [r for r in have if r.startswith("uploads/") and r not in files]
+    return sorted(out)
+
+
 def send(dest: Path, remote: str) -> dict:
-    """Mirror ``dest`` to the second host, then check there the SHA-256 of every file this run sent."""
+    """Mirror ``dest`` to the second host. A file gets its final name there only after its SHA-256 matched, so a cut or
+    damaged transfer is sent again on the next run."""
     files = _files(dest)
     m = re.match(r"^([^/:]+):(.+)$", remote)
     if m and not re.match(r"^[A-Za-z]:[\\/]", remote):
         return _send_ssh(dest, m.group(1), m.group(2), files)
     root = Path(remote)
-    (root / "uploads").mkdir(parents=True, exist_ok=True)
-    have = {f"{d}{p.name}" for d, base in (("", root), ("uploads/", root / "uploads")) for p in base.iterdir() if p.is_file()}
+    if not (root / "uploads").is_dir():        # never create it: an unmounted disk would quietly become a local copy
+        raise BackupError(f"{root / 'uploads'} does not exist: is the second disk mounted? Create the folder once on it")
+    have = {f"{d}{p.name}" for d, base in (("", root), ("uploads/", root / "uploads")) for p in base.iterdir()
+            if p.is_file() and _allowed(f"{d}{p.name}")}
     sent = sorted(rel for rel in files if rel not in have)
     for rel in sent:
         tmp = root / f"{rel}.part"
         shutil.copyfile(dest / rel, tmp)
+        if sha256(tmp) != files[rel]:
+            tmp.unlink()
+            raise BackupError(f"the copy of {rel} on the second host does not match")
         tmp.replace(root / rel)
-    bad = [rel for rel in sent if sha256(root / rel) != files[rel]]
-    if bad:
-        raise BackupError(f"the copy on the second host does not match: {bad[:5]}")
-    removed = [rel for rel in sorted(have - set(files)) if _allowed(rel)]
+    removed = _removals(have, files)
     for rel in removed:
         (root / rel).unlink()
     return {"sent": len(sent), "removed": len(removed)}
 
 
-def _ssh(host: str, command: str, data: bytes | None = None) -> bytes:
+def _ssh(host: str, command: str, stdin=None) -> bytes:
     _need("ssh")
-    r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, command], input=data,  # nosec B603 B607
-                       capture_output=True, timeout=3600)
+    try:
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", host, command], stdin=stdin or subprocess.DEVNULL,  # nosec B603 B607
+                           capture_output=True, timeout=3600)
+    except subprocess.TimeoutExpired:
+        raise BackupError(f"ssh {host}: no answer within an hour") from None
     if r.returncode:
         raise BackupError(f"ssh {host} failed ({r.returncode}): {r.stderr.decode(errors='replace').strip()[-400:]}")
     return r.stdout
@@ -304,15 +343,21 @@ def _send_ssh(dest: Path, host: str, path: str, files: dict[str, str]) -> dict:
     have = {line.strip() for line in listing.splitlines() if _allowed(line.strip())}
     sent = sorted(rel for rel in files if rel not in have)
     if sent:
-        with tempfile.TemporaryFile() as buf:
+        sums = "".join(f"{files[rel]}  {rel}\n" for rel in sent).encode()
+        with tempfile.TemporaryFile(dir=dest) as buf:          # on disk, not in memory: the first run sends every upload
             with tarfile.open(fileobj=buf, mode="w") as tar:
                 for rel in sent:
                     tar.add(dest / rel, arcname=rel)
+                info = tarfile.TarInfo(".sha256")
+                info.size = len(sums)
+                tar.addfile(info, io.BytesIO(sums))
             buf.seek(0)
-            _ssh(host, f"tar -C {q} -xf -", buf.read())
-        sums = "".join(f"{files[rel]}  {rel}\n" for rel in sent).encode()
-        _ssh(host, f"cd {q} && sha256sum -c --quiet --strict -", sums)
-    removed = sorted(have - set(files))                     # every name passed _allowed(): safe inside the command
+            # unpacked into .incoming, checked there, then moved into place: a cut transfer leaves no file with a final name
+            _ssh(host, f"cd {q} && rm -rf .incoming && mkdir .incoming && tar -C .incoming -xf - && cd .incoming && "
+                       "sha256sum -c --quiet --strict .sha256 && "
+                       'for f in $(cut -c67- .sha256); do mv -f -- "$f" "../$f" || exit 1; done && cd .. && rm -rf .incoming',
+                 stdin=buf)
+    removed = _removals(have, files)                        # every name passed _allowed(): safe inside the command
     if removed:
         _ssh(host, f"cd {q} && rm -f -- " + " ".join(removed))
     return {"sent": len(sent), "removed": len(removed)}
@@ -326,10 +371,7 @@ def restore(enc: Path, target: Path, key_file) -> dict:
     if not m:
         raise BackupError(f"{enc.name}: not a backup set (zeka-YYYYMMDD-HHMMSS.enc)")
     manifest_path = enc.with_suffix(".json")
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as ex:
-        raise BackupError(f"{manifest_path.name} cannot be read: {ex}") from None
+    manifest = _manifest(manifest_path)
     if not hmac.compare_digest(str(manifest.get("hmac", "")), _sign(key, manifest)):
         raise BackupError(f"{manifest_path.name} was changed or belongs to another key")
     if sha256(enc) != manifest["db_sha256"]:
@@ -345,7 +387,9 @@ def restore(enc: Path, target: Path, key_file) -> dict:
 
 
 def _restore_into(enc: Path, manifest: dict, target: Path, key_file) -> dict:
-    (target / "uploads").mkdir(parents=True, exist_ok=True)
+    target.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(target, 0o700)                                 # before any plaintext is written into it
+    (target / "uploads").mkdir(exist_ok=True)
     db = target / "campus.db"
     decrypt(enc, db, key_file)
     c = sqlite3.connect(db)
@@ -367,5 +411,4 @@ def _restore_into(enc: Path, manifest: dict, target: Path, key_file) -> dict:
         decrypt(src, out, key_file)
         if sha256(out) != digest:
             raise BackupError(f"upload {digest} is damaged")
-    os.chmod(target, 0o700)
     return {"tables": len(counts), "rows": sum(counts.values()), "uploads": len(manifest["uploads"])}

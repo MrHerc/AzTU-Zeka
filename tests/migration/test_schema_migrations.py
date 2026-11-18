@@ -95,6 +95,7 @@ def test_a_copy_is_saved_before_pending_files_and_only_five_are_kept(conn, mdir,
         migrate.apply(conn, mdir, backup_dir=backups)
     kept = sorted(backups.glob("pre-*.db"))
     assert len(kept) == migrate.KEEP_BACKUPS
+    assert [k.name[:8] for k in kept] == ["pre-0004", "pre-0005", "pre-0006", "pre-0007", "pre-0008"]   # the newest five
     copy = sqlite3.connect(kept[-1])
     try:
         assert copy.execute("SELECT x FROM a").fetchall() == [(42,)]

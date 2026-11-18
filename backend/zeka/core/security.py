@@ -65,6 +65,7 @@ class RateLimiter:
         self.limit, self.window, self.max_keys, self.name = limit, window, max_keys, name
         self._b: OrderedDict = OrderedDict()
         self._lock = threading.Lock()
+        self._swept = 0.0           # last sweep of this limiter's expired rows (per process)
 
     def _db(self, key, cost: int, count: bool) -> bool:
         # Own connection and transaction, committed at once: the request's transaction never holds this lock.
@@ -72,6 +73,9 @@ class RateLimiter:
         try:
             c.execute("BEGIN IMMEDIATE")
             t = time.time()
+            if t - self._swept > 60:        # keys that never come back would otherwise stay in rate_hits for ever
+                c.execute("DELETE FROM rate_hits WHERE name=? AND ts<?", (self.name, t - self.window))
+                self._swept = t
             c.execute("DELETE FROM rate_hits WHERE name=? AND key=? AND ts<?", (self.name, str(key), t - self.window))
             n = c.execute("SELECT COUNT(*) FROM rate_hits WHERE name=? AND key=?", (self.name, str(key))).fetchone()[0]
             ok = n + cost <= self.limit if count else n >= self.limit

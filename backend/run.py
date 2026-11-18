@@ -67,6 +67,9 @@ def main():
             ap.error("prod rejimində --reset qadağandır: məlumat heç vaxt silinmir")
         if clock.ZONE is None:
             ap.error(f"ZEKA_TZ={clock.TZ_NAME}: saat qurşağı tapılmadı (məs. Asia/Baku; Windows-da tzdata paketi lazımdır)")
+        if exposed and not public:
+            ap.error("prod rejimində şəbəkədə PUBLIC_URL təyin edin (məs. https://zeka.aztu.edu.az): sənədlərin QR kodları, "
+                     "Secure cookie və HSTS ondan asılıdır")
         if public.startswith("https://") and CFG.proxy_hops == 0:
             ap.error("PUBLIC_URL https:// ilə başlayır, amma ZEKA_PROXY_HOPS=0: tətbiq TLS danışmır, deməli qabaqda proksi var; "
                      "proksilərin sayını təyin edin (adətən 1)")
@@ -134,13 +137,17 @@ def supervise(args, log):
     stopping = False
 
     def spawn():
+        if stopping:                                           # a stop request wins over a restart
+            return
         pid = os.fork()
         if pid == 0:
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)      # not the supervisor's stop(); worker() sets its own when serving
             code = 0
             try:
                 worker(args, log)
             except BaseException as ex:                        # noqa: BLE001  a worker must never return into the supervisor loop
                 log(f"worker {os.getpid()} failed: {type(ex).__name__}: {ex}")
+                print(f"worker {os.getpid()} failed: {type(ex).__name__}: {ex}", file=sys.stderr, flush=True)
                 code = 1
             os._exit(code)
         children[pid] = time.monotonic()
@@ -159,6 +166,7 @@ def supervise(args, log):
     gc.freeze()             # the cyclic GC would write to every inherited index object and unshare its pages in each worker
     for _ in range(args.workers):
         spawn()
+    fast, gave_up = 0, False
     while children:
         try:
             pid, status = os.wait()
@@ -169,8 +177,20 @@ def supervise(args, log):
             continue
         log(f"worker {pid} exited (status {status}); restarting")
         if time.monotonic() - started < 2:                   # a worker that dies at once: do not spin
+            fast += 1
+            if fast >= 3 * args.workers:                     # it will not get better by itself: stop and say why
+                msg = "işçilər başlaya bilmir (ardıcıl uğursuz başlanğıclar); səbəb: logs/errors.log və yuxarıdakı xəta"
+                log(msg)
+                print(msg, file=sys.stderr, flush=True)
+                gave_up = True
+                stop()
+                continue
             time.sleep(1)
+        else:
+            fast = 0
         spawn()
+    if gave_up:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

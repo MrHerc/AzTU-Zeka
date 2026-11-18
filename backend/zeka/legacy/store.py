@@ -224,6 +224,10 @@ def sync_indexes(c):
     if last == engine.INDEX_SEQ[0]:
         return
     with engine.INDEX_SYNC:
+        # read again under the lock: another thread may have applied up to a newer seq since the read above
+        last = c.execute("SELECT MAX(seq) FROM index_changes").fetchone()[0] or 0
+        if last == engine.INDEX_SEQ[0]:
+            return
         if last < engine.INDEX_SEQ[0]:              # the demo was reset: the log started again
             build_indexes(c)
             return
@@ -719,7 +723,9 @@ def _rebuild_reason() -> str | None:
     try:
         has_log = probe.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations'").fetchone()
         version = probe.execute("PRAGMA user_version").fetchone()[0]
-    except sqlite3.Error:
+    except sqlite3.OperationalError:
+        raise                        # locked, unreadable, no permission: never a reason to delete the file
+    except sqlite3.DatabaseError:
         return "not a database"
     finally:
         probe.close()                # an open handle would make the unlink() below fail on Windows

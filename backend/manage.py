@@ -66,14 +66,22 @@ def run_backup(dest: Path, key_file: str, remote: str) -> int:
             print("error: BACKUP_REMOTE is empty: in prod every backup must also be on a second host", file=sys.stderr)
             return 4
         print("BACKUP_REMOTE is not set: the backup stays on this host only")
-        return 0
+        return _damaged(m)
     try:
         r = backup.send(dest, remote)
     except (backup.BackupError, OSError, subprocess.TimeoutExpired) as ex:
         print(f"error: sending to the second host failed: {ex}", file=sys.stderr)
         return 3
     print(f"second host: {r['sent']} file(s) sent and their SHA-256 checked there, {r['removed']} old file(s) removed")
-    return 0
+    return _damaged(m)
+
+
+def _damaged(m: dict) -> int:
+    if not m.get("damaged"):
+        return 0
+    print(f"warning: {len(m['damaged'])} upload(s) in the data directory do not match their SHA-256 and were not backed up: "
+          + ", ".join(m["damaged"][:5]), file=sys.stderr)
+    return 5
 
 
 def run_restore(enc: Path, target: Path, key_file: str) -> int:

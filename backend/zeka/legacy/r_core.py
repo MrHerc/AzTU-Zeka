@@ -306,7 +306,7 @@ def file_get(req):
                                            ("Cache-Control", "private, no-store")])
 
 
-@R("GET", "/api/files/{id:int}/preview")
+@R("GET", "/api/files/{id:int}/preview", slow=True)        # a PDF can take its 15 s extraction limit
 def file_preview(req):
     """Text preview rendered inside the app (works where the browser has no PDF viewer)."""
     f = file_access(req, req.params["id"])

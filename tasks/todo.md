@@ -194,9 +194,9 @@ Qeyd (2026-11-18): yoxlamalar `SITE_ADDRESS=localhost` ilə keçdi. Sınaq mühi
 
 ## Checkpoint A: Task 1–9 sonra
 
-- [ ] Bütün testlər yaşıl; rəy axını (tap → təkzib et → düzəlt) keçib
-- [ ] `docker compose up` ilə HTTPS açılır; yenidən başlatma məlumatı saxlayır
-- [ ] 300 paralel müştəridə 0 xəta (`demo` və `faculty` dəstləri); bərpa sınağı keçir
+- [x] Bütün testlər yaşıl; rəy axını (tap → təkzib et → düzəlt) keçib — `docs/review/checkpoint-a-2026-11-18.md`
+- [x] `docker compose up` ilə HTTPS açılır; yenidən başlatma məlumatı saxlayır
+- [x] 300 paralel müştəridə 0 xəta (`demo` və `faculty` dəstləri); bərpa sınağı keçir
 - [ ] Sahiblə baxış; commit və push icazəsi
 
 ---

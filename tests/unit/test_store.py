@@ -276,3 +276,38 @@ def test_question_generation_on_every_course(db, course_id):
         assert engine.grade(g, g["answer"] if g["qtype"] != "mcq" else int(g["answer"]))[0] is True, g
     if course_id == 6:                                   # English for engineers: no maths templates
         assert not any("lim (x→0)" in g["text"] for g in gen)
+
+
+def test_a_stale_read_of_the_change_log_never_triggers_a_full_rebuild(db, monkeypatch):
+    """Another thread applied the newest change between this thread's first MAX(seq) read and the lock (Checkpoint A, F20)."""
+    store.build_indexes(db)
+    store.log_index(db, "chunks", [1])
+    db.commit()
+    store.sync_indexes(db)
+    newest = engine.INDEX_SEQ[0]
+    monkeypatch.setattr(store, "build_indexes", lambda c: pytest.fail("a stale read rebuilt the whole index"))
+
+    class Stale:
+        first = True
+
+        def execute(self, sql, *args):
+            if "MAX(seq)" in sql and self.first:
+                self.first = False
+                return db.execute("SELECT ?", (newest - 1,))
+            return db.execute(sql, *args)
+
+    store.sync_indexes(Stale())
+    assert engine.INDEX_SEQ[0] == newest
+
+
+def test_a_locked_or_unreadable_database_is_never_called_not_a_database(monkeypatch):
+    class Locked:
+        def execute(self, *args):
+            raise sqlite3.OperationalError("database is locked")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(store.sqlite3, "connect", lambda *a, **k: Locked())
+    with pytest.raises(sqlite3.OperationalError):
+        store._rebuild_reason()                # a demo would otherwise delete the file

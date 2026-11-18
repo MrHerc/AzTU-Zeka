@@ -21,7 +21,29 @@ services:
       - zeka-data:/var/lib/zeka/data
       - zeka-backups:/var/lib/zeka/backups
       - zeka-logs:/app/logs
-      # ssh key and known_hosts for BACKUP_REMOTE=user@host:/path (owner 10001, mode 600): docs/runbooks/backup.md
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    logging: *logging
+
+  # Backups run in their own short-lived container, so the web process never holds the backup key or the ssh key:
+  #   docker compose -f infra/compose.yml run --rm backup                       (daily, from cron: docs/runbooks/backup.md)
+  #   docker compose -f infra/compose.yml run --rm backup infra/restore.sh /var/lib/zeka/backups/latest.enc /var/lib/zeka/backups/restore-test
+  backup:
+    image: zeka-aztu:latest
+    profiles:
+      - backup
+    env_file: .env
+    command: ["infra/backup.sh"]
+    volumes:
+      - zeka-data:/var/lib/zeka/data
+      - zeka-backups:/var/lib/zeka/backups
+      # ssh key and known_hosts for BACKUP_REMOTE=user@host:/path (owner 10001, mode 600)
       - ./secrets/ssh:/var/lib/zeka/.ssh:ro
     secrets:
       - backup_key
@@ -32,7 +54,6 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    restart: unless-stopped
     logging: *logging
 
   caddy:

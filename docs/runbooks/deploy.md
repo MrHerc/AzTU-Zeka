@@ -29,7 +29,7 @@ docker compose -f infra/compose.yml up -d --build
 docker compose -f infra/compose.yml exec app python backend/manage.py create-admin --username <ad> --name "<Ad Soyad>"
 ```
 
-Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_hosts` qoyulur (sahibi 10001).
+Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_hosts` qoyulur (sahibi 10001). Bu açarlar və backup açarı yalnız `backup` servisinə qoşulur (`docker compose run --rm backup`), veb konteyneri onları görmür.
 
 ## `.env` dəyişənləri
 
@@ -73,7 +73,7 @@ Yalnız birini dəyişmək ya müştəri ünvanını proksinin ünvanı edir (li
 ## Yeniləmə
 
 ```bash
-cd /opt/zeka && infra/backup.sh 2>/dev/null || docker compose -f infra/compose.yml exec -T app infra/backup.sh
+cd /opt/zeka && docker compose -f infra/compose.yml run --rm -T backup
 git pull && docker compose -f infra/compose.yml up -d --build
 ```
 

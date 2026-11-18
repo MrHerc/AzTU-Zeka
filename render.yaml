@@ -21,7 +21,8 @@ services:
       - key: PYTHON_VERSION
         value: "3.13"
       # Demo girişi parolsuzdur: ictimai serverdə ziyarətçi əvvəlcə bu ortaq kodu daxil edir. Render təsadüfi dəyər yaradır;
-      # kodu Dashboard → Environment bölməsində görmək və ya yadda qalan dəyərlə əvəz etmək olar. Kod olmadan run.py başlamır.
+      # kodu Dashboard → Environment bölməsində görmək və ya yadda qalan dəyərlə əvəz etmək olar. Diqqət: yuxarıdakı
+      # ZEKA_ALLOW_OPEN_DEMO=1 olduğu üçün kod silinsə server kodsuz, hamıya açıq başlayır: bu dəyişəni boş saxlamayın.
       - key: ZEKA_ACCESS_CODE
         generateValue: true
       # Render-in proksisi X-Forwarded-For başlığına müştərinin IP ünvanını əlavə edir (sürət limitləri üçün).

@@ -1,6 +1,7 @@
 """Run modes (tasks/todo.md, Task 5): demo routes do not exist in prod, prod never seeds people nor deletes data."""
 import json
 import subprocess
+import time
 import sys
 from pathlib import Path
 
@@ -78,6 +79,7 @@ def _run(env, *args):
     ({}, ("--host", "0.0.0.0"), "demo rejimi şəbəkəyə açılmır"),
     ({"ZEKA_MODE": "prod", "PUBLIC_URL": "https://zeka.example.az"}, (), "ZEKA_PROXY_HOPS=0"),
     ({"ZEKA_MODE": "prod"}, ("--reset",), "--reset qadağandır"),
+    ({"ZEKA_MODE": "prod", "ZEKA_PROXY_HOPS": "1"}, ("--host", "0.0.0.0"), "PUBLIC_URL təyin edin"),
     ({"ZEKA_MODE": "staging"}, (), "yalnız demo və ya prod"),
 ])
 def test_unsafe_start_up_is_refused(env, args, needle):
@@ -89,7 +91,13 @@ def test_the_access_log_is_one_json_object_per_request_and_a_path_cannot_forge_a
     monkeypatch.setattr(security.CFG, "access_log", True)
     capsys.readouterr()
     anon.get('/api/no-such%0a{"ip":%20"6.6.6.6",%20"status":%20200}?k=secret-key')
-    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+    out = ""
+    for _ in range(200):                     # the server thread writes the line after the response has been sent
+        out += capsys.readouterr().out
+        if "/api/no-such" in out:
+            break
+        time.sleep(0.01)
+    lines = [ln for ln in out.splitlines() if ln.strip()]
     entries = [json.loads(ln) for ln in lines]
     forged = [e for e in entries if e["path"].startswith("/api/no-such")]
     assert len(forged) == 1 and forged[0]["status"] == 404 and forged[0]["ip"] == "127.0.0.1"

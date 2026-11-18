@@ -39,15 +39,21 @@ umask 077 && openssl rand -base64 48 > /etc/zeka/backup.key      # bir sətir, �
 
 ## İkinci host (ssh)
 
-Ayrıca istifadəçi (`zeka-backup`), yalnız açar ilə giriş, qovluq yalnız ona aiddir. Hostda `tar` və `sha256sum` olmalıdır
+Ayrıca istifadəçi (`zeka-backup`), yalnız açar ilə giriş, qovluq yalnız ona aiddir. Fayl son adını yalnız ikinci hostda
+SHA-256-sı uyğun gələndən sonra alır (`.incoming` qovluğunda yoxlanır və yerinə köçürülür). Kəsilən və ya xarab göndəriş
+növbəti gecə yenidən göndərilir. Saxlama müddəti hər iki tərəfin dəstləri üzrə hesablanır: lokal qovluq itsə də, ikinci
+hostdakı tarixçə silinmir. Qoşulmuş qovluq (`BACKUP_REMOTE=/mnt/...`) üçün `uploads` alt qovluğu o diskdə bir dəfə əl ilə
+yaradılır. Disk qoşulmayıbsa backup 3 kodu ilə bitir, eyni diskə sakitcə yazmır. Hostda `tar` və `sha256sum` olmalıdır
 (hər Linux-da var). Tətbiq hostunda `ssh` müştərisi və `known_hosts`-da ikinci hostun açarı (`BatchMode=yes`: sual
 verilmir, tanınmayan host rədd olunur). Göndərmədən sonra bu dəfə göndərilən hər faylın SHA-256-sı ikinci hostda
 `sha256sum -c` ilə yoxlanır. Uyğunsuzluq və ya ssh xətası olarsa çıxış kodu 3 olur.
 
 ## Gündəlik iş
 
+Backup ayrıca, qısa ömürlü `backup` konteynerində işləyir (`infra/compose.yml`, `profiles: [backup]`). Backup açarı və ssh açarı yalnız ona qoşulur. Veb prosesi onları görmür.
+
 ```cron
-17 3 * * *  cd /opt/zeka && docker compose -f infra/compose.yml exec -T app infra/backup.sh >> /var/log/zeka-backup.log 2>&1 || echo "zeka backup failed: $?" | mail -s "Zəka backup" ops@aztu.edu.az
+17 3 * * *  cd /opt/zeka && docker compose -f infra/compose.yml run --rm -T backup >> /var/log/zeka-backup.log 2>&1 || echo "zeka backup failed: $?" | mail -s "Zəka backup" ops@aztu.edu.az
 ```
 
 Çıxış kodları:
@@ -58,12 +64,15 @@ verilmir, tanınmayan host rədd olunur). Göndərmədən sonra bu dəfə gönd�
 | 2 | Backup alınmadı (açar, disk, baza); şifrəsiz fayl qalmır |
 | 3 | Lokal dəst hazırdır, ikinci host alınmadı |
 | 4 | Prod-da `BACKUP_REMOTE` boşdur; lokal dəst hazırdır |
+| 5 | Dəst hazırdır, amma məlumat qovluğunda SHA-256-sı uyğun gəlməyən yükləmə var (stderr-də adları); onlar dəstə düşməyib |
 
 ## Bərpa
 
 1. Dəsti yoxla və yeni qovluğa bərpa et. İşləyən məlumata toxunulmur:
    ```bash
-   infra/restore.sh backups/latest.enc /srv/zeka/restore-$(date +%F)
+   infra/restore.sh backups/latest.enc /srv/zeka/restore-$(date +%F)          # konteynersiz quraşdırma
+   docker compose -f infra/compose.yml run --rm backup infra/restore.sh \
+     /var/lib/zeka/backups/latest.enc /var/lib/zeka/backups/restore-$(date +%F)  # Docker: zeka-backups həcmində
    ```
    Yoxlanır: manifestin HMAC-ı, `.enc`-in SHA-256-sı, `PRAGMA integrity_check`, hər cədvəlin sətir sayı, hər yükləmənin
    SHA-256-sı. Biri uyğun gəlmirsə, kod 2 qaytarılır və qovluqda baza qalmır.

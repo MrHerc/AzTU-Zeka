@@ -75,6 +75,8 @@ def test_a_restore_into_a_clean_directory_has_the_same_rows_and_uploads(data, ke
     assert hashes(out / "uploads") == hashes(data / "uploads") and len(hashes(data / "uploads")) == 3
     assert r["uploads"] == 3 and r["rows"] > 1000 and m["tables"]["users"] > 100
     assert sorted(p.name for p in out.iterdir()) == ["campus.db", "uploads"]        # no -wal/-shm left behind
+    if os.name == "posix":
+        assert out.stat().st_mode & 0o777 == 0o700
 
 
 def test_the_backup_files_hold_no_plaintext(data, key, tmp_path):
@@ -177,8 +179,9 @@ def test_a_restore_never_writes_into_a_directory_that_has_files(data, key, tmp_p
     assert (live / "campus.db").read_bytes() == b"the running database"
 
 
-def test_the_second_host_mirrors_the_kept_sets_and_a_bad_copy_is_caught(data, key, tmp_path, ticking, monkeypatch):
+def test_the_second_host_mirrors_the_kept_sets_and_a_bad_copy_is_sent_again(data, key, tmp_path, ticking, monkeypatch):
     dest, remote = tmp_path / "backups", tmp_path / "second-host"
+    (remote / "uploads").mkdir(parents=True)                    # made once on the mounted disk
     for _ in range(12):                                         # 12 days: retention drops the oldest
         make(data, dest, key)
         backup.send(dest, str(remote))
@@ -196,9 +199,51 @@ def test_the_second_host_mirrors_the_kept_sets_and_a_bad_copy_is_caught(data, ke
             f.write(b"\0")
 
     monkeypatch.setattr(backup.shutil, "copyfile", damaged)
-    make(data, dest, key)
+    m = make(data, dest, key)
     with pytest.raises(backup.BackupError, match="does not match"):
         backup.send(dest, str(remote))
+    assert not (remote / m["db"]).exists(), "a file gets its final name only after its hash matched"
+    monkeypatch.setattr(backup.shutil, "copyfile", real)
+    assert backup.send(dest, str(remote))["sent"] == 2                  # the next night sends it again
+    backup.restore(remote / m["db"], tmp_path / "repaired", key)
+
+
+def test_an_unmounted_second_disk_fails_instead_of_filling_the_same_disk(data, key, tmp_path):
+    make(data, tmp_path / "backups", key)
+    with pytest.raises(backup.BackupError, match="mounted"):
+        backup.send(tmp_path / "backups", str(tmp_path / "mnt" / "backup"))
+    assert not (tmp_path / "mnt").exists()
+
+
+def test_losing_the_local_backups_never_wipes_the_history_on_the_second_host(data, key, tmp_path, ticking):
+    dest, remote = tmp_path / "backups", tmp_path / "second-host"
+    (remote / "uploads").mkdir(parents=True)
+    for _ in range(5):
+        make(data, dest, key)
+        backup.send(dest, str(remote))
+    history = sorted(p.name for p in remote.glob("zeka-*"))
+    uploads = sorted(p.name for p in remote.glob("uploads/*.enc"))
+    shutil.rmtree(dest)                                          # the primary's backup volume is lost
+    make(data, dest, key)
+    backup.send(dest, str(remote))
+    assert set(history) <= {p.name for p in remote.glob("zeka-*")}
+    assert sorted(p.name for p in remote.glob("uploads/*.enc")) == uploads
+    backup.restore(remote / history[0], tmp_path / "oldest", key)
+
+
+def test_a_damaged_upload_is_reported_and_left_out_of_the_set(data, key, tmp_path):
+    bad = data / "uploads" / f"{'0' * 64}.bin"
+    bad.write_bytes(b"half written")
+    m = make(data, tmp_path / "backups", key)
+    assert m["damaged"] == ["0" * 64] and "0" * 64 not in m["uploads"] and len(m["uploads"]) == 3
+    backup.restore(tmp_path / "backups" / m["db"], tmp_path / "restored", key)
+
+
+def test_a_broken_manifest_is_a_backup_error(data, key, tmp_path, ticking):
+    m = make(data, tmp_path / "backups", key)
+    (tmp_path / "backups" / m["db"].replace(".enc", ".json")).write_text("{not json")
+    with pytest.raises(backup.BackupError, match="cannot be read"):
+        make(data, tmp_path / "backups", key)
 
 
 @POSIX
@@ -208,7 +253,9 @@ def test_over_ssh_the_files_arrive_and_are_checked_there(data, key, tmp_path, ti
     bin_dir.mkdir()
     fake = bin_dir / "ssh"
     fake.write_text('#!/bin/sh\n# fake ssh: drop the options and the host, run the command on this machine\n'
-                    'while [ "$1" = "-o" ]; do shift 2; done\nshift\n[ -n "$FAIL_SSH" ] && exit 255\nexec sh -c "$1"\n')
+                    'while [ "$1" = "-o" ]; do shift 2; done\nshift\n[ -n "$FAIL_SSH" ] && exit 255\n'
+                    'if [ -n "$CUT_SSH" ]; then case "$1" in *"tar -C"*) head -c 3000 | sh -c "$1"; exit $?;; esac; fi\n'
+                    'exec sh -c "$1"\n')
     fake.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     dest, remote = tmp_path / "backups", tmp_path / "over ssh"            # a space: the remote path is quoted
@@ -220,6 +267,14 @@ def test_over_ssh_the_files_arrive_and_are_checked_there(data, key, tmp_path, ti
     (remote / sorted(dest.glob("zeka-*.json"))[0].name).unlink()           # a lost file is sent again
     make(data, dest, key)
     assert backup.send(dest, f"backup@vault.example.az:{remote}")["sent"] >= 3
+    m = make(data, dest, key)
+    monkeypatch.setenv("CUT_SSH", "1")                                     # the connection drops in the middle
+    with pytest.raises(backup.BackupError, match="failed"):
+        backup.send(dest, f"backup@vault.example.az:{remote}")
+    assert not (remote / m["db"]).exists()
+    monkeypatch.delenv("CUT_SSH")
+    assert backup.send(dest, f"backup@vault.example.az:{remote}")["sent"] == 2
+    backup.restore(remote / m["db"], tmp_path / "over-ssh", key)
     monkeypatch.setenv("FAIL_SSH", "1")
     with pytest.raises(backup.BackupError, match="ssh backup@vault.example.az failed"):
         backup.send(dest, f"backup@vault.example.az:{remote}")

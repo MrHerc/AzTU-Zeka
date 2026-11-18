@@ -1,6 +1,7 @@
 """Access control, redirects, one-time links and HTML escaping."""
 import json
 import re
+import sqlite3
 
 import pytest
 
@@ -201,3 +202,26 @@ def test_json_responses_never_echo_raw_html_unescaped_in_html_pages(app_db, stud
     r = student.post("/api/support/tickets", {"category": "other", "subject": "<script>x</script>", "body": "<b>body</b> text here"})
     assert r.status == 200 and r.headers["Content-Type"].startswith("application/json")
     assert json.loads(r.body)["subject"] == "<script>x</script>"
+
+
+def test_rate_limit_rows_of_clients_that_never_come_back_are_swept(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    from zeka.core import security
+    path = tmp_path / "limits.db"
+    c = sqlite3.connect(path)
+    c.executescript((Path(__file__).resolve().parents[2] / "backend" / "migrations" / "0070_shared_state.sql").read_text())
+    c.close()
+    monkeypatch.setattr(security, "_SHARED_DB", [str(path)])
+    now = [1_000_000.0]
+    monkeypatch.setattr(security.time, "time", lambda: now[0])
+    lim = security.RateLimiter(5, 60, name="sweep-test")
+    for i in range(50):
+        assert lim.hit(f"client-{i}")
+    now[0] += 120
+    assert lim.hit("someone-else")
+    c = sqlite3.connect(path)
+    try:
+        assert c.execute("SELECT COUNT(*) FROM rate_hits").fetchone()[0] == 1
+    finally:
+        c.close()
