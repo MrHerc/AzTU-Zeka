@@ -1,0 +1,18 @@
+{
+ "Bu universitet hesabına bağlı hesab tapılmadı. Dekanlığa və ya İT xidmətinə müraciət edin.": "С этой университетской учётной записью не связан ни один аккаунт. Обратитесь в деканат или в ИТ-службу.",
+ "Vahid girişi tamamlamaq olmadı. Bir azdan yenidən cəhd edin.": "Не удалось завершить единый вход. Повторите попытку чуть позже.",
+ "Giriş vaxtı bitib və ya başqa pəncərədə başlayıb. Yenidən cəhd edin.": "Время входа истекло, или вход начат в другом окне. Повторите попытку.",
+ "Vahid giriş ləğv olundu.": "Единый вход отменён.",
+ "Vahid giriş qoşulmayıb.": "Единый вход не настроен.",
+ "Bu universitet hesabı artıq başqa hesaba və ya bu hesab başqa universitet hesabına bağlanıb.": "Эта университетская учётная запись уже связана с другим аккаунтом, или этот аккаунт уже связан с другой учётной записью.",
+ "Universitet hesabı bağlandı: növbəti dəfə onunla daxil ola bilərsiniz.": "Университетская учётная запись связана: в следующий раз можно войти через неё.",
+ "{x} ilə daxil ol": "Войти через {x}",
+ "Universitet hesabı ilə daxil ol (SSO)": "Войти через университетскую учётную запись (SSO)",
+ "və ya parolla": "или по паролю",
+ "Universitet hesabı (SSO)": "Университетская учётная запись (SSO)",
+ "Son giriş": "Последний вход",
+ "Bağlıdır": "Связана",
+ "Universitet hesabınızı bağlasanız, parol yazmadan onunla daxil ola bilərsiniz.": "Свяжите университетскую учётную запись, чтобы входить через неё без пароля.",
+ "Hesabı bağla": "Связать учётную запись",
+ "Bağlantı tarixi": "Дата привязки"
+}

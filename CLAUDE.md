@@ -22,7 +22,7 @@ ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-u
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 878 tests, about 2.5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 928 tests, about 2.5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done

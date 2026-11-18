@@ -4,15 +4,19 @@ A refused sign-in is returned as a response, not raised: the request's transacti
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
+import secrets
 import sqlite3
+import time
 
 from ...core import perms
 from ...core.i18n import S
-from ...core.web import HTTPError, json_resp
-from ...legacy.common import R, ROLE_HOME, pub_user, rotate_session, session_cookie, start_session
+from ...core.web import HTTPError, json_resp, redirect
+from ...legacy.common import BASE_URL, R, ROLE_HOME, _own_commit, pub_user, rotate_session, session_cookie, start_session
 from ...legacy.qr import qr_svg
 from ...legacy.store import audit
-from . import domain, repo, service
+from . import domain, repo, service, sso
 
 PASSWORD_INPUT_MAX = 1024          # longer input is refused before any hashing
 
@@ -222,4 +226,131 @@ def revoke_role(req):
         raise HTTPError(404, "Rol tapılmadı")
     req.db.execute("DELETE FROM role_grants WHERE id=?", (g["id"],))    # sessions acting in it fall back at once
     audit(req.db, req.user["id"], "role_revoked", "user", f"{u['username']} · {g['role']}")
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------- single sign-on (Task 14)
+SSO_COOKIE = "zeka_sso"           # binds a started sign-in to this browser: a callback link from elsewhere is refused
+
+
+def _sso_cookie(value: str = "", expire: bool = False) -> tuple:
+    attrs = "; Max-Age=0" if expire else f"; Max-Age={domain.SSO_PENDING}"
+    if BASE_URL["value"].startswith("https://"):
+        attrs += "; Secure"
+    return ("Set-Cookie", f"{SSO_COOKIE}={value}; HttpOnly; SameSite=Lax; Path=/api/auth/sso{attrs}")
+
+
+def _hash(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _begin(req, link_user_id: int | None) -> tuple[str, list]:
+    """The provider's sign-in address for a new state, nonce and PKCE pair, and the browser cookie that goes with it."""
+    cfg = sso.settings(req.db)
+    if not cfg:
+        raise HTTPError(404, "Vahid giriş qoşulmayıb")
+    try:
+        doc = sso.discover(cfg["issuer"])              # network first: no write transaction is open while it waits
+    except sso.SSOError as ex:
+        audit(req.db, None, "sso_refused", "session", f"discovery: {ex}"[:200])
+        raise HTTPError(502, "Vahid giriş xidməti cavab vermir. Bir azdan yenidən cəhd edin.") from None
+    verifier, challenge = domain.pkce_pair()
+    state, nonce, browser = (secrets.token_urlsafe(32) for _ in range(3))
+    repo.add_pending(req.db, state, _hash(browser), nonce, verifier, link_user_id, time.time())
+    url = sso.authorization_url(cfg, doc, state, nonce, challenge, sso.redirect_uri(BASE_URL["value"]))
+    return url, [_sso_cookie(browser)]
+
+
+def _back(path: str, code: str, headers: list):
+    return redirect(f"/#{path}?sso={code}", headers)
+
+
+@R("GET", "/api/auth/sso/start", auth=False, slow=True)
+def sso_start(req):
+    try:
+        url, headers = _begin(req, None)
+    except HTTPError as ex:                            # a browser navigation: back to the sign-in page, not JSON
+        return _back("/login", "off" if ex.status == 404 else "failed", [])
+    return redirect(url, headers)
+
+
+@R("GET", "/api/auth/sso/callback", auth=False, slow=True)
+def sso_callback(req):
+    clear = [_sso_cookie(expire=True)]
+    state = (req.query.get("state") or "")[:200]
+    pending = repo.take_pending(req.db, state) if state else None
+    _own_commit(req)                                   # spent at once, whatever happens next
+    browser = req.cookies.get(SSO_COOKIE) or ""
+    if not pending or not hmac.compare_digest(pending["browser_hash"], _hash(browser)) or \
+            time.time() - pending["created_at"] > domain.SSO_PENDING:
+        return _back("/login", "expired", clear)
+    page = "/profile" if pending["link_user_id"] else "/login"
+    cfg, code = sso.settings(req.db), (req.query.get("code") or "")[:2048]
+    if not cfg:
+        return _back(page, "off", clear)
+    if req.query.get("error") or not code:            # the person cancelled, or the provider refused
+        return _back(page, "cancelled", clear)
+    try:
+        claims = sso.exchange(cfg, sso.discover(cfg["issuer"]), code, pending["verifier"], pending["nonce"],
+                              sso.redirect_uri(BASE_URL["value"]))
+    except sso.SSOError as ex:
+        audit(req.db, None, "sso_refused", "session", str(ex)[:200])
+        return _back(page, "failed", clear)
+    iss, sub, email = cfg["issuer"], claims["sub"], domain.verified_email(claims)
+    if pending["link_user_id"]:                        # the owner links from a local session in this same browser
+        if not req.user or req.user["id"] != pending["link_user_id"]:
+            return _back(page, "expired", clear)
+        ok = service.link_identity(req.db, req.user, req.user, iss, sub, email, "owner")
+        return _back(page, "linked" if ok else "taken", clear)
+    status, u = service.sso_account(req.db, cfg, claims)
+    if status != "ok":
+        return _back(page, "not_found", clear)
+    repo.identity_seen(req.db, iss, sub, email)
+    _, headers = start_session(req, u, "sso", scope=service.scope_after_sso(cfg, u, claims))
+    return redirect("/", clear + headers)
+
+
+@R("POST", "/api/auth/sso/link", slow=True)
+def sso_link_start(req):
+    if req.user.get("session_scope") != "full":
+        raise HTTPError(403, "Əvvəlcə ikinci addımı tamamlayın")
+    if service.has_staff_role(req.db, req.user) and not req.user.get("session_mfa"):
+        raise HTTPError(403, "İşçi hesabını bağlamaq üçün parol və ikinci addımla daxil olun")
+    try:
+        url, headers = _begin(req, req.user["id"])
+    except HTTPError as ex:                            # answered, not raised: the audit of a failed discovery commits
+        return json_resp({"error": S(ex.message, req.lang)}, ex.status)
+    return json_resp({"url": url}, headers=headers)
+
+
+@R("GET", "/api/me/sso")
+def my_sso(req):
+    return [{k: x[k] for k in ("id", "iss", "email", "linked_at", "last_login")} for x in repo.identities_of(req.db, req.user["id"])]
+
+
+@R("GET", "/api/admin/users/{id:int}/sso", roles=("admin",))
+def user_sso(req):
+    return repo.identities_of(req.db, _target(req)["id"])
+
+
+@R("POST", "/api/admin/users/{id:int}/sso", roles=("admin",))
+def admin_sso_link(req):
+    sub = req.json().text("sub", 255)
+    cfg = sso.settings(req.db)
+    if not cfg:
+        raise HTTPError(409, "Vahid giriş qoşulmayıb")
+    if not sub:
+        raise HTTPError(400, "Provayderdəki istifadəçi identifikatorunu (sub) yazın")
+    if not service.link_identity(req.db, req.user, _target(req), cfg["issuer"], sub, None, "admin"):
+        raise HTTPError(409, "Bu identifikator və ya hesab artıq bağlanıb")
+    return {"ok": True}
+
+
+@R("DELETE", "/api/admin/users/{id:int}/sso/{iid:int}", roles=("admin",))
+def admin_sso_unlink(req):
+    u = _target(req)
+    gone = repo.remove_identity(req.db, u["id"], req.params["iid"])
+    if not gone:
+        raise HTTPError(404, "Bağlantı tapılmadı")
+    audit(req.db, req.user["id"], "sso_unlinked", "user", f"{u['username']} · {gone['iss']}")
     return {"ok": True}

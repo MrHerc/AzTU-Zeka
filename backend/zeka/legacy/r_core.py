@@ -13,6 +13,7 @@ from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
 from .store import J, audit, iso, now, row, rows, setting
 from ..core.web import HTTPError, Response, json_resp, redirect
+from ..modules.identity import sso
 
 
 def _login(req, role, code, user=None):
@@ -49,7 +50,7 @@ def bootstrap(req):
     c, u = req.db, req.user
     ct = store._load("contacts.json")
     info = {**ctx(c), "engine": engine.engine_info(), "news_kinds": setting(c, "news_kinds", {}), "version": "0.3", "mode": config.MODE,
-            "access_required": bool(CFG.access_code),
+            "access_required": bool(CFG.access_code), "sso": sso.public(c),
             "langs": ["az", "en", "ru"], "vendor": "Safarov Industries",
             "contact": {k: ct[k] for k in ("phone", "phone_href", "email", "website", "address")}}
     return {"user": pub_user(u), "app": info, "home": ROLE_HOME.get(u["role"]) if u else None, "unread": unread(c, u["id"]) if u else 0}

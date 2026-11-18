@@ -115,6 +115,13 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/auth/mfa/confirm` | any | Confirm the secret with a code; returns 10 one-time recovery codes once |
 | `POST` | `/api/auth/mfa/disable` | student | Turn the second factor off (staff cannot) |
 | `POST` | `/api/admin/users/{id}/mfa-reset` | admin | Lost device: clear the second factor and end the account's sessions, with a reason |
+| `GET` | `/api/auth/sso/start` | public | Single sign-on (Task 14): redirect to the provider with PKCE (S256), `state` and `nonce` |
+| `GET` | `/api/auth/sso/callback` | public | The provider's answer: code exchange, ID token and userinfo checks, then a session; redirects to `/` or `/#/login?sso=<reason>` |
+| `POST` | `/api/auth/sso/link` | any | Link one's own account: `{"url"}` of the provider; staff only from a password + TOTP session |
+| `GET` | `/api/me/sso` | any | One's own provider bindings |
+| `GET` | `/api/admin/users/{id}/sso` | admin | A user's provider bindings |
+| `POST` | `/api/admin/users/{id}/sso` | admin | Bind the configured provider's `sub` to the account (audited) |
+| `DELETE` | `/api/admin/users/{id}/sso/{iid}` | admin | Remove a binding (audited) |
 | `GET` | `/api/me/sessions` | any | One's own sessions: created, last active, address, browser, current |
 | `GET` | `/api/me/roles` | any | The primary role and every granted role with its scope; the active one |
 | `POST` | `/api/me/role` | any | Act in another held role; the session gets a new id (audited) |
@@ -148,6 +155,33 @@ account without a second factor: only `/api/auth/mfa/*`, `/api/auth/password`, l
 (HMAC-SHA1, 30 s, 6 digits, one step either side); a step is accepted once. Wrong codes count with wrong passwords for the
 account and address (Task 10), and five wrong codes end the pending sign-in: the password step starts again. Passing the
 second factor gives the session a new id. Recovery codes work once and are stored as SHA-256.
+
+### Single sign-on (Task 14)
+
+A generic OpenID Connect client: Authorization Code with PKCE (S256), `state` and `nonce`. The tenant setting `sso` holds
+`enabled`, `issuer`, `client_id`, `label`, `scopes` (added to `openid email profile`), `student_claim` (the claim that
+carries the student number), and `mfa_amr` / `mfa_acr` (the values of the provider's `amr` / `acr` the university trusts
+as a second factor; empty by default). The client secret comes only from the environment variable
+`ZEKA_OIDC_CLIENT_SECRET` (sent with HTTP Basic); without it the client is public and relies on PKCE. The discovery
+document is read from `<issuer>/.well-known/openid-configuration`; its `issuer` must equal the setting, and the issuer
+and every endpoint in it must be `https` (`http` only in demo mode for a loopback address). Calls follow no redirect and
+keep the default certificate checks; no setting turns them off. `GET /api/bootstrap` reports `app.sso` as
+`{"enabled", "label"}`.
+
+The started sign-in lives in `sso_pending` for 10 minutes and is bound to the browser by the `HttpOnly` cookie
+`zeka_sso` (path `/api/auth/sso`), so a callback link opened elsewhere, a changed `state` or a second use answers
+`sso=expired`. The ID token comes straight from the token endpoint over TLS and is checked per OIDC Core 3.1.3.7: `iss`,
+`aud` (exactly this client), `azp`, `exp` and `iat` with 60 s of leeway, `nonce`, and an `alg` other than `none`; the
+userinfo `sub` must equal the ID token's (5.3.2). A refusal is `sso=failed` and its reason is audited (`sso_refused`).
+
+An account is bound to the provider's `(iss, sub)` in `sso_identities`; later sign-ins find the account only through
+that row, so a changed e-mail at the provider never moves a sign-in. The first sign-in links a student account
+automatically by the `student_claim` value (exactly one student with that number), or by `email` when `email_verified`
+is JSON `true`; an account with a staff role, primary or granted, is never linked automatically. Staff accounts are
+linked by their owner (`POST /api/auth/sso/link` from a session that passed the local second factor) or by an
+administrator. No account is created: an unknown person gets `sso=not_found`. After the provider, a staff session still
+needs the local second factor (`scope` `mfa` or `mfa_enroll`) unless the provider's `amr`/`acr` names a trusted value.
+Redirect reasons: `not_found`, `failed`, `expired`, `cancelled`, `off`; for linking, `/#/profile?sso=linked|taken|expired`.
 
 ### `POST /api/auth/password`
 
@@ -196,7 +230,7 @@ Works with or without a session. Returns:
 | Field | Content |
 |---|---|
 | `user` | The signed-in user (`id`, `username`, `full_name`, `role`, `title`, `color`, `consent_at`, `prefs`) or `null` |
-| `app` | `university`, `faculty`, `specialty`, `semester`, `base_url`, `engine` (`mode` is `demo` or `llm`, plus a `label`), `news_kinds`, `version`, `mode` (`demo` or `prod`), `access_required`, `langs`, `vendor`, `contact` |
+| `app` | `university`, `faculty`, `specialty`, `semester`, `base_url`, `engine` (`mode` is `demo` or `llm`, plus a `label`), `news_kinds`, `version`, `mode` (`demo` or `prod`), `access_required`, `sso` (`enabled`, `label`), `langs`, `vendor`, `contact` |
 | `home` | Home route of the user's role, or `null` |
 | `unread` | Number of unread notifications |
 
@@ -813,7 +847,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 
 ## Endpoint index
 
-138 routes, in the order the router matches them, except that the Task 10–15 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
+145 routes, in the order the router matches them, except that the Task 10–15 routes and `/healthz` are listed next to the other sign-in routes. The four marked "demo" do not exist in prod mode.
 
 | Method | Path | Access |
 |---|---|---|
@@ -830,6 +864,13 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/auth/mfa/confirm` | any |
 | POST | `/api/auth/mfa/disable` | student |
 | POST | `/api/admin/users/{id}/mfa-reset` | admin |
+| GET | `/api/auth/sso/start` | public |
+| GET | `/api/auth/sso/callback` | public |
+| POST | `/api/auth/sso/link` | any |
+| GET | `/api/me/sso` | any |
+| GET | `/api/admin/users/{id}/sso` | admin |
+| POST | `/api/admin/users/{id}/sso` | admin |
+| DELETE | `/api/admin/users/{id}/sso/{iid}` | admin |
 | GET | `/api/me/sessions` | any |
 | GET | `/api/me/roles` | any |
 | POST | `/api/me/role` | any |

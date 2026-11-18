@@ -304,15 +304,19 @@ Qeyd (2026-11-18): dilim 1 hazırdır (`core/perms.py`, `0130_role_grants.sql`, 
 **Description:** Authorization Code + PKCE, `state`, `nonce`. Kəşf ünvanı ayardan. Token və `userinfo` birbaşa TLS ilə alınır. Hesab (`iss`, `sub`) cütünə bağlanır; bağlantı `sso_identities(user_id, iss, sub)` cədvəlində saxlanır və sonrakı girişlər yalnız onunla tapılır. İlk bağlantı ayarda adı verilən tələbə nömrəsi iddiası ilə, və ya `email` ilə yalnız `email_verified=true` olanda və yerli hesabın işçi rolu olmayanda qurulur. İşçi rolu olan hesabı yalnız sahibi yerli parol + TOTP sessiyasından, və ya admin bağlayır. ID token OIDC Core 3.1.3.7 üzrə yoxlanır (`iss`, `aud`, `exp`, `nonce`); `userinfo`-nun `sub`-u ID token-in `sub`-u ilə eyni olmalıdır (5.3.2). Issuer və kəşf sənədindəki bütün son nöqtələr `https` olmalıdır; `http` yalnız demo rejimində loopback üçün; sertifikat yoxlamasını söndürən ayar yoxdur. Avtomatik hesab yaradılması susmaya görə bağlıdır. Testlər stdlib ilə yazılmış saxta IdP-yə qarşıdır.
 
 **Acceptance criteria:**
-- [ ] Saxta IdP ilə tam axın keçir; `state` və ya `nonce` uyğunsuzluğu rədd olunur
-- [ ] Tanınmayan istifadəçi hesab yaradılmadan "hesab tapılmadı" alır
-- [ ] IdP MFA təsdiqləmirsə, işçi üçün yerli TOTP tələbi qalır
-- [ ] Yanlış `iss`, yanlış `aud`, vaxtı keçmiş `exp`, və ya `userinfo` `sub`-u ID token `sub`-undan fərqli olan cavab rədd olunur
-- [ ] IdP-də `email` dəyişdirilməsi girişi başqa yerli hesaba keçirmir; `email_verified` doğru deyilsə `email` ilə ilk bağlantı qurulmur; işçi hesabı `email` ilə avtomatik bağlanmır
-- [ ] Prod rejimində `http://` issuer və ya kəşf sənədindəki `https` olmayan son nöqtə ilə SSO açılmır
+- [x] Saxta IdP ilə tam axın keçir; `state` və ya `nonce` uyğunsuzluğu rədd olunur
+- [x] Tanınmayan istifadəçi hesab yaradılmadan "hesab tapılmadı" alır
+- [x] IdP MFA təsdiqləmirsə, işçi üçün yerli TOTP tələbi qalır
+- [x] Yanlış `iss`, yanlış `aud`, vaxtı keçmiş `exp`, və ya `userinfo` `sub`-u ID token `sub`-undan fərqli olan cavab rədd olunur
+- [x] IdP-də `email` dəyişdirilməsi girişi başqa yerli hesaba keçirmir; `email_verified` doğru deyilsə `email` ilə ilk bağlantı qurulmur; işçi hesabı `email` ilə avtomatik bağlanmır
+- [x] Prod rejimində `http://` issuer və ya kəşf sənədindəki `https` olmayan son nöqtə ilə SSO açılmır
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_oidc.py -q`
+- [x] `python -m pytest tests/integration/test_oidc.py -q` (35 test; qaydalar ayrıca `tests/unit/test_sso_rules.py`-də)
+
+Qeyd (2026-11-18): ayarlar `settings.sso`-dadır (T17 ekranı onu idarə edəcək), müştəri sirri yalnız `ZEKA_OIDC_CLIENT_SECRET`.
+Başlanmış giriş `zeka_sso` cookie-si ilə brauzerə bağlanır (giriş CSRF-i). Avtomatik hesab yaradılması ümumiyyətlə yazılmayıb.
+Real TLS sertifikatlı IdP ilə yoxlanmayıb: testlər demo rejimində loopback `http` istifadə edir.
 
 **Dependencies:** Task 12
 **Files likely touched:** `backend/zeka/modules/identity/sso.py`, `backend/zeka/modules/identity/routes.py`, `backend/migrations/0140_sso_identities.sql` (`sso_identities` cədvəli, (`iss`, `sub`) üzrə unikal), `tests/integration/test_oidc.py`, `frontend/js/main.js`

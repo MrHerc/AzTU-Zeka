@@ -1,0 +1,8 @@
+{
+ "Vahid giriş qoşulmayıb": "Single sign-on is not set up",
+ "İşçi hesabını bağlamaq üçün parol və ikinci addımla daxil olun": "To link a staff account, sign in with your password and second factor",
+ "Provayderdəki istifadəçi identifikatorunu (sub) yazın": "Enter the user identifier (sub) at the provider",
+ "Bu identifikator və ya hesab artıq bağlanıb": "This identifier or account is already linked",
+ "Bağlantı tapılmadı": "Link not found",
+ "Vahid giriş xidməti cavab vermir. Bir azdan yenidən cəhd edin.": "The single sign-on service is not responding. Try again in a moment."
+}

@@ -151,3 +151,51 @@ def grant_role(c, uid: int, role: str, scope_type: str | None, scope_id: int | N
 
 def grant(c, uid: int, grant_id: int):
     return row(c, "SELECT * FROM role_grants WHERE id=? AND user_id=?", (grant_id, uid))
+
+
+# ---------------------------------------------------------------- single sign-on (Task 14)
+def add_pending(c, state: str, browser_hash: str, nonce: str, verifier: str, link_user_id: int | None, t: float):
+    c.execute("DELETE FROM sso_pending WHERE created_at<?", (t - domain.SSO_PENDING,))
+    c.execute("INSERT INTO sso_pending(state,browser_hash,nonce,verifier,link_user_id,created_at) VALUES(?,?,?,?,?,?)",
+              (state, browser_hash, nonce, verifier, link_user_id, t))
+
+
+def take_pending(c, state: str):
+    """The started sign-in for ``state``, removed in the same statement: only one callback in any worker gets it."""
+    return c.execute("DELETE FROM sso_pending WHERE state=? RETURNING *", (state,)).fetchone()
+
+
+def sso_user(c, iss: str, sub: str):
+    return row(c, "SELECT u.* FROM sso_identities i JOIN users u ON u.id=i.user_id WHERE i.iss=? AND i.sub=?", (iss, sub))
+
+
+def students_by_number(c, number: str) -> list:
+    return rows(c, "SELECT * FROM users WHERE student_no=? AND role='student'", (number,))
+
+
+def by_email(c, email: str):
+    return row(c, "SELECT * FROM users WHERE email=?", (email,))
+
+
+def granted_roles(c, uid: int) -> set[str]:
+    return {r["role"] for r in rows(c, "SELECT DISTINCT role FROM role_grants WHERE user_id=?", (uid,))}
+
+
+def add_identity(c, uid: int, iss: str, sub: str, email: str | None, linked_by: str) -> bool:
+    """False when this (iss, sub) is bound already, or the account already has a binding with this issuer."""
+    return c.execute("INSERT OR IGNORE INTO sso_identities(user_id,iss,sub,email,linked_by,linked_at) VALUES(?,?,?,?,?,?)",
+                     (uid, iss, sub, email, linked_by, iso(now()))).rowcount == 1
+
+
+def identity_seen(c, iss: str, sub: str, email: str | None):
+    c.execute("UPDATE sso_identities SET last_login=?, email=? WHERE iss=? AND sub=?", (iso(now()), email, iss, sub))
+
+
+def identities_of(c, uid: int) -> list:
+    return rows(c, "SELECT id, iss, sub, email, linked_by, linked_at, last_login FROM sso_identities WHERE user_id=? "
+                   "ORDER BY id", (uid,))
+
+
+def remove_identity(c, uid: int, identity_id: int):
+    """The removed binding, or None."""
+    return c.execute("DELETE FROM sso_identities WHERE id=? AND user_id=? RETURNING iss, sub", (identity_id, uid)).fetchone()

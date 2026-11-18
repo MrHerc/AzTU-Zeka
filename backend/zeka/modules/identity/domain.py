@@ -11,6 +11,7 @@ import base64
 import hashlib
 import hmac
 import ipaddress
+import json
 import secrets
 import unicodedata
 
@@ -150,9 +151,11 @@ STEP, DIGITS, DRIFT = 30, 6, 1                           # RFC 6238: 30-second s
 MFA_ATTEMPTS = 5                                         # wrong codes in one pending sign-in before it is cancelled
 RECOVERY_CODES = 10
 # What a session may reach while it waits for its second factor, or while its account must first enrol one.
+# A new sign-in through the provider (Task 14) is always open: it replaces the pending session.
+SSO_SIGN_IN = ("/api/auth/sso/start", "/api/auth/sso/callback")
 SCOPE_OPEN = {
-    "mfa": ("/api/auth/mfa/verify", "/api/auth/logout", "/api/bootstrap"),
-    "mfa_enroll": ("/api/auth/mfa/", "/api/auth/password", "/api/auth/logout", "/api/bootstrap"),
+    "mfa": ("/api/auth/mfa/verify", "/api/auth/logout", "/api/bootstrap", *SSO_SIGN_IN),
+    "mfa_enroll": ("/api/auth/mfa/", "/api/auth/password", "/api/auth/logout", "/api/bootstrap", *SSO_SIGN_IN),
 }
 
 
@@ -206,3 +209,86 @@ def recovery_hash(code: str) -> str:
 
 def is_recovery_code(code: str) -> bool:
     return len("".join(code.replace("-", "").split())) == 10
+
+
+# ---------------------------------------------------------------- single sign-on (Task 14)
+SSO_LEEWAY = 60                   # seconds of clock difference allowed with the provider
+SSO_PENDING = 10 * 60             # a started sign-in must come back from the provider within this time
+
+
+def _b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def pkce_pair() -> tuple[str, str]:
+    """RFC 7636: a 43-character verifier and its S256 challenge."""
+    verifier = secrets.token_urlsafe(32)
+    return verifier, _b64url(hashlib.sha256(verifier.encode("ascii")).digest())
+
+
+def jwt_claims(token) -> dict | None:
+    """The claims of a compact signed JWT, or None when it is not one. The signature is not checked: the ID token comes
+    straight from the token endpoint over a verified TLS connection (OIDC Core 3.1.3.7, step 6). ``none`` is refused
+    (OIDC Core 2: only a client registered for it may get an unsigned ID token)."""
+    if not isinstance(token, str) or len(token) > 64 * 1024 or token.count(".") != 2:
+        return None
+    try:
+        header, payload = (json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4))) for p in token.split(".")[:2])
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        return None
+    if not isinstance(header, dict) or not isinstance(payload, dict) or str(header.get("alg", "none")).lower() == "none":
+        return None
+    return payload
+
+
+def _number(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _same(a, b: str) -> bool:
+    return isinstance(a, str) and hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
+def claims_problem(claims: dict, *, issuer: str, client_id: str, nonce: str, now: float) -> str | None:
+    """Why an ID token is refused (OIDC Core 3.1.3.7), or None. The reason goes to the audit log, never to the user.
+    The only trusted audience is this client: a token that names any other audience is refused too."""
+    aud = claims.get("aud")
+    if claims.get("iss") != issuer:
+        return "iss"
+    if (aud if isinstance(aud, list) else [aud]) != [client_id] or claims.get("azp", client_id) != client_id:
+        return "aud"
+    if not _number(claims.get("exp")) or claims["exp"] <= now - SSO_LEEWAY:
+        return "exp"
+    if not _number(claims.get("iat")) or claims["iat"] > now + SSO_LEEWAY:
+        return "iat"
+    if not _same(claims.get("nonce"), nonce):
+        return "nonce"
+    if not isinstance(claims.get("sub"), str) or not 0 < len(claims["sub"]) <= 255:
+        return "sub"
+    return None
+
+
+def idp_mfa(claims: dict, amr_trusted, acr_trusted) -> bool:
+    """The provider says a second factor was used (RFC 8176 ``amr`` or an ``acr`` value) and the university trusts it."""
+    amr, acr = claims.get("amr"), claims.get("acr")
+    said = strings(amr)
+    return bool(said & strings(amr_trusted)) or isinstance(acr, str) and acr in strings(acr_trusted)
+
+
+def strings(v) -> set[str]:
+    """The strings of a JSON list; anything else is empty (a misconfigured "mfa" string must not trust "m", "f", "a")."""
+    return {x for x in v if isinstance(x, str) and x} if isinstance(v, (list, tuple)) else set()
+
+
+def verified_email(claims: dict) -> str | None:
+    """The e-mail address only when the provider says it is verified (JSON true, not a string)."""
+    email = claims.get("email")
+    if claims.get("email_verified") is True and isinstance(email, str) and "@" in email:
+        return email.strip().lower()[:254]
+    return None
+
+
+def student_number(claims: dict, claim: str | None) -> str | None:
+    v = claims.get(claim) if isinstance(claim, str) and claim else None
+    v = str(v).strip() if isinstance(v, (str, int)) and not isinstance(v, bool) else ""
+    return v[:64] or None

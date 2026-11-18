@@ -180,3 +180,57 @@ def reset_second_factor(c, admin, target, reason: str):
     repo.reset_totp(c, target["id"])
     repo.end_sessions(c, target["id"])
     audit(c, admin["id"], "mfa_reset", "user", f"{target['username']} · {reason}")
+
+
+# ---------------------------------------------------------------- single sign-on (Task 14)
+def has_staff_role(c, u) -> bool:
+    """A staff role as the primary role or in any grant: such an account is never linked automatically."""
+    primary = u.get("primary_role") or u["role"]
+    return primary in domain.MFA_ROLES or bool(repo.granted_roles(c, u["id"]) & set(domain.MFA_ROLES))
+
+
+def _first_link(c, cfg: dict, claims: dict):
+    """(account, how) for a provider identity seen for the first time, or (None, None). Only a student account is
+    linked automatically: by the configured student-number claim, or by an e-mail the provider has verified."""
+    number = domain.student_number(claims, cfg.get("student_claim"))
+    found = repo.students_by_number(c, number) if number else []
+    candidates = [(found[0], "student_no")] if len(found) == 1 else []      # two accounts with one number: none
+    email = domain.verified_email(claims)
+    u = repo.by_email(c, email) if email else None
+    if u:
+        candidates.append((u, "email"))
+    for u, how in candidates:
+        if u["status"] == "active" and not has_staff_role(c, u):
+            return u, how
+    return None, None
+
+
+def sso_account(c, cfg: dict, claims: dict):
+    """('ok', account) | ('not_found', None). A known (iss, sub) is the only way to an account after its first link,
+    so a changed e-mail at the provider never moves a sign-in. No account is ever created here."""
+    iss, sub = cfg["issuer"], claims["sub"]
+    u = repo.sso_user(c, iss, sub)
+    if u:
+        return ("ok", u) if u["status"] == "active" else ("not_found", None)
+    u, how = _first_link(c, cfg, claims)
+    if not u or not repo.add_identity(c, u["id"], iss, sub, domain.verified_email(claims), how):
+        audit(c, None, "sso_not_found", "user", f"{iss} · {sub[:64]}")
+        return "not_found", None
+    audit(c, u["id"], "sso_linked", "user", f"{how} · {iss}")
+    return "ok", u
+
+
+def scope_after_sso(cfg: dict, u, claims: dict) -> str:
+    """The provider's second factor counts only when the tenant names the amr/acr values it trusts; otherwise the
+    local TOTP step stays, exactly as after a password."""
+    if domain.idp_mfa(claims, cfg.get("mfa_amr") or [], cfg.get("mfa_acr") or []):
+        return "full"
+    return scope_after_password(u)
+
+
+def link_identity(c, by, target, iss: str, sub: str, email: str | None, how: str) -> bool:
+    """The account owner (from a local session) or an administrator binds a provider identity; False when taken."""
+    if not repo.add_identity(c, target["id"], iss, sub, email, how):
+        return False
+    audit(c, by["id"], "sso_linked", "user", f"{how} · {target['username']} · {iss}")
+    return True

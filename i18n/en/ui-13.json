@@ -1,0 +1,18 @@
+{
+ "Bu universitet hesabına bağlı hesab tapılmadı. Dekanlığa və ya İT xidmətinə müraciət edin.": "No account is linked to this university sign-in. Contact the dean's office or IT support.",
+ "Vahid girişi tamamlamaq olmadı. Bir azdan yenidən cəhd edin.": "Single sign-on could not be completed. Try again in a moment.",
+ "Giriş vaxtı bitib və ya başqa pəncərədə başlayıb. Yenidən cəhd edin.": "The sign-in expired or was started in another window. Try again.",
+ "Vahid giriş ləğv olundu.": "Single sign-on was cancelled.",
+ "Vahid giriş qoşulmayıb.": "Single sign-on is not set up.",
+ "Bu universitet hesabı artıq başqa hesaba və ya bu hesab başqa universitet hesabına bağlanıb.": "This university sign-in is already linked to another account, or this account is already linked to another university sign-in.",
+ "Universitet hesabı bağlandı: növbəti dəfə onunla daxil ola bilərsiniz.": "University sign-in linked: next time you can sign in with it.",
+ "{x} ilə daxil ol": "Sign in with {x}",
+ "Universitet hesabı ilə daxil ol (SSO)": "Sign in with your university account (SSO)",
+ "və ya parolla": "or with a password",
+ "Universitet hesabı (SSO)": "University sign-in (SSO)",
+ "Son giriş": "Last sign-in",
+ "Bağlıdır": "Linked",
+ "Universitet hesabınızı bağlasanız, parol yazmadan onunla daxil ola bilərsiniz.": "Link your university account to sign in with it without typing a password.",
+ "Hesabı bağla": "Link account",
+ "Bağlantı tarixi": "Linked on"
+}

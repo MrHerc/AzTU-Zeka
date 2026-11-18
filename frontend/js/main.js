@@ -44,8 +44,30 @@ function langSwitch(cls = "") {
   return html`<div class="seg lang-seg ${cls}" role="group" aria-label="${t("Dil seçimi")}">${LANGS.map((l) =>
     html`<button class="${l.code === LANG ? "active" : ""}" data-setlang="${l.code}" lang="${l.code}" title="${l.label}" aria-pressed="${l.code === LANG}">${l.short}</button>`)}</div>`;
 }
+// Answers of the single sign-on callback (/api/auth/sso/callback redirects to #/login?sso=… or #/profile?sso=…).
+function ssoMessage(code) {
+  return ({ not_found: t("Bu universitet hesabına bağlı hesab tapılmadı. Dekanlığa və ya İT xidmətinə müraciət edin."),
+    failed: t("Vahid girişi tamamlamaq olmadı. Bir azdan yenidən cəhd edin."),
+    expired: t("Giriş vaxtı bitib və ya başqa pəncərədə başlayıb. Yenidən cəhd edin."),
+    cancelled: t("Vahid giriş ləğv olundu."), off: t("Vahid giriş qoşulmayıb."),
+    taken: t("Bu universitet hesabı artıq başqa hesaba və ya bu hesab başqa universitet hesabına bağlanıb."),
+    linked: t("Universitet hesabı bağlandı: növbəti dəfə onunla daxil ola bilərsiniz.") })[code] || "";
+}
+function ssoNotice() {
+  const { path, query } = currentPath();
+  if (!query.sso) return;
+  const msg = ssoMessage(query.sso);
+  history.replaceState(null, "", "#" + path);
+  if (msg) toast(msg, query.sso === "linked" ? "ok" : "err");
+}
+function ssoButton() {
+  const sso = S.app.sso || {};
+  if (!sso.enabled) return "";
+  return html`<a class="btn btn-block" href="/api/auth/sso/start">${ic("lock", 16)} ${sso.label ? t("{x} ilə daxil ol", { x: sso.label }) : t("Universitet hesabı ilə daxil ol (SSO)")}</a>`;
+}
 function passwordLogin() {
   return html`<h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Universitet hesabınızla daxil olun.")}</p>
+    ${S.app.sso && S.app.sso.enabled ? html`${ssoButton()}<div class="or">${t("və ya parolla")}</div>` : ""}
     <form class="stack" id="login-form">
       <div class="field"><label class="label" for="login-name">${t("İstifadəçi adı və ya e-poçt")}</label>
         <input class="input" id="login-name" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
@@ -73,7 +95,7 @@ async function loginPage(root) {
     </div>
     <div class="login-side"><div class="login-card">
       ${S.app.mode === "prod" ? passwordLogin() : html`<h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
-      <button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("Pilotda")}</span></button>
+      ${S.app.sso && S.app.sso.enabled ? ssoButton() : html`<button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("Pilotda")}</span></button>`}
       <div class="or">${t("demo rolları")}</div>
       ${S.app.access_required ? html`<div class="field mb"><label class="label" for="access-code">${t("Demo giriş kodu")}</label>
         <input class="input" id="access-code" type="password" autocomplete="off" spellcheck="false" placeholder="${t("Təşkilatçının verdiyi kodu daxil edin")}"></div>` : ""}
@@ -82,6 +104,7 @@ async function loginPage(root) {
       <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
       <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>`}
     </div></div></div>`);
+  ssoNotice();
   on(root, "submit", "#login-form", async (e, f) => {
     e.preventDefault();
     const btn = $("button[type=submit]", f);
@@ -218,6 +241,7 @@ route("/profile", async (el) => {
           ${!S.user.mfa_enabled ? html`<button class="btn btn-sm" id="mfa-on" style="align-self:flex-start">${t("Qoş")}</button>`
             : me.role === "student" ? html`<button class="btn btn-sm btn-ghost" id="mfa-off" style="align-self:flex-start">${t("Söndür")}</button>`
             : html`<p class="small muted" style="margin:0">${t("İşçi hesabında məcburidir. Telefonu itirsəniz, administrator sıfırlayır.")}</p>`}</div></div>
+        ${S.app.sso && S.app.sso.enabled ? html`<div class="card"><div class="card-h"><h3>${ic("link", 17)} ${t("Universitet hesabı (SSO)")}</h3></div><div class="card-b stack" id="sso-box"><span class="small muted">…</span></div></div>` : ""}
         <div class="card"><div class="card-h"><h3>${ic("lock", 17)} ${t("Sessiyalarım")}</h3></div><div class="card-b stack" id="sessions-box"><span class="small muted">…</span></div></div>
         <div class="card"><div class="card-h"><h3>${ic("compass", 17)} ${t("Bələdçilər")}</h3><span class="badge b-blue">${done} / ${tours.length}</span></div><div class="card-b stack">
           <div class="small muted">${t("Səhifə bələdçilərinin neçəsini keçdiyinizi göstərir.")}</div>
@@ -248,6 +272,23 @@ route("/profile", async (el) => {
     drawSessions();
   });
   drawSessions();
+  const drawSso = async () => {
+    const box = $("#sso-box", el);
+    if (!box) return;
+    const list = await api.get("/api/me/sso");
+    mount(box, list.length ? html`${list.map((x) => html`<div class="set-row"><div><b>${x.email || x.iss}</b>
+        <div class="small muted">${t("Bağlantı tarixi")}: ${fmtDateTime(x.linked_at)}${x.last_login ? html` · ${t("Son giriş")}: ${fmtDateTime(x.last_login)}` : ""}</div></div>
+        <span class="badge b-green">${t("Bağlıdır")}</span></div>`)}`
+      : html`<p class="small muted" style="margin:0">${t("Universitet hesabınızı bağlasanız, parol yazmadan onunla daxil ola bilərsiniz.")}</p>
+        <button class="btn btn-sm" id="sso-link" style="align-self:flex-start">${ic("link", 15)} ${t("Hesabı bağla")}</button>`);
+  };
+  drawSso();
+  ssoNotice();
+  on(el, "click", "#sso-link", async (e, b) => {
+    b.classList.add("loading");
+    try { location.href = (await api.post("/api/auth/sso/link")).url; }
+    catch (err) { b.classList.remove("loading"); toast(err.message, "err"); }
+  });
   on(el, "click", "#mfa-on", () => mfaEnrollModal(false));
   on(el, "click", "#mfa-off", () => modal({ title: t("İkinci addımı söndür"), size: "sm",
     body: html`<div class="field"><label class="label" for="mfa-off-code">${t("Tətbiqdəki 6 rəqəmli kod")}</label><input class="input" id="mfa-off-code" inputmode="numeric" autocomplete="one-time-code"></div>`,

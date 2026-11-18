@@ -8,6 +8,15 @@
   "perm": "roles.grant",
   "slow": false
  },
+ "DELETE /api/admin/users/{id:int}/sso/{iid:int}": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "DELETE /api/materials/{id:int}": {
   "access": [
    "teacher"
@@ -96,6 +105,15 @@
   "perm": "roles.grant",
   "slow": false
  },
+ "GET /api/admin/users/{id:int}/sso": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/analytics": {
   "access": [
    "admin",
@@ -123,6 +141,20 @@
   "demo": false,
   "perm": null,
   "slow": false
+ },
+ "GET /api/auth/sso/callback": {
+  "access": "public",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": true
+ },
+ "GET /api/auth/sso/start": {
+  "access": "public",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": true
  },
  "GET /api/badges": {
   "access": "any",
@@ -282,6 +314,13 @@
   "slow": false
  },
  "GET /api/me/sessions": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/me/sso": {
   "access": "any",
   "audit_read": null,
   "demo": false,
@@ -652,6 +691,15 @@
   "perm": "roles.grant",
   "slow": false
  },
+ "POST /api/admin/users/{id:int}/sso": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/admin/users/{id:int}/temp-password": {
   "access": [
    "admin"
@@ -734,6 +782,13 @@
   "demo": false,
   "perm": null,
   "slow": false
+ },
+ "POST /api/auth/sso/link": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": true
  },
  "POST /api/campus/ask": {
   "access": "any",
