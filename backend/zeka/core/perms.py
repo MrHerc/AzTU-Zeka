@@ -31,6 +31,7 @@ PERMS: dict[str, tuple[str, ...]] = {
     # Task 32: the campus knowledge base (articles, versions, review dates); who edits it is the owner's call (SPEC, Open Q 24)
     "kb.manage": ("academic_office", "admin"),
     "clubs.approve": ("office", "admin"),                 # a dean's office approves a club (Task 35)
+    "integration.manage": ("admin",),                     # API keys, webhooks, exports, the apps page (Task 37)
 }
 
 SCOPE_TYPES = ("faculty", "department", "course")
