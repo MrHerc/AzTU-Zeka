@@ -162,12 +162,11 @@ def test_issuing_an_academic_leave_needs_the_order_and_prints_it(app_db, registr
     rid = r.json["id"]
     office = app_db.client("office")
     office.post("/api/me/role", {"role": "office"})
-    for _ in range(5):                                    # to the last step
-        if office.post(f"/api/requests/{rid}/action", {"action": "approve"}).status != 200:
-            break
-    assert office.post(f"/api/requests/{rid}/action", {"action": "issue"}).status == 400
-    done = office.post(f"/api/requests/{rid}/action", {"action": "issue", "order_no": "301-AM", "order_date": day(-1),
-                                                       "effective_date": day(10)})
+    assert office.post(f"/api/requests/{rid}/action", {"action": "approve"}).status == 200       # the dean's office's step
+    assert registrar.post(f"/api/requests/{rid}/action", {"action": "approve"}).status == 200    # then the academic office's (Task 46)
+    assert registrar.post(f"/api/requests/{rid}/action", {"action": "issue"}).status == 400
+    done = registrar.post(f"/api/requests/{rid}/action", {"action": "issue", "order_no": "301-AM", "order_date": day(-1),
+                                                          "effective_date": day(10)})
     assert done.status == 200, done.text
     ev = q("SELECT * FROM student_status_events WHERE order_no='301-AM'")
     assert len(ev) == 1 and ev[0]["kind"] == "academic_leave" and ev[0]["effective_date"] == day(10)

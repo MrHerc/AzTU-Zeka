@@ -248,6 +248,15 @@ leader = _role_fixture("leader")
 admin = _role_fixture("admin")
 
 
+@pytest.fixture(scope="module")
+def registrar(app_db):
+    """The demo's dean's office acting as the academic office (its seeded grant): the role of the certificate and transcript
+    steps and of an academic leave's later steps (Task 46)."""
+    c = app_db.client("office")
+    assert c.post("/api/me/role", {"role": "academic_office"}).status == 200
+    return c
+
+
 @pytest.fixture
 def anon(app_db):
     """A client without a session."""

@@ -18,8 +18,8 @@ from datetime import datetime, timedelta
 from ..core import clock, jobs
 from ..core.i18n import T3
 from . import radar, store, support
-from .common import office_for
-from .store import iso, notify, now, rows
+from .common import step_actors
+from .store import J, iso, notify, now, rows
 from ..modules.identity import domain as identity
 from ..modules.comms import service as _comms  # noqa: F401  registers outbox.send (Task 36, slice 2)
 
@@ -56,11 +56,13 @@ def _once(c, kind: str, obj_id: int, threshold: str) -> bool:
 def reminders_sla(c) -> str:
     t = now()
     sent = 0
-    for r in rows(c, "SELECT r.id, r.student_id, r.due_at, rt.name FROM requests r JOIN request_types rt ON rt.code=r.type_code "
-                     "WHERE r.status IN ('submitted','in_progress') AND r.due_at IS NOT NULL AND r.due_at<?", (iso(t + DAY),)):
+    for r in rows(c, "SELECT r.id, r.student_id, r.due_at, r.step, r.data, rt.name, rt.step_roles FROM requests r JOIN request_types rt "
+                     "ON rt.code=r.type_code WHERE r.status IN ('submitted','in_progress') AND r.due_at IS NOT NULL AND r.due_at<?",
+                  (iso(t + DAY),)):
         due = datetime.fromisoformat(r["due_at"])
         threshold = "overdue" if due <= t else "soon"
-        office = office_for(c, r["student_id"])
+        roles = J(r["step_roles"], []) or ["office"]
+        office = step_actors(c, roles[min(r["step"], len(roles) - 1)], r["student_id"], J(r["data"], {}) or {})   # the step's role (Task 46)
         if not office or not _once(c, "request", r["id"], threshold):   # nobody to tell yet: try again next run (SF-8)
             continue
         title = (T3("Müraciətin müddəti keçdi: {name}", name=r["name"]) if threshold == "overdue"

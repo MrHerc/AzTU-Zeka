@@ -1,10 +1,10 @@
 import { api, html, raw, mount, on, md, ic, toast, modal, route, go, S, pageHead, badge, fmtDate, fmtDateTime, ago, loading, skelLines, spinner, empty, failed,
   infoTip, avatar, fmtSize, fileToB64, openFile, openDoc, confirmBox, cnt, num, registerTour, t, $, $$, esc } from "./core.js";
 import { stat } from "./student.js";
-import { refreshBadges } from "./shell.js";
+import { refreshBadges, ROLE_LABEL } from "./shell.js";
 
 const STAFF = ["office", "admin", "leader"];
-const DESK = ["office", "admin"];
+const QUEUE = [...STAFF, "academic_office", "dept_head"];     // also the roles a request's step is assigned to (Task 46)
 let SVC = null;
 async function services() { if (!SVC) SVC = await api.get("/api/services"); return SVC; }
 const catOf = (key) => (SVC && SVC.categories.find((c) => c.key === key)) || {};
@@ -131,7 +131,7 @@ route("/student/apply/:code", async (el, p, q) => {
   const side = () => html`<div class="card svc-side" data-tour="apply-side"><div class="card-h"><h3>${ic("info", 17)} ${t("Xidmət haqqında")}</h3></div><div class="card-b stack">
     <div class="small">${rt.description}</div>
     ${rt.needs.length ? html`<div><div class="label mb-sm">${t("Lazım olanlar")}</div>${rt.needs.map((n) => html`<div class="small needs-row">${ic("check", 13)} ${n}</div>`)}</div>` : ""}
-    <div><div class="label mb-sm">${t("Mərhələlər")}</div><div class="timeline">${rt.steps.map((s_) => html`<div class="tl-item wait"><span class="small">${s_}</span></div>`)}</div></div>
+    <div><div class="label mb-sm">${t("Mərhələlər")}</div><div class="timeline">${rt.steps.map((s_, i) => html`<div class="tl-item wait"><span class="small">${s_}</span><div class="tiny muted">${ROLE_LABEL[rt.step_roles[i]] || ""}</div></div>`)}</div></div>
     <div class="notice ok">${ic("check", 16)}<div><b>${t("Nəticə")}:</b> ${rt.outcome}</div></div>
     <div class="row small muted">${ic("clock", 14)} ${t("İcra müddəti")}: <b>${slaLabel(rt.sla_hours)}</b></div>
     ${rt.privacy ? html`<div class="notice info">${ic("shield", 16)}<div>${rt.privacy}</div></div>` : ""}</div></div>`;
@@ -265,7 +265,7 @@ export async function requestDetailPage(el, id) {
   mount(el, loading());
   let r;
   try { await services(); r = await api.get(`/api/requests/${id}`); } catch (e) { return mount(el, failed(e.message)); }
-  const staff = STAFF.includes(S.user.role), canAct = DESK.includes(S.user.role);
+  const staff = QUEUE.includes(S.user.role), canAct = r.step_role === S.user.role;   // only the step's role acts (Task 46)
   const open = ["submitted", "in_progress", "returned"].includes(r.status);
   const back = staff ? [t("Müraciətlər"), "/office"] : [t("Müraciətlərim"), "/student/requests"];
   const last = r.step >= r.steps.length - 1;
@@ -304,10 +304,10 @@ export async function requestDetailPage(el, id) {
     <div class="stack">
       <div class="card" data-tour="req-timeline"><div class="card-h"><h3>${ic("timer", 17)} ${t("Mərhələlər")}</h3></div><div class="card-b"><div class="timeline">
         ${r.steps.map((s_, i) => { const done = r.status === "ready" || i < r.step; const cur = i === r.step && ["submitted", "in_progress"].includes(r.status);
-          return html`<div class="tl-item ${done ? "done" : cur ? "" : "wait"}"><b class="small">${s_}</b><div class="tiny muted">${done ? t("tamamlanıb") : cur ? t("icrada") : ["rejected", "cancelled"].includes(r.status) ? t("dayandırılıb") : t("gözləyir")}</div></div>`; })}</div>
+          return html`<div class="tl-item ${done ? "done" : cur ? "" : "wait"}"><b class="small">${s_}</b><div class="tiny muted">${ROLE_LABEL[r.step_roles[i]] || ""} · ${done ? t("tamamlanıb") : cur ? t("icrada") : ["rejected", "cancelled"].includes(r.status) ? t("dayandırılıb") : t("gözləyir")}</div></div>`; })}</div>
         ${open ? html`<div class="small muted mt">${ic("clock", 13)} ${t("Son icra tarixi")}: <b>${fmtDateTime(r.due_at)}</b></div>` : ""}</div></div>
       <div class="card"><div class="card-h"><h3>${ic("list", 17)} ${t("Gedişat")}</h3></div><div class="card-b"><div class="timeline">
-        ${r.events.map((e) => { const [l, cl] = ACT[e.action] || [e.action, ""]; return html`<div class="tl-item ${cl}"><b class="small">${l}</b><div class="tiny muted">${fmtDateTime(e.created_at)}${e.actor ? " · " + e.actor : ""}</div>${e.note ? html`<div class="small">${e.note}</div>` : ""}</div>`; })}</div></div></div>
+        ${r.events.map((e) => { const [l, cl] = ACT[e.action] || [e.action, ""]; return html`<div class="tl-item ${cl}"><b class="small">${l}</b><div class="tiny muted">${fmtDateTime(e.created_at)}${e.actor ? " · " + e.actor : ""}${ROLE_LABEL[e.actor_role] ? ` (${ROLE_LABEL[e.actor_role]})` : ""}</div>${e.note ? html`<div class="small">${e.note}</div>` : ""}</div>`; })}</div></div></div>
       ${staff ? html`<div class="card pad"><div class="row">${avatar(r.student, r.student_color, "lg")}<div><b>${r.student}</b><div class="small muted">${r.group || ""} · ${t("tələbə")}</div></div></div></div>` : ""}
     </div></div>`);
   const reload = () => { refreshBadges(); requestDetailPage(el, id); };
@@ -344,7 +344,8 @@ export async function requestDetailPage(el, id) {
         fr.addEventListener("load", () => { fr.hidden = false; m.el.querySelector(".viewer-load")?.remove(); }, { once: true });
       } catch (err) { m.el.querySelector(".viewer-stage").innerHTML = failed(err.message).__html; }
     } else {
-      modal({ title: t("Müraciəti tamamla"), body: html`<div class="field"><label class="label" for="ans">${t("Tələbəyə cavab")}</label><textarea class="textarea" id="ans" rows="4">${r.type.answer || t("Müraciətiniz təmin edildi.")}</textarea></div>
+      modal({ title: t("Müraciəti tamamla"), body: html`${r.type.effect === "none" ? html`<div class="notice info mb">${ic("info", 16)}<div>${t("Bu xidmət Zəka-da heç bir qeydi dəyişmir. Tələbə faktiki cavab alacaq: müraciət qeydə alınıb, baxan bölmə və qərar.")}</div></div>` : ""}
+        <div class="field"><label class="label" for="ans">${t("Qeyd (tələbə gedişatda görəcək)")}</label><textarea class="textarea" id="ans" rows="4"></textarea></div>
         ${r.type_code === "absence_excuse" ? html`<div class="notice info mt">${ic("calcheck", 16)}<div>${t("Təsdiqdən sonra seçilmiş qayıblar elektron jurnalda avtomatik “üzrlü” olacaq və fənn müəllimləri məlumatlandırılacaq (tibbi məlumat göndərilmir).")}</div></div>` : ""}`,
         actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Təsdiqlə və tamamla"), cls: "btn-success", onClick: async (w) => { await api.post(`/api/requests/${id}/action`, { action: "issue", note: w.querySelector("#ans").value }); toast(t("Müraciət tamamlandı."), "ok"); reload(); } }] });
     }
@@ -363,7 +364,7 @@ export async function requestDetailPage(el, id) {
 
 // ---------------------------------------------------------------- office queue
 route("/office", async (el, p, q) => {
-  if (!STAFF.includes(S.user.role)) return go("/student/services");
+  if (!QUEUE.includes(S.user.role)) return go("/student/services");
   mount(el, loading());
   const status = q.status || "open";
   let sum, rs;

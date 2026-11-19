@@ -94,6 +94,15 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/admin/request-types": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/admin/settings": {
   "access": [
    "admin"
@@ -881,7 +890,9 @@
  },
  "GET /api/office/summary": {
   "access": [
+   "academic_office",
    "admin",
+   "dept_head",
    "leader",
    "office"
   ],
@@ -991,6 +1002,7 @@
  },
  "GET /api/requests/{id:int}/preview": {
   "access": [
+   "academic_office",
    "admin",
    "office"
   ],
@@ -2201,7 +2213,8 @@
  },
  "POST /api/requests/{id:int}/action": {
   "access": [
-   "admin",
+   "academic_office",
+   "dept_head",
    "office"
   ],
   "audit_read": "request",
@@ -2432,6 +2445,15 @@
  "PUT /api/academy/assessment": {
   "access": [
    "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "PUT /api/admin/request-types/{code}": {
+  "access": [
+   "admin"
   ],
   "audit_read": null,
   "demo": false,

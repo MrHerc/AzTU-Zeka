@@ -41,6 +41,8 @@ def campus_answer(c, user, masked: str, lang: str) -> dict:
             if matched < 2 and share < WEAK_SHARE:            # one shared word is no evidence (Task 32): hand over
                 hits = []
         out = tutor.compose_campus(masked, hits, lang)
+    offered = kb_repo.offered_codes(c)                         # a closed e-service has no button (Task 46)
+    out["actions"] = [a for a in out["actions"] if a["type"] != "request" or a["code"] in offered]
     if not (out["cites"] or out["meta"].get("source") or out["meta"].get("greeting") or any(a["type"] == "handoff" for a in out["actions"])):
         out["actions"] = [{"type": "handoff", "label": S("Dəstək xidmətinə ötür", lang)}, *out["actions"]]
     return out

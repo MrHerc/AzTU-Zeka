@@ -232,6 +232,50 @@ def office_for(c, student_id) -> list[int]:
                                        (student_id,))]
 
 
+# ---------------------------------------------------------------- e-service step actors (Task 46)
+ACTORS = ("office", "academic_office", "dept_head")      # the roles a request type's step is assigned to; admin never is
+
+
+def covers(c, u, role: str, student_id: int, data: dict) -> bool:
+    """Whether ``u`` acting in ``role`` may act on this student's request: a dean's office on its faculty's students (Task
+    13); a department head on the course the request names (its grants, as in the journal); an academic office on the
+    whole university (its primary role or a grant without a scope) or on the faculties it was granted."""
+    if role == "office":
+        return serves(c, {**u, "role": "office"}, student_id)
+    if role == "dept_head":
+        course = data.get("course")
+        co = row(c, "SELECT id, department_id FROM courses WHERE id=?", (course,)) if isinstance(course, int) else None
+        from ..modules.journal import service as journal      # here: the journal's modules import this one
+        return co is not None and journal.head_covers(c, u["id"], co["id"], co["department_id"])
+    grants = rows(c, "SELECT scope_type, scope_id FROM role_grants WHERE user_id=? AND role=?", (u["id"], role))
+    if u.get("primary_role", u["role"]) == role or any(g["scope_type"] is None for g in grants):
+        return True
+    fac = row(c, "SELECT sg.faculty_id FROM users s JOIN study_groups sg ON sg.id=s.group_id WHERE s.id=?", (student_id,))
+    return bool(fac) and any(g["scope_type"] == "faculty" and g["scope_id"] == fac["faculty_id"] for g in grants)
+
+
+def step_actors(c, role: str, student_id: int, data: dict) -> list[int]:
+    """The active accounts holding ``role`` (as their primary role or a grant) whose scope covers this request: who is told
+    that a step is theirs."""
+    if role == "office":
+        return office_for(c, student_id)
+    held = rows(c, "SELECT id, role FROM users WHERE role=? AND status='active' UNION SELECT u.id, u.role FROM role_grants g "
+                   "JOIN users u ON u.id=g.user_id WHERE g.role=? AND u.status='active'", (role, role))
+    return [x["id"] for x in held if covers(c, {"id": x["id"], "role": role, "primary_role": x["role"]}, role, student_id, data)]
+
+
+def may_read_request(c, u, r) -> bool:
+    """A request is read by its student, the registry offices (a dean's office for its faculty, Task 13) and the roles its
+    type's steps are assigned to, within their scope (Task 46)."""
+    if u["role"] == "student":
+        return r["student_id"] == u["id"]
+    if u["role"] in STAFF:
+        return serves(c, u, r["student_id"])
+    t = row(c, "SELECT step_roles FROM request_types WHERE code=?", (r["type_code"],))
+    return u["role"] in ACTORS and bool(t) and u["role"] in (J(t["step_roles"], []) or []) and \
+        covers(c, u, u["role"], r["student_id"], J(r["data"], {}) or {})
+
+
 def make_key(c, kind: str, obj_id: int, user_id: int) -> str:
     """One-time, 5-minute link key, stored in the database so that any worker process can accept it (once)."""
     key = secrets.token_urlsafe(18)

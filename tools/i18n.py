@@ -295,7 +295,8 @@ def py_scan(path: Path):
 SKIP_KEYS = {"code", "key", "icon", "color", "tone", "url", "link", "href", "prefix", "type", "kind", "role", "username", "email", "phone", "password",
              "start", "end", "date", "time", "id", "file", "filename", "audience", "status", "qtype", "category", "track", "teacher", "course", "group",
              "patronymic", "full_name", "student_no", "site", "short", "platform", "en", "answer_index", "accept", "roles", "keys",
-             "name_en", "semester_en", "level_en", "document_en", "semester_dates", "cover", "event", "tools", "areas_keys", "dept", "material"}
+             "name_en", "semester_en", "level_en", "document_en", "semester_dates", "cover", "event", "tools", "areas_keys", "dept", "material",
+             "step_roles", "effect"}
 
 
 def content_strings():

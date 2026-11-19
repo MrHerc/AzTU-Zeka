@@ -6,8 +6,8 @@ import math
 from datetime import date, datetime, timedelta
 
 from . import docs, store
-from .common import BASE_URL, R, STAFF, ctx, holder, make_key, office_for, scope_sql, serves
-from ..core.i18n import E, T3, canon
+from .common import ACTORS, BASE_URL, R, STAFF, covers, ctx, holder, make_key, may_read_request, scope_sql, serves, step_actors
+from ..core.i18n import E, S_, T3, canon
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows
 from ..core.web import HTTPError, html_resp
@@ -16,11 +16,12 @@ from ..modules.directory import domain as directory_rules, service as directory
 
 OPEN = ("submitted", "in_progress", "returned")
 DONE = ("ready", "rejected", "cancelled")
+UNITS = {"office": S_("Dekanlıq"), "academic_office": S_("Tədris şöbəsi"), "dept_head": S_("Kafedra müdiri")}   # who a step's role is
 
 
 def type_out(t):
     out = dict(t)
-    for k, d in (("fields", []), ("steps", []), ("needs", []), ("attachments", None)):
+    for k, d in (("fields", []), ("steps", []), ("needs", []), ("attachments", None), ("step_roles", [])):
         out[k] = J(t[k], d)
     return out
 
@@ -34,10 +35,78 @@ def get_type(c, code):
 
 @R("GET", "/api/services")
 def services(req):
+    """The e-services on offer: only the types the administrator opened (Task 46; the demo opens every one)."""
     c = req.db
     cats = rows(c, "SELECT * FROM service_categories ORDER BY seq")
-    types = [type_out(t) for t in rows(c, "SELECT * FROM request_types ORDER BY seq")]
+    types = [type_out(t) for t in rows(c, "SELECT * FROM request_types WHERE enabled=1 ORDER BY seq")]
     return {"categories": cats, "types": types}
+
+
+# ---------------------------------------------------------------- effects of the last step (Task 46)
+def _issue_doc(c, actor, r, rt, data, body):
+    """``document.issue``: the type's document through Task 45's issue path (a stored payload and its hash)."""
+    st = row(c, "SELECT * FROM users WHERE id=?", (r["student_id"],))
+    return store.issue_document(c, "request", st["id"], rt["document"], {"type": rt["code"], **data, "student": st["full_name"]},
+                                actor["id"], rt["prefix"], r["id"])
+
+
+def _excuse(c, actor, r, rt, data, body):
+    """``attendance.excuse``: the chosen absences are excused in the journal."""
+    journal.excuse(c, actor["id"], r["id"], r["student_id"], data.get("absences") or [])
+
+
+def _leave(c, actor, r, rt, data, body):
+    """``student_status.leave``: the rector's order on the leave is a status event (Task 15); the certificate is the extract
+    from that order and prints its number and dates."""
+    order, problem = directory_rules.status_event({"kind": "academic_leave", "order_no": body.get("order_no"), "order_date": body.get("order_date"),
+                                                   "effective_date": body.get("effective_date"), "note": f"#{r['id']}"})
+    if problem:
+        raise HTTPError(400, problem)
+    status, problem = directory.record_status(c, actor, row(c, "SELECT * FROM users WHERE id=?", (r["student_id"],)), order)
+    if status != "ok":
+        raise HTTPError(400, problem)
+    return _issue_doc(c, actor, r, rt, {**data, **{k: order[k] for k in ("order_no", "order_date", "effective_date")}}, body)
+
+
+# A type's `effect` names one of these, or is "none"; a type whose effect is not here cannot be opened.
+EFFECTS = {"document.issue": _issue_doc, "attendance.excuse": _excuse, "student_status.leave": _leave}
+
+
+def registered(effect) -> bool:
+    return effect == "none" or effect in EFFECTS
+
+
+def answer_of(rt):
+    """The answer of a completed request that has no document. A type with an effect says what the effect did (its
+    `answer`); a type whose effect is `none` gets the one factual template: no free text claims a change Zəka did not make."""
+    if rt["effect"] != "none":
+        return rt["answer"]
+    return T3("Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka-da başqa heç bir qeyd dəyişməyib.",
+              unit=UNITS[rt["step_roles"][-1]])
+
+
+@R("GET", "/api/admin/request-types", roles=("admin",))
+def admin_request_types(req):
+    """Every type with its flag, its effect and whether that effect is registered in code: the administrator's offer switch."""
+    return [{**{k: t[k] for k in ("code", "name", "icon", "category", "effect")}, "enabled": bool(t["enabled"]),
+             "registered": registered(t["effect"])} for t in rows(req.db, "SELECT * FROM request_types ORDER BY seq")]
+
+
+@R("PUT", "/api/admin/request-types/{code}", roles=("admin",))
+def set_offered(req):
+    """Opens or closes a type: a flag only, audited (Task 46). A type whose effect is not registered in code is not opened."""
+    c = req.db
+    on = req.json().get("enabled")
+    if not isinstance(on, bool):
+        raise HTTPError(400, E("Yanlış dəyər: {field}", field="enabled"))
+    t = row(c, "SELECT code, name, effect FROM request_types WHERE code=?", (str(req.params["code"]),))
+    if not t:
+        raise HTTPError(404, "Müraciət növü tapılmadı")
+    if on and not registered(t["effect"]):
+        raise HTTPError(400, E("Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz", effect=t["effect"]))
+    c.execute("UPDATE request_types SET enabled=? WHERE code=?", (int(on), t["code"]))
+    audit(c, req.user["id"], "request_type_open" if on else "request_type_close", "request_type", t["code"])
+    return admin_request_types(req)
 
 
 # ---------------------------------------------------------------- validation & display
@@ -210,6 +279,7 @@ def req_out(c, r, rt=None):
     is_open = r["status"] in OPEN
     data = J(r["data"], {}) or {}
     out = {**r, "data": data, "type_name": rt["name"], "icon": rt["icon"], "category": rt["category"], "steps": rt["steps"],
+           "step_roles": rt["step_roles"], "step_role": rt["step_roles"][min(r["step"], len(rt["step_roles"]) - 1)],   # who acts now (Task 46)
            "has_document": bool(rt.get("document")), "student": st["full_name"] if st else "", "group": st["grp"] if st else "",
            "student_color": st["color"] if st else "#64748b", "sla_hours": rt["sla_hours"], "summary": summary_of(rt, data),
            "overdue": is_open and r["status"] != "returned" and now() > due,
@@ -223,11 +293,39 @@ def req_out(c, r, rt=None):
 
 def _req_for(req, rid):
     r = row(req.db, "SELECT * FROM requests WHERE id=?", (rid,))
-    if not r or (req.user["role"] == "student" and r["student_id"] != req.user["id"]) or req.user["role"] not in ("student", *STAFF) \
-            or not serves(req.db, req.user, r["student_id"]):              # a dean's office sees its own faculty (Task 13)
+    if not r or not may_read_request(req.db, req.user, r):   # a dean's office: its faculty (Task 13); a step's role: its scope (Task 46)
         raise HTTPError(404, "Müraciət tapılmadı")
     return r
 
+
+def _event(c, rid, u, action, note=""):
+    """One act in the request's history: who, in which role (a person may hold several), what and when."""
+    c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at,role) VALUES(?,?,?,?,?,?)",
+              (rid, u["id"], action, note, iso(now()), u["role"]))
+
+
+QUEUE_ORDER = "ORDER BY CASE status WHEN 'submitted' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, due_at"
+
+
+def _queue(c, u, cond: str, args) -> list[dict]:
+    """The requests a staff user works with: a registry office's by its scope (Task 13); an academic office's or a
+    department head's, of the types it has a step in, within its scope (Task 46)."""
+    if u["role"] in STAFF:
+        where, scope_args = scope_sql(u, "student_id")
+        return rows(c, f"SELECT * FROM requests WHERE {cond} AND {where} {QUEUE_ORDER}", (*args, *scope_args))  # nosec B608
+    codes = [t["code"] for t in rows(c, "SELECT code, step_roles FROM request_types") if u["role"] in (J(t["step_roles"], []) or [])]
+    rs = rows(c, f"SELECT * FROM requests WHERE type_code IN ({','.join('?' * len(codes))}) AND {cond} {QUEUE_ORDER}",  # nosec B608
+              (*codes, *args))
+    seen: dict = {}            # shortcut: one scope check per student and course in Python; SQL when queues reach thousands
+    out = []
+    for r in rs:
+        data = J(r["data"], {}) or {}
+        key = (r["student_id"], data.get("course"))
+        if key not in seen:
+            seen[key] = covers(c, u, u["role"], r["student_id"], data)
+        if seen[key]:
+            out.append(r)
+    return out
 
 
 # ---------------------------------------------------------------- requests
@@ -236,16 +334,14 @@ def list_requests(req):
     c, u = req.db, req.user
     if u["role"] == "student":
         rs = rows(c, "SELECT * FROM requests WHERE student_id=? ORDER BY id DESC", (u["id"],))
-    elif u["role"] in STAFF:
+    elif u["role"] in STAFF or u["role"] in ACTORS:
         status = req.query.get("status", "open")
         cond = {"open": f"status IN {OPEN}", "done": f"status IN {DONE}"}.get(status, "1=1")
         args = []
         if req.query.get("type"):
             cond += " AND type_code=?"
             args.append(req.query["type"])
-        where, scope_args = scope_sql(u, "student_id")
-        rs = rows(c, f"SELECT * FROM requests WHERE {cond} AND {where} ORDER BY CASE status WHEN 'submitted' THEN 0 "  # nosec B608
-                     "WHEN 'in_progress' THEN 1 ELSE 2 END, due_at", (*args, *scope_args))
+        rs = _queue(c, u, cond, args)
     else:
         raise HTTPError(403, "İcazə yoxdur")
     types = {t["code"]: type_out(t) for t in rows(c, "SELECT * FROM request_types")}
@@ -263,6 +359,8 @@ def create_request(req):
     c, u = req.db, req.user
     b = req.json()
     rt = get_type(c, b.get("type_code"))
+    if not rt["enabled"]:                                   # a closed type is not offered (Task 46)
+        raise HTTPError(404, "Müraciət növü tapılmadı")
     if rt["code"] == "transcript" and not journal.transcript_ready(c, u["id"]):     # Task 21: only from reconciled history
         raise HTTPError(400, "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.")
     data = validate(c, u, rt, b.obj("data"))
@@ -271,8 +369,9 @@ def create_request(req):
                     (rt["code"], u["id"], json.dumps(data, ensure_ascii=False), "submitted", iso(t), iso(t),
                      iso(t + timedelta(hours=rt["sla_hours"])))).lastrowid
     attach_files(c, u, rt, b.ids("files", 10), rid)
-    c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, u["id"], "submitted", "", iso(t)))
-    notify(c, office_for(c, u["id"]), "request", T3("Yeni müraciət: {type}", type=rt["name"]), f"{u['full_name']} · № {rid}", f"/office/request/{rid}")
+    _event(c, rid, u, "submitted")
+    notify(c, step_actors(c, rt["step_roles"][0], u["id"], data), "request", T3("Yeni müraciət: {type}", type=rt["name"]),
+           f"{u['full_name']} · № {rid}", f"/office/request/{rid}")
     audit(c, u["id"], "request_create", "request", f"#{rid} {rt['name']}")
     return req_out(c, row(c, "SELECT * FROM requests WHERE id=?", (rid,)), rt)
 
@@ -286,8 +385,8 @@ def get_request(req):
     out = req_out(c, r, rt)
     out["type"] = rt
     out["data_view"] = display_data(c, rt, out["data"])
-    out["events"] = rows(c, "SELECT e.*, u.full_name actor, u.role actor_role FROM request_events e LEFT JOIN users u ON u.id=e.actor_id "
-                            "WHERE request_id=? ORDER BY e.id", (r["id"],))
+    out["events"] = rows(c, "SELECT e.*, u.full_name actor, COALESCE(e.role, u.role) actor_role FROM request_events e "
+                            "LEFT JOIN users u ON u.id=e.actor_id WHERE request_id=? ORDER BY e.id", (r["id"],))
     out["thread"] = rows(c, "SELECT m.*, u.full_name author, u.role author_role, u.color FROM request_messages m JOIN users u ON u.id=m.author_id "
                             "WHERE request_id=? ORDER BY m.id", (r["id"],))
     out["attachments"] = rows(c, "SELECT id, filename, mime, size, created_at FROM files WHERE request_id=? ORDER BY id", (r["id"],))
@@ -304,10 +403,13 @@ def post_message(req):
         raise HTTPError(400, "Mesaj boşdur")
     c.execute("INSERT INTO request_messages(request_id,author_id,text,created_at) VALUES(?,?,?,?)", (r["id"], u["id"], text, iso(now())))
     rt = get_type(c, r["type_code"])
-    if u["role"] == "student":
-        notify(c, office_for(c, r["student_id"]), "message", T3("Müraciətə yeni mesaj (№ {id})", id=r["id"]), f"{u['full_name']}: {text[:80]}", f"/office/request/{r['id']}")
+    if u["role"] == "student":                      # to whoever holds the current step (Task 46)
+        role = rt["step_roles"][min(r["step"], len(rt["step_roles"]) - 1)]
+        notify(c, step_actors(c, role, r["student_id"], J(r["data"], {}) or {}), "message", T3("Müraciətə yeni mesaj (№ {id})", id=r["id"]),
+               f"{u['full_name']}: {text[:80]}", f"/office/request/{r['id']}")
     else:
-        notify(c, r["student_id"], "message", T3("Dekanlıqdan yeni mesaj"), T3("{type}: {text}", type=rt["name"], text=text[:80]), f"/student/requests/{r['id']}")
+        title = T3("Dekanlıqdan yeni mesaj") if u["role"] == "office" else T3("Müraciətə yeni mesaj (№ {id})", id=r["id"])
+        notify(c, r["student_id"], "message", title, T3("{type}: {text}", type=rt["name"], text=text[:80]), f"/student/requests/{r['id']}")
     return get_request(req)
 
 
@@ -323,8 +425,9 @@ def resubmit(req):
     existing = row(c, "SELECT COUNT(*) n FROM files WHERE request_id=?", (r["id"],))["n"]
     attach_files(c, u, rt, b.ids("files", 10), r["id"], existing)
     c.execute("UPDATE requests SET data=?, status='submitted', step=0, updated_at=? WHERE id=?", (json.dumps(data, ensure_ascii=False), iso(now()), r["id"]))
-    c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], "resubmitted", "", iso(now())))
-    notify(c, office_for(c, r["student_id"]), "request", T3("Müraciət yenidən göndərildi (№ {id})", id=r["id"]), T3("{name} · {service}", name=u["full_name"], service=rt["name"]), f"/office/request/{r['id']}")
+    _event(c, r["id"], u, "resubmitted")
+    notify(c, step_actors(c, rt["step_roles"][0], r["student_id"], data), "request", T3("Müraciət yenidən göndərildi (№ {id})", id=r["id"]),
+           T3("{name} · {service}", name=u["full_name"], service=rt["name"]), f"/office/request/{r['id']}")
     return get_request(req)
 
 
@@ -335,23 +438,16 @@ def cancel(req):
     if r["status"] not in ("submitted", "returned"):
         raise HTTPError(409, "Bu mərhələdə müraciəti ləğv etmək mümkün deyil")
     c.execute("UPDATE requests SET status='cancelled', updated_at=? WHERE id=?", (iso(now()), r["id"]))
-    c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], "cancelled", "", iso(now())))
+    _event(c, r["id"], u, "cancelled")
     return get_request(req)
 
 
 def _apply_outcome(c, r, rt, data, actor):
-    """Side effects of a fulfilled request (attendance, teacher notifications)."""
+    """The teachers' notices of a fulfilled request (an excuse, a leave, a moved exam); the change itself is the effect."""
     student = row(c, "SELECT full_name FROM users WHERE id=?", (r["student_id"],))
     if rt["code"] == "absence_excuse":
         ids = data.get("absences") or []
         if ids:
-            # bandit B608: placeholders only
-            # who and when: an export --since (Task 37) gives the rows changed after a moment by marked_at
-            c.execute("UPDATE attendance SET status='excused', request_id=?, marked_by=?, marked_at=? WHERE user_id=? AND status='absent' "
-                      f"AND lesson_id IN ({','.join('?' * len(ids))})", (r["id"], actor["id"], iso(now()), r["student_id"], *ids))  # nosec B608
-            from ..modules.journal import service as journal     # an excuse can move the attendance points of a final grade
-            for x in rows(c, f"SELECT DISTINCT course_id FROM lessons WHERE id IN ({','.join('?' * len(ids))})", tuple(ids)):  # nosec B608
-                journal.refresh_finals(c, x["course_id"], [r["student_id"]])
             by_teacher = {}
             for x in rows(c, f"SELECT l.day, co.teacher_id, co.name FROM lessons l JOIN courses co ON co.id=l.course_id WHERE l.id IN ({','.join('?' * len(ids))})", tuple(ids)):
                 by_teacher.setdefault(x["teacher_id"], []).append(f"{fmt_day(x['day'])} ({x['name']})")
@@ -370,15 +466,20 @@ def _apply_outcome(c, r, rt, data, actor):
                    T3("{course} · yeni tarixi kafedra ilə razılaşdırın", course=co["name"]), "/teacher")
 
 
-@R("POST", "/api/requests/{id:int}/action", roles=("office", "admin"), audit_read="request")
+@R("POST", "/api/requests/{id:int}/action", roles=ACTORS, audit_read="request")
 def request_action(req):
+    """Moves the current step on, returns or rejects the request: only in the role that step is assigned to and within
+    that role's scope (Task 46); `issue` completes the last step and runs the type's effect in this transaction."""
     c, u = req.db, req.user
-    r = _req_for(req, req.params["id"])
-    req.read_owner, req.read_object = r["student_id"], r["id"]
     b = req.json()
     action, note = b.get("action"), b.text("note", 1500)
+    r = _req_for(req, req.params["id"])              # outside the role's scope: as if it did not exist (Task 13)
+    req.read_owner, req.read_object = r["student_id"], r["id"]
     rt = get_type(c, r["type_code"])
-    steps = rt["steps"]
+    steps, roles = rt["steps"], rt["step_roles"]
+    role = roles[min(r["step"], len(roles) - 1)]
+    if u["role"] != role:
+        raise HTTPError(403, E("Bu mərhələni {unit} icra edir", unit=UNITS[role]))
     if r["status"] in DONE:
         raise HTTPError(409, "Müraciət artıq bağlanıb")
     t = iso(now())
@@ -389,7 +490,7 @@ def request_action(req):
             raise HTTPError(400, "Səbəbi qeyd edin")
         st = "returned" if action == "return" else "rejected"
         c.execute("UPDATE requests SET status=?, updated_at=? WHERE id=?", (st, t, r["id"]))
-        c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], st, note, t))
+        _event(c, r["id"], u, st, note)
         notify(c, r["student_id"], "request", "Müraciətiniz düzəlişə qaytarıldı" if st == "returned" else "Müraciətiniz rədd edildi",
                T3("{type}: {note}", type=rt["name"], note=note[:90]), link)
     elif action == "approve":
@@ -398,45 +499,37 @@ def request_action(req):
         if r["step"] >= len(steps) - 1:
             raise HTTPError(409, "Son mərhələdə “Təsdiqlə və tamamla” istifadə edin")
         c.execute("UPDATE requests SET status='in_progress', step=step+1, updated_at=? WHERE id=?", (t, r["id"]))
-        c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], "approved", steps[r["step"]], t))
+        _event(c, r["id"], u, "approved", steps[r["step"]])
         notify(c, r["student_id"], "request", "Müraciətiniz növbəti mərhələyə keçdi", T3("{type}: {step}", type=rt["name"], step=steps[r["step"] + 1]), link)
+        student = row(c, "SELECT full_name FROM users WHERE id=?", (r["student_id"],))      # only the next step's role, in its scope
+        notify(c, step_actors(c, roles[r["step"] + 1], r["student_id"], data), "request", T3("Yeni müraciət: {type}", type=rt["name"]),
+               T3("{name} · {service}", name=f"{student['full_name']} · № {r['id']}", service=steps[r["step"] + 1]), f"/office/request/{r['id']}")
     elif action == "issue":
         if r["status"] == "returned":
             raise HTTPError(409, "Müraciət tələbəyə qaytarılıb")
+        if r["step"] < len(steps) - 1:
+            raise HTTPError(409, "Müraciət hələ son mərhələdə deyil: əvvəlcə mərhələləri təsdiqləyin")
         if rt["code"] == "transcript" and not journal.transcript_ready(c, r["student_id"]):   # readiness can change after the request
             raise HTTPError(400, "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.")
-        order = None
-        if rt["code"] == "academic_leave":         # Task 15: the leave is an order; the certificate prints its number and date
-            order, problem = directory_rules.status_event({"kind": "academic_leave", "order_no": b.get("order_no"),
-                                                           "order_date": b.get("order_date"), "effective_date": b.get("effective_date"),
-                                                           "note": f"#{r['id']}"})
-            if problem:
-                raise HTTPError(400, problem)
-            data = {**data, "order_no": order["order_no"], "order_date": order["order_date"], "effective_date": order["effective_date"]}
-        if rt.get("document"):
-            st = row(c, "SELECT * FROM users WHERE id=?", (r["student_id"],))
-            title = rt["document"]
-            doc = store.issue_document(c, "request", st["id"], title, {"type": rt["code"], **data, "student": st["full_name"]}, u["id"], rt["prefix"], r["id"])
-            c.execute("UPDATE requests SET status='ready', step=?, document_id=?, updated_at=? WHERE id=?", (len(steps) - 1, doc["id"], t, r["id"]))
+        if not registered(rt["effect"]):
+            raise HTTPError(400, E("Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz", effect=rt["effect"]))
+        doc = EFFECTS[rt["effect"]](c, u, r, rt, data, b) if rt["effect"] != "none" else None
+        if doc:
+            c.execute("UPDATE requests SET status='ready', document_id=?, updated_at=? WHERE id=?", (doc["id"], t, r["id"]))
             msg = "Sənədiniz hazırdır"
         else:
-            answer = note or rt.get("answer") or "Müraciətiniz təmin edildi."
-            c.execute("UPDATE requests SET status='ready', step=?, answer=?, updated_at=? WHERE id=?", (len(steps) - 1, answer, t, r["id"]))
+            c.execute("UPDATE requests SET status='ready', answer=?, updated_at=? WHERE id=?", (store._txt(answer_of(rt)), t, r["id"]))
             msg = "Müraciətiniz təmin edildi"
         _apply_outcome(c, r, rt, data, u)
-        if order:
-            status, problem = directory.record_status(c, u, row(c, "SELECT * FROM users WHERE id=?", (r["student_id"],)), order)
-            if status != "ok":
-                raise HTTPError(400, problem)
-        c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (r["id"], u["id"], "issued", note, t))
+        _event(c, r["id"], u, "issued", note)
         notify(c, r["student_id"], "request", msg, rt["name"], link)
-        audit(c, u["id"], "document_issue" if rt.get("document") else "request_complete", "request", f"#{r['id']} {rt['name']}")
+        audit(c, u["id"], "document_issue" if doc else "request_complete", "request", f"#{r['id']} {rt['name']}")
     else:
         raise HTTPError(400, "Naməlum əməliyyat")
     return get_request(req)
 
 
-@R("GET", "/api/requests/{id:int}/preview", roles=("office", "admin"), audit_read="document")
+@R("GET", "/api/requests/{id:int}/preview", roles=("office", "academic_office", "admin"), audit_read="document")
 def request_preview(req):
     c = req.db
     r = _req_for(req, req.params["id"])
@@ -452,12 +545,11 @@ def request_preview(req):
     return html_resp(page.replace('<div class="toolbar no-print">', '<div class="toolbar no-print" hidden>'))
 
 
-@R("GET", "/api/office/summary", roles=STAFF)
+@R("GET", "/api/office/summary", roles=(*STAFF, "academic_office", "dept_head"))
 def office_summary(req):
     c = req.db
     types = {t["code"]: type_out(t) for t in rows(c, "SELECT * FROM request_types")}
-    where, scope_args = scope_sql(req.user, "student_id")
-    allr = [req_out(c, r, types[r["type_code"]]) for r in rows(c, f"SELECT * FROM requests WHERE {where}", scope_args)]  # nosec B608
+    allr = [req_out(c, r, types[r["type_code"]]) for r in _queue(c, req.user, "1=1", ())]
     week_ago = now() - timedelta(days=7)
     done = [r for r in allr if r["status"] == "ready"]
     hours = [(datetime.fromisoformat(r["updated_at"]) - datetime.fromisoformat(r["created_at"])).total_seconds() / 3600 for r in done]
@@ -499,14 +591,17 @@ def _doc_allowed(req, d):
     if d["kind"] in ("exam_protocol", "exam_statement"):         # Task 30: a course's exam documents, not a person's
         from ..modules.exam import service as exam
         return exam.may_read_doc(req.db, req.user, d)
-    return d["holder_id"] == req.user["id"] or req.user["role"] in STAFF and serves(req.db, req.user, d["holder_id"])
+    if d["holder_id"] == req.user["id"] or req.user["role"] in STAFF and serves(req.db, req.user, d["holder_id"]):
+        return True
+    r = row(req.db, "SELECT * FROM requests WHERE id=?", (d["request_id"],)) if d.get("request_id") and req.user["role"] in ACTORS else None
+    return bool(r) and may_read_request(req.db, req.user, r)        # the role that issued it from a request (Task 46)
 
 
 @R("POST", "/api/documents/{id:int}/link")
 def doc_link(req):
     if not LIMITS["link"].hit(f"u{req.user['id']}"):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
-    d = row(req.db, "SELECT id, holder_id, kind, data FROM documents WHERE id=?", (req.params["id"],))
+    d = row(req.db, "SELECT id, holder_id, kind, data, request_id FROM documents WHERE id=?", (req.params["id"],))
     if not d or not _doc_allowed(req, d):
         raise HTTPError(404, "Sənəd tapılmadı")
     return {"url": f"/doc/{d['id']}?k={make_key(req.db, 'doc', d['id'], req.user['id'])}"}

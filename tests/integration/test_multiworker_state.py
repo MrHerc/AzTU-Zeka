@@ -66,6 +66,17 @@ def login(port, role):
         c.close()
 
 
+def registrar(port):
+    """The demo's dean's office acting as the academic office (its seeded grant), whose steps a certificate has (Task 46)."""
+    c = Conn(port, login(port, "office"))
+    try:
+        status, body = c.call("POST", "/api/me/role", {"role": "academic_office"})
+        assert status == 200, body
+        return re.search(r"zeka_sid=([^;]+)", c.cookie).group(1)       # a role switch gives the session a new id
+    finally:
+        c.close()
+
+
 @pytest.fixture(scope="module")
 def port(tmp_path_factory):
     with socket.socket() as s:
@@ -177,7 +188,7 @@ def test_a_knowledge_base_article_saved_through_one_worker_answers_through_the_o
 def test_fifty_documents_issued_in_parallel_through_two_workers_get_gapless_numbers(port):
     """Task 45 over HTTP (Checkpoint C, D4): parallel issues on two workers give distinct, gapless registry numbers, no 5xx."""
     import threading
-    student, office = login(port, "student"), login(port, "office")
+    student, office = login(port, "student"), registrar(port)
     s = Conn(port, student)
     o = Conn(port, office)
     order = {"purpose": "Bank", "lang": "Azərbaycan dili", "copies": "1", "delivery": "Elektron (QR kodlu PDF)"}

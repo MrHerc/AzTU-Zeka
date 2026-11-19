@@ -42,6 +42,11 @@ def request_codes(c) -> set[str]:
     return {r["code"] for r in rows(c, "SELECT code FROM request_types")}
 
 
+def offered_codes(c) -> set[str]:
+    """The e-services the administrator opened (Task 46): only these get an action button."""
+    return {r["code"] for r in rows(c, "SELECT code FROM request_types WHERE enabled=1")}
+
+
 def campus_message(c, mid: int, uid: int):
     return row(c, "SELECT * FROM messages WHERE id=? AND user_id=? AND channel='campus' AND role='assistant'", (mid, uid))
 

@@ -7,7 +7,8 @@ import json
 import urllib.parse
 
 from . import engine, pdftext, store
-from .common import R, ROLE_HOME, STAFF, ctx, holder, make_key, pub_user, scope_sql, serves, session_cookie, start_session
+from .common import (ACTORS, R, ROLE_HOME, STAFF, ctx, holder, make_key, may_read_request, pub_user, scope_sql, serves, session_cookie,
+                     start_session)
 from ..core import clock, config, tenant
 from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
@@ -215,7 +216,7 @@ def search(req):
     out = []
     role = u["role"]
     if role in ("student",) + STAFF:
-        for t in rows(c, "SELECT code, name, icon, description FROM request_types ORDER BY seq"):
+        for t in rows(c, "SELECT code, name, icon, description FROM request_types WHERE enabled=1 ORDER BY seq"):   # offered (Task 46)
             if _hit(_hay(t["name"], t["description"]), words):
                 link = f"/student/services?new={t['code']}" if role == "student" else f"/office?type={t['code']}"
                 out.append({"group": "E-xidmətlər", "title": t["name"], "sub": t["description"], "link": link, "icon": t["icon"]})
@@ -281,6 +282,10 @@ def file_access(req, fid):
     if not f:
         raise HTTPError(404, "Fayl tapılmadı")
     if f["owner_id"] != u["id"] and learning.may_read_file(c, u, f["id"]):      # a submission to the user's course (Task 22)
+        req.read_owner, req.read_object = f["owner_id"], f["id"]
+        return f
+    r = row(c, "SELECT * FROM requests WHERE id=?", (f["request_id"],)) if f["request_id"] and u["role"] in ACTORS and u["role"] not in STAFF else None
+    if r and may_read_request(c, u, r):            # a request's attachment, to the role a step of it is assigned to (Task 46)
         req.read_owner, req.read_object = f["owner_id"], f["id"]
         return f
     if f["owner_id"] != u["id"] and u["role"] not in ("office", "admin"):

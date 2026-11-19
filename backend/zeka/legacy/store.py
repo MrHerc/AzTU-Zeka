@@ -435,13 +435,19 @@ def seed_catalog(c, s: dict | None = None):
     for i, cat in enumerate(s["service_categories"]):
         c.execute("INSERT INTO service_categories(key,seq,name,icon,color,text) VALUES(?,?,?,?,?,?)",
                   (cat["key"], i, cat["name"], cat["icon"], cat["color"], cat["text"]))
-    for i, rt in enumerate(s["request_types"]):
+    for i, rt in enumerate(s["request_types"]):         # 0461 put them in a fresh database already: the same content (Task 46)
         c.execute("INSERT INTO request_types(code,seq,category,name,icon,sla_hours,document,document_en,prefix,description,needs,outcome,"
-                  "privacy,fields,attachments,steps,answer,popular) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  "privacy,fields,attachments,steps,answer,popular,step_roles,effect) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                  "ON CONFLICT(code) DO UPDATE SET seq=excluded.seq, category=excluded.category, name=excluded.name, icon=excluded.icon, "
+                  "sla_hours=excluded.sla_hours, document=excluded.document, document_en=excluded.document_en, prefix=excluded.prefix, "
+                  "description=excluded.description, needs=excluded.needs, outcome=excluded.outcome, privacy=excluded.privacy, "
+                  "fields=excluded.fields, attachments=excluded.attachments, steps=excluded.steps, answer=excluded.answer, "
+                  "popular=excluded.popular, step_roles=excluded.step_roles, effect=excluded.effect",
                   (rt["code"], i, rt["category"], rt["name"], rt["icon"], rt["sla_hours"], rt.get("document"), rt.get("document_en"),
                    rt["prefix"], rt["description"], json.dumps(rt.get("needs", []), ensure_ascii=False), rt.get("outcome", ""),
                    rt.get("privacy", ""), json.dumps(rt["fields"], ensure_ascii=False), json.dumps(rt.get("attachments"), ensure_ascii=False),
-                   json.dumps(rt["steps"], ensure_ascii=False), rt.get("answer", ""), 1 if rt.get("popular") else 0))
+                   json.dumps(rt["steps"], ensure_ascii=False), rt.get("answer", ""), 1 if rt.get("popular") else 0,
+                   json.dumps(rt["step_roles"]), rt["effect"]))
     ac = _load("academy.json")
     set_setting(c, "self_assessment", ac["self_assessment"])
     for ti, tr in enumerate(ac["tracks"]):
@@ -506,7 +512,7 @@ def _seed_rooms(c, f: dict, stamp: str):
             r = facilities.import_graph(c, b["code"], list(csv.DictReader(io.StringIO(nodes.read_text(encoding="utf-8"), newline=""))),
                                         list(csv.DictReader(io.StringIO(edges.read_text(encoding="utf-8"), newline=""))))
             if not r["ok"]:
-                raise RuntimeError("content/routes", b["code"], r["problems"])    # demo content is broken: a developer error
+                raise RuntimeError(nodes, r["problems"])    # demo content is broken: a developer error
 
 
 def seed(c):
@@ -516,6 +522,7 @@ def seed(c):
     t0 = now()
     today = t0.date()
     seed_catalog(c, s)
+    c.execute("UPDATE request_types SET enabled=1")        # the demo offers every e-service (Task 46: prod starts with none)
     for k in ("demo_logins", "past_semesters"):
         set_setting(c, k, s[k])
     sem0 = demo_term_start(today)
@@ -545,6 +552,8 @@ def seed(c):
         if u["role"] == "office":
             c.execute("INSERT INTO role_grants(user_id,role,scope_type,scope_id,granted_at) VALUES(?,'office','faculty',?,?)",
                       (uid[u["username"]], fid, stamp))
+            # the demo's "Dekanlıq və tədris hissəsi" also acts as the academic office, whose e-service steps it does (Task 46)
+            c.execute("INSERT INTO role_grants(user_id,role,granted_at) VALUES(?,'academic_office',?)", (uid[u["username"]], stamp))
     students = [uid["aysel"]]
     used = {"Aysel Məmmədova"}
     while len(students) < 120:
@@ -740,7 +749,8 @@ def seed(c):
         rid = c.execute("INSERT INTO requests(type_code,student_id,data,status,step,created_at,updated_at,due_at) VALUES(?,?,?,?,?,?,?,?)",
                         (code, st, json.dumps(data, ensure_ascii=False), status, step, iso(created), iso(created),
                          iso(created + timedelta(hours=rt["sla_hours"])))).lastrowid
-        c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, st, "submitted", "", iso(created)))
+        c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at,role) VALUES(?,?,?,?,?,'student')",
+                  (rid, st, "submitted", "", iso(created)))
         if attach:
             stu = row(c, "SELECT full_name FROM users WHERE id=?", (st,))
             f = save_file(c, st, "hekim_arayisi.pdf", demo_pdf(["SINTETIK NUMUNE - REAL SENED DEYIL", "", "HEKIM ARAYISI (DEMO)",
@@ -750,7 +760,8 @@ def seed(c):
         if status in ("in_progress", "returned", "rejected"):
             act = {"in_progress": "approved", "returned": "returned", "rejected": "rejected"}[status]
             note = {"returned": "Təqdim ediləcəyi qurumun adını dəqiqləşdirin.", "rejected": "Eyni məzmunlu arayış artıq verilib."}.get(status, rt["steps"][0])
-            c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, nigar, act, note, iso(acted)))
+            c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at,role) VALUES(?,?,?,?,?,?)",
+                      (rid, nigar, act, note, iso(acted), rt["step_roles"][0]))
             if status == "returned":
                 c.execute("INSERT INTO request_messages(request_id,author_id,text,created_at) VALUES(?,?,?,?)",
                           (rid, nigar, "Salam! Zəhmət olmasa, arayışın təqdim ediləcəyi qurumun tam adını yazın.", iso(acted)))
@@ -761,9 +772,11 @@ def seed(c):
                 doc = issue_document(c, "request", st, rt["document"], {"type": code, **data, "student": stu["full_name"]}, nigar, rt["prefix"], rid, issued)
                 c.execute("UPDATE requests SET document_id=? WHERE id=?", (doc["id"], rid))
             else:
-                c.execute("UPDATE requests SET answer=? WHERE id=?", (rt.get("answer") or "Müraciətiniz təmin edildi.", rid))
+                from .r_services import answer_of        # here: that module imports this one
+                c.execute("UPDATE requests SET answer=? WHERE id=?", (_txt(answer_of(rt)), rid))
             c.execute("UPDATE requests SET updated_at=?, step=? WHERE id=?", (iso(issued), len(rt["steps"]) - 1, rid))
-            c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at) VALUES(?,?,?,?,?)", (rid, nigar, "issued", "", iso(issued)))
+            c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at,role) VALUES(?,?,?,?,?,?)",
+                      (rid, nigar, "issued", "", iso(issued), rt["step_roles"][-1]))
         return rid
 
     aysel = uid["aysel"]

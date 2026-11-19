@@ -78,25 +78,25 @@ def test_office_queue_filters(office, cert_request):
     assert office.get("/api/requests?status=all&q=" + urllib.parse.quote("Məmmədova")).json
 
 
-def test_messages_return_and_resubmit(student, office, cert_request):
+def test_messages_return_and_resubmit(student, office, registrar, cert_request):
     rid = cert_request["id"]
     m = office.post(f"/api/requests/{rid}/messages", {"text": "Səfirliyin adını yazın, zəhmət olmasa."}).json
     assert len(m["thread"]) == 1 and any("Dekanlıqdan" in n["title"] for n in student.get("/api/notifications").json["items"])
-    assert office.post(f"/api/requests/{rid}/action", {"action": "return"}).status == 400              # a reason is required
-    assert office.post(f"/api/requests/{rid}/action", {"action": "return", "note": "Qurumu yazın"}).json["status"] == "returned"
-    assert office.post(f"/api/requests/{rid}/action", {"action": "approve"}).status == 409
+    assert registrar.post(f"/api/requests/{rid}/action", {"action": "return"}).status == 400           # a reason is required
+    assert registrar.post(f"/api/requests/{rid}/action", {"action": "return", "note": "Qurumu yazın"}).json["status"] == "returned"
+    assert registrar.post(f"/api/requests/{rid}/action", {"action": "approve"}).status == 409
     student.post(f"/api/requests/{rid}/messages", {"text": "Almaniya səfirliyi"})
     r = student.post(f"/api/requests/{rid}/resubmit", {"data": {"org": "Almaniya səfirliyi"}}).json
     assert r["status"] == "submitted" and r["data"]["org"] == "Almaniya səfirliyi" and r["events"][-1]["action"] == "resubmitted"
     assert student.post(f"/api/requests/{rid}/resubmit", {}).status == 409
 
 
-def test_issue_document_view_link_and_verify(app_db, student, office, cert_request):
+def test_issue_document_view_link_and_verify(app_db, student, office, registrar, cert_request):
     rid = cert_request["id"]
-    office.post(f"/api/requests/{rid}/action", {"action": "approve"})
-    r = office.post(f"/api/requests/{rid}/action", {"action": "issue"}).json
+    registrar.post(f"/api/requests/{rid}/action", {"action": "approve"})              # the academic office's steps (Task 46)
+    r = registrar.post(f"/api/requests/{rid}/action", {"action": "issue"}).json
     assert r["status"] == "ready" and r["document"]["reg_no"].startswith("AzTU-ARY-") and r["events"][-1]["action"] == "issued"
-    assert office.post(f"/api/requests/{rid}/action", {"action": "issue"}).status == 409            # closed
+    assert registrar.post(f"/api/requests/{rid}/action", {"action": "issue"}).status == 409         # closed
     doc = r["document"]
     page = office.get(f"/doc/{doc['id']}").text
     assert "CERTIFICATE OF ENROLMENT" in page and "Mammadova" in page and "<svg" in page and f"/verify/{doc['verify_code']}" in page
@@ -188,13 +188,13 @@ def test_cancel_and_reject(student, office):
     assert office.post(f"/api/requests/{r3['id']}/action", {"action": "teleport"}).status == 400
 
 
-def test_transcript_document_and_preview(student, office):
+def test_transcript_document_and_preview(student, office, registrar):
     tr = student.post("/api/requests", {"type_code": "transcript", "data": {"purpose": "Magistraturaya qəbul", "lang": "Azərbaycan dili",
                                                                              "scope": "Bütün semestrlər", "delivery": "Elektron (QR kodlu PDF)"}}).json
     pv = office.get(f"/api/requests/{tr['id']}/preview").text
     assert "AKADEMİK GÖSTƏRİCİLƏR" in pv and "••••" in pv
-    office.post(f"/api/requests/{tr['id']}/action", {"action": "approve"})
-    doc = office.post(f"/api/requests/{tr['id']}/action", {"action": "issue"}).json["document"]
+    registrar.post(f"/api/requests/{tr['id']}/action", {"action": "approve"})
+    doc = registrar.post(f"/api/requests/{tr['id']}/action", {"action": "issue"}).json["document"]
     page = office.get(f"/doc/{doc['id']}").text
     assert "AKADEMİK GÖSTƏRİCİLƏR" in page and "Diskret riyaziyyat" in page
     free = student.post("/api/requests", {"type_code": "free_application", "data": {"to": "Dekanlıq", "subject": "Mövzu", "body": "Mətn"}}).json

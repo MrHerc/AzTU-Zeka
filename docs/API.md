@@ -819,25 +819,36 @@ Publishing notifies every enrolled student.
 
 | Method | Path | Access | Purpose |
 |---|---|---|---|
-| `GET` | `/api/services` | any | Service categories and request types with their form schemas |
-| `GET` | `/api/requests` | `student`, staff | The student's requests, or the office queue |
+| `GET` | `/api/services` | any | Service categories and the request types on offer (`enabled`), with their form schemas |
+| `GET` | `/api/requests` | `student`, staff, step roles | The student's requests, or the queue |
 | `POST` | `/api/requests` | `student` | Submit a request |
-| `GET` | `/api/requests/{id}` | owner, staff | Request with form data for display, timeline, message thread and attachments |
-| `POST` | `/api/requests/{id}/messages` | owner, staff | Add a message to the request thread |
+| `GET` | `/api/requests/{id}` | owner, staff, step roles | Request with form data for display, timeline, message thread and attachments |
+| `POST` | `/api/requests/{id}/messages` | owner, staff, step roles | Add a message to the request thread |
 | `POST` | `/api/requests/{id}/resubmit` | `student` | Resubmit a request returned for correction |
 | `POST` | `/api/requests/{id}/cancel` | `student` | Cancel a submitted or returned request |
-| `POST` | `/api/requests/{id}/action` | `office`, `admin` | Approve, return, reject or issue |
-| `GET` | `/api/requests/{id}/preview` | `office`, `admin` | HTML preview of the document before issue |
-| `GET` | `/api/office/summary` | staff | Queue counters, documents issued this week, average processing hours |
+| `POST` | `/api/requests/{id}/action` | the current step's role: `office`, `academic_office`, `dept_head` | Approve, return, reject or issue |
+| `GET` | `/api/requests/{id}/preview` | `office`, `academic_office`, `admin` | HTML preview of the document before issue |
+| `GET` | `/api/office/summary` | staff, `academic_office`, `dept_head` | Queue counters, documents issued this week, average processing hours |
+| `GET` | `/api/admin/request-types` | `admin` | Every type with `enabled`, `effect` and `registered` (the effect is in code) |
+| `PUT` | `/api/admin/request-types/{code}` | `admin` | `{"enabled": true\|false}`: open or close a type (audited) |
 | `GET` | `/api/documents` | staff | Document registry search, up to 200 rows |
 | `POST` | `/api/documents/{id}/revoke` | `office`, `admin` | Revoke a document |
 | `POST` | `/api/documents/{id}/link` | holder, staff | One-time link to the document page |
 
-Teachers cannot see requests; for them request endpoints answer `404` or `403`.
+Teachers cannot see requests; for them request endpoints answer `404` or `403`. "Staff" here is `office` (its faculties),
+`leader` and `admin`; a "step role" is `academic_office` or `dept_head` on the types that have a step for it, within its
+scope (Task 46).
 
 ### Request types and form schema
 
-`GET /api/services` returns `categories` (`key`, `seq`, `name`, `icon`, `color`, `text`) and `types`. A type has `code`, `category`, `name`, `icon`, `sla_hours`, `document` and `document_en` (title of the issued document, or `null` when the outcome is an answer instead of a document), `prefix` (registry prefix), `description`, `needs`, `outcome`, `privacy`, `steps` (workflow stage names), `attachments` (`label`, `required`, `max`, `accept`, or `null`), `answer`, `popular` and `fields`.
+`GET /api/services` returns `categories` (`key`, `seq`, `name`, `icon`, `color`, `text`) and `types`. A type has `code`, `category`, `name`, `icon`, `sla_hours`, `document` and `document_en` (title of the issued document, or `null` when the outcome is an answer instead of a document), `prefix` (registry prefix), `description`, `needs`, `outcome`, `privacy`, `steps` (workflow stage names), `step_roles` (the role id that does each step, Task 46), `effect` (what the last step changes: `none`, `document.issue`, `attendance.excuse` or `student_status.leave`), `enabled`, `attachments` (`label`, `required`, `max`, `accept`, or `null`), `answer` (only a type with an effect and no document has one), `popular` and `fields`.
+
+Offer (Task 46). Only a type with `enabled = 1` is in this list, in search (`GET /api/search`) and on the campus
+assistant's action buttons; `POST /api/requests` for a closed type answers `404`. A prod database gets the 13 types from
+`backend/migrations/0461_request_types.sql` (texts identical to `content/seed.json`) with every type closed; the
+administrator opens them on the University settings page (`PUT /api/admin/request-types/{code}`, written to the audit
+log as `request_type_open` / `request_type_close`). A type whose `effect` is not registered in code cannot be opened
+(`400`). The demo opens every type.
 
 A field has `name`, `label`, `type` and optionally `required`, `options`, `show_if`, `min`, `max`, `future`, `placeholder`, `hint` and `hint_if`. Expected values:
 
@@ -852,11 +863,30 @@ A field has `name`, `label`, `type` and optionally `required`, `options`, `show_
 | `courses` | List of such ids |
 | `absences` | List of lesson ids that are unexcused absences of the student within the `period` field's range |
 
-The 13 request type codes: `enrollment_certificate`, `transcript`, `student_card`, `absence_excuse`, `leave_permission`, `exam_reschedule`, `academic_leave`, `grade_appeal`, `individual_plan`, `tuition_installment`, `social_scholarship`, `dormitory`, `free_application`. Three of them produce a document: `enrollment_certificate`, `transcript` and `academic_leave`.
+The 13 request types, who does each step and what the last step changes:
+
+| Code | Step roles | Effect |
+|---|---|---|
+| `enrollment_certificate` | `academic_office`, `academic_office` | `document.issue` |
+| `transcript` | `academic_office`, `academic_office` | `document.issue` |
+| `student_card` | `office`, `office` | `none` |
+| `absence_excuse` | `office`, `office` | `attendance.excuse` |
+| `leave_permission` | `office`, `office` | `none` |
+| `exam_reschedule` | `office`, `dept_head`, `office` | `none` |
+| `academic_leave` | `office`, `academic_office`, `academic_office` | `student_status.leave` (the order, then its extract) |
+| `grade_appeal` | `office`, `academic_office`, `office` | `none` |
+| `individual_plan` | `office`, `office`, `office` | `none` |
+| `tuition_installment` | `academic_office`, `academic_office` | `none` |
+| `social_scholarship` | `office`, `academic_office` | `none` |
+| `dormitory` | `office`, `office` | `none` |
+| `free_application` | `office` | `none` |
+
+There is no role for an appeal or scholarship commission, the finance department or student services: those steps go to
+the closest existing role (`academic_office` for the commissions and finance, `office` for student services).
 
 ### `POST /api/requests`
 
-Body: `type_code`, `data` (an object keyed by field name), `files` (ids from `POST /api/files`, up to 10, within the type's `max`). The deadline is the submission time plus `sla_hours`. The dean's office is notified.
+Body: `type_code`, `data` (an object keyed by field name), `files` (ids from `POST /api/files`, up to 10, within the type's `max`). The deadline is the submission time plus `sla_hours`. The holders of the first step's role whose scope covers the request are notified.
 
 ```http
 POST /api/requests
@@ -875,7 +905,8 @@ X-Lang: en
  "created_at": "2026-11-05T05:58:04", "updated_at": "2026-11-05T05:58:04", "due_at": "2026-11-06T05:58:04",
  "document_id": null, "answer": null,
  "type_name": "Enrolment certificate", "icon": "file", "category": "docs",
- "steps": ["Academic office reviews", "Document is prepared and approved"],
+ "steps": ["Academic office reviews", "Document is prepared and approved"], "step_roles": ["academic_office", "academic_office"],
+ "step_role": "academic_office",
  "has_document": true, "student": "Aysel Məmmədova", "group": "İT-25-1", "student_color": "#2b5aa8",
  "sla_hours": 24, "summary": "Bank", "overdue": false, "hours_left": 24.0, "files": 0, "messages": 0
 }
@@ -893,11 +924,12 @@ The stored values are canonical Azerbaijani; the response shows them translated.
 
 ### `GET /api/requests`
 
-For students: all of their requests, newest first. For staff, query parameters: `status` (`open` by default, `done`, or any other value for all), `type` (type code), `category`, `q` (matches student name, request id or type name). The queue is ordered by status and deadline.
+For students: all of their requests, newest first. An academic office or a department head sees the requests of the
+types it has a step in, within its scope. For staff and step roles, query parameters: `status` (`open` by default, `done`, or any other value for all), `type` (type code), `category`, `q` (matches student name, request id or type name). The queue is ordered by status and deadline.
 
 ### `GET /api/requests/{id}`
 
-The request as above plus `type` (full type definition), `data_view` (label and display value for each filled field), `events` (timeline with actor name and role), `thread` (messages with author, role and colour), `attachments` and, once issued, `document` (`id`, `reg_no`, `verify_code`, `status`).
+The request as above plus `type` (full type definition), `data_view` (label and display value for each filled field), `events` (timeline: actor name, `actor_role` (the role the act was done in), `action`, `note`, `created_at`), `thread` (messages with author, role and colour), `attachments` and, once issued, `document` (`id`, `reg_no`, `verify_code`, `status`).
 
 ### `POST /api/requests/{id}/resubmit` and `/cancel`
 
@@ -905,14 +937,25 @@ Resubmit takes `data` (merged over the stored data and validated again) and `fil
 
 ### `POST /api/requests/{id}/action`
 
+Only the role the current step is assigned to (`step_roles[step]`) acts, within its scope: a dean's office for its
+faculty's students, an academic office university-wide (its primary role or an unscoped grant) or for its granted
+faculties, a department head for the course the request names. Another role answers `403`; `admin` is never a step role
+(`403`); a request outside the role's scope answers `404`. Each act is a `request_events` row with the actor and the role.
+
 | `action` | Allowed when | Effect |
 |---|---|---|
-| `approve` | Not returned, not on the last step | Status `in_progress`, step + 1, student notified |
+| `approve` | Not returned, not on the last step | Status `in_progress`, step + 1; the student and the next step's role (within its scope) are notified |
 | `return` | Open | Status `returned`; `note` required; student notified |
 | `reject` | Open | Status `rejected`; `note` required; student notified |
-| `issue` | Not returned | Status `ready`; a document is issued if the type defines one, otherwise `note` or the type's standard answer is stored; outcome side effects applied; student notified |
+| `issue` | Not returned, on the last step (`409` earlier) | Status `ready`; the type's `effect` runs in the same transaction; student notified |
 
-Side effects of `issue`: for `absence_excuse` the selected lessons become `excused` and their teachers are notified; for `leave_permission` and `exam_reschedule` the teachers concerned are notified. Closed requests answer `409`. The response is the full request.
+Effects of `issue`: `document.issue` issues the type's document through the stored-payload path (Task 45);
+`attendance.excuse` marks the selected absences `excused` in the journal (`journal.service.excuse`) and stores the type's
+answer; `student_status.leave` needs `order_no`, `order_date` and `effective_date`, writes the status order
+(`directory.service.record_status`) and issues its extract. A type whose effect is `none` changes nothing else and gets
+one factual answer: "Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka-da başqa heç bir qeyd
+dəyişməyib." (`unit` is the last step's role); `note` stays in the history. For `absence_excuse`, `leave_permission`
+and `exam_reschedule` the teachers concerned are notified. Closed requests answer `409`. The response is the full request.
 
 After issue, the response includes the document:
 
@@ -927,7 +970,8 @@ After issue, the response includes the document:
 `POST /api/documents/{id}/revoke` takes `{"reason": "..."}` (required, up to 500 characters); `404` for an unknown document
 and for a document of a student outside the dean's office's faculties. The document list, the request list, the office
 summary and the `office` badge apply the same faculty scope in SQL, before their limit. A request is read only by its
-student and by `office`, `leader` and `admin`; posting a message or an action on someone else's request, and opening a
+student, by `office`, `leader` and `admin`, and by the role a step of its type is assigned to, within that role's scope
+(Task 46; with the request's attachments and issued document); posting a message or an action on someone else's request, and opening a
 document preview, is an audited read.
 
 An issued document is stored as it was at issue (Task 45). `documents.payload` is canonical JSON (sorted keys, no

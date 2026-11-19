@@ -349,7 +349,9 @@ def copy(app_db, tmp_path):
 
 
 def test_sf8_a_request_with_no_office_to_tell_is_reminded_once_there_is_one(copy):
-    r = copy.execute("SELECT id, student_id FROM requests WHERE status IN ('submitted','in_progress') ORDER BY id LIMIT 1").fetchone()
+    # a type whose steps are the dean's office's (Task 46: the reminder goes to the current step's role, the office by faculty)
+    r = copy.execute("SELECT id, student_id FROM requests WHERE status IN ('submitted','in_progress') AND type_code='dormitory' "
+                     "ORDER BY id LIMIT 1").fetchone()
     gid = copy.execute("SELECT group_id FROM users WHERE id=?", (r["student_id"],)).fetchone()[0]
     assert gid is not None
     copy.execute("UPDATE requests SET due_at=? WHERE id=?", (store.iso(store.now() - timedelta(hours=1)), r["id"]))

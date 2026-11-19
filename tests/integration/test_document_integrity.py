@@ -27,13 +27,13 @@ def run(sql, args=()):
 
 
 @pytest.fixture(scope="module")
-def issued(app_db):
-    """A certificate of enrolment issued to the demo student through the office's flow."""
-    student, office = app_db.client("student"), app_db.client("office")
+def issued(app_db, registrar):
+    """A certificate of enrolment issued to the demo student through the academic office's steps (Task 46)."""
+    student = app_db.client("student")
     rid = student.post("/api/requests", {"type_code": "enrollment_certificate", "data": {"purpose": "Bank", "lang": "Azərbaycan dili",
                                                                                          "copies": "1", "delivery": "Elektron (QR kodlu PDF)"}}).json["id"]
-    office.post(f"/api/requests/{rid}/action", {"action": "approve"})
-    doc = office.post(f"/api/requests/{rid}/action", {"action": "issue"}).json["document"]
+    registrar.post(f"/api/requests/{rid}/action", {"action": "approve"})
+    doc = registrar.post(f"/api/requests/{rid}/action", {"action": "issue"}).json["document"]
     return q("SELECT * FROM documents WHERE id=?", (doc["id"],))[0]
 
 
@@ -55,13 +55,13 @@ def test_a_document_is_shown_as_issued_after_the_holder_changes(app_db, issued):
         run("UPDATE study_groups SET name=? WHERE id=?", (keep["grp"], keep["gid"]))
 
 
-def test_a_transcript_is_shown_as_issued_after_a_published_grade_changes(app_db):
+def test_a_transcript_is_shown_as_issued_after_a_published_grade_changes(app_db, registrar):
     student, office = app_db.client("student"), app_db.client("office")
     order = {"purpose": "Magistraturaya qəbul", "lang": "Azərbaycan dili", "scope": "Bütün semestrlər", "delivery": "Elektron (QR kodlu PDF)"}
     r = student.post("/api/requests", {"type_code": "transcript", "data": order})
     assert r.status == 200, r.text
-    office.post(f"/api/requests/{r.json['id']}/action", {"action": "approve"})
-    doc = office.post(f"/api/requests/{r.json['id']}/action", {"action": "issue"}).json["document"]
+    registrar.post(f"/api/requests/{r.json['id']}/action", {"action": "approve"})
+    doc = registrar.post(f"/api/requests/{r.json['id']}/action", {"action": "issue"}).json["document"]
     row = q("SELECT id, course_name, score, letter, passed FROM final_grades WHERE user_id=? AND score IS NOT NULL ORDER BY id LIMIT 1",
             (student.user["id"],))[0]
     payload = q("SELECT payload FROM documents WHERE id=?", (doc["id"],))[0]["payload"]

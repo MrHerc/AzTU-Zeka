@@ -19,6 +19,11 @@ def _today() -> str:
     return now().date().isoformat()
 
 
+def head_covers(c, uid: int, course_id: int, department_id: int | None) -> bool:
+    """Whether a department head's grants cover the course (as for the journal; also a request's step, Task 46)."""
+    return repo.dept_head_covers(c, uid, course_id, department_id)
+
+
 def may_correct(c, user, course: dict) -> bool:
     """An administrator, or a department head whose grant covers the course (Checkpoint C, J1): a grant of its department,
     of its faculty, of the course itself or one with no scope; a department head with no grant, of the department the
@@ -355,6 +360,14 @@ def publish_grades(c, user, course_id: int) -> tuple[str, object]:
 def log_change(c, uid: int, course_id: int, component: str, old, new, by: int | None, reason: str, at: str):
     """A change of a published score made outside the table (an import), in the grade journal like the table's own."""
     repo.add_change(c, uid, course_id, component, old, new, by, reason, at)
+
+
+def excuse(c, by: int, request_id: int, student_id: int, lesson_ids: list[int]) -> None:
+    """The effect ``attendance.excuse`` of an approved absence excuse (Task 46): the absences become excused, with who and
+    when (an export --since sees them, Task 37), and the final grades they move are recomputed."""
+    if lesson_ids:
+        for cid in repo.excuse(c, request_id, student_id, lesson_ids, by, iso(now())):
+            refresh_finals(c, cid, [student_id])
 
 
 def refresh_final(c, uid: int, course_id: int):

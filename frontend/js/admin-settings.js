@@ -76,12 +76,25 @@ function view(s) {
   </div>`;
 }
 
+// Task 46: which e-services are offered. A flag per type only (no form or step editor); a type whose effect is not
+// registered in code cannot be opened (the server refuses it, the switch is disabled).
+const offer = (types) => html`<div class="card mt" data-offer><div class="card-h"><h3>${ic("grid", 17)} ${t("E-xidmətlər")}</h3></div><div class="card-b stack">
+  <p class="small muted" style="margin:0">${t("Açılan xidmət tələbələrə təklif olunur; bağlı xidmət kataloqda, axtarışda və köməkçidə görünmür.")}</p>
+  ${types.map((x) => html`<label class="row"><span class="switch"><input type="checkbox" data-type="${x.code}" ${x.enabled ? "checked" : ""} ${x.registered ? "" : "disabled"}
+    aria-label="${x.name}"><span></span></span><span class="grow small">${x.name} <span class="tiny muted">· ${x.effect}</span></span></label>`)}</div></div>`;
+
 route("/admin/settings", async (el) => {
   const head = pageHead(t("Universitet ayarları"), t("Universitetə aid qaydalar: kod dəyişmədən tətbiq olunur. Hər bölmə ayrıca yoxlanıb saxlanır."), "",
     [[t("Əsas"), HOME[S.user.role]], [t("Universitet ayarları")]]);
-  const draw = (s) => mount(el, html`${head}${view(s)}`);
+  let types = [];
+  const draw = (s) => mount(el, html`${head}${view(s)}${offer(types)}`);
   mount(el, loading());
-  try { draw(await api.get("/api/admin/settings")); } catch (err) { mount(el, failed(err.message)); return; }
+  try { const [s, ts] = await Promise.all([api.get("/api/admin/settings"), api.get("/api/admin/request-types")]); types = ts; draw(s); }
+  catch (err) { mount(el, failed(err.message)); return; }
+  on(el, "change", "[data-type]", async (e, b) => {
+    try { types = await api.put(`/api/admin/request-types/${b.dataset.type}`, { enabled: b.checked }); toast(t("Saxlanıldı"), "ok"); }
+    catch (err) { b.checked = !b.checked; toast(err.message, "err"); }
+  });
   on(el, "click", "[data-save]", async (e, b) => {
     const section = b.dataset.save;
     b.classList.add("loading");

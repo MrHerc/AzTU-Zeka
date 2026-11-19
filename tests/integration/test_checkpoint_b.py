@@ -292,7 +292,8 @@ def test_c1_another_faculty_s_document_cannot_be_revoked(app_db, faculty_b):
 
 
 def test_c2_only_the_student_and_the_registry_offices_read_a_request(app_db):
-    rid = q("SELECT id FROM requests ORDER BY id LIMIT 1")[0]["id"]
+    # a type whose steps are all the dean's office's: since Task 46 a role a step is assigned to reads that type's requests
+    rid = q("SELECT id FROM requests WHERE type_code='dormitory' ORDER BY id LIMIT 1")[0]["id"]
     admin, teacher = app_db.client("admin"), app_db.client("teacher")
     assert teacher.get(f"/api/requests/{rid}").status == 404
     for role in ("academic_office", "dept_head", "proctor"):
