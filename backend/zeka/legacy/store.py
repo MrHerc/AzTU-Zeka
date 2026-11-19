@@ -506,7 +506,7 @@ def _seed_rooms(c, f: dict, stamp: str):
             r = facilities.import_graph(c, b["code"], list(csv.DictReader(io.StringIO(nodes.read_text(encoding="utf-8"), newline=""))),
                                         list(csv.DictReader(io.StringIO(edges.read_text(encoding="utf-8"), newline=""))))
             if not r["ok"]:
-                raise RuntimeError(f"content/routes/{b['code']}: {r['problems']}")
+                raise RuntimeError("content/routes", b["code"], r["problems"])    # demo content is broken: a developer error
 
 
 def seed(c):
