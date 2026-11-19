@@ -32,6 +32,7 @@ Fix commits:
 - `52a9490`: area B and the owed tests of area T.
 - `0d7ead9`: areas F and D.
 - `e29ec1f`: a lint follow-up.
+- `de5fc7b`: the Task 46 review and the security review's OLD-1/OLD-2.
 
 ## Counts
 
@@ -166,7 +167,7 @@ Two reviewers ran on `4c63b4a`: `agent-skills:code-reviewer` (TE46-) and `ecc:se
 Faza 5 security review added OLD-1 and OLD-2. A separate agent tried to refute all of them, with probes; the races were
 widened with a barrier in `_req_for`.
 
-Result: 11 confirmed, 1 partial (SR46-3), 2 refuted (SR46-2, TE46-6). Fixes are in the commit after `4c63b4a`; tests
+Result: 11 confirmed, 1 partial (SR46-3), 2 refuted (SR46-2, TE46-6). Fixes are in `de5fc7b`; tests
 are in `test_service_honesty.py`, `test_qa.py` and `test_schema_migrations.py`.
 
 | Id | Severity | Finding | Fix |
