@@ -1,0 +1,17 @@
+{
+ "Fənlərinizin müəllimləri tapılmadı.": "Преподаватели ваших дисциплин не найдены.",
+ "Qəbul saatına yazıl": "Записаться на приём",
+ "qəbul saatı təyin olunmayıb": "часы приёма не назначены",
+ "Həftənin günü bazar ertəsindən şənbəyə qədərdir": "День недели — с понедельника по субботу",
+ "Vaxt aralığı SS:DD formatında, ən çox 6 saat olmalıdır": "Интервал — в формате ЧЧ:ММ, не более 6 часов",
+ "Görüşün müddəti 10, 15, 20, 30, 45 və ya 60 dəqiqədir və aralığa sığmalıdır": "Встреча длится 10, 15, 20, 30, 45 или 60 минут и должна помещаться в интервал",
+ "Otaq və ya onlayn keçid göstərin": "Укажите аудиторию или онлайн-ссылку",
+ "Otaq ən çox 80 simvoldur": "Аудитория — не более 80 символов",
+ "Onlayn keçid https:// ilə başlamalıdır": "Онлайн-ссылка должна начинаться с https://",
+ "Qəbul saatına yazılış": "Запись на приём",
+ "Qəbul saatı görüşü ləğv olundu": "Встреча в часы приёма отменена",
+ "Bu vaxt artıq tutulub və ya keçib": "Это время уже занято или прошло",
+ "Bu müəllimlə ən çox iki gələcək görüşünüz ola bilər": "С этим преподавателем можно иметь не более двух предстоящих встреч",
+ "Bu görüş artıq ləğv olunub və ya keçib": "Эта встреча уже отменена или прошла",
+ "Qəbul saatı görüşü yaxınlaşır": "Скоро встреча в часы приёма"
+}

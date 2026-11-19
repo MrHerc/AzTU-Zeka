@@ -761,7 +761,7 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Acceptance criteria:**
 - [x] Pilot korpuslarda Task 18-də idxal olunmuş hər otaq qrafda düyündür; istənilən iki otaq arasında marşrut qayıdır və ya çatışmayan bağlantı yazılır — demo-nun sintetik qrafında (`content/routes/`); real CSV sahibin mərtəbə planlarından gəlir (açıq), idxal hesabatı düyünü olmayan otaqları və yolsuz qapıları sadalayır
 - [x] Pilləsiz marşrut heç vaxt pilləkəndən keçmir (200 təsadüfi qraf + demo-da bütün qapı cütləri)
-- [x] "Növbəti dərsim" cavabı cədvəllə eynidir; cavab 2 saniyədən tez gəlir (tələbə və müəllimin öz iCal lenti ilə müqayisə). Müəllimin otağı və qəbul saatı niyyəti Task 34-lə gəlir; mərtəbə planı şəklində nişan plan verilənə qədər yoxdur
+- [x] "Növbəti dərsim" cavabı cədvəllə eynidir; cavab 2 saniyədən tez gəlir (tələbə və müəllimin öz iCal lenti ilə müqayisə). Müəllimin qəbul saatı niyyəti Task 34-də əlavə olunub; mərtəbə planı şəklində nişan plan verilənə qədər yoxdur
 
 **Verification:**
 - [x] `python -m pytest tests/unit/test_routing.py tests/integration/test_assistant_rooms.py -q` (12 keçdi)
@@ -808,12 +808,12 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** Müəllim həftəlik vaxt aralıqları təyin edir (otaq və ya onlayn keçid). Tələbə yer tutur və ləğv edir. Görüş hər iki tərəfin cədvəlində və iCal lentində görünür. Xatırlatma bildirişi.
 
 **Acceptance criteria:**
-- [ ] Bir aralıq iki dəfə tutula bilmir (paralel sorğu testi)
-- [ ] Görüş hər iki iCal lentində görünür
-- [ ] Ləğv qarşı tərəfə bildiriş göndərir
+- [x] Bir aralıq iki dəfə tutula bilmir (paralel sorğu testi; unikal indeks olmadan test düşür)
+- [x] Görüş hər iki iCal lentində görünür
+- [x] Ləğv qarşı tərəfə bildiriş göndərir (həm tələbə, həm müəllim tərəfindən; xatırlatma bir dəfə)
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_office_hours.py -q`
+- [x] `python -m pytest tests/integration/test_office_hours.py -q`
 
 **Dependencies:** Task 19, Task 33
 **Files likely touched:** `backend/zeka/modules/qa/office_hours.py`, `backend/zeka/modules/qa/routes.py`, `backend/migrations/0340_office_hours.sql`, `frontend/js/qa.js`

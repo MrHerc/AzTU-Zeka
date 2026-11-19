@@ -633,6 +633,23 @@ answer without a source or a handoff.
 `POST /api/tutor/{cid}/forward` (a question sent from the tutor) creates a topic, and the teacher's answer through
 `/api/teacher/questions/{id}/answer` is its accepted reply.
 
+### Office hours (Task 34)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` / `POST` | `/api/office-hours` | `teacher`, `dept_head` | The teacher's weekly ranges / a new one: `weekday` (1–6), `start`, `end` (HH:MM, ≤ 6 h), `slot_min` (10, 15, 20, 30, 45, 60), `place` or `online_url` (https) |
+| `POST` | `/api/office-hours/{id}/end` | the range's teacher | End a range: its future bookings are cancelled and each student is told |
+| `GET` | `/api/office-hours/teachers` | `student` | The teachers of the student's courses |
+| `GET` | `/api/office-hours/teachers/{id}/free` | a student of that teacher's courses (others `404`) | Free slots from now to 14 days ahead |
+| `POST` | `/api/office-hours/book` | as above | `{"hours_id", "day", "start", "topic"?}`: one free slot; a slot booked meanwhile is `409` (a partial unique index makes the second of two simultaneous bookings fail); at most two upcoming bookings with one teacher (`400`); the teacher is told |
+| `GET` | `/api/office-hours/bookings` | `student`, `teacher`, `dept_head` | One's bookings, a week back to two weeks ahead |
+| `POST` | `/api/office-hours/bookings/{id}/cancel` | either side | Cancel an upcoming booking; the other side is told |
+
+A booking is an event of both people's iCal feeds (`UID:office-{id}`, `CANCELLED` once cancelled). The periodic
+`reminders.sla` job tells both sides once when a booking starts within two hours. The campus assistant answers
+"… müəllimin qəbul saatı" with the weekly ranges of the student's teachers (the one named, when a name is in the
+question) and a link to `/office-hours`.
+
 ## Tests and Test Studio
 
 | Method | Path | Access | Purpose |

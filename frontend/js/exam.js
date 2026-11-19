@@ -164,12 +164,13 @@ async function loadOnce() {
 function flush() {
   if (flushing) return flushing;
   if (!view || !view.attempt || view.attempt.status !== "in_progress") return Promise.resolve();
+  let clean = true;                                              // ended without an error: what came in meanwhile goes now
   const run = (async () => {
     saving = true;
     try {
       for (const [qid, value] of Object.entries(queue())) {
         const r = await api("PUT", `/api/exams/${id}/answers/${qid}`, { value });
-        if (r.status === 0) break;                                 // offline: keep the rest for later
+        if (r.status === 0) { clean = false; break; }              // offline: keep the rest for later
         const q = queue();
         if (r.status === 200) { if (JSON.stringify(q[qid]) === JSON.stringify(value)) delete q[qid]; keep(q); syncClock(r.data.remaining_s); }
         else if (r.status === 409) {                                 // paused, or over: the server's state wins
@@ -179,15 +180,16 @@ function flush() {
             keep({});
             draw();
           }
+          clean = false;
           return;
         } else if (r.status === 400 || r.status === 404) { delete q[qid]; keep(q); }   // refused for good: not on the form
-        else if (r.status === 401 || r.status === 403) { await load(); return; }       // the session or the network list: the page says why
-        else { online = false; break; }                              // a 5xx, the gate's 503: the answer waits (Checkpoint D, SF-1)
+        else if (r.status === 401 || r.status === 403) { clean = false; await load(); return; }   // the session or the network list: the page says why
+        else { online = false; clean = false; break; }               // a 5xx, the gate's 503: the answer waits (Checkpoint D, SF-1)
       }
     } finally { saving = false; tick(); }
   })();
   // cleared after it settles: with an empty queue the body ends before `run` is assigned (security review, BUG-flush)
-  flushing = run.finally(() => { flushing = null; });
+  flushing = run.finally(() => { flushing = null; if (clean && Object.keys(queue()).length) flush(); });
   return flushing;
 }
 

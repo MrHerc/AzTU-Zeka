@@ -80,6 +80,8 @@ def reminders_sla(c) -> str:
             notify(c, waiting, "assignment", T3("Tapşırığın son tarixi sabahdır: {title}", title=a["title"]), a["due_at"].replace("T", " "),
                    f"/student/course/{a['course_id']}")
             sent += 1
+    from ..modules.qa import office_hours                     # here: that module imports the legacy layer
+    sent += office_hours.remind(c, _once)                     # office hours within two hours (Task 34)
     return f"reminders {sent}"
 
 

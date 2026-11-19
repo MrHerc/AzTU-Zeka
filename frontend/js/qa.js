@@ -1,6 +1,6 @@
 // The course forum (Task 33): topics of a course for its students and teachers, replies, the teacher's accepted
 // answer, the AI draft the teacher alone sees, the course FAQ, reports; and the moderators' queue.
-import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, md, go, t } from "./core.js";
+import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, md, go, t, S } from "./core.js";
 
 const byline = (x) => html`<span class="small muted">${x.author}${x.by_teacher ? html` · <b>${t("müəllim")}</b>` : ""} · ${(x.created_at || "").slice(0, 16).replace("T", " ")}</span>`;
 
@@ -89,6 +89,66 @@ route("/staff/qa", async (el) => {
   };
   on(el, "click", "[data-resolve]", async (e, b) => {
     try { await api.post(`/api/qa/reports/${b.dataset.resolve}/resolve`, { action: b.dataset.action }); toast(t("Qeyd olundu"), "ok"); load(); }
+    catch (err) { toast(err.message, "err"); }
+  });
+  mount(el, loading());
+  await load();
+});
+
+// ---- office hours (Task 34): a teacher's weekly ranges; a student books one slot; either side cancels
+const WEEKDAY = () => ["", t("Bazar ertəsi"), t("Çərşənbə axşamı"), t("Çərşənbə"), t("Cümə axşamı"), t("Cümə"), t("Şənbə")];
+
+route("/office-hours", async (el) => {
+  const teacher = ["teacher", "dept_head"].includes(S.user.role);
+  let pick = null;
+  const bookingRow = (b) => html`<tr><td>${b.day} ${b.start}–${b.end}</td><td>${teacher ? b.student : b.teacher}</td><td class="small">${b.place || b.online_url || ""}</td>
+    <td class="small">${b.topic || ""}</td><td>${b.status === "booked" ? html`<button class="btn btn-ghost btn-sm" data-cancel="${b.id}">${t("Ləğv et")}</button>`
+      : html`<span class="badge b-gray">${t("Ləğv olunub")}</span>`}</td></tr>`;
+  const load = async () => {
+    try {
+      const bookings = await api.get("/api/office-hours/bookings");
+      const mine = html`<div class="card"><b>${t("Görüşlər")}</b>${bookings.length ? html`<table class="table"><tbody>${bookings.map(bookingRow)}</tbody></table>` : empty(t("Görüş yoxdur"))}</div>`;
+      if (teacher) {
+        const hours = await api.get("/api/office-hours");
+        return mount(el, html`${pageHead(t("Qəbul saatları"), t("Həftəlik qəbul saatlarınız: tələbələr iki həftə qabağa yer tutur"))}
+          <div class="card stack"><b>${t("Həftəlik aralıqlar")}</b>
+            ${hours.map((h) => html`<div class="row" style="gap:8px">${WEEKDAY()[h.weekday]}, ${h.start}–${h.end} · ${t("{n} dəq.", { n: h.slot_min })} · ${h.place || h.online_url}
+              <button class="btn btn-ghost btn-sm" data-end="${h.id}">${t("Bitir")}</button></div>`)}
+            <div class="row wrap" style="gap:8px"><select class="input" name="weekday">${WEEKDAY().slice(1).map((d, i) => html`<option value="${i + 1}">${d}</option>`)}</select>
+              <input class="input" name="start" type="time" value="14:00" aria-label="${t("Başlanğıc")}"><input class="input" name="end" type="time" value="16:00" aria-label="${t("Son")}">
+              <select class="input" name="slot_min">${[10, 15, 20, 30, 45, 60].map((m) => html`<option value="${m}" ${m === 15 ? "selected" : ""}>${t("{n} dəq.", { n: m })}</option>`)}</select>
+              <input class="input" name="place" placeholder="${t("Otaq, məsələn EK-305")}"><input class="input" name="online_url" placeholder="https://…">
+              <button class="btn btn-primary" data-add>${t("Əlavə et")}</button></div></div>${mine}`);
+      }
+      const teachers = await api.get("/api/office-hours/teachers");
+      pick ||= teachers[0] && teachers[0].id;
+      const slots = pick ? await api.get(`/api/office-hours/teachers/${pick}/free`) : [];
+      const days = [...new Set(slots.map((s) => s.day))];
+      mount(el, html`${pageHead(t("Qəbul saatları"), t("Müəlliminizlə görüş üçün yer tutun"))}
+        <div class="card stack"><label class="field"><span>${t("Müəllim")}</span><select class="input" id="oh-teacher">
+          ${teachers.map((x) => html`<option value="${x.id}" ${x.id === pick ? "selected" : ""}>${x.full_name}</option>`)}</select></label>
+          ${days.length ? days.map((d) => html`<div><b>${d}</b><div class="row wrap" style="gap:6px">${slots.filter((s) => s.day === d).map((s) =>
+            html`<button class="btn btn-sm" data-slot="${s.hours_id}|${s.day}|${s.start}">${s.start}</button>`)}</div></div>`) : empty(t("Boş vaxt yoxdur"))}</div>${mine}`);
+    } catch (err) { mount(el, failed(err.message)); }
+  };
+  on(el, "change", "#oh-teacher", (e, s) => { pick = +s.value; load(); });
+  on(el, "click", "[data-slot]", (e, b) => {
+    const [hours_id, day, start] = b.dataset.slot.split("|");
+    modal({ title: t("Yer tut: {day} {start}", { day, start }), body: html`<label class="field"><span>${t("Mövzu (könüllü)")}</span><input class="input" name="topic" maxlength="300"></label>`,
+      actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Yer tut"), cls: "btn-primary", onClick: async (w) => {
+        try { await api.post("/api/office-hours/book", { hours_id: +hours_id, day, start, topic: w.querySelector("[name=topic]").value }); toast(t("Yer tutuldu"), "ok"); load(); }
+        catch (err) { toast(err.message, "err"); load(); }
+      } }] });
+  });
+  on(el, "click", "[data-cancel]", async (e, b) => {
+    try { await api.post(`/api/office-hours/bookings/${b.dataset.cancel}/cancel`); toast(t("Görüş ləğv olundu"), "ok"); load(); } catch (err) { toast(err.message, "err"); }
+  });
+  on(el, "click", "[data-end]", async (e, b) => {
+    try { await api.post(`/api/office-hours/${b.dataset.end}/end`); load(); } catch (err) { toast(err.message, "err"); }
+  });
+  on(el, "click", "[data-add]", async () => {
+    const v = (k) => el.querySelector(`[name=${k}]`).value;
+    try { await api.post("/api/office-hours", { weekday: +v("weekday"), start: v("start"), end: v("end"), slot_min: +v("slot_min"), place: v("place"), online_url: v("online_url") }); load(); }
     catch (err) { toast(err.message, "err"); }
   });
   mount(el, loading());

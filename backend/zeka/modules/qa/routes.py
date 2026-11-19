@@ -4,7 +4,7 @@ from __future__ import annotations
 from ...core.i18n import S_
 from ...core.web import HTTPError
 from ...legacy.common import R
-from . import service
+from . import office_hours, service
 
 READERS = ("student", "teacher", "dept_head")
 TEACHERS = ("teacher", "dept_head")
@@ -72,3 +72,51 @@ def queue(req):
 @R("POST", "/api/qa/reports/{id:int}/resolve", perm="qa.moderate")
 def resolve(req):
     return _answer(*service.resolve(req.db, req.user, req.params["id"], req.json()), S_("Şikayət tapılmadı"))
+
+
+# ---------------------------------------------------------------- office hours (Task 34)
+def _office(status, value):
+    if status == "taken":
+        raise HTTPError(409, value)
+    return _answer(status, value, S_("Tapılmadı"))
+
+
+@R("GET", "/api/office-hours", roles=TEACHERS)
+def my_hours(req):
+    return office_hours.my_hours(req.db, req.user)
+
+
+@R("POST", "/api/office-hours", roles=TEACHERS)
+def add_hours(req):
+    return _office(*office_hours.add_hours(req.db, req.user, req.json()))
+
+
+@R("POST", "/api/office-hours/{id:int}/end", roles=TEACHERS)
+def drop_hours(req):
+    return _office(*office_hours.drop_hours(req.db, req.user, req.params["id"]))
+
+
+@R("GET", "/api/office-hours/teachers", roles=("student",))
+def teachers(req):
+    return office_hours.teachers(req.db, req.user)
+
+
+@R("GET", "/api/office-hours/teachers/{id:int}/free", roles=("student",))
+def free(req):
+    out = office_hours.free(req.db, req.user, req.params["id"])
+    return _office("missing" if out is None else "ok", out)
+
+
+@R("POST", "/api/office-hours/book", roles=("student",))
+def book(req):
+    return _office(*office_hours.book(req.db, req.user, req.json()))
+
+
+@R("GET", "/api/office-hours/bookings", roles=("student", "teacher", "dept_head"))
+def bookings(req):
+    return office_hours.mine(req.db, req.user)
+
+
+@R("POST", "/api/office-hours/bookings/{id:int}/cancel", roles=("student", "teacher", "dept_head"))
+def cancel(req):
+    return _office(*office_hours.cancel(req.db, req.user, req.params["id"]))

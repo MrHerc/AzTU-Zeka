@@ -265,8 +265,9 @@ def feed_events(c, token: str) -> tuple[dict, list[dict]] | None:
         return None
     today = now().date()
     first, last = (today - timedelta(days=FEED_PAST)).isoformat(), (today + timedelta(days=FEED_AHEAD)).isoformat()
+    from ..qa import office_hours                              # bookings of office hours on both calendars (Task 34)
     if u["role"] == "student":
-        return u, repo.student_lessons(c, u["id"], first, last)
+        return u, repo.student_lessons(c, u["id"], first, last) + office_hours.calendar_events(c, u["id"], first, last)
     if u["role"] in ("teacher", "dept_head"):
-        return u, repo.teacher_lessons(c, u["id"], first, last)
+        return u, repo.teacher_lessons(c, u["id"], first, last) + office_hours.calendar_events(c, u["id"], first, last)
     return u, []

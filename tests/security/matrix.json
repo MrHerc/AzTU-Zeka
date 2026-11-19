@@ -740,6 +740,45 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/office-hours": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/office-hours/bookings": {
+  "access": [
+   "dept_head",
+   "student",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/office-hours/teachers": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/office-hours/teachers/{id:int}/free": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/office/summary": {
   "access": [
    "admin",
@@ -1765,6 +1804,46 @@
  },
  "POST /api/notifications/read": {
   "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/office-hours": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/office-hours/book": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/office-hours/bookings/{id:int}/cancel": {
+  "access": [
+   "dept_head",
+   "student",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/office-hours/{id:int}/end": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
   "audit_read": null,
   "demo": false,
   "perm": null,

@@ -158,7 +158,7 @@ def calendar(events: list[dict], *, tzid: str, offset: str, host: str, stamp: da
              "BEGIN:VTIMEZONE", f"TZID:{tzid}", "BEGIN:STANDARD", "DTSTART:19700101T000000", f"TZOFFSETFROM:{offset}",
              f"TZOFFSETTO:{offset}", "END:STANDARD", "END:VTIMEZONE"]
     for ev in events:
-        lines += ["BEGIN:VEVENT", f"UID:lesson-{ev['id']}@{host}", f"DTSTAMP:{dtstamp}",
+        lines += ["BEGIN:VEVENT", f"UID:{ev.get('uid') or 'lesson-' + str(ev['id'])}@{host}", f"DTSTAMP:{dtstamp}",
                   f"DTSTART;TZID={tzid}:{_local(ev['day'], ev['start'])}", f"DTEND;TZID={tzid}:{_local(ev['day'], ev['end'])}",
                   f"SUMMARY:{_text(ev['summary'])}", "STATUS:" + ("CANCELLED" if ev["status"] == "cancelled" else "CONFIRMED")]
         if ev.get("location"):

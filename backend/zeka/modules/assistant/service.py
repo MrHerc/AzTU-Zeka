@@ -22,6 +22,7 @@ WHERE = re.compile(r"hara|harda|necə gedim|necə gedə|otaq|auditoriya|where|ho
 STEP_FREE = re.compile(r"pilləsiz|lift|əlil|araba|wheelchair|step[- ]?free|лифт|коляск", re.I)
 NUMBER = re.compile(r"(?<![\w-])(\d{2,4}[a-zA-Z]?)(?![\w-])")
 LOOKAHEAD_DAYS = 14
+OFFICE_HOURS = re.compile(r"qəbul saat|office hours|приёмн\w* час|часы приёма", re.I)
 AZ_TEXT = re.compile(r"[əğıöüşçƏĞİÖÜŞÇ]")               # not "I": English has it too
 CYRILLIC = re.compile(r"[а-яё]", re.I)
 WEAK_SHARE = 0.35          # an Azerbaijani question that shares one word with an article must give that word a third of its weight
@@ -51,6 +52,8 @@ def answer(c, user, question: str, lang: str) -> dict | None:
     q = question.strip()
     if NEXT_LESSON.search(q):
         return _next_lesson(c, user, bool(STEP_FREE.search(q)), lang)
+    if OFFICE_HOURS.search(q):
+        return _office_hours(c, user, q, lang)
     found = find_rooms(c, q)
     if len(found) == 1:
         return _room(c, found[0], bool(STEP_FREE.search(q)), lang)
@@ -184,3 +187,22 @@ def handoff(c, user, message_id: int) -> tuple[str, object]:
                         body[:4000], "/chat")
     kb_repo.set_message_meta(c, message_id, json.dumps({**meta, "handoff": tid}, ensure_ascii=False))
     return "ok", tid
+
+
+def _office_hours(c, user, question: str, lang: str) -> dict:
+    """The office hours of the student's teachers (Task 34), only the teacher named in the question when one is."""
+    from ..qa import office_hours, repo as qa_repo
+    people = office_hours.teachers(c, user) if user["role"] == "student" else [{"id": user["id"], "full_name": user["full_name"]}]
+    low = question.lower()
+    named = [p for p in people if any(len(w) > 2 and w.lower() in low for w in p["full_name"].split())]
+    lines = []
+    for p in named or people:
+        ranges = qa_repo.hours_of(c, p["id"])
+        if not ranges:
+            lines.append(f"**{p['full_name']}**: " + S("qəbul saatı təyin olunmayıb", lang))
+            continue
+        lines.append(f"**{p['full_name']}**")
+        lines += [f"- {S(WEEKDAYS[h['weekday']], lang)}, {h['start']}–{h['end']} · {h['place'] or h['online_url']}" for h in ranges]
+    if not lines:
+        lines = [S("Fənlərinizin müəllimləri tapılmadı.", lang)]
+    return _out("\n".join(lines), "office_hours", "office_hours", [{"type": "link", "label": S("Qəbul saatına yazıl", lang), "href": "/office-hours"}])

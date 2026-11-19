@@ -111,3 +111,71 @@ def resolve(c, pid: int, by: int, outcome: str, at: str):
     p = report(c, pid)
     c.execute("UPDATE qa_reports SET resolved_at=?, resolved_by=?, outcome=? WHERE topic_id=? AND COALESCE(reply_id,0)=? AND resolved_at IS NULL",
               (at, by, outcome, p["topic_id"], p["reply_id"] or 0))
+
+
+# ---------------------------------------------------------------- office hours (Task 34)
+def hours_of(c, teacher_id: int) -> list[dict]:
+    return rows(c, "SELECT * FROM office_hours WHERE teacher_id=? AND active=1 ORDER BY weekday, start", (teacher_id,))
+
+
+def hours(c, hid: int):
+    return row(c, "SELECT * FROM office_hours WHERE id=?", (hid,))
+
+
+def add_hours(c, teacher_id: int, v: dict, at: str) -> int:
+    return c.execute("INSERT INTO office_hours(teacher_id,weekday,start,end,slot_min,place,online_url,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                     (teacher_id, v["weekday"], v["start"], v["end"], v["slot_min"], v["place"], v["online_url"], at)).lastrowid
+
+
+def drop_hours(c, hid: int):
+    c.execute("UPDATE office_hours SET active=0 WHERE id=?", (hid,))
+
+
+def booked_slots(c, teacher_id: int, first: str, last: str) -> set[tuple[str, str]]:
+    return {(r["day"], r["start"]) for r in rows(c, "SELECT day, start FROM office_bookings WHERE teacher_id=? AND status='booked' "
+                                                    "AND day BETWEEN ? AND ?", (teacher_id, first, last))}
+
+
+def add_booking(c, h: dict, student_id: int, day: str, start: str, end: str, topic: str | None, at: str) -> int:
+    """Raises sqlite3.IntegrityError when the slot is already booked (idx_office_bookings_slot)."""
+    return c.execute("INSERT INTO office_bookings(hours_id,teacher_id,student_id,day,start,end,topic,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                     (h["id"], h["teacher_id"], student_id, day, start, end, topic, at)).lastrowid
+
+
+def open_bookings_with(c, student_id: int, teacher_id: int, today: str) -> int:
+    return row(c, "SELECT COUNT(*) AS n FROM office_bookings WHERE student_id=? AND teacher_id=? AND status='booked' AND day>=?",
+               (student_id, teacher_id, today))["n"]
+
+
+def booking(c, bid: int):
+    return row(c, "SELECT b.*, h.place, h.online_url FROM office_bookings b JOIN office_hours h ON h.id=b.hours_id WHERE b.id=?", (bid,))
+
+
+def cancel_booking(c, bid: int, by: int, at: str):
+    c.execute("UPDATE office_bookings SET status='cancelled', cancelled_at=?, cancelled_by=? WHERE id=?", (at, by, bid))
+
+
+def future_bookings_of_hours(c, hid: int, today: str) -> list[dict]:
+    return rows(c, "SELECT * FROM office_bookings WHERE hours_id=? AND status='booked' AND day>=?", (hid, today))
+
+
+def bookings_for(c, uid: int, first: str, last: str) -> list[dict]:
+    """A person's bookings as student or teacher, with the other party's name, from ``first`` to ``last``."""
+    return rows(c, "SELECT b.id, b.day, b.start, b.end, b.topic, b.status, b.teacher_id, b.student_id, h.place, h.online_url, "
+                   "t.full_name AS teacher, s.full_name AS student FROM office_bookings b JOIN office_hours h ON h.id=b.hours_id "
+                   "JOIN users t ON t.id=b.teacher_id JOIN users s ON s.id=b.student_id "
+                   "WHERE (b.student_id=? OR b.teacher_id=?) AND b.day BETWEEN ? AND ? ORDER BY b.day, b.start", (uid, uid, first, last))
+
+
+def teachers_of_student(c, uid: int, today: str) -> list[dict]:
+    """The teachers of the courses a student is enrolled in (the course's head and its units' teachers)."""
+    return rows(c, "SELECT DISTINCT u.id, u.full_name FROM enrollments e JOIN courses co ON co.id=e.course_id "
+                   "JOIN users u ON u.id=co.teacher_id WHERE e.user_id=? AND (e.end_date IS NULL OR e.end_date>?) AND u.status='active' "
+                   "UNION SELECT DISTINCT u.id, u.full_name FROM enrollments e JOIN teaching_units tu ON tu.course_id=e.course_id AND tu.active=1 "
+                   "JOIN users u ON u.id=tu.teacher_id WHERE e.user_id=? AND (e.end_date IS NULL OR e.end_date>?) AND u.status='active' "
+                   "ORDER BY 2", (uid, today, uid, today))
+
+
+def bookings_starting(c, day: str, first: str, last: str) -> list[dict]:
+    return rows(c, "SELECT b.*, t.full_name AS teacher, s.full_name AS student FROM office_bookings b JOIN users t ON t.id=b.teacher_id "
+                   "JOIN users s ON s.id=b.student_id WHERE b.status='booked' AND b.day=? AND b.start BETWEEN ? AND ?", (day, first, last))

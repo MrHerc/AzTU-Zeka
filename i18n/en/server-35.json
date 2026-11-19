@@ -1,0 +1,17 @@
+{
+ "Fənlərinizin müəllimləri tapılmadı.": "No teachers of your courses were found.",
+ "Qəbul saatına yazıl": "Book office hours",
+ "qəbul saatı təyin olunmayıb": "no office hours set",
+ "Həftənin günü bazar ertəsindən şənbəyə qədərdir": "The weekday is Monday to Saturday",
+ "Vaxt aralığı SS:DD formatında, ən çox 6 saat olmalıdır": "The time range must be in HH:MM format and at most 6 hours",
+ "Görüşün müddəti 10, 15, 20, 30, 45 və ya 60 dəqiqədir və aralığa sığmalıdır": "A meeting lasts 10, 15, 20, 30, 45 or 60 minutes and must fit the range",
+ "Otaq və ya onlayn keçid göstərin": "Give a room or an online link",
+ "Otaq ən çox 80 simvoldur": "The room is at most 80 characters",
+ "Onlayn keçid https:// ilə başlamalıdır": "The online link must start with https://",
+ "Qəbul saatına yazılış": "Office hours booking",
+ "Qəbul saatı görüşü ləğv olundu": "Office hours meeting cancelled",
+ "Bu vaxt artıq tutulub və ya keçib": "This slot is already taken or has passed",
+ "Bu müəllimlə ən çox iki gələcək görüşünüz ola bilər": "You can have at most two upcoming meetings with this teacher",
+ "Bu görüş artıq ləğv olunub və ya keçib": "This meeting is already cancelled or over",
+ "Qəbul saatı görüşü yaxınlaşır": "Office hours meeting coming up"
+}

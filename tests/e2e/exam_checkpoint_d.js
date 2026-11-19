@@ -76,10 +76,10 @@ const scenarios = {
   async "SF-1"() {
     const out = {};
     let s = await student(); let { p, S } = s;
-    S.put = 403; const g0 = S.gets; await type(p, 0, "61"); await sleep(500);
-    out.gets_after_403 = S.gets - g0; await s.ctx.close();
+    S.put = 403; const g0 = S.gets; await type(p, 0, "61"); await until(() => S.gets - g0 >= 1, 8000);    // waits, not fixed sleeps:
+    out.gets_after_403 = S.gets - g0; await s.ctx.close();                                                    // the suite runs under load
     s = await student(); ({ p, S } = s);
-    S.put = 503; await type(p, 0, "71"); await sleep(500);
+    let n = S.puts.length; S.put = 503; await type(p, 0, "71"); await until(() => S.puts.length > n, 8000); await sleep(200);
     out.queued_after_503 = await queueLen(p);
     S.put = null; await advance(p, 21);
     await until(async () => (await queueLen(p)) === 0);
@@ -87,8 +87,8 @@ const scenarios = {
     out.on_server = (await serverAnswers(p)).includes('"71"');
     await s.ctx.close();
     s = await student(); ({ p, S } = s);
-    S.put = 400; await type(p, 0, "72"); await sleep(500); out.queued_after_400 = await queueLen(p);
-    S.put = 404; await type(p, 1, "73"); await sleep(500); out.queued_after_404 = await queueLen(p);
+    S.put = 400; await type(p, 0, "72"); await until(async () => (await queueLen(p)) === 0, 8000); out.queued_after_400 = await queueLen(p);
+    S.put = 404; await type(p, 1, "73"); await until(async () => (await queueLen(p)) === 0, 8000); out.queued_after_404 = await queueLen(p);
     await s.ctx.close();
     return out;
   },
