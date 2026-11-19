@@ -872,6 +872,21 @@ incidents, the proctors' actions, `seq` and `root` of the chain at closing) and 
 protocol and of a statement shows the full root. `exam-verify` also checks that the event at each printed `seq` still
 has the printed root, and `--root` passes when the given root is a link of the chain.
 
+### Safe Exam Browser (Task 28)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` | `/exam/{id}/config.seb?k={token}` | anyone with the exam's token (SEB fetches it itself) | The exam's `.seb` file (`application/seb`): start at the portal, only this host, keys sent, no VM, clipboard or screen capture, the quit password hashed |
+| `POST` | `/api/exams/{id}/seb-verify?n={value}` | the exam's session | Marks the session verified when SEB's hash is right: the `X-SafeExamBrowser-ConfigKeyHash` header over `PUBLIC_URL` + this request's raw target, or `{"url", "config_key_hash"}` from the JS API over the page URL; both must carry the session's one-time value `n`. A refusal is `403` and a `seb.refused` event |
+
+An exam with `"protection": "seb"` hands out a launch link (`sebs://` for https, `seb://` for http) to its students
+(`seb_link` in the course's exam list) and shows the teacher the link, the Config Key and the quit password
+(`seb` in the manage view; all derived from the exam's secret, nothing stored). Entering such an exam adds the
+session's one-time value to the page URL (`&n=`); until the session is verified, the exam's routes other than
+`seb-verify` and `leave` answer `403`, so no question is shown and no attempt starts. The Config Key follows SEB's
+rules (`exam/seb.py`); it was checked against two real SEB files with known keys. What it proves: the client knows the
+configuration. It does not prove an unmodified SEB.
+
 ### Proctor panel (Task 29)
 
 | Method | Path | Who | Purpose |

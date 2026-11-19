@@ -9,12 +9,12 @@ const POLL_MS = 5000;
 const ATTEMPT = () => ({ in_progress: [t("Yazır"), "b-green"], paused: [t("Dayandırılıb"), "b-amber"], submitted: [t("Təslim edib"), "b-blue"],
   graded: [t("Qiymətləndirilib"), "b-navy"] });
 const FLAG = () => ({ "client.blur": t("pəncərədən çıxıb"), "client.fullscreen_exit": t("tam ekrandan çıxıb"), "client.reconnect": t("yenidən qoşulub"),
-  "net.changed": t("ünvan dəyişib"), "net.refused": t("kənar ünvan"), "login.during_exam": t("başqa yerdən giriş") });
+  "net.changed": t("ünvan dəyişib"), "net.refused": t("kənar ünvan"), "login.during_exam": t("başqa yerdən giriş"), "seb.refused": t("SEB yoxlanmayıb") });
 const EVENT = () => ({ "session.entered": t("imtahana daxil oldu"), "session.takeover": t("başqa kompüterdən davam etdi"), "session.refused": t("girişi rədd edildi"),
   "attempt.started": t("başladı"), "attempt.submitted": t("təslim etdi"), "attempt.refused": t("başlaya bilmədi"), ...FLAG(),
   "proctor.extend": t("vaxt əlavə olundu"), "proctor.pause": t("dayandırıldı"), "proctor.resume": t("davam etdirildi"), "proctor.end": t("cəhd bitirildi"),
   "proctor.reopen": t("cəhd yenidən açıldı"), "proctor.unlock": t("giriş kilidi açıldı"), "proctors.set": t("nəzarətçilər təyin olundu"),
-  "exam.opened": t("imtahan açıldı"), "exam.closed": t("imtahan bağlandı"), "exam.created": t("imtahan yaradıldı"), "roster.exception": t("istisna verildi") });
+  "seb.verified": t("SEB yoxlandı"), "exam.opened": t("imtahan açıldı"), "exam.closed": t("imtahan bağlandı"), "exam.created": t("imtahan yaradıldı"), "roster.exception": t("istisna verildi") });
 const ACTION = () => ({ extend: t("Vaxt əlavə et"), pause: t("Dayandır"), resume: t("Davam etdir"), end: t("Cəhdi bitir"), reopen: t("Yenidən aç"),
   unlock: t("Giriş kilidini aç") });
 const NEEDS_MINUTES = ["extend", "reopen"];

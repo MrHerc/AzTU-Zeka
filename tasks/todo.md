@@ -692,12 +692,13 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 
 **Acceptance criteria:**
 - [ ] Sahibin verdiyi nümunə `.seb` faylı üçün hesablanan Config Key SEB Config Tool-un göstərdiyi açarla eynidir
-- [ ] `seb` rejimində səhv və ya olmayan hash ilə cəhd başlamır və yoxlanmamış sessiya mövcud cəhdin sual və cavab marşrutlarında 403 alır; bir sessiyada tutulan hash başqasında rədd olunur
+  (2026-11-19: alqoritm iki real SEB faylında yoxlanıb: SEB 2.1.4 macOS və 2.2.3 Windows, açarlar Moodle-un testindən; fayllar lisenziyaya görə repoya qoyulmayıb, `SEB_TEST_VECTORS` ilə işləyir. Sahibin faylı `tests/fixtures/reference.seb` + `reference.seb.key` kimi qoyulanda test özü işə düşür)
+- [x] `seb` rejimində səhv və ya olmayan hash ilə cəhd başlamır və yoxlanmamış sessiya mövcud cəhdin sual və cavab marşrutlarında 403 alır; bir sessiyada tutulan hash başqasında rədd olunur
 - [ ] Yaradılan fayl Windows-da SEB 3.x ilə açılır və yalnız imtahanı göstərir (əl sınağı)
-- [ ] `PUBLIC_URL` dinləmə ünvanından fərqli olanda (`https://zeka.test`) və URL-də `%2F` və iki parametr olanda düzgün hash qəbul olunur; `http://127.0.0.1:port` üzərində hesablanan hash rədd olunur
+- [x] `PUBLIC_URL` dinləmə ünvanından fərqli olanda (`https://zeka.test`) və URL-də `%2F` və iki parametr olanda düzgün hash qəbul olunur; `http://127.0.0.1:port` üzərində hesablanan hash rədd olunur
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_seb_config_key.py tests/integration/test_seb_verify.py -q`
+- [x] `python -m pytest tests/unit/test_seb_config_key.py tests/integration/test_seb_verify.py -q`
 - [ ] Əl sınağı: SEB qurulmuş kompüterdə sınaq nüsxəsində `sebs://` keçidi; nüsxə yoxdursa LAN-da `seb://`
 
 **Dependencies:** Task 27

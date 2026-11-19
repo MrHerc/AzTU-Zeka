@@ -1,0 +1,6 @@
+{
+ "SEB yoxlamasından keçməyən sorğu": "request that failed the SEB check",
+ "Fayl parolla şifrələnib: SEB Config Tool-da şifrələmədən saxlayın": "The file is encrypted with a password: save it unencrypted in the SEB Config Tool",
+ "Fayl sertifikatla şifrələnib: SEB Config Tool-da şifrələmədən saxlayın": "The file is encrypted with a certificate: save it unencrypted in the SEB Config Tool",
+ "Bu imtahan yalnız Safe Exam Browser-də açılır: imtahana SEB-dən daxil olun": "This exam opens only in Safe Exam Browser: enter it from SEB"
+}

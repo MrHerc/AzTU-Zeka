@@ -7,6 +7,8 @@
 import { t, LANG } from "./i18n.js";
 
 const id = Number(new URLSearchParams(location.search).get("exam")) || 0;
+const nonce = new URLSearchParams(location.search).get("n");      // Task 28: the session's one-time value for SEB
+const pageUrl = location.href;                                     // taken at load: the URL SEB's JS API hashes
 const KEY = `zeka-exam-${id}`;
 const root = document.getElementById("exam");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
@@ -18,6 +20,21 @@ let saving = false;
 let submitting = false;
 let lastBlur = 0;
 let wasFull = false;
+let sebTried = false;
+
+// Task 28: Safe Exam Browser. On Windows SEB adds the hash header to this request itself; on macOS and iOS the JS API
+// gives the hash of this page's URL. The server checks either against the exam's Config Key.
+async function sebVerify() {
+  if (!nonce) return false;
+  const sec = window.SafeExamBrowser && window.SafeExamBrowser.security;
+  let body = {};
+  if (sec) {
+    await new Promise((done) => { try { sec.updateKeys(() => done()); } catch { done(); } setTimeout(done, 3000); });
+    body = { url: pageUrl, config_key_hash: sec.configKey };
+  }
+  const r = await api("POST", `/api/exams/${id}/seb-verify?n=${encodeURIComponent(nonce)}`, body);
+  return r.status === 200;
+}
 
 function queue() { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } }
 function keep(q) { try { localStorage.setItem(KEY, JSON.stringify(q)); } catch { /* private mode: the answer still goes out now */ } }
@@ -99,6 +116,10 @@ function tick() {
 
 async function load() {
   const r = await api("GET", `/api/exams/${id}`);
+  if (r.status === 403 && nonce && !sebTried) {
+    sebTried = true;
+    if (await sebVerify()) return load();
+  }
   if (r.status === 401 || r.status === 403 || r.status === 404) {
     root.innerHTML = `<section class="exam-card"><h1>${esc(t("İmtahan səhifəsi"))}</h1><p>${esc(r.data.error || t("İmtahana portaldan daxil olun."))}</p>
       <a class="btn" href="/">${esc(t("Portala qayıt"))}</a></section>`;

@@ -103,7 +103,8 @@ def _own_commit(req):
 
 def _session_user(req, sid: str):
     u = row(req.db, "SELECT u.*, s.id AS session_id, s.created_at AS session_created, s.last_seen AS session_seen, "
-                    "s.scope AS session_scope, s.mfa_at AS session_mfa, s.role AS session_role, s.ip AS session_ip FROM sessions s "
+                    "s.scope AS session_scope, s.mfa_at AS session_mfa, s.role AS session_role, s.ip AS session_ip, s.seb_ok AS session_seb_ok, "
+                    "s.seb_nonce AS session_seb_nonce FROM sessions s "
                     "JOIN users u ON u.id=s.user_id WHERE s.id_hash=?", (identity.session_hash(sid),))
     if not u:
         return None
@@ -172,7 +173,8 @@ def _exam_scope(req, scope: str | None):
             raise HTTPError(403, "Bu imtahana imtahan səhifəsindən daxil olun")
         # Task 29: the exam's network list on every request; the refusal or the change of address is logged at once
         from ..modules.exam import service as exam
-        problem = exam.check_request(req.db, int(req.params["id"]), req.user, req.ip, req.user.get("session_ip"), req.user["session_id"])
+        problem = exam.check_request(req.db, int(req.params["id"]), req.user, req.ip, req.user.get("session_ip"), req.user["session_id"],
+                                     req.path, bool(req.user.get("session_seb_ok")))
         _own_commit(req)
         if problem:
             raise HTTPError(403, problem)

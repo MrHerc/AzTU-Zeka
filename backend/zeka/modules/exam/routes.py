@@ -5,6 +5,10 @@ from __future__ import annotations
 from ...core.i18n import localize
 from ...core.web import HTTPError, json_resp
 from ...legacy.common import R, start_session
+import secrets
+
+from ...core.web import Response
+from ..identity import domain as identity
 from . import repo, service
 
 MANAGERS = ("teacher", "dept_head")
@@ -93,8 +97,13 @@ def enter(req):
     earlier = repo.has_session(c, u["id"], f"exam:{eid}")
     repo.end_sessions(c, u["id"])
     service.note_session(c, eid, u["id"], "session.takeover" if earlier else "session.entered", {"ip": req.ip})
-    _, headers = start_session(req, u, f"imtahan #{eid}", scope=f"exam:{eid}")
-    return json_resp({"ok": True, "url": f"/static/exam.html?exam={eid}"}, headers=headers)
+    sid, headers = start_session(req, u, f"imtahan #{eid}", scope=f"exam:{eid}")
+    url = f"/static/exam.html?exam={eid}"
+    if value["protection"] == "seb":                 # Task 28: the session's one-time value is part of the URL SEB hashes
+        nonce = secrets.token_urlsafe(12)
+        repo.set_seb_nonce(c, identity.session_hash(sid), nonce)
+        url += f"&n={nonce}"
+    return json_resp({"ok": True, "url": url, "seb": value["protection"] == "seb"}, headers=headers)
 
 
 @R("POST", "/api/exams/{id:int}/leave", roles=("student",), scope="exam")
@@ -190,3 +199,23 @@ def analysis(req):
     if out is None:
         raise HTTPError(404, "İmtahan tapılmadı")
     return out
+
+
+# ---------------------------------------------------------------- Safe Exam Browser (Task 28)
+@R("GET", "/exam/{id:int}/config.seb", auth=False)
+def seb_config(req):
+    """SEB fetches the configuration itself (sebs:// link), without the portal's session: the exam's token is the key."""
+    body = service.seb_file(req.db, req.params["id"], req.query.get("k") or "")
+    if body is None:
+        raise HTTPError(404, "İmtahan tapılmadı")
+    return Response(body, 200, "application/seb", [("Content-Disposition", f'attachment; filename="imtahan-{req.params["id"]}.seb"'),
+                                                    ("Cache-Control", "no-store")])
+
+
+@R("POST", "/api/exams/{id:int}/seb-verify", roles=("student",), scope="exam")
+def seb_verify(req):
+    status, value = service.seb_verify(req.db, req.user, req.params["id"], req.user["session_id"], req.user.get("session_seb_nonce"),
+                                       req.handler.path, req.headers.get("X-SafeExamBrowser-ConfigKeyHash"), req.json())
+    if status == "refused":                            # returned, not raised: the refusal's event in the exam log commits
+        return json_resp({"error": localize(value, req.lang)}, 403)
+    return _answer(status, value)

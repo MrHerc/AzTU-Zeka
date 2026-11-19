@@ -1,0 +1,12 @@
+{
+ "Qoruma": "Protection",
+ "Adi brauzer (portal)": "Ordinary browser (portal)",
+ "Safe Exam Browser məcburidir": "Safe Exam Browser required",
+ "Tələbə imtahana SEB-dən daxil olur. Çıxış parolu nəzarətçidə qalır.": "The student enters the exam from SEB. The proctor keeps the quit password.",
+ "Çıxış parolu": "Quit password",
+ "Konfiqurasiyanı yüklə": "Download configuration",
+ "Bu imtahan yalnız Safe Exam Browser-də açılır.": "This exam opens only in Safe Exam Browser.",
+ "SEB-də aç": "Open in SEB",
+ "SEB yoxlanmayıb": "SEB not verified",
+ "SEB yoxlandı": "SEB verified"
+}

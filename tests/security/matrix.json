@@ -1046,6 +1046,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /exam/{id:int}/config.seb": {
+  "access": "public",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /healthz": {
   "access": "public",
   "audit_read": null,
@@ -1459,6 +1466,16 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/seb-verify": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "scope": "exam",
   "slow": false
  },
  "POST /api/exams/{id:int}/signals": {

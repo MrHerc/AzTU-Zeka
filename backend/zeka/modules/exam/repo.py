@@ -276,3 +276,12 @@ def all_answers(c, eid: int) -> list[dict]:
 
 def forms(c, eid: int) -> dict[int, list[dict]]:
     return {r["student_id"]: json.loads(r["items"]) for r in rows(c, "SELECT student_id, items FROM exam_forms WHERE exam_id=?", (eid,))}
+
+
+# ---------------------------------------------------------------- Safe Exam Browser (Task 28)
+def set_seb_nonce(c, id_hash: str, nonce: str):
+    c.execute("UPDATE sessions SET seb_nonce=?, seb_ok=0 WHERE id_hash=?", (nonce, id_hash))
+
+
+def set_seb_ok(c, session_id: int):
+    c.execute("UPDATE sessions SET seb_ok=1 WHERE id=?", (session_id,))

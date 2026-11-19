@@ -160,7 +160,7 @@ RESULT_AZ = {"passed": "keçdi", "exam_min": "imtahan balı minimumdan aşağı"
              "not_admitted": "buraxılmayıb", "absent": "gəlməyib"}
 INCIDENT_AZ = {"client.blur": "pəncərədən çıxma", "client.fullscreen_exit": "tam ekrandan çıxma", "client.reconnect": "yenidən qoşulma",
                "net.changed": "ünvan dəyişməsi", "net.refused": "kənar ünvandan sorğu", "login.during_exam": "imtahan zamanı başqa giriş",
-               "session.refused": "rədd edilmiş giriş", "session.takeover": "başqa kompüterdən davam"}
+               "session.refused": "rədd edilmiş giriş", "session.takeover": "başqa kompüterdən davam", "seb.refused": "SEB yoxlamasından keçməyən sorğu"}
 ACTION_AZ = {"proctor.extend": "vaxt əlavəsi", "proctor.pause": "dayandırma", "proctor.resume": "davam etdirmə", "proctor.end": "cəhdin bitirilməsi",
              "proctor.reopen": "cəhdin yenidən açılması", "proctor.unlock": "giriş kilidinin açılması"}
 

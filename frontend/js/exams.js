@@ -33,6 +33,8 @@ export async function teacherExams(tgt, c) {
         <div class="field"><label class="label" for="ex-dur">${t("Müddət, dəq.")}</label><input class="input" id="ex-dur" type="number" min="5" value="90"></div></div>
       <div class="field"><label class="label" for="ex-plan">${t("Plan: hər sətirdə “çətinlik; mövzu; say” (boş xana hər hansı deməkdir)")}</label>
         <textarea class="input" id="ex-plan" rows="3" placeholder="Asan;;10&#10;Orta;Om qanunu;5"></textarea></div>
+      <div class="field"><label class="label" for="ex-prot">${t("Qoruma")}</label><select class="input" id="ex-prot">
+        <option value="open">${t("Adi brauzer (portal)")}</option><option value="seb">${t("Safe Exam Browser məcburidir")}</option></select></div>
       <div class="field"><label class="label" for="ex-cidrs">${t("Şəbəkə siyahısı: imtahan otağının ünvan blokları, vergüllə (boş: hər yerdən)")}</label>
         <input class="input mono" id="ex-cidrs" placeholder="10.20.30.0/24"></div>
       <div class="tiny muted">${t("Vaxt universitetin saat qurşağındadır. Hər tələbə öz variantını alır; son vaxtı server saatı müəyyən edir.")}</div></div>`,
@@ -45,7 +47,7 @@ export async function teacherExams(tgt, c) {
         await api.post(`/api/courses/${c.id}/exams`, { title: w.querySelector("#ex-title").value, kind: w.querySelector("#ex-kind").value,
           day: w.querySelector("#ex-day").value, start: w.querySelector("#ex-start").value, end: w.querySelector("#ex-end").value,
           duration_min: Number(w.querySelector("#ex-dur").value), plan,
-          allowed_cidrs: w.querySelector("#ex-cidrs").value.split(/[\s,]+/).filter(Boolean) });
+          allowed_cidrs: w.querySelector("#ex-cidrs").value.split(/[\s,]+/).filter(Boolean), protection: w.querySelector("#ex-prot").value });
         toast(t("Saxlanıldı"), "ok"); teacherExams(tgt, c);
       } catch (err) { toast(err.message, "err"); return false; }
     } }] }));
@@ -89,6 +91,11 @@ export async function teacherExams(tgt, c) {
         · ${m.exam.allowed_cidrs.length ? t("Şəbəkə: {list}", { list: m.exam.allowed_cidrs.join(", ") }) : t("Şəbəkə məhdudiyyəti yoxdur")}</div>
         ${m.exam.status === "open" ? html`<button class="btn btn-sm btn-primary" id="ex-board">${ic("eye", 14)} ${t("Lövhə")}</button>` : ""}
         ${m.exam.protocol_id ? html`<button class="btn btn-sm" data-doc="${m.exam.protocol_id}">${ic("qr", 14)} ${t("Protokol")}</button>` : ""}</div>
+      ${m.exam.seb ? html`<div class="card pad stack" style="margin:0"><b class="small">${ic("shield", 14)} Safe Exam Browser</b>
+        <div class="tiny muted">${t("Tələbə imtahana SEB-dən daxil olur. Çıxış parolu nəzarətçidə qalır.")}</div>
+        <div class="row wrap small"><span>${t("Çıxış parolu")}: <b class="mono">${m.exam.seb.quit_password}</b></span>
+          <a class="btn btn-sm" href="${m.exam.seb.download}">${t("Konfiqurasiyanı yüklə")}</a></div>
+        <div class="tiny muted mono" style="word-break:break-all">Config Key: ${m.exam.seb.key}</div></div>` : ""}
       <div class="field"><label class="label" for="ex-proctors">${t("Nəzarətçilər: istifadəçi adları, vergüllə")}</label>
         <div class="row"><input class="input grow mono" id="ex-proctors" value="${m.proctors.map((x) => x.username).join(", ")}">
         <button class="btn btn-sm" id="ex-proctors-save">${t("Saxla")}</button></div></div>
@@ -119,6 +126,7 @@ export async function studentExams(box, c) {
   mount(box, html`<div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("İmtahanlar")}</h3></div><div class="card-b list">
     ${list.map((e) => html`<div class="list-item"><div class="grow"><b class="small">${e.title}</b>
         <div class="tiny muted">${fmtDateTime(e.opens_at)} – ${fmtDateTime(e.closes_at)} · ${t("{n} dəq.", { n: e.duration_min })}</div>
+        ${e.seb_link ? html`<div class="tiny">${t("Bu imtahan yalnız Safe Exam Browser-də açılır.")} <a href="${e.seb_link}">${t("SEB-də aç")}</a></div>` : ""}
         ${e.roster === "excluded" ? html`<div class="tiny" style="color:var(--red)">${t("Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.")}</div>` : ""}</div>
       ${e.status === "open" && e.roster !== "excluded" && e.attempt !== "submitted" && e.attempt !== "graded"
         ? html`<button class="btn btn-sm btn-primary" data-enter="${e.id}">${ic("shield", 14)} ${e.attempt ? t("Davam et") : t("İmtahana daxil ol")}</button>`

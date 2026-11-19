@@ -3,6 +3,7 @@ attempt per student, answers checked against the server's clock, an automatic su
 ``exam.autosubmit`` job), grading when the exam closes, and every step in the exam's log."""
 from __future__ import annotations
 
+import hmac
 import json
 import secrets
 from datetime import datetime, timedelta
@@ -10,7 +11,7 @@ from datetime import datetime, timedelta
 from ...core import clock, jobs
 from ...core.i18n import E, T3
 from ...legacy.store import J, audit
-from . import domain, repo
+from . import domain, repo, seb
 
 STAFF = ("admin", "academic_office", "office", "dept_head", "leader")
 LIVE = ("in_progress", "paused")                       # an attempt not yet submitted
@@ -65,7 +66,8 @@ def list_for(c, user, cid: int) -> list[dict] | None:
         for e in repo.exams_of(c, cid, ("open", "closed", "released")):
             r = repo.roster_of(c, e["id"], user["id"])
             a = repo.attempt(c, e["id"], user["id"])
-            out.append({**e, "roster": r["status"] if r else None, "attempt": a["status"] if a else None})
+            extra = {"seb_link": seb_settings(repo.exam(c, e["id"]))["link"]} if e["protection"] == "seb" and e["status"] == "open" else {}
+            out.append({**e, "roster": r["status"] if r else None, "attempt": a["status"] if a else None, **extra})
         return out
     if user["role"] in STAFF or may_manage(c, user, cid):
         return repo.exams_of(c, cid)
@@ -80,7 +82,8 @@ def manage(c, user, eid: int) -> dict | None:
     roster = [r for r in repo.roster(c, eid) if serves(c, user, r["student_id"])]
     shown = {r["student_id"] for r in roster}
     return {"exam": {**_public_exam(e), "plan": json.loads(e["plan"]), "allowed_cidrs": json.loads(e["allowed_cidrs"] or "[]"),
-                     "protocol_id": e["protocol_id"]},
+                     "protocol_id": e["protocol_id"],
+                     **({"seb": {k: v for k, v in seb_settings(e).items() if k != "config"}} if e["protection"] == "seb" else {})},
             "proctors": repo.proctors(c, eid), "roster": roster,
             "attempts": [{k: a[k] for k in ("student_id", "full_name", "status", "started_at", "deadline_at", "submitted_at", "auto", "score", "max_score")}
                          for a in repo.attempts(c, eid) if a["student_id"] in shown], "pool": len(repo.pool(c, e["course_id"]))}
@@ -146,9 +149,14 @@ def may_enter(c, user, eid: int, ip: str = "") -> tuple[str, object]:
 NETWORK = E("Bu ünvandan imtahana daxil olmaq olmaz: imtahan otağının şəbəkəsindən daxil olun")
 
 
-def check_request(c, eid: int, user, ip: str, session_ip: str | None, session_id: int) -> dict | None:
+SEB_OPEN = ("/seb-verify", "/leave")                    # what an exam session reaches before SEB is verified (Task 28)
+SEB_NEEDED = E("Bu imtahan yalnız Safe Exam Browser-də açılır: imtahana SEB-dən daxil olun")
+
+
+def check_request(c, eid: int, user, ip: str, session_ip: str | None, session_id: int, path: str = "", seb_ok: bool = True) -> dict | None:
     """Every request of an exam session (Task 29): an address off the exam's network list is refused and logged; a
-    change of address on the list is a board event. Returns the refusal, or None. The caller commits the event."""
+    change of address on the list is a board event. Task 28: an exam in SEB mode answers its question and answer routes
+    only to a session whose SEB hash checked out. Returns the refusal, or None. The caller commits the event."""
     e = repo.exam(c, eid)
     if not e:
         return None
@@ -158,6 +166,8 @@ def check_request(c, eid: int, user, ip: str, session_ip: str | None, session_id
     if session_ip and ip != session_ip:
         repo.add_event(c, eid, "net.changed", user["id"], user["id"], {"from": session_ip, "to": ip}, _iso(_now()))
         repo.set_session_ip(c, session_id, ip)
+    if e["protection"] == "seb" and not seb_ok and not path.endswith(SEB_OPEN):
+        return SEB_NEEDED
     return None
 
 
@@ -358,6 +368,52 @@ def _anchors(c, eid: int) -> list[tuple[str, dict]]:
     return out
 
 
+# ---------------------------------------------------------------- Safe Exam Browser (Task 28)
+def _base() -> str:
+    from ...legacy.common import BASE_URL
+    return BASE_URL["value"].rstrip("/")
+
+
+def seb_settings(e: dict) -> dict:
+    """The exam's SEB configuration, its Config Key, the config download token and the quit password (derived from the
+    exam's secret, so nothing is stored and the key always matches the file that is served)."""
+    quit_password = seb.secret(e["secret"], "quit")[:8]
+    cfg = seb.config(e["id"], _base(), quit_password)
+    token = seb.secret(e["secret"], "config")[:32]
+    return {"config": cfg, "key": seb.config_key(cfg), "token": token, "quit_password": quit_password,
+            "link": seb.launch_link(_base(), e["id"], token), "download": f"/exam/{e['id']}/config.seb?k={token}"}
+
+
+def seb_file(c, eid: int, token: str) -> bytes | None:
+    """The .seb file for SEB to fetch (no session: SEB downloads it itself); only with the exam's token."""
+    e = repo.exam(c, eid)
+    if not e or e["protection"] != "seb" or e["status"] not in ("draft", "open") or not isinstance(token, str):
+        return None
+    st = seb_settings(e)
+    return seb.to_file(st["config"]) if hmac.compare_digest(token, st["token"]) else None
+
+
+def seb_verify(c, user, eid: int, session_id: int, nonce: str | None, raw_target: str, header: str | None, body) -> tuple[str, object]:
+    """Mark the exam session verified when SEB's Config Key hash is right: the header over the public address plus this
+    request's raw target, or the JS API's hash over the page URL the client sends; both carry the session's one-time
+    value. A refusal is an exam event."""
+    e = repo.exam(c, eid)
+    if not e:
+        return "missing", None
+    if e["protection"] != "seb":
+        return "ok", {"ok": True, "seb": False}
+    key, base = seb_settings(e)["key"], _base()
+    page, js_hash = body.get("url"), body.get("config_key_hash")
+    ok = seb.header_ok(base, raw_target, header or "", key, nonce or "") or seb.page_ok(base, page, js_hash, key, nonce or "")
+    at = _iso(_now())
+    if not ok:
+        repo.add_event(c, eid, "seb.refused", user["id"], user["id"], {"header": bool(header), "js": bool(js_hash)}, at)
+        return "refused", SEB_NEEDED
+    repo.set_seb_ok(c, session_id)
+    repo.add_event(c, eid, "seb.verified", user["id"], user["id"], {"path": "header" if header and seb.header_ok(base, raw_target, header, key, nonce or "") else "js"}, at)
+    return "ok", {"ok": True, "seb": True}
+
+
 # ---------------------------------------------------------------- the proctor panel (Task 29)
 WATCHERS = ("admin", "academic_office")               # reach every exam's board without an assignment
 
@@ -398,7 +454,7 @@ def watch_list(c, user) -> list[dict]:
     return sorted(seen.values(), key=lambda e: e["opens_at"])
 
 
-BOARD_FLAGS = ("client.blur", "client.fullscreen_exit", "client.reconnect", "net.changed", "net.refused", "login.during_exam")
+BOARD_FLAGS = ("client.blur", "client.fullscreen_exit", "client.reconnect", "net.changed", "net.refused", "login.during_exam", "seb.refused")
 
 
 def board(c, user, eid: int, after: int = 0) -> dict | None:
@@ -493,7 +549,7 @@ def signal(c, user, eid: int, body) -> tuple[str, object]:
 
 # ---------------------------------------------------------------- protocol, release, statements, analysis (Task 30)
 PROTOCOL_FLAGS = ("client.blur", "client.fullscreen_exit", "client.reconnect", "net.changed", "net.refused", "login.during_exam",
-                  "session.refused", "session.takeover")
+                  "session.refused", "session.takeover", "seb.refused")
 EXAM_DOCS = ("exam_protocol", "exam_statement")
 
 
