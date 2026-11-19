@@ -82,6 +82,9 @@ T30-dan sonra (hash zənciri hər hadisədə, 3 nəzarətçi lövhəni 5 saniyə
 yayılmış 300 saniyə, 1 işçi: p50 4 ms, p95 14 ms, p99 39 ms, 3 000 / 3 000 cavab, itki 0, 5xx 0; lövhə 201 sorğu,
 p95 27 ms, xəta 0.
 
+Checkpoint D düzəlişlərindən sonra (hər keçid əvvəl yazı kilidini alır, imtina hadisələri məhdudlaşdırılıb), eyni əmr:
+p50 4 ms, p95 11 ms, p99 40 ms, 3 000 / 3 000 cavab, itki 0, 5xx 0, 4xx 0; lövhə 201 sorğu, p95 28 ms, xəta 0.
+
 Meyar (p95 < 500 ms, itən cavab 0) yayılmış rejimdə ödənir. `--burst` ən pis haldır: 300 müştəri fasiləsiz sorğu
 göndərir və gecikmə növbədir (Little qanunu: 300 / 435 sorğu/s ≈ 0,7 s). Real imtahanda cavablar dəqiqələrə yayılır.
 

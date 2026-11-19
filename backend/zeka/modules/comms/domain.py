@@ -16,7 +16,7 @@ KINDS = {"request": S_("Müraciətlər"), "message": S_("Dekanlıqdan mesajlar")
          "syllabus": S_("Sillabus"), "news": S_("Xəbərlər"), "event": S_("Tədbirlər"), "quiz": S_("Testlər"),
          "academy": S_("AI Akademiya"), "radar": S_("Zəka Radar"), "question": S_("Tələbə sualları"),
          "answer": S_("Suallarıma cavablar"), "plan": S_("Dəstək planı")}
-OFF_BY_DEFAULT = frozenset({"news", "event", "quiz", "academy", "radar"})
+OFF_BY_DEFAULT = frozenset({"news", "event", "quiz", "academy", "radar", "plan"})   # plan: a Radar support plan, like radar (CR-9)
 MAX_ATTEMPTS = 20                                 # about three days of waits (Checkpoint D, T-7): an outage does not lose mail
 
 

@@ -732,10 +732,12 @@ def _rows(c, e: dict, students: list[dict]) -> list[dict]:
     co = repo.course(c, e["course_id"])
     col = journal.exam_column(c, e["course_id"])
     attempts = {a["student_id"]: a for a in repo.attempts(c, e["id"])}
+    graded = journal.published_results(c, co, [r["student_id"] for r in students
+                                               if attempts.get(r["student_id"], {}).get("status") == "graded"])
     out = []
     for r in students:
         a = attempts.get(r["student_id"])
-        res = journal.student_grades(c, r["student_id"], co)["result"] if a and a["status"] == "graded" else None
+        res = graded[r["student_id"]][1] if r["student_id"] in graded else None
         out.append({"student_id": r["student_id"], "full_name": r["full_name"], "student_no": r["student_no"], "group_id": r.get("group_id"),
                     "group_name": r.get("group_name"), "raw": a["score"] if a and a["status"] == "graded" else None,
                     "raw_max": a["max_score"] if a else None,

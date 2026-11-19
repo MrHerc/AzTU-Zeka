@@ -745,7 +745,7 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 
 ## Checkpoint D: Task 23–30 sonra
 
-- [ ] 300 simulyasiya olunmuş tələbə ilə sınaq imtahanı: `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty` 0 itki və p95 < 500 ms verir. Əmr Task 27-də yazılır və Task 30-dan sonra yenidən işlədilir (hash zənciri və nəzarətçi sorğusu yükə əlavə olunur)
+- [x] 300 simulyasiya olunmuş tələbə ilə sınaq imtahanı: `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty` 0 itki və p95 < 500 ms verir. Əmr Task 27-də yazılır və Task 30-dan sonra yenidən işlədilir (hash zənciri və nəzarətçi sorğusu yükə əlavə olunur) — Checkpoint D-dən sonra: 3 000 / 3 000, itki 0, p95 11 ms, lövhə p95 28 ms (`docs/perf/baseline.md`)
 - [ ] Windows kompüterində SEB ilə əl sınağı (sahib)
 - [ ] Rəy axını və `security-review` keçib; sahiblə baxış
 

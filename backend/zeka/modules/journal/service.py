@@ -360,17 +360,9 @@ def refresh_finals(c, course_id: int, uids) -> None:
     co = repo.course(c, course_id) if uids else None
     if not co:
         return
-    cols, rules = columns(c, co), tenant.load(c)
-    has_attendance = any(x["kind"] == "attendance" for x in cols)
-    published: dict[int, dict] = {}
-    for (uid, key), r in repo.grade_rows(c, course_id, next(iter(uids)) if len(uids) == 1 else None).items():
-        if uid in uids and r["status"] == "published":
-            published.setdefault(uid, {})[key] = r["score"]
-    stand = {x["student_id"]: x for x in course_standing(c, course_id, next(iter(uids)) if len(uids) == 1 else None)}
+    has_attendance = any(x["kind"] == "attendance" for x in columns(c, co))
     t = repo.term(c, co["term_id"])
-    for uid in uids:
-        att = _attendance_cell(c, co, cols, stand.get(uid), rules)
-        res = _result(c, cols, published.get(uid, {}), att, rules)
+    for uid, (att, res) in published_results(c, co, uids).items():
         if res["total"] is None or (has_attendance and att is None):
             repo.drop_final(c, uid, course_id)
             continue
@@ -378,6 +370,26 @@ def refresh_finals(c, course_id: int, uids) -> None:
                               "term_name_en": t["name"] if t else None, "term_start": t["teaching_start"] if t else None,
                               "course_code": co["code"], "course_name": co["name"], "course_name_en": None, "credits": co["credits"] or 0,
                               "score": res["total"], "letter": res["letter"], "passed": int(bool(res["passed"])), "published_at": iso(now())})
+
+
+def published_results(c, co: dict, uids) -> dict[int, tuple[float | None, dict]]:
+    """(attendance cell, result) of each student from the published scores, as ``student_grades`` gives one student's,
+    in a fixed number of queries for any number of students (Checkpoint D, AR-4)."""
+    uids = set(uids)
+    if not uids:
+        return {}
+    cols, rules = columns(c, co), tenant.load(c)
+    one = next(iter(uids)) if len(uids) == 1 else None
+    published: dict[int, dict] = {}
+    for (uid, key), r in repo.grade_rows(c, co["id"], one).items():
+        if uid in uids and r["status"] == "published":
+            published.setdefault(uid, {})[key] = r["score"]
+    stand = {x["student_id"]: x for x in course_standing(c, co["id"], one)}
+    out = {}
+    for uid in uids:
+        att = _attendance_cell(c, co, cols, stand.get(uid), rules)
+        out[uid] = (att, _result(c, cols, published.get(uid, {}), att, rules))
+    return out
 
 
 def refresh_all_finals(c) -> None:

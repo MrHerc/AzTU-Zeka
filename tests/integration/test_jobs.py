@@ -65,6 +65,16 @@ def test_a_failing_job_keeps_its_reason_does_not_stop_the_others_and_is_tried_ag
     assert dict(jobs.run_due(c, "a", T0 + timedelta(minutes=1), names=registered)) == {"t.fail": "error"}, "tried again, alone"
 
 
+def test_a_failing_job_waits_longer_after_each_failure(db, registered):
+    """Checkpoint D (SF-7): 1, 2, 4 … minutes between tries, not every runner cycle; a success resets it."""
+    c, _ = db
+    tried = [m for m in range(0, 16) if jobs.run_due(c, "a", T0 + timedelta(minutes=m), names=["t.fail"])]
+    assert tried == [0, 1, 3, 7, 15], tried
+    jobs.REGISTRY["t.fail"] = jobs.Job("t.fail", timedelta(hours=1), lambda c: None)
+    assert jobs.run_due(c, "a", T0 + timedelta(minutes=31), names=["t.fail"]) == [("t.fail", "ok")]
+    assert jobs.run_due(c, "a", T0 + timedelta(minutes=40), names=["t.fail"]) == [], "healthy again: its interval"
+
+
 def test_one_runner_holds_the_lease_until_it_runs_out(db):
     c, path = db
     other = sqlite3.connect(path, timeout=15)

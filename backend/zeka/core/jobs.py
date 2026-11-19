@@ -36,6 +36,7 @@ REGISTRY: dict[str, Job] = {}
 LEASE = "runner"
 LEASE_TTL = timedelta(minutes=3)        # a runner renews it every cycle; a dead one's lease runs out
 STALE_RUN = timedelta(minutes=30)       # a 'running' row older than this is a runner that died mid-job
+RETRY_CAP = timedelta(minutes=30)       # the longest wait of a failing job before its next try
 
 
 def periodic(name: str, interval: timedelta, fn: Callable[[sqlite3.Connection], object]) -> Job:
@@ -79,7 +80,16 @@ def _claim(c: sqlite3.Connection, job: Job, holder: str, t: datetime) -> int | N
         busy = c.execute("SELECT 1 FROM job_runs r JOIN job_lease l ON l.name=? AND l.holder=r.holder AND l.expires_at>? "
                          "WHERE r.name=? AND r.status='running' AND r.started_at>? AND r.holder<>?",
                          (LEASE, _iso(t), job.name, _iso(t - STALE_RUN), holder)).fetchone()
-        if busy or (last_ok and datetime.fromisoformat(last_ok) + job.interval > t):
+        # Checkpoint D (SF-7): after a failure the job waits 1, 2, 4 … minutes (at most its interval and RETRY_CAP), not
+        # one runner cycle, so a broken job neither runs twice as often as a healthy one nor floods job_runs
+        fails, last_fail = c.execute("SELECT COUNT(*), MAX(started_at) FROM job_runs WHERE name=? AND status='error' AND started_at>?",
+                                     (job.name, last_ok or "")).fetchone()
+        due: datetime | None = None
+        if fails:
+            due = datetime.fromisoformat(last_fail) + min(job.interval, RETRY_CAP, timedelta(minutes=2 ** min(fails - 1, 10)))
+        elif last_ok:
+            due = datetime.fromisoformat(last_ok) + job.interval
+        if busy or (due and due > t):
             c.rollback()
             return None
         c.execute("UPDATE job_runs SET status='error', detail='the runner stopped during this run' WHERE name=? AND status='running'",
