@@ -216,6 +216,8 @@ def delete_material(c, material_id):
     m = row(c, "SELECT replaces_id FROM materials WHERE id=?", (material_id,))
     drop_chunks(c, material_id)
     c.execute("DELETE FROM materials WHERE id=?", (material_id,))
+    # a later version now replaces the deleted one's predecessor, so the chain stays whole (Checkpoint C, S2)
+    c.execute("UPDATE materials SET replaces_id=? WHERE replaces_id=?", (m["replaces_id"] if m else None, material_id))
     prev = row(c, "SELECT * FROM materials WHERE id=?", (m["replaces_id"],)) if m and m["replaces_id"] else None
     if prev and not row(c, "SELECT 1 FROM materials WHERE replaces_id=?", (prev["id"],)):
         _add_chunks(c, prev["id"], prev["course_id"], prev["title"], engine.chunk_markdown(prev["text"]))   # current again (Checkpoint C, L1)

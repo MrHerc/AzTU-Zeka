@@ -195,21 +195,21 @@ def test_access_code_guessing_is_throttled(app_db, monkeypatch, rate_limits):
 # ---------------------------------------------------------------- stored HTML injection in the printable syllabus
 def test_syllabus_page_escapes_saved_data(teacher):
     tcid = teacher.get("/api/courses").json[0]["id"]
-    syl = teacher.post(f"/api/syllabus/{tcid}/generate", {"weeks": 15}).json
+    syl = teacher.post(f"/api/syllabi/{tcid}/draft").json["data"]
     syl["plan"][0]["week"] = EVIL
-    syl["assessment"][0][1] = EVIL
-    syl["workload"]["total"] = EVIL
-    syl["course"]["credits"] = EVIL
+    syl["assessment"][0]["weight"] = EVIL
     syl["description"] = EVIL
-    # sec: syllabus save   (stricter than in the review: markup in place of a score is refused, not coerced to 0)
-    assert teacher.put(f"/api/syllabus/{tcid}", {"data": syl}).status == 400
-    syl["assessment"][0][1] = 10
-    assert teacher.put(f"/api/syllabus/{tcid}", {"data": syl}).status == 200
+    # sec: syllabus save   (stricter than in the review: markup in place of a number is refused, not coerced to 0)
+    assert teacher.put(f"/api/syllabi/{tcid}", {"data": syl}).status == 400
+    syl["plan"][0]["week"] = 1
+    syl["assessment"][0]["weight"] = 10
+    syl["plan"][0]["topic"] = EVIL
+    assert teacher.put(f"/api/syllabi/{tcid}", {"data": syl}).status == 200
     r = teacher.get(f"/syllabus/{tcid}")
     # sec: syllabus page escapes saved data
     assert r.status == 200 and "<script>" not in r.text and "<img src=x" not in r.text and "&lt;script&gt;" in r.text, r.text[:200]
     # sec: syllabus shape validated
-    assert teacher.put(f"/api/syllabus/{tcid}", {"data": {"course": "x"}}).status == 400
+    assert teacher.put(f"/api/syllabi/{tcid}", {"data": {"course": "x"}}).status == 400
 
 
 # ---------------------------------------------------------------- AI Academy

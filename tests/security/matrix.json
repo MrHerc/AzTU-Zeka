@@ -775,8 +775,29 @@
   "perm": null,
   "slow": false
  },
- "GET /api/syllabus/{cid:int}": {
+ "GET /api/syllabi/{id:int}": {
   "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/syllabi/{id:int}/versions/{vid:int}": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
    "teacher"
   ],
   "audit_read": null,
@@ -888,7 +909,9 @@
  },
  "GET /syllabus/{cid:int}": {
   "access": [
+   "academic_office",
    "admin",
+   "dept_head",
    "leader",
    "teacher"
   ],
@@ -1504,6 +1527,15 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/syllabi/{id:int}/draft": {
+  "access": [
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/syllabus/{cid:int}/generate": {
   "access": [
    "teacher"
@@ -1710,7 +1742,7 @@
   "perm": null,
   "slow": false
  },
- "PUT /api/syllabus/{cid:int}": {
+ "PUT /api/syllabi/{id:int}": {
   "access": [
    "teacher"
   ],

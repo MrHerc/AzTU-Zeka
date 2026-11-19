@@ -109,7 +109,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 
 ### Faza 4 — Sillabus və imtahan · saat 36–52
 
-- [ ] T23 Struktur sillabus
+- [x] T23 Struktur sillabus
 - [ ] T24 Çərçivə xəritəsi və NICE idxalı
 - [ ] T25 Təsdiq axını və fənnin konfiqurasiyası
 - [ ] T26 İmtahan nüvəsi

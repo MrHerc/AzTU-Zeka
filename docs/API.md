@@ -856,9 +856,11 @@ Audience: students see `all` and `students`, teachers see `all` and `teachers`, 
 | `POST` | `/api/academy/module/{id}/complete` | `teacher` | Submit the module quiz |
 | `GET` | `/api/tools` | `teacher`, `leader`, `admin` | Teaching tool catalogue, subject areas and the teacher's courses with their tools |
 | `POST` | `/api/courses/{id}/tools` | `teacher` | Attach a tool to a course, or detach it |
-| `GET` | `/api/syllabus/{cid}` | `teacher` | Saved syllabus of the course |
-| `POST` | `/api/syllabus/{cid}/generate` | `teacher` | Draft a syllabus from the course data |
-| `PUT` | `/api/syllabus/{cid}` | `teacher` | Save the edited syllabus |
+| `GET` | `/api/syllabi/{id}` | staff who read the course | The structured syllabus: versions, the latest and the published one, Forma №3 hours, their difference (Task 23) |
+| `POST` | `/api/syllabi/{id}/draft` | the course's head teacher | A first draft, not saved: from a syllabus saved before Task 23, else from the assistant, with Forma №3 hours |
+| `PUT` | `/api/syllabi/{id}` | the course's head teacher | Save as a new draft version (`{"data": ..., "base": <version>}`; `409` when a newer version exists) |
+| `GET` | `/api/syllabi/{id}/versions/{vid}` | staff who read the course | One version's data |
+| `POST` | `/api/syllabus/{cid}/generate` | `teacher` | The syllabus assistant's output (the first draft's source) |
 | `POST` | `/api/syllabus/{cid}/link` | `teacher` | One-time link to the printable syllabus |
 
 **`PUT /api/academy/assessment`.** Body: `{"values": {"<track key>": 1..5}}`. Track keys: `ai`, `emi`, `syllabus`, `communication`, `pedagogy`, `research`, `edtech`. Recommended tracks are the three lowest-rated tracks that are not complete. Returns the same object as `GET /api/academy`.
@@ -867,7 +869,15 @@ Audience: students see `all` and `students`, teachers see `all` and `teachers`, 
 
 **`POST /api/courses/{id}/tools`.** Body: `{"tool_key": "<key>"}`. Response: `{"on": <bool>, "tools": [<keys>]}`.
 
-**`POST /api/syllabus/{cid}/generate`.** Body: `{"weeks": 10..18}`, default 15. Returns `course`, `description`, `workload`, `outcomes` (up to 6, derived from glossary terms of each material), `plan` (one row per week with colloquia in weeks 7 and 13 and revision in the last week), `assessment`, `materials`, `tools`, `policies` and `generated_at`. `PUT /api/syllabus/{cid}` stores `{"data": <that object>}` and returns `{"ok": true, "updated_at": ...}`. The object must keep every part of a generated syllabus (`course` with its fields, `workload`, `description`, the lists, plan rows with `week`, `topic` and `activity`, assessment rows as `[name, weight]`), otherwise `400`; only these fields are stored, and more than 200,000 characters is a `413`.
+**`POST /api/syllabus/{cid}/generate`.** Body: `{"weeks": 10..18}`, default 15. Returns `course`, `description`, `workload`, `outcomes` (up to 6, derived from glossary terms of each material), `plan` (one row per week with colloquia in weeks 7 and 13 and revision in the last week), `assessment`, `materials`, `tools`, `policies` and `generated_at`. The structured syllabus (Task 23) is JSON with `description`, `outcomes` (`id` N1…N20, `text` 10–500 characters,
+`bloom`: remember, understand, apply, analyze, evaluate, create), `plan` (`week` 1–30, `topic`, `outcomes` it serves,
+`activity`), `assessment` (`name`, `kind`: component, attendance or exam, `weight`), `rules` (`attendance_limit` in
+percent, `late_policy`, `ai_policy`: allowed, limited or forbidden, `ai_note`), `prerequisites`, `literature` (`title`,
+`kind`: main or extra) and `workload` (`lecture`, `seminar`, `lab`, `independent` hours). A save is refused with `400`
+when the weights do not add up to 100, when the exam does not weigh the university's exam maximum, or when the
+attendance limit is above the university's (a syllabus may only lower it). Every save is a new version with status
+`draft`; a version never changes afterwards. Forma №3 hours are the largest unit of each kind among the course's active
+teaching units; `diff` lists the kinds whose syllabus hours differ from them.
 
 ## Support desk and feedback
 
@@ -1055,7 +1065,7 @@ Every achievement item has `id`, `category`, `date` (or `null`), `icon`, `tone`,
 | `GET` | `/` and `/static/*` | public | Application shell and static assets from `frontend/` |
 | `GET` | `/doc/{id}` | holder, staff, or a one-time key `?k=` | Printable document page; `?embed=1` hides the toolbar for display inside the application |
 | `GET` | `/verify/{code}` | public | Verification result: valid or revoked, title, registry number, issue date, holder initials, issuing unit, hash prefix; 60 lookups per minute per client address |
-| `GET` | `/syllabus/{cid}` | `teacher`, `leader`, `admin`, or a one-time key `?k=` | Printable syllabus; `?embed=1` hides the toolbar |
+| `GET` | `/syllabus/{cid}` | staff who read the course, or a one-time key `?k=` | Printable syllabus: `?v=<version id>`, else the latest version, else an unsaved first draft; `?embed=1` hides the toolbar |
 | `GET` | `/api/requests/{id}/preview` | `office`, `admin` | Document preview with placeholder registry number and code |
 | `GET` | `/demo/login` | public | Login by link, see above |
 
@@ -1192,11 +1202,13 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/academy/module/{id}/complete` | teacher |
 | GET | `/api/tools` | teacher, admin, leader |
 | POST | `/api/courses/{id}/tools` | teacher |
-| GET | `/api/syllabus/{cid}` | teacher |
+| GET | `/api/syllabi/{id}` | staff (course readers) |
+| POST | `/api/syllabi/{id}/draft` | teacher (head) |
+| PUT | `/api/syllabi/{id}` | teacher (head) |
+| GET | `/api/syllabi/{id}/versions/{vid}` | staff (course readers) |
 | POST | `/api/syllabus/{cid}/generate` | teacher |
-| PUT | `/api/syllabus/{cid}` | teacher |
 | POST | `/api/syllabus/{cid}/link` | teacher |
-| GET | `/syllabus/{cid}` | teacher, admin, leader, one-time key |
+| GET | `/syllabus/{cid}` | staff (course readers), one-time key |
 | GET | `/api/analytics` | leader, admin |
 | GET | `/api/admin/status` | admin |
 | PUT | `/api/admin/settings` | admin |

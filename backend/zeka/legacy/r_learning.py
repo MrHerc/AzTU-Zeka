@@ -645,8 +645,11 @@ def upload_material(req):
     if replaces is not None:
         if not c.in_transaction:
             c.execute("BEGIN IMMEDIATE")                # two uploads replacing one version: the second sees the first
-        if not row(c, f"SELECT 1 FROM materials m WHERE m.id=? AND m.course_id=? AND {CURRENT}", (replaces, co["id"])):  # nosec B608
+        old = row(c, f"SELECT m.uploaded_by FROM materials m WHERE m.id=? AND m.course_id=? AND {CURRENT}", (replaces, co["id"]))  # nosec B608
+        if not old:
             raise HTTPError(404, "Material tapılmadı")
+        if co["teacher_id"] != req.user["id"] and old["uploaded_by"] != req.user["id"]:
+            raise HTTPError(403, "Bu fənn sizə aid deyil")
     try:
         original = store.save_file(c, req.user["id"], name, data, accept="material")      # Task 22: the file itself is kept
     except ValueError as ex:
@@ -661,7 +664,9 @@ def material_delete(req):
     m = row(req.db, "SELECT * FROM materials WHERE id=?", (req.params["id"],))
     if not m:
         raise HTTPError(404, "Material tapılmadı")
-    course_access(req, m["course_id"])
+    co = course_access(req, m["course_id"])
+    if co["teacher_id"] != req.user["id"] and m["uploaded_by"] != req.user["id"]:
+        raise HTTPError(403, "Bu fənn sizə aid deyil")             # a unit's teacher removes only what that teacher uploaded
     store.delete_material(req.db, m["id"])
     audit(req.db, req.user["id"], "material_delete", "material", m["title"])
     return {"ok": True}
@@ -669,7 +674,7 @@ def material_delete(req):
 
 @R("PUT", "/api/courses/{id:int}/tutor", roles=("teacher",))
 def tutor_settings(req):
-    co = course_access(req, req.params["id"])
+    co = course_access(req, req.params["id"], head=True)
     b = req.json()
     modes = [m for m in b.array("modes") if isinstance(m, str) and m in tutor.MODES] or ["socratic"]
     req.db.execute("UPDATE courses SET tutor_modes=?, tutor_rules=?, tutor_locked=? WHERE id=?",
@@ -758,11 +763,19 @@ def questions(req):
     return [q_out(req.db, q) for q in rows(req.db, sql, (co["id"], st) if st else (co["id"],))]
 
 
+def _own_question(req, q):
+    """A question is changed by the course's head teacher or by the teacher who made it (Checkpoint C, S1)."""
+    co = course_access(req, q["course_id"])
+    if co["teacher_id"] != req.user["id"] and q["created_by"] != req.user["id"]:
+        raise HTTPError(403, "Bu fənn sizə aid deyil")
+    return co
+
+
 @R("PUT", "/api/questions/{id:int}", roles=("teacher",))
 def question_update(req):
     c = req.db
     q = q_load(c, req.params["id"])
-    course_access(req, q["course_id"])
+    _own_question(req, q)
     b = req.json()
     fields = {k: str(b[k])[:3000] for k in ("text", "explanation", "topic", "bloom", "difficulty", "unit") if k in b}
     options = [str(o)[:300] for o in b.array("options")][:6] if "options" in b else q["options"]
@@ -801,7 +814,7 @@ def _check_answer(qtype, options, answer):
 @R("DELETE", "/api/questions/{id:int}", roles=("teacher",))
 def question_delete(req):
     q = q_load(req.db, req.params["id"])
-    course_access(req, q["course_id"])
+    _own_question(req, q)
     req.db.execute("DELETE FROM questions WHERE id=?", (q["id"],))
     engine.INDEX["questions"].remove(q["id"])
     store.log_index(req.db, "questions", [q["id"]], "delete")

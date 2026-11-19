@@ -721,3 +721,61 @@ def test_t9_a_student_does_not_read_another_student_s_submission(app_db, cc, own
     assert other.post("/api/auth/demo", {"role": "student", "user": "cc.a"}).status == 200
     got = other.get(f"/api/submissions/{sub}")
     assert got.status in (403, 404) and "mənim cavabım" not in got.text
+
+
+# ---------------------------------------------------------------- S. the security review of the fixes
+@pytest.fixture(scope="module")
+def unit_course(app_db, cc):
+    """A course headed by leyla in which the demo teacher holds a seminar unit, with one material of leyla's."""
+    admin, student = app_db.client("admin"), app_db.client("student")
+    teacher = app_db.client("teacher")
+    leyla = q("SELECT id FROM users WHERE username='leyla'")[0]["id"]
+    cid = admin.post("/api/directory/courses", {"code": "CC-105", "name": "Rəhbərin fənni", "credits": 3, "term_id": cc["term"]["id"],
+                                                "teacher_id": leyla}).json["id"]
+    unit = admin.post("/api/directory/units", {"course_id": cid, "kind": "seminar", "teacher_id": teacher.user["id"]}).json["id"]
+    gid = q("SELECT group_id FROM users WHERE id=?", (student.user["id"],))[0]["group_id"]
+    admin.put(f"/api/directory/units/{unit}/groups", {"group_ids": [gid]})
+    c = db()
+    try:
+        heads = store.add_material(c, cid, "Rəhbərin materialı", "r.md", "# Rəhbər\n\nRezistor — müqavimət elementidir və dövrədə işlədilir.", leyla)
+        c.commit()
+    finally:
+        c.close()
+    return {"id": cid, "material": heads["id"]}
+
+
+def test_s1_a_unit_teacher_does_not_change_the_course_s_settings_or_another_s_material(app_db, unit_course):
+    teacher, cid = app_db.client("teacher"), unit_course["id"]
+    assert teacher.get(f"/api/courses/{cid}").status == 200, "reads the course"
+    assert teacher.put(f"/api/courses/{cid}/tutor", {"modes": ["explain"], "locked": True}).status == 403
+    assert teacher.post(f"/api/courses/{cid}/tools", {"tool_key": "x"}).status == 403
+    assert teacher.delete(f"/api/materials/{unit_course['material']}").status == 403
+    assert _upload(teacher, cid, V2, replaces=unit_course["material"]).status == 403
+    mine = _upload(teacher, cid, V1).json["id"]
+    assert teacher.delete(f"/api/materials/{mine}").status == 200, "removes what the teacher uploaded"
+
+
+def test_s2_deleting_a_middle_version_keeps_the_chain_and_the_current_version(app_db, own_course):
+    teacher = app_db.client("teacher")
+    v1 = _upload(teacher, own_course, V1).json["id"]
+    v2 = _upload(teacher, own_course, V2, replaces=v1).json["id"]
+    v3 = _upload(teacher, own_course, ["# Rezistorlar (üçüncü)", "Varistor — gərginliyə görə müqavimətini dəyişən rezistordur və qoruyucu kimi işləyir."],
+                 replaces=v2).json["id"]
+    assert teacher.delete(f"/api/materials/{v2}").status == 200
+    assert q("SELECT id FROM chunks WHERE material_id=?", (v1,)) == [], "v1 stays replaced"
+    assert q("SELECT replaces_id FROM materials WHERE id=?", (v3,))[0]["replaces_id"] == v1
+    listed = [m["id"] for m in app_db.client("student").get(f"/api/courses/{own_course}").json["materials_list"]]
+    assert v3 in listed and v1 not in listed
+
+
+def test_s3_a_huge_content_length_is_a_413_and_the_feed_token_is_not_logged(app_db):
+    import http.client
+    url = urlsplit(app_db.client("student").post("/api/me/calendar").json["url"])
+    conn = http.client.HTTPConnection(url.hostname, url.port, timeout=10)
+    try:
+        conn.putrequest("GET", url.path)
+        conn.putheader("Content-Length", "9" * 5000)
+        conn.endheaders()
+        assert conn.getresponse().status == 413
+    finally:
+        conn.close()

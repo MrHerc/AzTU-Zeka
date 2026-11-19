@@ -122,31 +122,29 @@ SYL_XSS = "<img src=x onerror=alert(1)>"
 
 
 def test_syllabus_page_escapes_every_saved_value(app_db, teacher):
-    syl = teacher.post("/api/syllabus/1/generate", {"weeks": 15}).json
-    syl["plan"][0]["week"] = SYL_XSS
-    syl["course"]["credits"] = SYL_XSS
-    syl["workload"]["total"] = SYL_XSS
-    syl["outcomes"][0] = SYL_XSS
-    syl["assessment"][0][1] = 10
-    assert teacher.put("/api/syllabus/1", {"data": syl}).status == 200
+    syl = teacher.post("/api/syllabi/1/draft").json["data"]
+    syl["plan"][0]["topic"] = SYL_XSS
+    syl["outcomes"][0]["text"] = SYL_XSS + " izah edir"
+    syl["description"] = SYL_XSS
+    assert teacher.put("/api/syllabi/1", {"data": syl}).status == 200
     page = teacher.get("/syllabus/1").text
-    # regression: week, credits and workload numbers were interpolated into the HTML unescaped
+    # regression: week, credits and workload numbers were interpolated into the HTML unescaped (Task 23: every value)
     assert SYL_XSS not in page and "&lt;img src=x onerror=alert(1)&gt;" in page
 
 
 @pytest.mark.parametrize("mutate", [
     lambda s: s.pop("plan"),
     lambda s: s.update(plan="not a list"),
-    lambda s: s["plan"].append({"week": 16}),
-    lambda s: s["assessment"].append(["x", "<b>50</b>"]),
-    lambda s: s.pop("workload"),
-    lambda s: s["course"].pop("name"),
+    lambda s: s["plan"].append({"week": 31, "topic": "Artıq həftə", "outcomes": []}),
+    lambda s: s["assessment"].append({"name": "x", "kind": "component", "weight": "<b>50</b>"}),
+    lambda s: s.pop("outcomes"),
+    lambda s: s.pop("rules"),
 ])
 def test_syllabus_save_rejects_incomplete_data(teacher, mutate):
-    syl = teacher.post("/api/syllabus/1/generate", {"weeks": 15}).json
+    syl = teacher.post("/api/syllabi/1/draft").json["data"]
     mutate(syl)
     # regression: only the "course" key was checked, and a partial object broke the editor and the printable page
-    assert teacher.put("/api/syllabus/1", {"data": syl}).status == 400
+    assert teacher.put("/api/syllabi/1", {"data": syl}).status == 400
     assert teacher.get("/syllabus/1").status == 200
 
 

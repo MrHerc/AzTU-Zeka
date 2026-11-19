@@ -598,14 +598,14 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Forma №3-dən ilkin doldurma:** yeni sillabus fənnin dərc olunmuş tədris vahidlərindən (Task 16, `teaching-load` idxalı) iş yükünü götürür: semestr üzrə mühazirə, məşğələ, laboratoriya kontakt saatları, qruplar, tələbə sayı, müəllimlər. Müəllim dəyərləri dəyişə bilər; Forma №3-dən fərqlənən saat təsdiq zəncirində fərq kimi göstərilir.
 
 **Acceptance criteria:**
-- [ ] Forma №3-dən idxal olunmuş fənn üçün yeni sillabusun saatları idxal olunmuş kontakt saatlarına bərabərdir; dəyişdirilmiş saat kafedra müdirinin ekranında fərq kimi görünür
-- [ ] Çəkilərin cəmi 100 deyilsə və ya imtahan çəkisi tenant qaydasına uyğun deyilsə saxlanmır
-- [ ] Davamiyyət həddi tenant həddindən yuxarı olan sillabus saxlanmır: sillabus həddi yalnız aşağı sala bilər
-- [ ] Hər saxlama yeni qaralama versiyası yaradır; dərc olunmuş versiya dəyişdirilə bilmir
-- [ ] Çap görünüşündə bütün dəyərlər escape olunur
+- [x] Forma №3-dən idxal olunmuş fənn üçün yeni sillabusun saatları idxal olunmuş kontakt saatlarına bərabərdir; dəyişdirilmiş saat kafedra müdirinin ekranında fərq kimi görünür
+- [x] Çəkilərin cəmi 100 deyilsə və ya imtahan çəkisi tenant qaydasına uyğun deyilsə saxlanmır
+- [x] Davamiyyət həddi tenant həddindən yuxarı olan sillabus saxlanmır: sillabus həddi yalnız aşağı sala bilər
+- [x] Hər saxlama yeni qaralama versiyası yaradır; dərc olunmuş versiya dəyişdirilə bilmir
+- [x] Çap görünüşündə bütün dəyərlər escape olunur
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_syllabus_validation.py tests/integration/test_syllabus.py -q`
+- [x] `python -m pytest tests/unit/test_syllabus_validation.py tests/integration/test_syllabus.py -q`
 
 **Dependencies:** Task 17
 **Files likely touched:** `backend/zeka/modules/syllabus/{domain,service,repo,routes}.py`, `backend/migrations/0230_syllabus.sql`, `frontend/js/academy.js`

@@ -111,13 +111,15 @@ def test_tools_catalogue_and_course_toggle(teacher):
 
 
 def test_syllabus_assistant(app_db, teacher, admin):
-    assert teacher.get("/api/syllabus/1").json == {"saved": None, "updated_at": None}
-    syl = teacher.post("/api/syllabus/1/generate", {"weeks": 30}).json
+    assert teacher.get("/api/syllabi/1").json["latest"] is None
+    syl = teacher.post("/api/syllabus/1/generate", {"weeks": 30}).json                 # the assistant fills the first draft
     assert len(syl["plan"]) == 18 and len(syl["outcomes"]) >= 3 and sum(p for _, p in syl["assessment"]) == 100
     assert syl["plan"][6]["topic"] == "Kollokvium 1" and syl["workload"]["total"] == syl["course"]["credits"] * 30
-    syl["outcomes"][0] = "Redaktə olunmuş nəticə"
-    assert teacher.put("/api/syllabus/1", {"data": syl}).status == 200
-    assert teacher.get("/api/syllabus/1").json["saved"]["outcomes"][0] == "Redaktə olunmuş nəticə"
+    d = teacher.post("/api/syllabi/1/draft").json["data"]
+    assert len(d["plan"]) == 15 and sum(a["weight"] for a in d["assessment"]) == 100
+    d["outcomes"][0]["text"] = "Redaktə olunmuş nəticə"
+    assert teacher.put("/api/syllabi/1", {"data": d}).status == 200
+    assert teacher.get("/api/syllabi/1").json["latest"]["data"]["outcomes"][0]["text"] == "Redaktə olunmuş nəticə"
     url = teacher.post("/api/syllabus/1/link").json["url"]
     page = app_db.client().get(url).text
     assert "Təlim nəticələri" in page and "Redaktə olunmuş nəticə" in page

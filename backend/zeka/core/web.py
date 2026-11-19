@@ -161,7 +161,7 @@ class Request:
             return 0
         if not raw.isascii() or not raw.isdigit():     # also rejects negative values: read(-1) would block until EOF
             raise HTTPError(400, "Yanlış Content-Length")
-        if int(raw) > MAX_BODY:
+        if len(raw) > 9 or int(raw) > MAX_BODY:          # 5 000 digits would overflow int() into a logged ValueError
             raise HTTPError(413, "Sorğu çox böyükdür (maks. 16 MB)")
         return int(raw)
 
@@ -325,6 +325,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
             started = time.monotonic()
             parts = urllib.parse.urlsplit(self.path)
             path = urllib.parse.unquote(parts.path)
+            shown = "/ical/…" if path.startswith("/ical/") else path      # a calendar feed's path is its secret: never logged
             query = dict(urllib.parse.parse_qsl(parts.query))
             req = Request(self, method, path, query)
             try:
@@ -367,7 +368,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                     resp.headers.append(("Retry-After", "5"))
             except (ValueError, TypeError, OverflowError) as ex:      # malformed input a handler did not validate (an id > 2**63 too)
                 if _TRACE_LIMIT.hit("trace"):
-                    log(f"400 {method} {path}: {type(ex).__name__}: {str(ex)[:200]}")
+                    log(f"400 {method} {shown}: {type(ex).__name__}: {str(ex)[:200]}")
                 resp = self._error(path, 400, "Sorğu məlumatı düzgün deyil", req.lang)
             except Exception:
                 if _TRACE_LIMIT.hit("trace"):
@@ -378,7 +379,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
             self._send(resp, close or _STOPPING[0])
             if CFG.access_log:      # one JSON object per line, written at once: a path cannot forge or split an entry
                 sys.stdout.write(json.dumps({"time": clock.now().isoformat(timespec="milliseconds"), "ip": req.ip,
-                                             "method": method, "path": "/ical/…" if path.startswith("/ical/") else path,   # the feed's secret
+                                             "method": method, "path": shown,
                                              "status": resp.status,
                                              "ms": round((time.monotonic() - started) * 1000), "worker": os.getpid()},
                                             ensure_ascii=False) + "\n")

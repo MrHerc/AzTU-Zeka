@@ -151,6 +151,21 @@ prosesdən HTTP ilə 50 paralel sənəd), `tests/unit/test_layers.py` (SQL yaln�
   10 testin fayl daxilində sıradan asılılığı qalır: pytest faylı yazıldığı sırada işlədir. Ayrıca işlədilən testlər üçün
   modul fixture-ları sonraya saxlanılır.
 
+## S. Düzəlişlərin təhlükəsizlik yoxlaması (`security-review`)
+
+Düzəlişlərin diff-ini (`19e3ff8..7338e3d`) `ecc:security-reviewer` ayrıca yoxladı. Üç tapıntını başqa agent kopyada təkzib
+etməyə çalışdı. Skil `origin/HEAD` olmadığı üçün işləmədi. Yoxlama onun əvəzinə eyni əhatədə agentlə aparıldı.
+
+- **S1** (orta) — Qismən. P6 düzəlişi tədris vahidinin müəlliminə fənnə girişi açdı. Amma girişlə birlikdə bunlar da
+  açıldı: rəhbərin tutor ayarları, fənnin alətləri, başqasının materialını silmək və əvəzləmək, başqasının sualını
+  dəyişmək. Düzəliş: `course_access(req, cid, head=True)` tutor və alətlər üçündür. Material və sualı fənnin rəhbəri və
+  ya onu yaradan müəllim dəyişir. Studio və testin vahid müəlliminə açıq qalması sənədlərdə yazılmayıb. Bu, sahibin
+  qərarıdır.
+- **S2** (aşağı) — Təsdiqləndi. Ortadakı versiyanı silmək köhnə versiyanı geri qaytarırdı. Düzəliş: sonrakı versiya
+  silinənin sələfinə bağlanır, zəncir qırılmır.
+- **S3** (aşağı) — Qismən. 5000 rəqəmli `Content-Length` başlığı xəta jurnalına təqvim tokenini yazırdı. Düzəliş: belə
+  başlıq 413 alır, `/ical/` yolu heç bir jurnal sətrində görünmür.
+
 ## Yoxlanmayanlar
 
 - P8–P9 və L9 brauzerdə yalnız qismən yoxlanıb. JS test mühiti yoxdur.

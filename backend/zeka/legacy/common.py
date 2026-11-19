@@ -242,15 +242,17 @@ def holder(c, uid):
     return h
 
 
-def course_access(req, cid):
+def course_access(req, cid, head: bool = False):
+    """The course, when the user may work in it: its students, the head teacher and the teachers of its active teaching
+    units (Task 13), staff. ``head``: the course's own settings (tutor, tools), its head teacher only (Checkpoint C, S1)."""
     c, u = req.db, req.user
     course = row(c, "SELECT * FROM courses WHERE id=?", (cid,))
     if not course:
         raise HTTPError(404, "Fənn tapılmadı")
     if u["role"] == "student" and not row(c, "SELECT 1 FROM enrollments WHERE user_id=? AND course_id=?", (u["id"], cid)):
         raise HTTPError(403, "Bu fənnə qeydiyyatınız yoxdur")
-    if u["role"] == "teacher" and course["teacher_id"] != u["id"] and not row(
-            c, "SELECT 1 FROM teaching_units WHERE course_id=? AND teacher_id=? AND active=1", (cid, u["id"])):
+    if u["role"] == "teacher" and course["teacher_id"] != u["id"] and (head or not row(
+            c, "SELECT 1 FROM teaching_units WHERE course_id=? AND teacher_id=? AND active=1", (cid, u["id"]))):
         raise HTTPError(403, "Bu fənn sizə aid deyil")
     return course
 

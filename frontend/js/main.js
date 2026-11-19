@@ -8,6 +8,7 @@ import "./services.js";
 import "./news.js";
 import "./teacher.js";
 import "./academy.js";
+import "./syllabus.js";
 import "./staff.js";
 import "./guide.js";
 import "./support.js";
