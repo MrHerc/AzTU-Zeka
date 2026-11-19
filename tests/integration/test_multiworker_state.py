@@ -159,6 +159,21 @@ def test_a_restarted_worker_applies_what_changed_since_the_supervisor_built_the_
     assert status == 200 and "Kriogen texnika" in json.dumps(found, ensure_ascii=False), found
 
 
+def test_a_knowledge_base_article_saved_through_one_worker_answers_through_the_other(port):
+    """Task 32: an edited article is used on the next question in every process."""
+    admin, student = login(port, "admin"), login(port, "student")
+    a, pid_a = on_worker(port, admin)
+    status, body = a.call("POST", "/api/kb", {"heading": "Fotolaboratoriyanın açarı", "text": "Fotolaboratoriyanın açarını "
+                                              "Əsas korpusun mühafizə postundan tələbə bileti ilə götürmək olar.",
+                                              "source": "Kampus qaydaları (demo)", "status": "published"})
+    assert status == 200, body
+    a.close()
+    b, _ = on_worker(port, student, avoid=pid_a)
+    status, found = b.call("POST", "/api/campus/ask", {"message": "Fotolaboratoriyanın açarını haradan götürüm?"})
+    b.close()
+    assert status == 200 and found["answer"]["cites"][0]["heading"] == "Fotolaboratoriyanın açarı", found
+
+
 def test_fifty_documents_issued_in_parallel_through_two_workers_get_gapless_numbers(port):
     """Task 45 over HTTP (Checkpoint C, D4): parallel issues on two workers give distinct, gapless registry numbers, no 5xx."""
     import threading

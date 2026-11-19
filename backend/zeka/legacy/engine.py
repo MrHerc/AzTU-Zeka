@@ -168,6 +168,21 @@ class BM25:
         return [{"id": d, "score": round(s, 3), **m} for s, d, m in scores[:k]]
 
 
+def coverage(index: BM25, query: str, doc_id) -> tuple[int, float]:
+    """(how many distinct query terms the document has, their share of the query's idf weight)."""
+    q = set(terms(query))
+    doc = index.docs.get(doc_id)
+    if not q or not doc:
+        return 0, 0.0
+    n = len(index.docs)
+
+    def w(t):
+        df = index.df.get(t, 0)
+        return math.log(1 + (n - df + 0.5) / (df + 0.5))
+    matched = [t for t in q if t in doc[0]]
+    return len(matched), sum(w(t) for t in matched) / sum(w(t) for t in q)
+
+
 INDEX = {"chunks": BM25(), "campus": BM25(), "questions": BM25()}
 INDEX_SEQ = [0]                 # last index_changes.seq applied in this process (store.sync_indexes)
 INDEX_SYNC = threading.Lock()

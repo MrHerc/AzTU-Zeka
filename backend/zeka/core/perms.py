@@ -28,6 +28,8 @@ PERMS: dict[str, tuple[str, ...]] = {
     # Task 20: attendance after the teacher's window, imported rows and opening balances, a lesson's substitute teacher;
     # a department head scoped to departments acts on their courses only
     "journal.correct": ("dept_head", "admin"),
+    # Task 32: the campus knowledge base (articles, versions, review dates); who edits it is the owner's call (SPEC, Open Q 24)
+    "kb.manage": ("academic_office", "admin"),
 }
 
 SCOPE_TYPES = ("faculty", "department", "course")

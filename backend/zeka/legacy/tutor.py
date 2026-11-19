@@ -121,10 +121,11 @@ def compose_campus(question: str, hits: list[dict], lang: str = "az") -> dict:
     q = question.strip()
     if _GREET.match(q) and len(q) < 40:
         return {"text": s("Salam! Mən AzTU-nun kampus köməkçisiyəm. Arayışlar, qiymətləndirmə, akademik məzuniyyət, təqaüd və "
-                          "digər qaydalar barədə suallarınızı cavablandırıram."), "cites": [], "actions": [], "meta": {}}
+                          "digər qaydalar barədə suallarınızı cavablandırıram."), "cites": [], "actions": [], "meta": {"greeting": True}}
     if not hits or hits[0]["score"] < 1.0:
         return {"text": s("Bu barədə universitetin bilik bazasında məlumat tapılmadı. Sualınızı tədris hissəsinə **sərbəst ərizə** ilə göndərə bilərsiniz."),
-                "cites": [], "actions": [{"type": "request", "code": "free_application", "label": s("Sərbəst ərizə yaz")}],
+                "cites": [], "actions": [{"type": "handoff", "label": s("Dəstək xidmətinə ötür")},     # with this conversation (Task 32)
+                                         {"type": "request", "code": "free_application", "label": s("Sərbəst ərizə yaz")}],
                 "meta": {"no_source": True}}
     c = Cites(hits)
     top = hits[0]

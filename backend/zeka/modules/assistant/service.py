@@ -3,12 +3,15 @@ the way to it, and the person's next lesson with its room. Each answer names its
 that is none of these returns None and goes to the knowledge base."""
 from __future__ import annotations
 
+import json
 import re
 from datetime import date, timedelta
 
 from ...core.i18n import S
 from ...legacy.r_learning import WEEKDAYS
-from ...legacy.store import now
+from ...legacy.store import audit, iso, log_index, now
+from . import domain as kb_domain
+from . import repo as kb_repo
 from ..facilities import domain as rooms_domain
 from ..facilities import repo as rooms_repo
 from ..facilities import service as facilities
@@ -19,6 +22,28 @@ WHERE = re.compile(r"hara|harda|necə gedim|necə gedə|otaq|auditoriya|where|ho
 STEP_FREE = re.compile(r"pilləsiz|lift|əlil|araba|wheelchair|step[- ]?free|лифт|коляск", re.I)
 NUMBER = re.compile(r"(?<![\w-])(\d{2,4}[a-zA-Z]?)(?![\w-])")
 LOOKAHEAD_DAYS = 14
+AZ_TEXT = re.compile(r"[əğıöüşçƏĞİÖÜŞÇ]")               # not "I": English has it too
+CYRILLIC = re.compile(r"[а-яё]", re.I)
+WEAK_SHARE = 0.35          # an Azerbaijani question that shares one word with an article must give that word a third of its weight
+
+
+def campus_answer(c, user, masked: str, lang: str) -> dict:
+    """The campus assistant's answer to a question (PII already masked): its own records first, then the knowledge base.
+    Every answer that is not a greeting carries a source (``cites`` or ``meta.source``) or a handoff to a person
+    (Task 32): one that would carry neither gets the handoff."""
+    from ...legacy import engine, tutor                        # here: legacy imports this module
+    out = answer(c, user, masked, lang)
+    if out is None:
+        query = tutor.expand_query(masked)
+        hits = engine.INDEX["campus"].search(query, k=3)
+        if hits and AZ_TEXT.search(masked) and not CYRILLIC.search(masked):
+            matched, share = engine.coverage(engine.INDEX["campus"], query, hits[0]["id"])
+            if matched < 2 and share < WEAK_SHARE:            # one shared word is no evidence (Task 32): hand over
+                hits = []
+        out = tutor.compose_campus(masked, hits, lang)
+    if not (out["cites"] or out["meta"].get("source") or out["meta"].get("greeting") or any(a["type"] == "handoff" for a in out["actions"])):
+        out["actions"] = [{"type": "handoff", "label": S("Dəstək xidmətinə ötür", lang)}, *out["actions"]]
+    return out
 
 
 def answer(c, user, question: str, lang: str) -> dict | None:
@@ -105,3 +130,57 @@ def _next_lesson(c, user, step_free: bool, lang: str) -> dict:
     elif x["room"]:
         lines.append(S("Otaq: {room}", lang, room=x["room"]))
     return _out("\n".join(lines), "timetable", "next_lesson", _room_link(room["code"], lang) if room else [])
+
+
+# ---------------------------------------------------------------- the knowledge base (Task 32)
+def kb_list(c) -> list[dict]:
+    """The articles, each with whether its review date has passed."""
+    today = now().date().isoformat()
+    return [{**a, "overdue": bool(a["review_at"] and a["review_at"] < today)} for a in kb_repo.articles(c)]
+
+
+def kb_get(c, kid: int) -> dict | None:
+    a = kb_repo.article(c, kid)
+    return {"article": a, "versions": kb_repo.versions(c, kid)} if a else None
+
+
+def kb_save(c, user, kid: int | None, body) -> tuple[str, object]:
+    """('ok', article) | ('missing', None) | ('invalid', problem). Each save is a version; the search index of every
+    worker takes it on its next request (published: the new text; a draft or an archived one: out of the index)."""
+    v, problem = kb_domain.kb_input(body, kb_repo.request_codes(c))
+    if problem:
+        return "invalid", problem
+    at = iso(now())
+    if kid is None:
+        kid = kb_repo.insert(c, v, user["id"], at)
+    else:
+        old = kb_repo.article(c, kid)
+        if not old:
+            return "missing", None
+        if not kb_repo.has_versions(c, kid):                  # an article from the seed: its first state is kept too
+            kb_repo.add_version(c, old, old["updated_by"], old["updated_at"] or at)
+        kb_repo.update(c, kid, v, user["id"], at)
+    a = kb_repo.article(c, kid)
+    kb_repo.add_version(c, a, user["id"], at)
+    log_index(c, "campus", [kid], "upsert" if a["status"] == "published" else "delete")
+    audit(c, user["id"], "kb_save", "kb", f"#{kid} v{a['version']} {a['status']}: {a['heading'][:80]}")
+    return "ok", a
+
+
+def handoff(c, user, message_id: int) -> tuple[str, object]:
+    """A support ticket from an assistant answer that found no source, with the conversation up to it; once per answer
+    (asking again returns the same ticket). ('ok', ticket id) | ('missing', None)."""
+    m = kb_repo.campus_message(c, message_id, user["id"])
+    if not m:
+        return "missing", None
+    meta = json.loads(m["meta"] or "{}")
+    if meta.get("handoff"):
+        return "ok", meta["handoff"]
+    talk = kb_repo.campus_before(c, user["id"], message_id)
+    question = next((x["content"] for x in reversed(talk) if x["role"] == "user"), "")
+    body = "\n\n".join(f"{'İstifadəçi' if x['role'] == 'user' else 'Köməkçi'}: {x['content']}" for x in talk)
+    from ...legacy.r_support import create_ticket           # here: legacy routes import this module's routes
+    tid = create_ticket(c, user, "university", "normal", ("Kampus köməkçisi: " + " ".join(question.split()))[:140],
+                        body[:4000], "/chat")
+    kb_repo.set_message_meta(c, message_id, json.dumps({**meta, "handoff": tid}, ensure_ascii=False))
+    return "ok", tid

@@ -465,8 +465,7 @@ def campus_ask(req):
     _ai_quota(u)
     masked, pii = engine.mask_pii(msg)
     from ..modules.assistant import service as assistant      # here: that module imports this one
-    result = (assistant.answer(c, u, masked, req.lang)          # rooms, routes, the next lesson (Task 31)
-              or tutor.compose_campus(masked, engine.INDEX["campus"].search(tutor.expand_query(masked), k=3), req.lang))
+    result = assistant.campus_answer(c, u, masked, req.lang)    # rooms and the next lesson (Task 31), then the knowledge base
     um = save_msg(c, u["id"], None, "campus", "user", msg, meta={"pii": pii})
     meta = {**result["meta"], "actions": result["actions"]}
     am = save_msg(c, u["id"], None, "campus", "assistant", result["text"], result["cites"], meta)

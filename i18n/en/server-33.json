@@ -1,0 +1,13 @@
+{
+ "Dəstək xidmətinə ötür": "Hand over to the support desk",
+ "Başlıq 3–200 simvol olmalıdır": "The heading must be 3–200 characters",
+ "Mətn 20–8000 simvol olmalıdır": "The text must be 20–8000 characters",
+ "Mənbə sənədi göstərilməlidir (ən çox 200 simvol)": "Name the source document (at most 200 characters)",
+ "Bənd ən çox 120 simvoldur": "The clause is at most 120 characters",
+ "Belə e-xidmət yoxdur": "There is no such e-service",
+ "Düymənin adı yalnız e-xidmətlə və ən çox 60 simvol olur": "A button label needs an e-service and is at most 60 characters",
+ "Status düzgün deyil": "The status is not valid",
+ "Yenidən baxış tarixi YYYY-MM-DD formatında olmalıdır": "The review date must be in YYYY-MM-DD format",
+ "Məqalə tapılmadı": "Article not found",
+ "Cavab tapılmadı": "Answer not found"
+}

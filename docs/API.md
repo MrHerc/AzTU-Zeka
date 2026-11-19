@@ -598,6 +598,23 @@ Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily li
 }
 ```
 
+### Knowledge base and handoff (Task 32)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` | `/api/kb` | `kb.manage` (`academic_office`, `admin`) | The articles: heading, source and clause, review date (`overdue` once it has passed), status, version |
+| `GET` | `/api/kb/{id}` | as above | An article and its versions (who, when, status) |
+| `POST` | `/api/kb` | as above | A new article: `heading` (3–200), `text` (20–8000), `source` (required), `source_ref`, `request` (an e-service code) with `action_label`, `review_at` (YYYY-MM-DD), `status` (`published`, `draft`, `archived`) |
+| `PUT` | `/api/kb/{id}` | as above | Change it: a new version (an article from the seed keeps its first state as version 1); audited |
+| `POST` | `/api/campus/handoff` | the author of the answer | `{"message_id"}` of an assistant answer: a support ticket (category `university`) with the conversation up to it; once per answer, asking again gives the same `ticket_id` |
+
+Only a published article is searched; a save reaches every worker's index on its next request (`index_changes`).
+Every campus answer carries a source (`cites`, or `meta.source` for rooms and the timetable) or a `handoff` action;
+an Azerbaijani question that shares a single word with the best article, a word under a third of the question's weight,
+is answered with the handoff instead of that article. `python tools/eval_assistant.py tests/eval/assistant_az.jsonl`
+asks 50 questions (rules, services, rooms, the next lesson, out of scope) on a fresh demo database: 48 right, no
+answer without a source or a handoff.
+
 ## Tests and Test Studio
 
 | Method | Path | Access | Purpose |

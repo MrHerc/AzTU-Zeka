@@ -1,0 +1,50 @@
+{"q": "Banka təqdim etmək üçün tələbə olduğumu təsdiq edən arayışı haradan alım?", "lang": "az", "expect": {"kb": "Təhsil aldığını təsdiq edən arayışı necə almaq olar?"}}
+{"q": "Hərbi komissarlıq üçün arayış lazımdır, necə sifariş edim?", "lang": "az", "expect": {"kb": "Təhsil aldığını təsdiq edən arayışı necə almaq olar?"}}
+{"q": "How do I get a certificate confirming that I am a student?", "lang": "en", "expect": {"kb": "Təhsil aldığını təsdiq edən arayışı necə almaq olar?"}}
+{"q": "Transkripti ingilis dilində sifariş etmək olar?", "lang": "az", "expect": {"kb": "Akademik göstəricilər haqqında çıxarış (transkript)"}}
+{"q": "Qiymətlərimin çıxarışı neçə günə hazır olur?", "lang": "az", "expect": {"kb": "Akademik göstəricilər haqqında çıxarış (transkript)"}}
+{"q": "Xəstə olduğum günlərin qayıbını necə üzrlü etdirim?", "lang": "az", "expect": {"kb": "Xəstəlik səbəbindən buraxılmış dərslər (qayıbın üzrlü hesab edilməsi)"}}
+{"q": "Həkim arayışım var, buraxdığım dərslər üçün nə edim?", "lang": "az", "expect": {"kb": "Xəstəlik səbəbindən buraxılmış dərslər (qayıbın üzrlü hesab edilməsi)"}}
+{"q": "Как оправдать пропуски по болезни?", "lang": "ru", "expect": {"kb": "Xəstəlik səbəbindən buraxılmış dərslər (qayıbın üzrlü hesab edilməsi)"}}
+{"q": "Olimpiadaya gedəcəyəm, dərslərdən əvvəlcədən icazəni necə alım?", "lang": "az", "expect": {"kb": "Dərslərdən əvvəlcədən icazə almaq"}}
+{"q": "Konfransa görə dərsə gəlməyəcəm, icazə necə alınır?", "lang": "az", "expect": {"kb": "Dərslərdən əvvəlcədən icazə almaq"}}
+{"q": "Kollokviuma gələ bilmədim, başqa vaxta keçirmək olarmı?", "lang": "az", "expect": {"kb": "İmtahanın və ya kollokviumun başqa vaxta keçirilməsi"}}
+{"q": "İmtahanı başqa günə keçirmək üçün nə lazımdır?", "lang": "az", "expect": {"kb": "İmtahanın və ya kollokviumun başqa vaxta keçirilməsi"}}
+{"q": "Akademik məzuniyyət necə götürülür?", "lang": "az", "expect": {"kb": "Akademik məzuniyyət"}}
+{"q": "Ailə vəziyyətinə görə təhsilimə ara vermək istəyirəm, nə etməliyəm?", "lang": "az", "expect": {"kb": "Akademik məzuniyyət"}}
+{"q": "How can I take academic leave?", "lang": "en", "expect": {"kb": "Akademik məzuniyyət"}}
+{"q": "Neçə bal əla qiymət sayılır?", "lang": "az", "expect": {"kb": "Qiymətləndirmə sistemi"}}
+{"q": "Semestr ərzində neçə bal toplanır, imtahanda neçə?", "lang": "az", "expect": {"kb": "Qiymətləndirmə sistemi"}}
+{"q": "Neçə faiz qayıb olsa imtahana buraxılmıram?", "lang": "az", "expect": {"kb": "Davamiyyət və imtahana buraxılma"}}
+{"q": "Davamiyyət həddi nədir?", "lang": "az", "expect": {"kb": "Davamiyyət və imtahana buraxılma"}}
+{"q": "İmtahan nəticəmlə razı deyiləm, apellyasiyaya necə müraciət edim?", "lang": "az", "expect": {"kb": "İmtahan nəticəsindən apellyasiya"}}
+{"q": "Как подать апелляцию на результат экзамена?", "lang": "ru", "expect": {"kb": "İmtahan nəticəsindən apellyasiya"}}
+{"q": "İşləyirəm, fərdi tədris qrafiki ala bilərəm?", "lang": "az", "expect": {"kb": "Fərdi tədris qrafiki"}}
+{"q": "Təqaüd almaq üçün orta bal neçə olmalıdır?", "lang": "az", "expect": {"kb": "Təqaüd"}}
+{"q": "Təqaüd necə təyin olunur?", "lang": "az", "expect": {"kb": "Təqaüd"}}
+{"q": "Təhsil haqqını hissə-hissə ödəmək olar?", "lang": "az", "expect": {"kb": "Təhsil haqqının ödənilməsi"}}
+{"q": "Yataqxanada yer necə əldə edə bilərəm?", "lang": "az", "expect": {"kb": "Yataqxana"}}
+{"q": "How do I apply for a place in the dormitory?", "lang": "en", "expect": {"kb": "Yataqxana"}}
+{"q": "Kitabxana nə vaxt işləyir?", "lang": "az", "expect": {"kb": "Kitabxana və elektron resurslar"}}
+{"q": "Beynəlxalq elmi bazalara necə daxil olum?", "lang": "az", "expect": {"kb": "Kitabxana və elektron resurslar"}}
+{"q": "Tələbə biletimi itirmişəm, nə etməliyəm?", "lang": "az", "expect": {"kb": "Tələbə bileti itdikdə"}}
+{"q": "Tədbirlərə necə qeydiyyatdan keçim?", "lang": "az", "expect": {"kb": "Tədbirlər və xəbərlər"}}
+{"q": "AI tutorun yazdığı mətni öz işim kimi təqdim etmək olarmı?", "lang": "az", "expect": {"kb": "AI tutordan istifadə və akademik dürüstlük"}}
+{"q": "Tutorla söhbətlərimi kim görür?", "lang": "az", "expect": {"kb": "AI tutordan istifadə və akademik dürüstlük"}}
+{"q": "EK-305 haradadır?", "lang": "az", "expect": {"room": "EK-305"}}
+{"q": "Elektronika laboratoriyası harda yerləşir?", "lang": "az", "expect": {"room": "EK-316"}}
+{"q": "Qrafika laboratoriyasına necə gedim?", "lang": "az", "expect": {"room": "EK-405"}}
+{"q": "İT korpusunda 214 otağı haradadır?", "lang": "az", "expect": {"room": "IT-214"}}
+{"q": "Liftlə EK-512-yə necə çatım?", "lang": "az", "expect": {"room": "EK-512"}}
+{"q": "Where is room EK-220?", "lang": "en", "expect": {"room": "EK-220"}}
+{"q": "Где аудитория EK-118?", "lang": "ru", "expect": {"room": "EK-118"}}
+{"q": "301 nömrəli auditoriya hansı mərtəbədədir?", "lang": "az", "expect": {"room": "EK-301"}}
+{"q": "Növbəti dərsim hardadır?", "lang": "az", "expect": {"intent": "next_lesson"}}
+{"q": "What is my next lesson?", "lang": "en", "expect": {"intent": "next_lesson"}}
+{"q": "Marsda yataqxana varmı ulduzlararası?", "lang": "az", "expect": {"handoff": true}}
+{"q": "Bu gün Bakıda hava necə olacaq?", "lang": "az", "expect": {"handoff": true}}
+{"q": "Dünənki futbol matçının hesabı nədir?", "lang": "az", "expect": {"handoff": true}}
+{"q": "Bitkoin almaq sərfəlidirmi?", "lang": "az", "expect": {"handoff": true}}
+{"q": "Mənə sevgi haqqında şeir yaz", "lang": "az", "expect": {"handoff": true}}
+{"q": "Rektorun maşını hansı markadır?", "lang": "az", "expect": {"handoff": true}}
+{"q": "Universitetin hovuzu neçədə açılır?", "lang": "az", "expect": {"handoff": true}}

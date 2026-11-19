@@ -101,17 +101,24 @@ def ticket_create(req):
     if len(body) < 10:
         raise HTTPError(400, "Problemi bir-iki cümlə ilə təsvir edin")
     t = iso(now())
-    tid = c.execute("INSERT INTO support_tickets(user_id,category,priority,subject,body,page,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
-                    (u["id"], cat, prio, subject, body, b.text("page", 200), "open", t, t)).lastrowid
+    tid = create_ticket(c, u, cat, prio, subject, body, b.text("page", 200))
     fid = b.integer("file_id")
     if fid:
         f = row(c, "SELECT id FROM files WHERE id=? AND owner_id=? AND request_id IS NULL", (fid, u["id"]))
         if f:
             c.execute("INSERT INTO support_messages(ticket_id,author_id,text,internal,file_id,created_at) VALUES(?,?,?,?,?,?)",
                       (tid, u["id"], "", 0, f["id"], t))
+    return ticket_get_by_id(req, tid)
+
+
+def create_ticket(c, u, cat: str, prio: str, subject: str, body: str, page: str = "") -> int:
+    """A new ticket, the desk told and the step audited (the support form and the campus assistant's handoff, Task 32)."""
+    t = iso(now())
+    tid = c.execute("INSERT INTO support_tickets(user_id,category,priority,subject,body,page,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                    (u["id"], cat, prio, subject, body, page, "open", t, t)).lastrowid
     notify(c, _desk_ids(c), "support", T3("Yeni dəstək sorğusu № {id}", id=tid), f"{u['full_name']}: {subject[:90]}", f"/staff/support/{tid}")
     audit(c, u["id"], "support_create", "ticket", f"#{tid} {cat}/{prio}")
-    return ticket_get_by_id(req, tid)
+    return tid
 
 
 def ticket_get_by_id(req, tid):

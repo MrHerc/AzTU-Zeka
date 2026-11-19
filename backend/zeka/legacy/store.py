@@ -243,7 +243,7 @@ def _question_entry(q) -> tuple:
 
 _ENTRY_SQL = {
     "chunks": ("SELECT ch.*, m.title AS material FROM chunks ch JOIN materials m ON m.id=ch.material_id WHERE ch.id=?", _chunk_entry),
-    "campus": ("SELECT * FROM campus_kb WHERE id=?", _kb_entry),
+    "campus": ("SELECT * FROM campus_kb WHERE id=? AND status='published'", _kb_entry),        # a draft is never searched (Task 32)
     "questions": ("SELECT id, course_id, text, topic, status FROM questions WHERE id=? AND purpose='practice'", _question_entry),   # never an exam's (Task 26)
 }
 
@@ -291,7 +291,7 @@ def build_indexes(c):
     fresh = {k: engine.BM25() for k in engine.INDEX}
     for ch in rows(c, "SELECT ch.*, m.title AS material FROM chunks ch JOIN materials m ON m.id=ch.material_id"):
         fresh["chunks"].add(*_chunk_entry(ch))
-    for kb in rows(c, "SELECT * FROM campus_kb"):
+    for kb in rows(c, "SELECT * FROM campus_kb WHERE status='published'"):
         fresh["campus"].add(*_kb_entry(kb))
     for q in rows(c, "SELECT id, course_id, text, topic, status FROM questions WHERE purpose='practice'"):
         fresh["questions"].add(*_question_entry(q))

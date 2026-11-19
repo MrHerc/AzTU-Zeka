@@ -67,7 +67,7 @@ def test_compose_campus(seeded):
     r = tutor.compose_campus(q, engine.INDEX["campus"].search(tutor.expand_query(q), k=3))
     assert r["cites"] and any(a["code"] == "absence_excuse" for a in r["actions"])
     none = tutor.compose_campus("Mars səfəri", [])
-    assert none["meta"]["no_source"] is True and none["actions"][0]["code"] == "free_application"
+    assert none["meta"]["no_source"] is True and [x["type"] for x in none["actions"]] == ["handoff", "request"] and none["actions"][1]["code"] == "free_application"
     assert "kampus köməkçisiyəm" in tutor.compose_campus("Salam", [])["text"]
 
 

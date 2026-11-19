@@ -102,6 +102,8 @@ export async function chatView(el, cfg) {
           ${m.cites && m.cites.length ? html`<div class="src-list">${m.cites.map((c) => html`<button class="src" data-src="${c.n}" aria-label="${t("Mənbə {n}: {title}", { n: c.n, title: `${c.material} · ${c.heading}` })}">${raw(`<b>${c.n}</b>`)}<span class="ellipsis" style="max-width:260px">${c.material} · ${c.heading}</span></button>`)}</div>` : ""}
           ${(meta.actions || []).length ? html`<div class="action-btns">${meta.actions.map((a) => a.type === "link" && /^\/r\/[\w-]+$/.test(a.href || "")
             ? html`<a class="btn btn-ghost btn-sm" href="${a.href}" target="_blank" rel="noopener">${ic("pin", 14)} ${a.label}</a>`
+            : a.type === "handoff"
+            ? html`<button class="btn btn-primary btn-sm" data-handoff="${m.id}">${ic("ticket", 14)} ${a.label}</button>`
             : html`<button class="btn btn-primary btn-sm" data-request="${a.code}">${ic("file", 14)} ${a.label}</button>`)}</div>` : ""}
         </div>
         <div class="msg-meta">
@@ -257,6 +259,14 @@ export async function chatView(el, cfg) {
     try { await navigator.clipboard.writeText(msgOf(b).content); toast(t("Kopyalandı"), "ok"); } catch { toast(t("Kopyalamaq mümkün olmadı"), "err"); }
   });
   on(cs, "click", "[data-request]", (e, b) => go(`/student/apply/${b.dataset.request}`));
+  on(cs, "click", "[data-handoff]", async (e, b) => {         // the conversation goes to the support desk (Task 32)
+    b.disabled = true;
+    try {
+      const r = await api.post("/api/campus/handoff", { message_id: +b.dataset.handoff });
+      toast(t("Dəstək sorğusu № {id} yaradıldı", { id: r.ticket_id }), "ok");
+      go(`/support/${r.ticket_id}`);
+    } catch (err) { b.disabled = false; toast(err.message, "err"); }
+  });
   on(cs, "click", "[data-forward]", (e, b) => {
     const m = msgOf(b);
     const idx = st.messages.indexOf(m);

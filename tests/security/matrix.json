@@ -590,6 +590,26 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/kb": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "kb.manage",
+  "slow": false
+ },
+ "GET /api/kb/{id:int}": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "kb.manage",
+  "slow": false
+ },
  "GET /api/lessons": {
   "access": [
    "academic_office",
@@ -1287,6 +1307,13 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/campus/handoff": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/consent": {
   "access": "any",
   "audit_read": null,
@@ -1608,6 +1635,16 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "POST /api/kb": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "kb.manage",
   "slow": false
  },
  "POST /api/lessons/{id:int}/cancel": {
@@ -2083,6 +2120,16 @@
   "audit_read": null,
   "demo": false,
   "perm": "journal.correct",
+  "slow": false
+ },
+ "PUT /api/kb/{id:int}": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "kb.manage",
   "slow": false
  },
  "PUT /api/me/notifications": {

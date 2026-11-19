@@ -775,13 +775,13 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** Bilik bazası məqalələri bazaya keçir: versiya, mənbə (sənəd, bənd), əməliyyat keçidi, yenidən baxış tarixi; admin ekranı. Dəyişiklik indeks siqnalı verir. Mənbə tapılmayanda köməkçi dəstək sorğusu və ya müəllim sualı yaratmağı təklif edir, söhbət konteksti ilə. `tests/eval/assistant_az.jsonl`: 50 sual (qayda, xidmət, otaq, əhatədən kənar) və işlədici.
 
 **Acceptance criteria:**
-- [ ] Redaktə olunan məqalə növbəti sualda hər prosesdə istifadə olunur
-- [ ] Hər cavab ya mənbə, ya insana ötürmə daşıyır; ikisi də olmayan cavab yoxdur
-- [ ] Qiymətləndirmə dəstində ən azı 45/50 düzgün mənbə
+- [x] Redaktə olunan məqalə növbəti sualda hər prosesdə istifadə olunur (`test_kb_admin`, `test_multiworker_state::test_a_knowledge_base_article_…`)
+- [x] Hər cavab ya mənbə, ya insana ötürmə daşıyır; ikisi də olmayan cavab yoxdur (`assistant.service.campus_answer` təmin edir; qiymətləndirmədə 0)
+- [x] Qiymətləndirmə dəstində ən azı 45/50 düzgün mənbə (48/50; iki səhv: davamiyyət faizi sualı qayıb məqaləsinə gedir, "Rektorun maşını" qiymətləndirmə məqaləsinə)
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_kb_admin.py -q`
-- [ ] `python tools/eval_assistant.py tests/eval/assistant_az.jsonl`
+- [x] `python -m pytest tests/integration/test_kb_admin.py -q`
+- [x] `python tools/eval_assistant.py tests/eval/assistant_az.jsonl`
 
 **Dependencies:** Task 7, Task 31
 **Files likely touched:** `backend/zeka/modules/assistant/{service,repo,routes}.py`, `backend/migrations/0320_kb.sql`, `frontend/js/admin-kb.js`, `tests/eval/assistant_az.jsonl`, `tools/eval_assistant.py`
