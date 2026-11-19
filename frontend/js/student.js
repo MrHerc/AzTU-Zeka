@@ -1,5 +1,5 @@
 import { api, html, raw, mount, on, md, ic, toast, modal, route, go, S, pageHead, badge, fmtDate, fmtDateTime, fmtDayLong, ago, ring, progress, loading, empty,
-  failed, infoTip, greeting, QTYPE, cover, datebox, cnt, num, registerTour, openFile, openSyllabus, refCard, refList, t, $, $$, esc, isoDay } from "./core.js";
+  failed, infoTip, greeting, QTYPE, cover, datebox, cnt, num, registerTour, openFile, refCard, refList, t, $, $$, esc, isoDay } from "./core.js";
 import { chatView } from "./chat.js";
 import { achievementsTeaser } from "./achievements.js";
 import { studentPlanCard } from "./radar.js";
@@ -169,7 +169,7 @@ route("/student/course/:id", async (el, p) => {
           ${tool.url ? html`<a class="btn btn-sm" href="${tool.url}" target="_blank" rel="noopener noreferrer">${ic("external", 13)} ${t("Aç")}</a>` : ""}</div>`)}</div></div>` : ""}
       </div></div>`);
   studentAssignments($("#assignments", el), c);
-  on(el, "click", "[data-syl]", (e, b) => openSyllabus(+b.dataset.syl, c.name));
+  on(el, "click", "[data-syl]", (e, b) => window.open(`/syllabus/${+b.dataset.syl}`, "_blank", "noopener"));   // the published version
   on(el, "click", "[data-mat]", async (e, b) => {
     if (e.target.closest("[data-nomat]")) return;                    // the download link inside the row (Task 22)
     let m;

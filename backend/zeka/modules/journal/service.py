@@ -7,7 +7,7 @@ from datetime import timedelta
 from ...core import perms, tenant
 from ...core.web import an_id
 from ...core.i18n import E
-from ...legacy.store import audit, iso, now
+from ...legacy.store import J, audit, iso, now
 from ..timetable import domain as timetable_rules
 from ..timetable import service as timetable
 from . import domain, repo
@@ -206,8 +206,16 @@ def teacher_lessons(c, user, day: str | None) -> list[dict]:
 
 # ---------------------------------------------------------------- grades (Task 21)
 def columns(c, co: dict) -> list[dict]:
-    """The course's components: the published syllabus's scheme once Task 25 writes it, the university's until then."""
-    return domain.scheme(tenant.load(c)["grading"])
+    """The course's components: the published syllabus's scheme (Task 25), the university's until there is one."""
+    return domain.scheme(course_grading(c, co))
+
+
+def course_grading(c, co: dict) -> dict:
+    """The grading scheme a course is marked by: the components and exam of its published syllabus; the pass mark,
+    the letter scale and the exam minimum are always the university's."""
+    grading = tenant.load(c)["grading"]
+    own = J(co.get("grading"), None) if co.get("grading") else None
+    return {**grading, **own} if isinstance(own, dict) else grading
 
 
 def _writable(c, user, co: dict, students: list[dict]) -> set[int]:
@@ -230,7 +238,11 @@ def _attendance_cell(c, co: dict, cols: list[dict], standing: dict | None, rules
 
 
 def _result(c, cols: list[dict], cells: dict, attendance: float | None, rules: dict | None = None) -> dict:
-    grading = (rules or tenant.load(c))["grading"]
+    """The outcome by the columns' own components and exam (a course's published scheme or the university's)."""
+    base = (rules or tenant.load(c))["grading"]
+    exam_col = next(x for x in cols if x["kind"] == "exam")
+    grading = {**base, "components": [{"name": x["key"], "max": x["max"]} for x in cols if x["kind"] != "exam"],
+               "exam": {**base["exam"], "name": exam_col["key"], "max": exam_col["max"]}}
     scores = {x["key"]: (attendance if x["kind"] == "attendance" else cells.get(x["key"])) for x in cols if x["kind"] != "exam"}
     exam = next((cells.get(x["key"]) for x in cols if x["kind"] == "exam"), None)
     return tenant.outcome(scores, exam, grading)

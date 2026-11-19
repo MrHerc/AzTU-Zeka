@@ -860,6 +860,13 @@ Audience: students see `all` and `students`, teachers see `all` and `teachers`, 
 | `POST` | `/api/syllabi/{id}/draft` | the course's head teacher | A first draft, not saved: from a syllabus saved before Task 23, else from the assistant, with Forma №3 hours |
 | `PUT` | `/api/syllabi/{id}` | the course's head teacher | Save as a new draft version (`{"data": ..., "base": <version>}`; `409` when a newer version exists) |
 | `GET` | `/api/syllabi/{id}/versions/{vid}` | staff who read the course | One version's data |
+| `POST` | `/api/syllabi/{id}/versions/{vid}/submit` | the course's head teacher | draft → submitted (the latest version only) |
+| `POST` | `/api/syllabi/{id}/versions/{vid}/approve` | `dept_head` whose grant covers the course | submitted → approved |
+| `POST` | `/api/syllabi/{id}/versions/{vid}/publish` | `academic_office` | approved → published; configures the course (see below) |
+| `POST` | `/api/syllabi/{id}/versions/{vid}/return` | `dept_head` (submitted), `academic_office` (approved) | → returned, with `{"note"}` (required) |
+| `GET` | `/api/syllabi/queue` | `dept_head`, `academic_office`, `admin` | Versions waiting for this role, with their Forma №3 difference and the count of changes from the published version |
+| `GET` | `/api/syllabi/{id}/diff?a=&b=` | staff who read the course | What changed from version `a` to `b`, by section |
+| `GET` | `/api/courses/{id}/syllabus` | the course's students and readers | `{"published": <version or null>}` |
 | `POST` | `/api/syllabus/{cid}/generate` | `teacher` | The syllabus assistant's output (the first draft's source) |
 | `POST` | `/api/syllabus/{cid}/link` | `teacher` | One-time link to the printable syllabus |
 
@@ -878,6 +885,17 @@ when the weights do not add up to 100, when the exam does not weigh the universi
 attendance limit is above the university's (a syllabus may only lower it). Every save is a new version with status
 `draft`; a version never changes afterwards. Forma №3 hours are the largest unit of each kind among the course's active
 teaching units; `diff` lists the kinds whose syllabus hours differ from them.
+
+The approval chain (Task 25): only the next role moves a version on (`actions` in `GET /api/syllabi/{id}` lists the steps
+this user may take; a wrong role or status is `403`). Each step is a row in `syllabus_steps` and an audit entry; a
+return notifies the author with the comment, and the teacher saves and submits a new version. Publication writes the
+course's grading scheme (its components and exam; the pass mark, the scale and the exam minimum stay the university's),
+`courses.attendance_limit` (the journal applies the lower of the university's and the syllabus's limit) and the tutor
+modes from the AI policy (`allowed`: Socratic, explain, practice; `limited`: Socratic and practice; `forbidden`:
+Socratic only, locked), and recomputes the course's final grades. A course that already has scores is published only
+with `{"override": true, "note": "<reason>"}` from the academic office (`409` otherwise; an audit entry
+`syllabus_publish_override`). Scores of components the new scheme no longer has stay in the database but are not
+shown. A student reads only the published version (`GET /api/courses/{id}/syllabus`, `/syllabus/{id}`).
 
 ## Support desk and feedback
 

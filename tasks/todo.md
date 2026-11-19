@@ -634,13 +634,13 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** Statuslar: qaralama → təqdim olunub → kafedra təsdiqləyib → dərc olunub; hər addımda şərhlə geri qaytarma. Versiyalar arası fərq görünüşü. Dərc olunanda: jurnal komponentləri, fənnin davamiyyət həddi (`courses.attendance_limit`, Task 20-nin miqrasiyası), AI siyasətinə görə tutor rejimi, imtahan planının ilkin dəyərləri təyin olunur. Tələbə fənn səhifəsində dərc olunmuş sillabusu görür.
 
 **Acceptance criteria:**
-- [ ] Zəncirdə yalnız növbəti rol statusu irəli apara bilir
-- [ ] Dərc fənnin qiymət komponentlərini və tutor rejimini sillabusdakı kimi dəyişir
-- [ ] Dərc fənnin davamiyyət həddini təyin edir; jurnal bundan sonra min(tenant həddi, sillabus həddi) tətbiq edir (test: tenant 25%, sillabus 20%, 21% qayıb "imtahana buraxılmır" verir)
-- [ ] Bal artıq yazılıbsa, dərc tədris şöbəsinin açıq, auditli icazəsi olmadan bloklanır; tələbə yalnız dərc olunmuş versiyanı görür
+- [x] Zəncirdə yalnız növbəti rol statusu irəli apara bilir
+- [x] Dərc fənnin qiymət komponentlərini və tutor rejimini sillabusdakı kimi dəyişir
+- [x] Dərc fənnin davamiyyət həddini təyin edir; jurnal bundan sonra min(tenant həddi, sillabus həddi) tətbiq edir (test: tenant 25%, sillabus 20%, 21% qayıb "imtahana buraxılmır" verir)
+- [x] Bal artıq yazılıbsa, dərc tədris şöbəsinin açıq, auditli icazəsi olmadan bloklanır; tələbə yalnız dərc olunmuş versiyanı görür
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_syllabus_workflow.py -q`
+- [x] `python -m pytest tests/integration/test_syllabus_workflow.py -q`
 
 **Dependencies:** Task 23, Task 21
 **Files likely touched:** `backend/zeka/modules/syllabus/{service,routes}.py`, `backend/zeka/modules/journal/service.py`, `frontend/js/academy.js`, `frontend/js/student.js`

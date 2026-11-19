@@ -124,6 +124,9 @@ def course_detail(req):
     c, u = req.db, req.user
     co = course_access(req, req.params["id"])
     out = course_card(c, co, u, standing=True)
+    from ..modules.syllabus import service as syllabus
+    pub = syllabus.published_for(c, u, co["id"])
+    out["syllabus_id"] = co["id"] if pub else None          # the published syllabus (Task 25): what a student reads
     out["tutor_rules"] = co["tutor_rules"] or ""
     out["materials_list"] = rows(c, "SELECT m.id, m.title, m.filename, m.chunk_count, m.term_count, m.created_at, LENGTH(m.text) chars, "
                                     "m.file_id, m.replaces_id, NOT " + CURRENT + " replaced, u.full_name uploaded_by FROM materials m "
@@ -266,10 +269,10 @@ def my_absences(req):
 def grades(req):
     """Published scores only (Task 21); the attendance component from the journal; past terms from the final grades."""
     c, u = req.db, req.user
-    grading = tenant.load(c)["grading"]                       # Task 17: the scheme is the university's setting
     out = []
     for co in my_courses(c, u):
         g = journal.student_grades(c, u["id"], co)
+        grading = journal.course_grading(c, co)              # the course's published syllabus, else the university's (Task 25)
         result = g["result"]
         out.append({"id": co["id"], "name": co["name"], "code": co["code"], "color": co["color"], "credits": co["credits"],
                     "items": g["items"], "semester": round(result["semester"], 1), "exam": result["exam"], "result": result,

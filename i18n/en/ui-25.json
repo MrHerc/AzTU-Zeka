@@ -1,0 +1,30 @@
+{
+ "Sillabus təsdiqi": "Syllabus approval",
+ "əlavə olunub": "added",
+ "çıxarılıb": "removed",
+ "dəyişib": "changed",
+ "Təsdiqə göndər": "Send for approval",
+ "Geri qaytar": "Return",
+ "Fərq yoxdur": "No differences",
+ "Düzəldib yeni versiya kimi saxlayın və yenidən təsdiqə göndərin.": "Make the changes, save them as a new version and send it for approval again.",
+ "Fərq": "Differences",
+ "Əvvəlki versiyadan fərq": "Differences from the previous version",
+ "Versiya {n} kafedra müdirinə göndəriləcək. Göndərilən versiya dəyişmir.": "Version {n} will be sent to the head of department. A version sent cannot be changed.",
+ "Təsdiqə göndərildi": "Sent for approval",
+ "Təsdiq gözləyən versiyalar: fərqə baxın, təsdiqləyin və ya şərhlə geri qaytarın.": "Versions waiting for approval: look at the differences, approve, or return with a comment.",
+ "Versiya": "Version",
+ "Müəllif": "Author",
+ "Forma №3": "Form No. 3",
+ "Dəyişiklik": "Changes",
+ "{n} fərq": {
+  "one": "{n} difference",
+  "other": "{n} differences"
+ },
+ "ilk dərc": "first publication",
+ "Təsdiq gözləyən sillabus yoxdur": "No syllabus is waiting for approval",
+ "Müəllim versiyanı təqdim edəndə burada görünür.": "A version appears here when its teacher submits it.",
+ "Forma №3-dən fərq": "Difference from Form No. 3",
+ "Dərc olunmuş versiyadan fərq": "Differences from the published version",
+ "Şərh": "Comment",
+ "Bu fəndə bal yazılıb: dərcə icazə verirəm (səbəb şərhdə yazılır və audit jurnalına düşür)": "This course already has scores: I permit publication (the reason goes in the comment and the audit log)"
+}

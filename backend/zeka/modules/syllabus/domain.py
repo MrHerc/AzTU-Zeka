@@ -180,3 +180,62 @@ def initial(generated: dict, rules: dict, imported: dict, prerequisites: list[st
             "rules": {"attendance_limit": float(rules["attendance"]["limit_percent"]), "ai_policy": "limited", "late_policy": "", "ai_note": ""},
             "prerequisites": [p[:200] for p in prerequisites if p][:20], "literature": literature,
             "workload": {**{k: 0.0 for k in WORKLOAD}, **contact, "independent": max(total - given, 0.0)}}
+
+
+# ---------------------------------------------------------------- approval and publication (Task 25)
+# action: (the status it starts from, the status it leads to, the role that takes it). Only the next role moves a
+# version on; a return goes back to the teacher with a comment and the teacher saves a new version.
+STEPS = {
+    "submit": (("draft",), "submitted", "teacher"),
+    "approve": (("submitted",), "approved", "dept_head"),
+    "publish": (("approved",), "published", "academic_office"),
+    "return": (("submitted", "approved"), "returned", None),          # dept_head from submitted, academic_office from approved
+}
+RETURNS_BY = {"submitted": "dept_head", "approved": "academic_office"}
+TUTOR = {"allowed": (["socratic", "explain", "practice"], 0), "limited": (["socratic", "practice"], 0), "forbidden": (["socratic"], 1)}
+
+
+def step(status: str, action: str, role: str) -> str | None:
+    """The status ``action`` by ``role`` leads to from ``status``, or None when it is not that role's step."""
+    found = STEPS.get(action)
+    if not found or status not in found[0]:
+        return None
+    who = RETURNS_BY.get(status) if action == "return" else found[2]
+    return found[1] if who == role else None
+
+
+def course_grading(data: dict, grading: dict) -> dict:
+    """The course's grading scheme from a syllabus, in the university's format (``tenant.grading``): its components and
+    exam; the pass mark, the letter scale and the exam minimum stay the university's."""
+    comps = [{"name": a["name"], "max": a["weight"], **({"attendance": True} if a["kind"] == "attendance" else {})}
+             for a in data["assessment"] if a["kind"] != "exam"]
+    exam = next(a for a in data["assessment"] if a["kind"] == "exam")
+    return {"components": comps, "exam": {"name": exam["name"], "max": exam["weight"], "min": grading["exam"]["min"]}}
+
+
+def tutor_modes(ai_policy: str) -> tuple[list[str], int]:
+    """The tutor's modes and lock from the syllabus's AI policy: forbidden leaves only the Socratic mode, which never
+    gives a final answer, and locks it; limited drops the explaining mode."""
+    return TUTOR.get(ai_policy, TUTOR["limited"])
+
+
+def diff(a: dict, b: dict) -> list[dict]:
+    """What changed from version ``a`` to version ``b``, section by section: [{section, change, key, before, after}]."""
+    out: list[dict] = []
+
+    def keyed(section, key):
+        xs = {str(x[key]): x for x in a.get(section, [])}
+        ys = {str(y[key]): y for y in b.get(section, [])}
+        for k in xs.keys() | ys.keys():
+            if xs.get(k) != ys.get(k):
+                out.append({"section": section, "change": "added" if k not in xs else "removed" if k not in ys else "changed",
+                            "key": k, "before": xs.get(k), "after": ys.get(k)})
+    keyed("outcomes", "id")
+    keyed("plan", "week")
+    keyed("assessment", "name")
+    keyed("literature", "title")
+    for section in ("description", "rules", "prerequisites", "workload"):
+        if a.get(section) != b.get(section):
+            out.append({"section": section, "change": "changed", "key": section, "before": a.get(section), "after": b.get(section)})
+    order = {s: i for i, s in enumerate(("description", "outcomes", "plan", "assessment", "rules", "prerequisites", "literature", "workload"))}
+    return sorted(out, key=lambda x: (order[x["section"]], x["key"]))

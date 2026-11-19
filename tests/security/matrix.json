@@ -253,6 +253,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/courses/{id:int}/syllabus": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/demo/storyline": {
   "access": "public",
   "audit_read": null,
@@ -775,7 +782,33 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/syllabi/queue": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/syllabi/{id:int}": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/syllabi/{id:int}/diff": {
   "access": [
    "academic_office",
    "admin",
@@ -913,6 +946,7 @@
    "admin",
    "dept_head",
    "leader",
+   "student",
    "teacher"
   ],
   "audit_read": null,
@@ -1528,6 +1562,43 @@
   "slow": false
  },
  "POST /api/syllabi/{id:int}/draft": {
+  "access": [
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/syllabi/{id:int}/versions/{vid:int}/approve": {
+  "access": [
+   "dept_head"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/syllabi/{id:int}/versions/{vid:int}/publish": {
+  "access": [
+   "academic_office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/syllabi/{id:int}/versions/{vid:int}/return": {
+  "access": [
+   "academic_office",
+   "dept_head"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/syllabi/{id:int}/versions/{vid:int}/submit": {
   "access": [
    "teacher"
   ],

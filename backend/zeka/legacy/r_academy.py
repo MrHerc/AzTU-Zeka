@@ -255,15 +255,20 @@ STATUS_AZ = {"draft": "qaralama", "submitted": "təqdim olunub", "approved": "ka
              "returned": "geri qaytarılıb"}
 
 
-@R("GET", "/syllabus/{cid:int}", roles=("teacher", "dept_head", "academic_office", "admin", "leader"))
+@R("GET", "/syllabus/{cid:int}", roles=("student", "teacher", "dept_head", "academic_office", "admin", "leader"))
 def syllabus_page(req):
-    """The printable syllabus (Task 23): the asked version (``?v=``), else the latest one, else an unsaved first draft.
-    Every value is escaped: the syllabus is teacher-edited data shown to leadership and to anyone with a link."""
+    """The printable syllabus (Task 23): the asked version (``?v=``), else the latest one, else an unsaved first draft;
+    a student sees only the published version (Task 25). Every value is escaped: the syllabus is teacher-edited data
+    shown to leadership, to students and to anyone with a link."""
     from ..modules.syllabus import service as syllabus
     c = req.db
-    if not syllabus.may_read(c, req.user, req.params["cid"]):
-        raise HTTPError(404, "Fənn tapılmadı")
-    found = syllabus.printable(c, req.user, req.params["cid"], req.qint("v", None, lo=1))
+    if req.user["role"] == "student":
+        pub = syllabus.published_for(c, req.user, req.params["cid"])
+        found = syllabus.printable(c, req.user, req.params["cid"], pub["id"]) if pub else None
+    elif syllabus.may_read(c, req.user, req.params["cid"]):
+        found = syllabus.printable(c, req.user, req.params["cid"], req.qint("v", None, lo=1))
+    else:
+        found = None
     if not found:
         raise HTTPError(404, "Fənn tapılmadı")
     co, d, v = found
