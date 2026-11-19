@@ -1,7 +1,7 @@
 """E-services: requests, validation, the dean's office workflow, documents, QR verification, attachments."""
 import base64
 import urllib.parse
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 
@@ -41,13 +41,13 @@ def test_validation_errors(student, body, needle):
 
 
 def test_date_rules_for_absence_and_leave(student):
-    fut = (date.today() + timedelta(days=3)).isoformat()
-    past = (date.today() - timedelta(days=3)).isoformat()
+    fut = (store.now().date() + timedelta(days=3)).isoformat()
+    past = (store.now().date() - timedelta(days=3)).isoformat()
     assert student.post("/api/requests", {"type_code": "absence_excuse", "data": {"reason": "Xəstəlik", "period": {"from": fut, "to": fut}}}).status == 400
     assert student.post("/api/requests", {"type_code": "leave_permission", "data": {"reason": "Olimpiada / müsabiqə", "period": {"from": past, "to": past}}}).status == 400
-    rev = {"from": past, "to": (date.today() - timedelta(days=5)).isoformat()}
+    rev = {"from": past, "to": (store.now().date() - timedelta(days=5)).isoformat()}
     assert "əvvəl" in student.post("/api/requests", {"type_code": "absence_excuse", "data": {"reason": "Xəstəlik", "period": rev}}).json["error"]
-    long_ = {"from": (date.today() - timedelta(days=80)).isoformat(), "to": past}
+    long_ = {"from": (store.now().date() - timedelta(days=80)).isoformat(), "to": past}
     assert "60" in student.post("/api/requests", {"type_code": "absence_excuse", "data": {"reason": "Xəstəlik", "period": long_}}).json["error"]
 
 
@@ -150,7 +150,7 @@ def test_absence_excuse_with_attachment_excuses_attendance(student, office, teac
 
 
 def test_leave_permission_notifies_teachers(student, office, app_db):
-    fut = (date.today() + timedelta(days=10)).isoformat()
+    fut = (store.now().date() + timedelta(days=10)).isoformat()
     cs = [c["id"] for c in student.get("/api/courses").json][:2]
     r = student.post("/api/requests", {"type_code": "leave_permission", "data": {"reason": "Olimpiada / müsabiqə", "period": {"from": fut, "to": fut}, "courses": cs,
                                                                      "details": "Respublika olimpiadası"}})

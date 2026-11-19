@@ -581,10 +581,11 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 
 ## Checkpoint C: Task 18–22 və Task 45 sonra
 
-- [ ] Müəllim dərsdə davamiyyət və bal yazır; tələbə dərhal görür
-- [ ] 25% həddi və imtahana buraxılış avtomatik hesablanır
-- [ ] Verilmiş sənəd saxlanmış yükdən göstərilir; bazada dəyişdirilən yük `/verify`-da "sənəd dəyişdirilib" verir
-- [ ] Rəy axını keçib; sahiblə baxış
+- [x] Müəllim dərsdə davamiyyət və bal yazır; tələbə dərhal görür (`test_attendance_journal`, `test_grade_journal`, `test_checkpoint_c::test_t6_…`)
+- [x] 25% həddi və imtahana buraxılış avtomatik hesablanır (`test_attendance_rules`, `test_grading_rules`)
+- [x] Verilmiş sənəd saxlanmış yükdən göstərilir; bazada dəyişdirilən yük `/verify`-da "sənəd dəyişdirilib" verir (`test_document_integrity`)
+- [x] Rəy axını keçib: `docs/review/checkpoint-c-2026-11-19.md`
+- [ ] Sahiblə baxış (J2-nin siyasəti və J11 sahibin qərarıdır)
 
 ---
 

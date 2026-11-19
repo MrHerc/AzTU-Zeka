@@ -25,6 +25,7 @@ import threading
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from http.cookiejar import CookieJar
 from pathlib import Path
 
@@ -40,7 +41,7 @@ for _k in [k for k in os.environ if k.startswith("ZEKA_")]:      # read once, wh
     os.environ.pop(_k)
 os.environ["ZEKA_TX_GUARD"] = "1"      # a request that holds the write lock longer than 200 ms fails its test (Task 7)
 
-from zeka.core import security  # noqa: E402  (import after sys.path / before redirecting paths)
+from zeka.core import clock, security  # noqa: E402  (import after sys.path / before redirecting paths)
 from zeka.legacy import engine, store  # noqa: E402
 
 store.DATA = TMP / "data"
@@ -49,6 +50,16 @@ store.DB_PATH = store.DATA / "campus.db"
 engine.ROOT = TMP  # no config.json here -> the demo engine is always used
 for _k in ("AZTU_LLM_PROVIDER", "AZTU_LLM_BASE_URL", "AZTU_LLM_API_KEY", "AZTU_LLM_MODEL"):
     os.environ.pop(_k, None)
+
+# The demo term is seeded around "today" (store.demo_term_start). One fixed today, a Thursday in week 10 of the autumn
+# term at 10:00 in Baku, keeps the date-relative tests green on any calendar day (Checkpoint C, T1: without it the
+# suite was green about 14 weeks a year). The clock still advances during the run; a test of a boundary date (the
+# exam session, the summer, a term's rollover) patches clock.now itself. A server started in a subprocess (test_run,
+# test_concurrency, test_multiworker_state) keeps the real date: none of them checks a date-relative fact.
+TODAY = datetime(2026, 11, 19, 6, 0, tzinfo=timezone.utc)
+_REAL_NOW = clock.now
+_STARTED = _REAL_NOW()
+clock.now = lambda: TODAY + (_REAL_NOW() - _STARTED)
 
 ROLES = ("student", "teacher", "office", "leader", "admin")
 RATE_LIMITS = {k: lim.limit for k, lim in security.LIMITS.items()}      # the production values

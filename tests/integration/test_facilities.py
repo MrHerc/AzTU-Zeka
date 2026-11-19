@@ -91,6 +91,9 @@ def test_a_building_s_qr_sheet_holds_every_room_s_address(app_db):
     assert sheet.status == 200
     codes = [r["code"] for r in q("SELECT code FROM rooms WHERE building_id=? AND active=1", (ek,))]
     assert sheet.text.count("<svg") == len(codes) == 10 and all(code in sheet.text for code in codes)
+    from zeka.legacy.common import BASE_URL
+    from zeka.legacy.qr import qr_svg
+    assert all(qr_svg(BASE_URL["value"] + "/r/" + code, 4) in sheet.text for code in codes), "each QR code holds its room page's address"
     assert 'src="/static/js/print.js"' in sheet.text and "onclick" not in sheet.text
     for role in ("teacher", "student", "office"):
         assert app_db.client(role).get(f"/api/facilities/buildings/{ek}/qr").status == 403, role

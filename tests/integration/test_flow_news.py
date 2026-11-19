@@ -1,7 +1,9 @@
 """News portal: feed, filters, reading, bookmarks, event registration, calendar export and the editor."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
+
+from zeka.legacy import store
 
 
 @pytest.fixture(scope="module")
@@ -58,12 +60,12 @@ def test_rsvp_rules(student, teacher, office, feed):
     assert student.post(f"/api/news/{plain['id']}/rsvp").status == 400
     if not plain["event_start"]:
         assert student.get(f"/api/news/{plain['id']}/ics").status == 400
-    start = (datetime.now() + timedelta(days=3)).replace(microsecond=0).isoformat()
+    start = (store.now() + timedelta(days=3)).replace(microsecond=0).isoformat()
     tiny = office.post("/api/news", {"title": "Kiçik seminar: 1 yer", "summary": "Bir nəfərlik", "kind": "event", "event_start": start,
                                      "capacity": 1, "registration": True, "audience": "all"}).json
     assert student.post(f"/api/news/{tiny['id']}/rsvp").json["registered"] is True
     assert teacher.post(f"/api/news/{tiny['id']}/rsvp").status == 409                            # full
-    past = (datetime.now() - timedelta(days=3)).replace(microsecond=0).isoformat()
+    past = (store.now() - timedelta(days=3)).replace(microsecond=0).isoformat()
     old = office.post("/api/news", {"title": "Keçmiş tədbir nümunəsi", "summary": "Bitib", "event_start": past, "duration_h": 1,
                                     "registration": True, "capacity": 10}).json
     assert old["past"] is True and student.post(f"/api/news/{old['id']}/rsvp").status == 409

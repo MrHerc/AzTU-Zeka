@@ -124,7 +124,32 @@ prosesdən HTTP ilə 50 paralel sənəd), `tests/unit/test_layers.py` (SQL yaln�
 
 ## T. Test dəsti
 
-Bu bölmə T qrupunun təkzib nəticəsindən sonra doldurulur.
+- **T1** (yüksək) — Təsdiqləndi. Demo semestr "bu gün"ə görə qurulur, test saatı isə sabit deyildi. Ona görə dəst ildə
+  təxminən 14 həftə yaşıl idi: 3 noyabr – 21 dekabr və 6 aprel – 24 may. İlk qırmızı gün 22 dekabrdır.
+  `test_radar::test_storyline_levels` köhnə kodda da 26 noyabrdan yıxılırdı. Düzəliş: `tests/conftest.py` testlərin
+  "bu gün"ünü 2026-11-19 10:00 (Bakı) tarixinə bağlayır; saat test boyu irəliləyir. Üç köhnə test real tarixi oxuyurdu,
+  indi `store.now()` oxuyur. `test_t1_…` yoxlayır ki, sabit gün semestrin içindədir. Təkzib agenti dəsti real tarixdən
+  7 ay geri olan sabit günlə də işlətdi: hamısı keçdi.
+- **T2** (orta) — Təsdiqləndi. Dekanlığın fakültə süzgəci testsiz idi. Test əlavə edildi: başqa fakültənin tələbəsi
+  vəziyyətdə, qiymətlərdə, borclarda və CSV-də görünmür.
+- **T3** (orta) — Təsdiqləndi. Əvəzetmə testi müəllimi özü ilə əvəz edirdi. Test əlavə edildi: əvəzetmədən sonra
+  dərsin ilk müəllimi qeyd yaza bilmir.
+- **T4** (orta) — Təsdiqləndi. Kafedra müdirinin uğurlu yolu testsiz idi. J1 testi bunu əhatə edir: öz fənninə qrantı
+  olan müdir düzəliş edir.
+- **T5** (aşağı) — Təsdiqləndi. İdxal olunmuş sətrin qoruyucusu testsiz idi. Test əlavə edildi: pəncərənin içində də
+  müəllim idxal olunmuş sətri dəyişə bilmir.
+- **T6** (aşağı) — Təsdiqləndi. Tələbənin mövqeyi yalnız açar adlarına görə yoxlanırdı. Test əlavə edildi: dəyərlər
+  müəllimin gördüyü ilə eynidir.
+- **T7** — Qismən. Test əlavə edildi: 3 saatlıq dərs 3 saat sayılır.
+- **T8** (aşağı) — Təsdiqləndi. Test əlavə edildi: gələcək dərs keçirilmiş sayılmır və universitetin düzəliş pəncərəsi
+  tətbiq olunur. Qeydiyyatın bitmə tarixi və `excused_counts` yalnız vahid testlərdədir.
+- **T9** (aşağı–orta) — Təsdiqləndi. Test əlavə edildi: tələbə başqasının göndərişini oxuya bilmir. Təqvim lentinin qrup
+  və yarımqrup süzgəcinin mənfi testi qalır.
+- **T10** (aşağı) — Təsdiqləndi:
+  - üzrlü dərs testində `UPDATE` 0 sətrə toxuna bilirdi, indi sətri özü yaradır;
+  - QR vərəqi testi kodun içindəki ünvanı yoxlamırdı, indi yoxlayır.
+  10 testin fayl daxilində sıradan asılılığı qalır: pytest faylı yazıldığı sırada işlədir. Ayrıca işlədilən testlər üçün
+  modul fixture-ları sonraya saxlanılır.
 
 ## Yoxlanmayanlar
 
@@ -132,3 +157,9 @@ Bu bölmə T qrupunun təkzib nəticəsindən sonra doldurulur.
 - R1 üçün otaq səhifəsi demo məlumatda yoxlanıb. Real cədvəldə yox.
 - J2-nin siyasəti (davamiyyəti olmayan fənndə yekun qiymət yoxdur) sahiblə təsdiqlənməlidir.
 - J11 sahibin qərarıdır.
+- Alt prosesdə işə salınan serverlər (`test_run`, `test_concurrency`, `test_multiworker_state`) real tarixi işlədir.
+  Onların heç biri tarixə bağlı fakt yoxlamır.
+- İmtahan sessiyası, yay və semestrin dəyişməsi kimi sərhəd tarixlər artıq təsadüfən sınanmır. Onlara ayrıca test
+  lazımdır.
+- `test_import::test_a_new_batch_revokes_the_old_codes` yüklü maşında bir dəfə 500 verdi (ehtimal ki, 200 ms
+  qoruyucusu). CI-da qeyri-sabit ola bilər.

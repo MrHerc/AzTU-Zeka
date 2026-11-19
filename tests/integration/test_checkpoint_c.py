@@ -620,3 +620,104 @@ def test_p7_a_department_head_finds_an_upcoming_lesson_to_substitute(app_db):
         pytest.skip("no upcoming lesson")
     got = app_db.client("admin").get(f"/api/journal/courses/{les[0]['course_id']}/lessons").json
     assert any(x["day"] > store.now().date().isoformat() for x in got)
+
+
+# ---------------------------------------------------------------- T. the test suite's own gaps
+def test_t1_the_suite_s_today_sits_inside_the_demo_term(app_db):
+    """tests/conftest.py fixes today; the date-relative tests need it at least seven weeks into the term and a week before
+    its teaching ends. A change of the seed's term logic shows up here first."""
+    t = q("SELECT * FROM academic_terms WHERE active=1 ORDER BY teaching_start DESC LIMIT 1")[0]
+    today = store.now().date()
+    assert date.fromisoformat(t["teaching_start"]) + timedelta(days=49) <= today <= date.fromisoformat(t["teaching_end"]) - timedelta(days=7)
+
+
+def test_t2_a_dean_s_office_does_not_see_another_faculty_s_student(app_db, cc):
+    admin, office = app_db.client("admin"), app_db.client("office")
+    fac = admin.post("/api/directory/faculties", {"code": "CCF", "name": "Başqa fakültə"}).json["id"]
+    gid = admin.post("/api/directory/groups", {"name": "CCF-1", "year": 2025, "faculty_id": fac}).json["id"]
+    sid = admin.post("/api/directory/users", {"username": "cc.far", "full_name": "Uzaq Tələbə", "role": "student", "group_id": gid,
+                                              "student_no": "CC-FAR"}).json["id"]
+    admin.post(f"/api/directory/courses/{cc['course']}/enrollments", {"user_id": sid})
+    run("INSERT INTO final_grades(user_id,course_id,term_name,course_name,credits,score,letter,passed,source,published_at) "
+        "VALUES(?,NULL,'2025/2026','Uzaq borc',3,20,'F',0,'legacy','x')", (sid,))
+    assert sid in [s["student_id"] for s in admin.get(f"/api/journal/courses/{cc['course']}/standing").json]
+    assert sid not in [s["student_id"] for s in office.get(f"/api/journal/courses/{cc['course']}/standing").json]
+    assert sid not in [s["id"] for s in office.get(f"/api/journal/courses/{cc['course']}/grades").json["students"]]
+    debts = office.get("/api/journal/debts").json
+    assert sid not in [x["user_id"] for x in debts["items"]]
+    assert "Uzaq Tələbə" not in office.get("/api/journal/debts?format=csv").text
+
+
+def _today_lesson(cc, start="00:00"):
+    today = store.now().date().isoformat()
+    return ins("INSERT INTO lessons(course_id,day,start,end,kind,unit_id,teacher_id,academic_hours,slot_day,slot_start) "
+               "SELECT course_id,?,?,?,kind,unit_id,teacher_id,2,?,? FROM lessons WHERE id=?",
+               (today, start, start[:3] + "30", today, start, cc["lessons"][0]))
+
+
+def test_t3_after_a_substitution_the_lesson_s_first_teacher_no_longer_marks_it(app_db, cc):
+    admin, teacher = app_db.client("admin"), app_db.client("teacher")
+    lid = _today_lesson(cc, "01:00")
+    a = str(cc["students"]["cc.a"])
+    assert teacher.put(f"/api/journal/lessons/{lid}/attendance", {"marks": {a: "late"}}).status == 200
+    leyla = q("SELECT id FROM users WHERE username='leyla'")[0]["id"]
+    assert admin.post(f"/api/journal/lessons/{lid}/teacher", {"teacher_id": leyla, "reason": "Müəllim xəstədir"}).status == 200
+    assert teacher.put(f"/api/journal/lessons/{lid}/attendance", {"marks": {a: "absent"}}).status in (403, 404), \
+        "the course's own teacher, no longer the lesson's"
+
+
+def test_t5_a_teacher_does_not_change_an_imported_row_even_inside_the_window(app_db, cc):
+    teacher = app_db.client("teacher")
+    lid = _today_lesson(cc, "02:00")
+    sid = cc["students"]["cc.a"]
+    run("INSERT INTO attendance(lesson_id,user_id,status,source) VALUES(?,?,'present','legacy')", (lid, sid))
+    assert teacher.put(f"/api/journal/lessons/{lid}/attendance", {"marks": {str(sid): "absent"}}).status == 403
+
+
+def test_t6_the_student_sees_the_journal_s_standing(app_db):
+    student, teacher = app_db.client("student"), app_db.client("teacher")
+    course = q("SELECT c.id FROM courses c JOIN enrollments e ON e.course_id=c.id WHERE c.teacher_id=? AND e.user_id=? ORDER BY c.id LIMIT 1",
+               (teacher.user["id"], student.user["id"]))[0]["id"]
+    staff = next(x for x in teacher.get(f"/api/journal/courses/{course}/standing").json if x["student_id"] == student.user["id"])
+    mine = student.get(f"/api/courses/{course}").json["attendance"]
+    assert (mine["missed_hours"], mine["planned_hours"], mine["status"]) == (staff["missed_hours"], staff["planned_hours"], staff["status"])
+
+
+def test_t7_t8_hours_of_a_lesson_and_the_edit_window_setting_are_applied(app_db, cc):
+    from zeka.core import tenant
+    teacher, admin = app_db.client("teacher"), app_db.client("admin")
+    sid = cc["students"]["cc.a"]
+
+    def standing():
+        return next(x for x in admin.get(f"/api/journal/courses/{cc['course']}/standing").json if x["student_id"] == sid)
+    before = standing()
+    three = _today_lesson(cc, "03:00")
+    run("UPDATE lessons SET academic_hours=3, day=? WHERE id=?", ((store.now().date() - timedelta(days=1)).isoformat(), three))
+    future = _today_lesson(cc, "04:00")
+    run("UPDATE lessons SET day=? WHERE id=?", ((store.now().date() + timedelta(days=5)).isoformat(), future))
+    after = standing()
+    assert after["held_hours"] == before["held_hours"] + 3, "a 3-hour lesson counts 3; a future one is not held yet"
+    c = db()
+    try:
+        keep = tenant.load(c)["journal"]
+    finally:
+        c.close()
+    lid = _today_lesson(cc, "05:00")
+    assert admin.put("/api/admin/settings/journal", {"value": {**keep, "edit_hours": 1}}).status == 200
+    try:
+        assert teacher.put(f"/api/journal/lessons/{lid}/attendance", {"marks": {str(sid): "absent"}}).status == 403, "the university's window"
+    finally:
+        admin.put("/api/admin/settings/journal", {"value": keep})
+    assert teacher.put(f"/api/journal/lessons/{lid}/attendance", {"marks": {str(sid): "absent"}}).status == 200
+
+
+def test_t9_a_student_does_not_read_another_student_s_submission(app_db, cc, own_course):
+    teacher, student = app_db.client("teacher"), app_db.client("student")
+    due = (store.now() + timedelta(days=3)).strftime("%Y-%m-%dT%H:%M")
+    a = teacher.post(f"/api/courses/{own_course}/assignments", {"title": "Gizli cavab", "body": "Həll edin.", "due_at": due, "max_score": 3,
+                                                                "component": "Sərbəst iş 1", "late_rule": "mark"}).json
+    sub = student.post(f"/api/assignments/{a['id']}/submit", {"text": "mənim cavabım"}).json["id"]
+    other = app_db.client()
+    assert other.post("/api/auth/demo", {"role": "student", "user": "cc.a"}).status == 200
+    got = other.get(f"/api/submissions/{sub}")
+    assert got.status in (403, 404) and "mənim cavabım" not in got.text

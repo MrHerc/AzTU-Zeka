@@ -168,7 +168,8 @@ def test_an_excused_absence_is_not_overwritten_by_a_mark(app_db, world):
     lid, sid = world["lessons"]["today"], world["students"][5]
     rid = run("INSERT INTO requests(type_code,student_id,data,status,step,created_at,updated_at) VALUES('absence_excuse',?,'{}','done',0,'x','x')",
               (sid,))
-    run("UPDATE attendance SET status='excused', request_id=? WHERE lesson_id=? AND user_id=?", (rid, lid, sid))
+    run("INSERT INTO attendance(lesson_id,user_id,status,request_id) VALUES(?,?,'excused',?) "      # whether or not the lesson has rows yet
+        "ON CONFLICT(lesson_id,user_id) DO UPDATE SET status='excused', request_id=excluded.request_id", (lid, sid, rid))
     assert teacher.put(f"/api/journal/lessons/{lid}/attendance", {"marks": {str(sid): "absent"}}).status == 200
     assert q("SELECT status FROM attendance WHERE lesson_id=? AND user_id=?", (lid, sid))[0]["status"] == "excused"
 

@@ -3,13 +3,13 @@ leave and expulsion take the student off lesson lists from the effective date, e
 a student on leave still signs in and sees their own documents. Orders are only added, never changed."""
 import base64
 import sqlite3
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 
 from zeka.legacy import store
 
-TODAY = date.today()
+TODAY = store.now().date()
 
 
 def db():

@@ -25,7 +25,7 @@ python backend/manage.py activation-codes --faculty CODE --out codes.csv   # one
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1156 tests, about 3 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1204 tests, about 3 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -125,13 +125,15 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).
 - **Time.** Use `store.now()` (naive Baku wall clock, `ZEKA_TZ`) or `clock.now()` (aware UTC); `datetime.now()` and
-  `date.today()` fail lint outside `backend/zeka/core/clock.py`. Tests freeze time by patching `clock.now`.
+  `date.today()` fail lint outside `backend/zeka/core/clock.py`. `tests/conftest.py` anchors the suite's today at
+  2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test
+  never reads the real date.
 
 ## Branch state (2026-11-18)
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
-and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 from Task 18. `main` is unchanged and the five PRs are still open against it; they are
+and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`). `main` is unchanged and the five PRs are still open against it; they are
 superseded by this branch.
 
 ## Product direction
