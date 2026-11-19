@@ -139,6 +139,11 @@ def before(req, roles, auth):
         req.first_write = None
         req.db.set_trace_callback(lambda sql: _note_write(req, sql))
     store.sync_indexes(req.db)
+    if (req.route_scope or "").startswith("token:"):           # an API key route (Task 37): the key alone, never a cookie
+        from ..modules.integration import tokens
+        req.user = tokens.authenticate(req.db, req.headers.get("Authorization"), req.route_scope[6:], req.path)
+        _own_commit(req)
+        return
     sid = _sid(req)
     if sid:
         req.user = _session_user(req, sid)

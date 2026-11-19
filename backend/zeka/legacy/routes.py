@@ -14,4 +14,5 @@ from ..modules.comms import routes as _comms  # noqa: F401  (Task 36, slice 2)
 from ..modules.assistant import routes as _assistant  # noqa: F401  (Task 32)
 from ..modules.qa import routes as _qa  # noqa: F401  (Task 33)
 from ..modules.community import routes as _community  # noqa: F401  (Task 35)
+from ..modules.integration import api as _integration_api  # noqa: F401  (Task 37)
 from .common import BASE_URL, R, after, before  # noqa: F401

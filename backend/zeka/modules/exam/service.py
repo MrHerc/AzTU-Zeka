@@ -723,6 +723,8 @@ def release(c, user, eid: int) -> tuple[str, object]:
         notify(c, shown, "exam", T3("İmtahan nəticəsi açıqlandı: {title}", title=e["title"]), "", "/student/grades")
     audit(c, user["id"], "exam_released", "exam", f"#{eid} · {len(shown)} · skipped {len(skipped)}")
     _send_root(c, e, "release")
+    from ..integration import webhooks
+    webhooks.emit(c, "exam.released", {"exam_id": eid, "course_id": e["course_id"], "released": len(shown), "skipped": len(skipped)})
     return "ok", {"ok": True, "released": len(shown), "skipped": skipped}
 
 

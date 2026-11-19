@@ -61,7 +61,8 @@ def test_an_exam_session_reaches_no_route_outside_its_exam(app_db, exams):
     s = app_db.client("student")
     assert s.post(f"/api/exams/{exams[0]}/enter").status == 200
     others = [k for k, v in MATRIX.items() if v.get("scope") != "exam" and not k.startswith(("GET /static", "GET /healthz"))]
-    leaks = [k for k in others if call(s, k, exams[0]).status != 403]
+    keyed = {k for k, v in MATRIX.items() if str(v.get("scope") or "").startswith("token:")}   # API key routes read no cookie: 401
+    leaks = [k for k in others if call(s, k, exams[0]).status != (401 if k in keyed else 403)]
     assert leaks == []
     assert s.get(f"/api/exams/{exams[0]}").status == 200, "and its own exam answers"
 

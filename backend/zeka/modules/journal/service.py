@@ -326,7 +326,15 @@ def save_grades(c, user, course_id: int, body, answer: bool = True) -> tuple[str
     refresh_finals(c, course_id, touched)
     if published_changes:
         audit(c, user["id"], "grades_changed", "course", f"#{course_id} · {len(published_changes)} · {reason}")
+    if touched:                                                     # a published score changed: other systems hear it (Task 37)
+        _published(c, course_id, len(touched))
     return "ok", grade_table(c, user, course_id) if answer else None
+
+
+def _published(c, course_id: int, n: int):
+    from ..integration import webhooks                          # here: integration reads the journal
+    co = repo.course(c, course_id)
+    webhooks.emit(c, "grade.published", {"course_id": course_id, "course_code": co["code"] if co else None, "scores": n})
 
 
 def publish_grades(c, user, course_id: int) -> tuple[str, object]:
@@ -339,6 +347,8 @@ def publish_grades(c, user, course_id: int) -> tuple[str, object]:
     changed = repo.publish(c, course_id, mine, iso(now()))
     refresh_finals(c, course_id, changed)
     audit(c, user["id"], "grades_published", "course", f"#{course_id} · {len(changed)}")
+    if changed:
+        _published(c, course_id, len(changed))
     return "ok", grade_table(c, user, course_id)
 
 

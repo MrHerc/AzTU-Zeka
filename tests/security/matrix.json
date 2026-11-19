@@ -140,6 +140,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/apps": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/assignments/{id:int}/submissions": {
   "access": [
    "dept_head",
@@ -542,6 +549,33 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "GET /api/integration/keys": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
+  "slow": false
+ },
+ "GET /api/integration/webhooks": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
+  "slow": false
+ },
+ "GET /api/integration/webhooks/{id:int}/deliveries": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
   "slow": false
  },
  "GET /api/journal/courses/{id:int}/grades": {
@@ -1168,6 +1202,38 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/v1/attendance": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "scope": "token:attendance.read",
+  "slow": false
+ },
+ "GET /api/v1/grades": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "scope": "token:grades.read",
+  "slow": false
+ },
+ "GET /api/v1/oneroster.zip": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "scope": "token:registry.read",
+  "slow": false
+ },
+ "GET /api/v1/status-changes": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "scope": "token:status.read",
+  "slow": false
+ },
  "GET /demo/login": {
   "access": "public",
   "audit_read": null,
@@ -1790,6 +1856,42 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/integration/keys": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
+  "slow": false
+ },
+ "POST /api/integration/keys/{id:int}/revoke": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
+  "slow": false
+ },
+ "POST /api/integration/webhooks": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
+  "slow": false
+ },
+ "POST /api/integration/webhooks/{id:int}/deactivate": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
+  "slow": false
+ },
  "POST /api/interventions/{id:int}/status": {
   "access": [
    "admin",
@@ -2322,6 +2424,15 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "PUT /api/apps": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
   "slow": false
  },
  "PUT /api/courses/{id:int}/tutor": {

@@ -951,3 +951,4 @@ table { max-width: 100%; }
 .grade-in.bad { border-color: var(--red); background: var(--red-50); }
 /* Task 33: the course forum's accepted answer */
 .card.accepted { border-color: color-mix(in srgb, var(--green, #16a34a) 45%, var(--border)); }
+.secret { white-space: pre-wrap; word-break: break-all; background: var(--bg-2, #f1f5f9); padding: 10px; border-radius: 8px; }
