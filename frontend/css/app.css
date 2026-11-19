@@ -945,3 +945,7 @@ table { max-width: 100%; }
 .mfa-secret { display: block; margin-top: 6px; font-size: 15px; letter-spacing: .06em; word-break: break-all; }
 .mfa-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .mfa-codes code { font-size: 15px; padding: 6px 8px; border: 1px solid var(--border, #d8dce6); border-radius: 8px; text-align: center; }
+
+/* Task 21: grade table cells: a draft is dashed until published, a refused cell is red */
+.grade-in.draft { border-style: dashed; }
+.grade-in.bad { border-color: var(--red); background: var(--red-50); }

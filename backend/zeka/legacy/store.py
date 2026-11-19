@@ -279,21 +279,6 @@ def issue_document(c, kind, holder_id, title, data, issued_by, prefix, request_i
     return row(c, "SELECT * FROM documents WHERE id=?", (did,))
 
 
-def transcript_rows(c, user_id: int) -> list[dict]:
-    """Deterministic synthetic grades of previous semesters for a student."""
-    sems = setting(c, "past_semesters", [])
-    scale = tenant.load(c)["grading"]["scale"]
-    rng = random.Random(user_id * 7919)
-    out = []
-    for s in sems:
-        items = []
-        for az, en, cr in s["courses"]:
-            score = rng.randint(64, 98) if user_id != 1 else rng.randint(78, 98)
-            items.append({"name": az, "name_en": en, "credits": cr, "score": score, "letter": tenant.letter(score, scale)})
-        out.append({"name": s["name"], "name_en": s["name_en"], "courses": items})
-    return out
-
-
 # ---------------------------------------------------------------- seeding
 F_NAMES = "Aysel Leyla Günel Nərmin Sevinc Aytən Lalə Fidan Nigar Zəhra Aynur Səbinə Gülnar Kəmalə Ülviyyə Röya Nərgiz Aidə Mələk Fərqanə".split()
 M_NAMES = "Murad Elvin Tural Orxan Kamran Nihad Fərid Elnur Ramil Ruslan Vüsal Səbuhi Anar Cavid Emil Kənan Toğrul Ayxan Nicat Rəşad".split()
@@ -395,6 +380,24 @@ def seed_catalog(c, s: dict | None = None):
                   (t["key"], i, t["name"], json.dumps(t["areas"]), t["type"], t["pricing"], t["platform"], t["url"], t["summary"],
                    json.dumps(t["use_cases"], ensure_ascii=False), json.dumps(t["steps"], ensure_ascii=False), t["lesson_idea"]))
     set_setting(c, "news_kinds", _load("news.json")["kinds"])
+
+
+def _seed_history(c, students: list[int], demo: int, sems: list[dict], sem0: date, stamp: str):
+    """Final grades of the demo's two terms before Zəka (Task 21: a transcript is built from final grades only), as an
+    import of the old system would write them; the demo students' history counts as reconciled."""
+    grading = tenant.load(c)["grading"]
+    rows_ = []
+    for uid in students:
+        rng = random.Random(uid * 7919)
+        for i, sem in enumerate(sems):
+            start = (sem0 - timedelta(days=183 * (len(sems) - i))).isoformat()
+            for az, en, cr in sem["courses"]:
+                score = rng.randint(78, 98) if uid == demo else rng.randint(64, 98)
+                rows_.append((uid, sem["name"], sem["name_en"], start, az, en, cr, score, tenant.letter(score, grading["scale"]),
+                              int(score >= grading["pass_mark"]), stamp))
+    c.executemany("INSERT INTO final_grades(user_id,term_name,term_name_en,term_start,course_name,course_name_en,credits,score,letter,passed,"
+                  "source,published_at) VALUES(?,?,?,?,?,?,?,?,?,?,'legacy',?)", rows_)
+    c.executemany("UPDATE users SET history_reconciled_at=? WHERE id=?", [(stamp, x) for x in students])
 
 
 UNIT_OF_LABEL = {"Mühazirə": "lecture", "Məşğələ": "seminar", "Laboratoriya": "lab"}
@@ -544,6 +547,7 @@ def seed(c):
             gr.append((st, cid, "Sərbəst iş 1", round(min(5, max(2, rng.gauss(5 * skill, 0.6))), 1), 5, iso(t0 - timedelta(days=4))))
             gr.append((st, cid, "Laboratoriya / məşğələ", round(min(10, max(4, rng.gauss(10 * skill, 1.1))), 1), 10, iso(t0 - timedelta(days=2))))
     c.executemany("INSERT INTO grades(user_id,course_id,component,score,max,updated_at) VALUES(?,?,?,?,?,?)", gr)
+    _seed_history(c, students, uid["aysel"], s["past_semesters"], sem0, stamp)
 
     # ---- question bank & quizzes
     qids = []

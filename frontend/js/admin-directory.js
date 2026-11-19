@@ -190,6 +190,8 @@ route("/admin/directory", async (el, p, q) => {
     const box = $("#st-box", m.el);
     await loadRefs({ fields: [["", "", "ref:groups"]] });
     const show = (s) => mount(box, html`<p>${t("Hazırkı status")}: <b>${STATUS()[s.status] || s.status}</b></p>
+      ${MANAGERS.includes(role) ? html`<div class="row wrap mb"><button class="btn btn-sm" id="st-reconcile">${t("Əvvəlki semestrlər uzlaşdırılıb")}</button>
+        <span class="small muted">${t("Köhnə sistemdən gələn qiymətlər yoxlanandan sonra transkript verilir.")}</span></div>` : ""}
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Əmr")}</th><th>${t("Nömrə")}</th><th>${t("Əmrin tarixi")}</th>
         <th>${t("Qüvvəyə minir")}</th><th>${t("Qeyd")}</th></tr></thead><tbody>
       ${s.events.map((x) => html`<tr><td>${kinds[x.kind] || x.kind}</td><td>${x.order_no}</td><td>${x.order_date}</td><td>${x.effective_date}</td>
@@ -205,6 +207,10 @@ route("/admin/directory", async (el, p, q) => {
         <input class="input" id="st-note" placeholder="${t("Qeyd (düzəliş əmridirsə, səbəbini yazın)")}" aria-label="${t("Qeyd")}">
         <p class="small muted" style="margin:0">${t("Əmrlər dəyişdirilmir və silinmir: səhv əmr yeni əmrlə düzəldilir.")}</p>
         <button class="btn btn-primary btn-sm" id="st-add" style="align-self:flex-start">${t("Əmri yaz")}</button></div>` : ""}`);
+    on(m.el, "click", "#st-reconcile", async () => {
+      try { await api.post(`/api/journal/students/${u.id}/reconcile`); toast(t("Qeyd olundu: transkript verilə bilər"), "ok"); }
+      catch (err) { toast(err.message, "err"); }
+    });
     on(m.el, "click", "#st-add", async () => {
       const g = $("#st-group", m.el).value;
       try {

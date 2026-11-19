@@ -59,8 +59,8 @@ def test_user_values_are_escaped():
     assert "<script>" not in txt and "<img>" not in txt and "&lt;b&gt;" in txt and "&lt;i&gt;" in txt
 
 
-ROWS = [{"name": "I semestr", "name_en": "Semester 1", "courses": [{"name": "Fizika", "name_en": "Physics", "credits": 5, "score": 90, "letter": "B"}]},
-        {"name": "II semestr", "name_en": "Semester 2", "courses": [{"name": "Riyaziyyat", "name_en": "Maths", "credits": 5, "score": 80, "letter": "C"}]}]
+ROWS = [{"name": "I semestr", "name_en": "Semester 1", "courses": [{"name": "Fizika", "name_en": "Physics", "credits": 5, "score": 90, "letter": "B", "passed": True}]},
+        {"name": "II semestr", "name_en": "Semester 2", "courses": [{"name": "Riyaziyyat", "name_en": "Maths", "credits": 5, "score": 80, "letter": "C", "passed": True}]}]
 
 
 def test_transcript_body_scope_and_weighted_average():

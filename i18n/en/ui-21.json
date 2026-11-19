@@ -1,0 +1,31 @@
+{
+ "Əvvəlki semestrlər uzlaşdırılıb": "Earlier terms reconciled",
+ "Köhnə sistemdən gələn qiymətlər yoxlanandan sonra transkript verilir.": "A transcript is issued once the grades from the old system are checked.",
+ "Qeyd olundu: transkript verilə bilər": "Recorded: a transcript can be issued",
+ "Qiymətlər": "Grades",
+ "Akademik borclar": "Academic debts",
+ "Jurnaldan hesablanır": "Computed from the journal",
+ "Dərc et ({n} qaralama)": {
+  "one": "Publish ({n} draft)",
+  "other": "Publish ({n} drafts)"
+ },
+ "Dəyişiklik jurnalı": "Change log",
+ "Yeni bal qaralamadır: tələbə onu dərc olunandan sonra görür. Dərc olunmuş balın dəyişməsi səbəb tələb edir. Excel-dən sütunları seçib xanaya yapışdıra bilərsiniz.": "A new score is a draft: the student sees it once published. Changing a published score needs a reason. You can paste columns copied from Excel into a cell.",
+ "Cəmi": "Total",
+ "Qiymətləri görmək üçün fənni seçin.": "Choose a course to see its grades.",
+ "Dəyişiklik yoxdur": "Nothing changed",
+ "{n} xana saxlanmadı: {x}": {
+  "one": "{n} cell not saved: {x}",
+  "other": "{n} cells not saved: {x}"
+ },
+ "Dərc olunmuş balın dəyişməsi": "Changing a published score",
+ "Keçid balını toplamayan fənlər": "Courses below the pass mark",
+ "CSV yüklə": "Download CSV",
+ "Akademik borc yoxdur": "No academic debts",
+ "Ballar dərc olundu": "Scores published",
+ "Komponent": "Component",
+ "Əvvəl": "Before",
+ "Sonra": "After",
+ "Kim": "Who",
+ "Dərc olunmuş bal hələ dəyişdirilməyib": "No published score has been changed yet"
+}

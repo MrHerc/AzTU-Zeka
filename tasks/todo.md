@@ -508,21 +508,23 @@ Qeyd: açılış qalığının yükləyicisi `journal/service.py`-də deyil, Tas
 Tələbənin qiymət səhifəsi real məlumatdan oxuyur. Transkript yalnız dərc olunmuş yekun qiymətlərdən qurulur: orta bal = Σ(yekun bal × kredit) / Σ kredit; "Cəmi kredit" yalnız keçid balını və imtahan minimumunu keçən fənləri sayır; bir tələbə × fənn × semestr üçün bir sətir. `transcript` müraciət növü tələbənin tarixçəsi uzlaşdırılana qədər (`history_reconciled_at`; qəbul semestri Zəka-dakı ilk semestrdən əvvəl olmayan tələbələr üçün avtomatik) bağlıdır və səbəbi göstərir. Şablondan "Ballar sintetikdir (demo)" sətri çıxarılır.
 
 **Acceptance criteria:**
-- [ ] Həddən kənar və rəqəm olmayan dəyər xana səviyyəsində tərcümə olunmuş mesajla rədd olunur
-- [ ] Müəllim komponent balını yalnız öz tədris vahidlərinin siyahısındakı tələbələrə yazır; başqa vahidin tələbəsinə yazı 403 alır
-- [ ] Davamiyyət komponentinə cədvəldən yazılan dəyər rədd olunur; `attendance.points_rule` dəyişəndə həmin bal kod dəyişmədən dəyişir
-- [ ] Davamiyyət komponentinin balına kəsid tarixinə qədərki idxal olunmuş qayıblar daxildir: yalnız açılış qalığında qayıbı olan tələbənin balı `attendance.points_rule`-a görə azalır
-- [ ] Dərcdən sonrakı hər dəyişikliyin müəllifi, köhnə və yeni dəyəri, səbəbi qiymət jurnalındadır
-- [ ] İdxal olunan bal qiymət jurnalında `source='legacy'`, idxal edən hesab və fayl adı ilə görünür; eyni faylın təkrar idxalı 0 dəyişiklik bildirir; sxemdə olmayan komponentli sətir sətir nömrəsi ilə rədd olunur
-- [ ] Yekun və hərf tenant sxeminə, imtahan minimumu daxil, uyğundur; tələbə yalnız dərc olunmuş balı görür
-- [ ] Dekanlıq nəticəsi "keçdi" olmayan tələbə × fənn siyahısını (akademik borclar) görür və CSV ixrac edir
-- [ ] Tarixçəsi uzlaşdırılmamış tələbənin transkript müraciəti tərcümə olunmuş səbəblə rədd olunur; uzlaşdırılmış tələbədə kəsilən fənn "Cəmi kredit"ə düşmür və orta bal əl hesabı ilə üst-üstə düşür
-- [ ] Sintetik `transcript_rows` silinib və heç bir marşrut onu çağırmır; onun vahid testi dərc olunmuş qiymətlərdən qurulan transkriptin testi ilə əvəz olunub
+- [x] Həddən kənar və rəqəm olmayan dəyər xana səviyyəsində tərcümə olunmuş mesajla rədd olunur
+- [x] Müəllim komponent balını yalnız öz tədris vahidlərinin siyahısındakı tələbələrə yazır; başqa vahidin tələbəsinə yazı 403 alır
+- [x] Davamiyyət komponentinə cədvəldən yazılan dəyər rədd olunur; `attendance.points_rule` dəyişəndə həmin bal kod dəyişmədən dəyişir
+- [x] Davamiyyət komponentinin balına kəsid tarixinə qədərki idxal olunmuş qayıblar daxildir: yalnız açılış qalığında qayıbı olan tələbənin balı `attendance.points_rule`-a görə azalır
+- [x] Dərcdən sonrakı hər dəyişikliyin müəllifi, köhnə və yeni dəyəri, səbəbi qiymət jurnalındadır
+- [x] İdxal olunan bal qiymət jurnalında `source='legacy'`, idxal edən hesab və fayl adı ilə görünür; eyni faylın təkrar idxalı 0 dəyişiklik bildirir; sxemdə olmayan komponentli sətir sətir nömrəsi ilə rədd olunur
+- [x] Yekun və hərf tenant sxeminə, imtahan minimumu daxil, uyğundur; tələbə yalnız dərc olunmuş balı görür
+- [x] Dekanlıq nəticəsi "keçdi" olmayan tələbə × fənn siyahısını (akademik borclar) görür və CSV ixrac edir
+- [x] Tarixçəsi uzlaşdırılmamış tələbənin transkript müraciəti tərcümə olunmuş səbəblə rədd olunur; uzlaşdırılmış tələbədə kəsilən fənn "Cəmi kredit"ə düşmür və orta bal əl hesabı ilə üst-üstə düşür
+- [x] Sintetik `transcript_rows` silinib və heç bir marşrut onu çağırmır; onun vahid testi dərc olunmuş qiymətlərdən qurulan transkriptin testi ilə əvəz olunub
+
+Qeyd: `grades` yükləyicisi Task 16 reyestrindədir (`grades` idxal növü); yekun qiymətlər `final_grades`-də fənnin adı, krediti və semestri ilə saxlanır, Zəka-dan əvvəlki semestrlər `course_id`-siz sətirlərdir (demo onları köhnə sistemin idxalı kimi yazır). Davamiyyət balı bu günə qədər keçilmiş saatın buraxılan payından hesablanır. Tarixçənin uzlaşdırılması kataloqdakı "Status" pəncərəsindədir.
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_grading_rules.py tests/integration/test_grade_journal.py -q`
-- [ ] `python -m pytest tests/integration/test_transcript_gate.py -q`
-- [ ] `grep -rn "transcript_rows" backend/` boş çıxış verir
+- [x] `python -m pytest tests/unit/test_grading_rules.py tests/integration/test_grade_journal.py -q`
+- [x] `python -m pytest tests/integration/test_transcript_gate.py -q`
+- [x] `grep -rn "transcript_rows" backend/` boş çıxış verir
 
 **Dependencies:** Task 20
 **Files likely touched:** `backend/zeka/modules/journal/{domain,service,repo,routes}.py`, `backend/migrations/0210_journal.sql` (imtahan balında `exam_id` və `attempt_no`; balda `source` və `as_of`; tələbədə `history_reconciled_at`), `frontend/js/journal.js`, `backend/zeka/legacy/r_learning.py`, `backend/zeka/legacy/docs.py`, `backend/zeka/legacy/r_services.py`, `backend/zeka/legacy/store.py`, `tests/unit/test_store.py`

@@ -1,0 +1,33 @@
+{
+ "Əvvəlki semestrlər uzlaşdırılıb": "Прошлые семестры сверены",
+ "Köhnə sistemdən gələn qiymətlər yoxlanandan sonra transkript verilir.": "Транскрипт выдаётся после проверки оценок из старой системы.",
+ "Qeyd olundu: transkript verilə bilər": "Отмечено: транскрипт может быть выдан",
+ "Qiymətlər": "Оценки",
+ "Akademik borclar": "Академические задолженности",
+ "Jurnaldan hesablanır": "Рассчитывается по журналу",
+ "Dərc et ({n} qaralama)": {
+  "one": "Опубликовать ({n} черновик)",
+  "few": "Опубликовать ({n} черновика)",
+  "many": "Опубликовать ({n} черновиков)"
+ },
+ "Dəyişiklik jurnalı": "Журнал изменений",
+ "Yeni bal qaralamadır: tələbə onu dərc olunandan sonra görür. Dərc olunmuş balın dəyişməsi səbəb tələb edir. Excel-dən sütunları seçib xanaya yapışdıra bilərsiniz.": "Новый балл — черновик: студент увидит его после публикации. Изменение опубликованного балла требует причины. Можно вставить столбцы, скопированные из Excel.",
+ "Cəmi": "Итого",
+ "Qiymətləri görmək üçün fənni seçin.": "Выберите дисциплину, чтобы увидеть оценки.",
+ "Dəyişiklik yoxdur": "Изменений нет",
+ "{n} xana saxlanmadı: {x}": {
+  "one": "{n} ячейка не сохранена: {x}",
+  "few": "{n} ячейки не сохранены: {x}",
+  "many": "{n} ячеек не сохранено: {x}"
+ },
+ "Dərc olunmuş balın dəyişməsi": "Изменение опубликованного балла",
+ "Keçid balını toplamayan fənlər": "Дисциплины ниже проходного балла",
+ "CSV yüklə": "Скачать CSV",
+ "Akademik borc yoxdur": "Академических задолженностей нет",
+ "Ballar dərc olundu": "Баллы опубликованы",
+ "Komponent": "Компонент",
+ "Əvvəl": "Было",
+ "Sonra": "Стало",
+ "Kim": "Кто",
+ "Dərc olunmuş bal hələ dəyişdirilməyib": "Опубликованные баллы ещё не менялись"
+}

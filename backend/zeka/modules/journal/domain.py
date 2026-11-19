@@ -84,3 +84,49 @@ def standing(lessons: list[dict], records: dict[int, dict], *, cutover: str | No
 
 def effective_limit(tenant_limit: float, syllabus_limit: float | None) -> float:
     return min(tenant_limit, syllabus_limit) if syllabus_limit is not None else tenant_limit
+
+
+# ---------------------------------------------------------------- grades (Task 21)
+def scheme(grading: dict) -> list[dict]:
+    """The columns of a course's grade table: the scheme's components, then the exam. ``kind``: 'attendance' (computed
+    from the journal, never typed), 'component' or 'exam'."""
+    out = [{"key": x["name"], "name": x["name"], "max": x["max"], "kind": "attendance" if x.get("attendance") else "component"}
+           for x in grading["components"]]
+    return out + [{"key": grading["exam"]["name"], "name": grading["exam"]["name"], "max": grading["exam"]["max"], "kind": "exam"}]
+
+
+def cell_value(v, maximum: float) -> tuple[float | None, dict | None]:
+    """A typed or pasted score: a number, or text like "8,5"; empty clears the cell."""
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return None, None
+    if isinstance(v, bool):
+        return None, E("Bal rəqəm olmalıdır")
+    if isinstance(v, str):
+        try:
+            v = float(v.strip().replace(",", "."))
+        except ValueError:
+            return None, E("Bal rəqəm olmalıdır")
+    if not isinstance(v, (int, float)) or v != v or v in (float("inf"), float("-inf")):
+        return None, E("Bal rəqəm olmalıdır")
+    if not 0 <= v <= maximum:
+        return None, E("Bal 0 ilə {max} arasında olmalıdır", max=maximum)
+    return round(float(v), 2), None
+
+
+def attendance_score(st: dict, max_points: float, rule: list) -> float | None:
+    """The attendance component from the journal's standing: the share of the hours held so far that were not missed."""
+    held = st.get("held_hours") or 0
+    if not held:
+        return None
+    attended = max(held - st["missed_hours"], 0)
+    missed = 100 * (held - attended) / held
+    if rule:
+        return float(min(next((p for limit, p in rule if missed <= limit), 0), max_points))
+    return round(max_points * attended / held, 1)
+
+
+def transcript_totals(rows: list[dict]) -> dict:
+    """Average = sum(score x credits) / sum(credits) over every final grade; total credits only of the passed ones."""
+    credits = sum(r["credits"] for r in rows)
+    avg = round(sum(r["score"] * r["credits"] for r in rows) / credits, 1) if credits else None
+    return {"average": avg, "credits": sum(r["credits"] for r in rows if r["passed"])}

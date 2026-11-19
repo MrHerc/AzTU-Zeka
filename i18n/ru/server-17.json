@@ -1,0 +1,14 @@
+{
+ "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.": "Транскрипт пока не выдаётся: деканат проверяет оценки прошлых семестров. Обратитесь в деканат.",
+ "Bal rəqəm olmalıdır": "Балл должен быть числом",
+ "«{field}» sahəsində rəqəm olmalıdır": "Поле «{field}» должно быть числом",
+ "Komponent fənnin sxemində yoxdur: {x}": "В схеме дисциплины нет такого компонента: {x}",
+ "Bal 0 ilə {max} arasında olmalıdır": "Балл должен быть от 0 до {max}",
+ "Bəzi xanalar saxlanmadı": "Некоторые ячейки не сохранены",
+ "Xanalar siyahı kimi göndərilməlidir": "Ячейки нужно отправлять списком",
+ "Dərc olunmuş balın dəyişməsinin səbəbini yazın": "Укажите причину изменения опубликованного балла",
+ "Bu fənndə sizin tədris vahidinizin tələbəsi yoxdur": "В этой дисциплине нет студентов ваших учебных единиц",
+ "Bu tələbə sizin tədris vahidinizin siyahısında deyil": "Этого студента нет в списке вашей учебной единицы",
+ "Belə tələbə və ya komponent yoxdur": "Нет такого студента или компонента",
+ "Davamiyyət balı jurnaldan hesablanır: cədvələ yazılmır": "Балл за посещаемость рассчитывается по журналу: в таблицу он не вводится"
+}

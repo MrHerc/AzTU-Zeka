@@ -98,7 +98,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T18 Korpus, otaq və otaq QR-i
 - [x] T19 Cədvəl idarəsi və iCal
 - [x] T20 Davamiyyət jurnalı
-- [ ] T21 Qiymət jurnalı
+- [x] T21 Qiymət jurnalı
 - [ ] T22 Tapşırıqlar və material faylı
 - [ ] T45 Sənədin bütövlüyü
 

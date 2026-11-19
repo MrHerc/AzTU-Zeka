@@ -150,13 +150,17 @@ def test_issue_document_numbers_and_codes(db):
     assert d1["verify_code"] != d2["verify_code"] and d1["hash"] != d2["hash"]
 
 
-def test_transcript_rows_are_deterministic(db):
-    a, b = store.transcript_rows(db, 5), store.transcript_rows(db, 5)
+def test_the_demo_transcript_is_built_from_final_grades(db):
+    """Task 21: the past terms are final-grade rows of the old system (the synthetic transcript is gone)."""
+    from zeka.modules.journal import service as journal
+    aysel = store.row(db, "SELECT id FROM users WHERE username='aysel'")["id"]
+    a, b = journal.transcript(db, aysel), journal.transcript(db, aysel)
     assert a == b and len(a) == 2
+    scale = tenant.load(db)["grading"]["scale"]
     for sem in a:
         for r in sem["courses"]:
-            assert 64 <= r["score"] <= 98 and r["letter"] == tenant.letter(r["score"], tenant.load(db)["grading"]["scale"]) and r["credits"] > 0
-    assert all(r["score"] >= 78 for s in store.transcript_rows(db, 1) for r in s["courses"])   # the demo student
+            assert 78 <= r["score"] <= 98 and r["letter"] == tenant.letter(r["score"], scale) and r["credits"] > 0 and r["passed"]
+    assert not hasattr(store, "transcript_rows")
 
 
 def test_parse_kb():

@@ -11,6 +11,7 @@ from ..core.i18n import E, T3, canon
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows
 from ..core.web import HTTPError, html_resp
+from ..modules.journal import service as journal
 from ..modules.directory import domain as directory_rules, service as directory
 
 OPEN = ("submitted", "in_progress", "returned")
@@ -262,6 +263,8 @@ def create_request(req):
     c, u = req.db, req.user
     b = req.json()
     rt = get_type(c, b.get("type_code"))
+    if rt["code"] == "transcript" and not journal.transcript_ready(c, u["id"]):     # Task 21: only from reconciled history
+        raise HTTPError(400, "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.")
     data = validate(c, u, rt, b.obj("data"))
     t = now()
     rid = c.execute("INSERT INTO requests(type_code,student_id,data,status,step,created_at,updated_at,due_at) VALUES(?,?,?,?,0,?,?,?)",
@@ -438,7 +441,7 @@ def request_preview(req):
     data = {"type": rt["code"], **(J(r["data"], {}) or {})}
     fake = {"kind": "request", "title": rt["document"], "reg_no": f"AzTU-{rt['prefix']}-{now().year}-••••••", "verify_code": "••••-••••",
             "data": json.dumps(data, ensure_ascii=False), "hash": "0" * 64, "issued_at": iso(now()), "status": "valid"}
-    tr = store.transcript_rows(c, r["student_id"]) if rt["code"] == "transcript" else None
+    tr = journal.transcript(c, r["student_id"]) if rt["code"] == "transcript" else None
     page = docs.render_document(fake, holder(c, r["student_id"]), req.user, ctx(c), tr, req.lang)
     return html_resp(page.replace('<div class="toolbar no-print">', '<div class="toolbar no-print" hidden>'))
 
@@ -513,7 +516,7 @@ def doc_page(req):
     req.read_owner, req.read_object = d["holder_id"], d["id"]
     h = holder(c, d["holder_id"])
     issuer = row(c, "SELECT * FROM users WHERE id=?", (d["issued_by"],)) or {"full_name": "—"}
-    tr = store.transcript_rows(c, d["holder_id"]) if (J(d["data"], {}) or {}).get("type") == "transcript" else None
+    tr = journal.transcript(c, d["holder_id"]) if (J(d["data"], {}) or {}).get("type") == "transcript" else None
     page = docs.render_document(d, h, issuer, ctx(c), tr, req.lang)
     if req.query.get("embed") == "1":
         page = page.replace('<div class="toolbar no-print">', '<div class="toolbar no-print" hidden>')

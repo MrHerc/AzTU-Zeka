@@ -49,6 +49,10 @@ COLUMNS: dict[str, dict[str, tuple[str, ...]]] = {
                            "userSourcedId": ("usersourcedid", "tələbə"), "heldHours": ("heldhours", "keçilmiş saat"),
                            "unexcusedHours": ("unexcusedhours", "üzrsüz qayıb saatı"), "excusedHours": ("excusedhours", "üzrlü qayıb saatı"),
                            "asOf": ("asof", "tarix", "kəsid tarixi")},
+    # Task 21: a score per student, course and component (the source key is the three together)
+    "grades": {"courseSourcedId": ("coursesourcedid", "fənn"), "userSourcedId": ("usersourcedid", "tələbə"),
+               "component": ("component", "komponent"), "score": ("score", "bal"), "max": ("max", "maksimum"),
+               "asOf": ("asof", "tarix")},
 }
 REQUIRED = {
     "users": ("sourcedId", "username", "givenName", "familyName", "role"),
@@ -60,6 +64,7 @@ REQUIRED = {
     "timetable": ("sourcedId", "courseSourcedId", "weekday", "start", "end"),
     "rooms": ("sourcedId", "identifier", "number", "building"),
     "attendance-opening": ("termSourcedId", "courseSourcedId", "userSourcedId", "heldHours", "unexcusedHours", "excusedHours", "asOf"),
+    "grades": ("courseSourcedId", "userSourcedId", "component", "score"),
 }
 KINDS = (*COLUMNS, "teaching-load")
 IMPORT_ROLES = {"student": "student", "tələbə": "student", "teacher": "teacher", "müəllim": "teacher"}
@@ -143,6 +148,8 @@ def draft(kind: str, cells: dict[str, str]) -> tuple[dict, dict | None]:
     """The draft of one row of a kind (everything but teaching-load), or the reason it is refused."""
     if kind == "attendance-opening":
         return _opening(cells)
+    if kind == "grades":
+        return _grade(cells)
     sid = cells.get("sourcedId", "")
     if not SOURCE.fullmatch(sid):
         return {}, E("sourcedId 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır")
@@ -279,9 +286,41 @@ def _room(x: dict) -> tuple[dict, dict | None]:
     return out, None
 
 
-def opening_key(cells: dict) -> str:
-    """The source key of an opening-balance row: its term, course and student source ids."""
-    return "|".join(cells.get(k, "") for k in ("termSourcedId", "courseSourcedId", "userSourcedId"))
+COMPOSITE_KEYS = {"attendance-opening": ("termSourcedId", "courseSourcedId", "userSourcedId"),
+                  "grades": ("courseSourcedId", "userSourcedId", "component")}
+
+
+def source_key(kind: str, cells: dict) -> str:
+    """The source key of a kind without a sourcedId column: its parts together."""
+    return "|".join(cells.get(k, "") for k in COMPOSITE_KEYS[kind])
+
+
+def _number(v: str) -> float | None:
+    try:
+        n = float((v or "").strip().replace(",", "."))
+    except ValueError:
+        return None
+    return n if n == n and abs(n) != float("inf") else None
+
+
+def _grade(x: dict) -> tuple[dict, dict | None]:
+    for k in ("courseSourcedId", "userSourcedId"):
+        if not SOURCE.fullmatch(x.get(k, "")):
+            return {}, E("«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır", field=k)
+    component = " ".join(x.get("component", "").split())
+    if not 1 <= len(component) <= 100:
+        return {}, E("«{field}» sahəsi doldurulmalıdır", field="component")
+    score = _number(x.get("score", ""))
+    if score is None or score < 0:
+        return {}, E("Bal rəqəm olmalıdır")
+    maximum = _number(x["max"]) if x.get("max", "").strip() else None
+    if x.get("max", "").strip() and maximum is None:
+        return {}, E("«{field}» sahəsində rəqəm olmalıdır", field="max")
+    as_of = a_date(x["asOf"]) if x.get("asOf", "").strip() else None
+    if x.get("asOf", "").strip() and not as_of:
+        return {}, E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field="asOf")
+    return {"_course": x["courseSourcedId"], "_user": x["userSourcedId"], "component": component, "score": round(score, 2),
+            "_max": maximum, "_as_of": as_of}, None
 
 
 def _opening(x: dict) -> tuple[dict, dict | None]:

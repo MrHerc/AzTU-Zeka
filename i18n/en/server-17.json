@@ -1,0 +1,14 @@
+{
+ "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.": "A transcript is not issued yet: the dean's office is checking the grades of earlier terms. Contact the dean's office.",
+ "Bal rəqəm olmalıdır": "The score must be a number",
+ "«{field}» sahəsində rəqəm olmalıdır": "The “{field}” field must be a number",
+ "Komponent fənnin sxemində yoxdur: {x}": "The course's scheme has no such component: {x}",
+ "Bal 0 ilə {max} arasında olmalıdır": "The score must be between 0 and {max}",
+ "Bəzi xanalar saxlanmadı": "Some cells were not saved",
+ "Xanalar siyahı kimi göndərilməlidir": "Cells must be sent as a list",
+ "Dərc olunmuş balın dəyişməsinin səbəbini yazın": "Enter the reason for changing a published score",
+ "Bu fənndə sizin tədris vahidinizin tələbəsi yoxdur": "None of your teaching units in this course has students",
+ "Bu tələbə sizin tədris vahidinizin siyahısında deyil": "This student is not on the list of your teaching unit",
+ "Belə tələbə və ya komponent yoxdur": "No such student or component",
+ "Davamiyyət balı jurnaldan hesablanır: cədvələ yazılmır": "The attendance score is computed from the journal: it is not typed into the table"
+}

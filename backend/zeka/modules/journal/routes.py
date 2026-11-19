@@ -1,11 +1,16 @@
 """HTTP routes of the attendance journal (tasks/todo.md, Task 20)."""
 from __future__ import annotations
 
+import csv
+import io
+
+from ...core.i18n import S, localize
 from ...core.perms import STAFF_ROLES
-from ...core.web import HTTPError
+from ...core.web import HTTPError, Response, json_resp
 from ...legacy.common import R, serves
 from ...legacy.store import now
 from ..directory import domain as directory_rules
+from ..integration.domain import csv_cell
 from . import repo, service
 
 
@@ -67,3 +72,66 @@ def correct_opening(req):
     if status == "missing":
         raise HTTPError(404, "Tapılmadı")
     return _answer(status, value)
+
+
+# ---------------------------------------------------------------- grades (Task 21)
+def _table(req, table):
+    if not table:
+        raise HTTPError(404, "Fənn tapılmadı")
+    if req.user["role"] == "office":                   # a dean's office: its own faculty's students
+        table["students"] = [s for s in table["students"] if serves(req.db, req.user, s["id"])]
+    return table
+
+
+@R("GET", "/api/journal/courses/{id:int}/grades", roles=STAFF_ROLES)
+def grades(req):
+    return _table(req, service.grade_table(req.db, req.user, req.params["id"]))
+
+
+@R("PUT", "/api/journal/courses/{id:int}/grades", roles=STAFF_ROLES)
+def save_grades(req):
+    status, value = service.save_grades(req.db, req.user, req.params["id"], req.json())
+    if status == "cells":
+        return json_resp({"error": S("Bəzi xanalar saxlanmadı", req.lang), "cells": localize(value, req.lang)}, 400)   # reasons only: keys are kept
+    if status == "missing":
+        raise HTTPError(404, "Fənn tapılmadı")
+    return _table(req, _answer(status, value))
+
+
+@R("POST", "/api/journal/courses/{id:int}/grades/publish", roles=STAFF_ROLES)
+def publish_grades(req):
+    status, value = service.publish_grades(req.db, req.user, req.params["id"])
+    if status == "missing":
+        raise HTTPError(404, "Fənn tapılmadı")
+    return _table(req, _answer(status, value))
+
+
+@R("GET", "/api/journal/courses/{id:int}/grades/log", roles=STAFF_ROLES)
+def grade_log(req):
+    if not service.can_read_course(req.db, req.user, req.params["id"]):
+        raise HTTPError(404, "Fənn tapılmadı")
+    out = repo.changes(req.db, req.params["id"])
+    return [x for x in out if serves(req.db, req.user, x["user_id"])] if req.user["role"] == "office" else out
+
+
+@R("GET", "/api/journal/debts", roles=("office", "academic_office", "admin", "leader"))
+def debts(req):
+    """The academic debts (final grades that did not pass); ``?format=csv`` for a spreadsheet."""
+    c, u = req.db, req.user
+    out = [x for x in service.debts(c) if u["role"] != "office" or serves(c, u, x["user_id"])]
+    if req.query.get("format") != "csv":
+        return out
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    cols = ("student_no", "full_name", "grp", "term_name", "course_code", "course_name", "credits", "score", "letter")
+    w.writerow(cols)
+    w.writerows([[csv_cell(x[k]) for k in cols] for x in out])
+    return Response(buf.getvalue(), 200, "text/csv; charset=utf-8", [("Content-Disposition", 'attachment; filename="akademik-borclar.csv"')])
+
+
+@R("POST", "/api/journal/students/{id:int}/reconcile", roles=("office", "academic_office", "admin"))
+def reconcile(req):
+    c, u = req.db, req.user
+    if (u["role"] == "office" and not serves(c, u, req.params["id"])) or not service.reconcile(c, u, req.params["id"]):
+        raise HTTPError(404, "Tələbə tapılmadı")
+    return {"ok": True}

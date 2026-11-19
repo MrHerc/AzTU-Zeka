@@ -170,6 +170,12 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/journal/lessons/{id}/teacher` | `journal.correct` | A substitute teacher for an upcoming lesson: `{"teacher_id", "reason"}` (audited) |
 | `GET` | `/api/journal/courses/{id}/standing` | the course's teachers, correctors, admin, academic office, leadership, dean's office (its faculty) | Each student's planned and missed hours, share and status |
 | `PUT` | `/api/journal/openings/{id}` | `journal.correct` | Correct an opening balance with a reason |
+| `GET` | `/api/journal/courses/{id}/grades` | the course's teachers, correctors, readers | The grade table: columns, each student's cells (draft or published), attendance component, result, `writable` (Task 21) |
+| `PUT` | `/api/journal/courses/{id}/grades` | as above | `{"cells": [{"student_id", "component", "score"}], "reason"?}`; a refused cell answers `400 {"cells": [{"student_id", "component", "reason"}]}` and nothing is written |
+| `POST` | `/api/journal/courses/{id}/grades/publish` | as above | Publish the user's drafts; final grades follow |
+| `GET` | `/api/journal/courses/{id}/grades/log` | as above | Changes of published scores: who, old, new, reason |
+| `GET` | `/api/journal/debts?format=csv` | office (its faculty), academic office, admin, leadership | Final grades that did not pass (academic debts); CSV with formula-safe cells |
+| `POST` | `/api/journal/students/{id}/reconcile` | office (its faculty), academic office, admin | Mark the student's history before Zəka as checked (audited) |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
 
 ### Bulk import (Task 16)
@@ -251,6 +257,24 @@ Opening balances are the import kind `attendance-opening` (`termSourcedId`, `cou
 `heldHours`, `unexcusedHours`, `excusedHours`, `asOf`), resolved through the source system's links of those kinds. Their
 source key is the three ids together; the same file again changes nothing, a balance changed in Zəka since is a
 conflict, and a row whose held hours differ from what Zəka planned up to its date is listed in `warnings` with its row.
+
+### Grade journal (Task 21)
+
+The columns are the scheme's components and the exam (the published syllabus's scheme once Task 25 writes it, the
+university's until then). A teacher writes the scores of the students on the lists of their own units of the course
+(`403` for another unit's student); a corrector writes all. The attendance component is never typed (`400`): it is
+`attendance.points_rule` applied to the share of the hours held so far that were missed (imported hours before the
+cut-over date included), or the attended share when there is no rule. A cell takes a number or pasted text ("8,5");
+out of range or not a number is refused cell by cell. A new score is a draft until published, and a student sees only
+published scores. Changing a published score needs a reason and writes `grade_changes`. A final grade (`final_grades`,
+one per student, course and term) is written from the published scores once the exam is in; below the exam minimum it
+is F. The `grades` import kind (`courseSourcedId`, `userSourcedId`, `component`, `score`, `max`?, `asOf`?) writes through
+the same table with `source='legacy'`, the importing account and the reason `import:<file name>:<SHA-256>`; a component
+outside the scheme is a refused row; the same file again changes nothing.
+
+A transcript is built only from final grades: the average is sum(score x credits) / sum(credits) over all of them, the
+total credits count only passed courses. A `transcript` request is refused until the student's history is reconciled
+(`history_reconciled_at`), unless the student was admitted in or after Zəka's first term.
 
 ### University settings (Task 17)
 

@@ -7,12 +7,13 @@ const MARK = () => ({ present: t("İştirak edir"), absent: t("Qayıb"), late: t
 const STAND = () => ({ normal: [t("Normal"), "b-green"], warning: [t("Həddə yaxındır"), "b-amber"],
   not_admitted: [t("İmtahana buraxılmır"), "b-red"], incomplete: [t("Məlumat natamam"), "b-gray"] });
 const CORRECTORS = ["dept_head", "admin"];
+const DEBT_READERS = ["office", "academic_office", "admin", "leader"];
 const crumbs = (x) => [[t("Əsas"), HOME[S.user.role]], [t("Elektron jurnal"), "/journal"], ...(x ? [[x]] : [])];
 const standBadge = (s) => { const [l, c] = STAND()[s] || [s, "b-gray"]; return html`<span class="badge ${c}">${l}</span>`; };
 
 route("/journal", async (el, p, q) => {
   const role = S.user.role;
-  let view = q.view === "standing" || ["office", "academic_office", "leader"].includes(role) ? "standing" : "lessons";
+  let view = ["standing", "grades", "debts"].includes(q.view) ? q.view : ["office", "academic_office", "leader"].includes(role) ? "standing" : "lessons";
   let course = q.course || "", courses = [];
   try {
     courses = role === "teacher" ? await api.get("/api/courses") : (await api.get("/api/directory/courses?active=1")).items;
@@ -20,7 +21,60 @@ route("/journal", async (el, p, q) => {
   const head = () => html`${pageHead(t("Elektron jurnal"), t("Dərsin davamiyyəti, buraxılmış saatlar və imtahana buraxılış."), "", crumbs())}
     <div class="seg mb" role="tablist">
       <button role="tab" aria-selected="${view === "lessons"}" class="${view === "lessons" ? "active" : ""}" data-view="lessons">${t("Dərslərim")}</button>
-      <button role="tab" aria-selected="${view === "standing"}" class="${view === "standing" ? "active" : ""}" data-view="standing">${t("Fənn üzrə vəziyyət")}</button></div>`;
+      <button role="tab" aria-selected="${view === "standing"}" class="${view === "standing" ? "active" : ""}" data-view="standing">${t("Fənn üzrə vəziyyət")}</button>
+      <button role="tab" aria-selected="${view === "grades"}" class="${view === "grades" ? "active" : ""}" data-view="grades">${t("Qiymətlər")}</button>
+      ${DEBT_READERS.includes(role) ? html`<button role="tab" aria-selected="${view === "debts"}" class="${view === "debts" ? "active" : ""}" data-view="debts">${t("Akademik borclar")}</button>` : ""}</div>`;
+  const coursePick = () => html`<select class="input input-sm" id="j-course" aria-label="${t("Fənn")}" style="max-width:360px"><option value="">${t("Fənni seçin")}</option>
+    ${courses.map((c) => html`<option value="${c.id}" ${String(c.id) === String(course) ? "selected" : ""}>${c.code} · ${c.name}</option>`)}</select>`;
+  let grid = null;
+  const edits = new Map();                                  // "student:component" -> typed value
+  const drawGrades = async () => {
+    grid = null;
+    edits.clear();
+    if (course) { try { grid = await api.get(`/api/journal/courses/${course}/grades`); } catch (err) { toast(err.message, "err"); } }
+    const cols = grid ? grid.columns : [];
+    const cell = (s, c) => {
+      if (c.kind === "attendance") return html`<td class="center muted" title="${t("Jurnaldan hesablanır")}">${s.attendance ?? "—"}</td>`;
+      const v = s.cells[c.key];
+      if (!s.writable) return html`<td class="center">${v && v.score != null ? v.score : "—"}</td>`;
+      return html`<td class="center"><input class="input input-sm grade-in${v && v.status === "draft" ? " draft" : ""}" inputmode="decimal" style="width:64px"
+        data-s="${s.id}" data-c="${c.key}" value="${v && v.score != null ? v.score : ""}" aria-label="${s.full_name}: ${c.name}"></td>`;
+    };
+    mount(el, html`${head()}<div class="card"><div class="card-h wrap">${coursePick()}
+        ${grid && grid.students.some((s) => s.writable) ? html`<button class="btn btn-primary btn-sm" id="g-save">${t("Saxla")}</button>
+          <button class="btn btn-sm" id="g-publish">${t("Dərc et ({n} qaralama)", { n: grid.drafts })}</button>` : ""}
+        ${grid ? html`<button class="btn btn-ghost btn-sm" id="g-log">${t("Dəyişiklik jurnalı")}</button>` : ""}</div>
+      ${grid ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("Yeni bal qaralamadır: tələbə onu dərc olunandan sonra görür. Dərc olunmuş balın dəyişməsi səbəb tələb edir. Excel-dən sütunları seçib xanaya yapışdıra bilərsiniz.")}</p></div>
+        <div class="table-wrap"><table class="table" id="g-table"><thead><tr><th>${t("Tələbə")}</th>${cols.map((c) => html`<th class="center">${c.name}<br><span class="tiny">${t("maks. {n}", { n: c.max })}</span></th>`)}
+          <th class="center">${t("Cəmi")}</th><th class="center">${t("Qiymət")}</th></tr></thead><tbody>
+        ${grid.students.map((s) => html`<tr><td>${s.full_name} <span class="tiny muted">${s.group || ""}</span></td>${cols.map((c) => cell(s, c))}
+          <td class="center"><b>${s.result.total ?? s.result.semester}</b></td><td class="center">${s.result.letter || "—"}</td></tr>`)}</tbody></table></div>`
+        : html`<div class="card-b"><p class="muted" style="margin:0">${t("Qiymətləri görmək üçün fənni seçin.")}</p></div>`}</div>`);
+  };
+  const saveGrades = async (reason) => {
+    const cells = [...edits].map(([k, v]) => { const [s, ...c] = k.split(":"); return { student_id: Number(s), component: c.join(":"), score: v }; });
+    if (!cells.length) { toast(t("Dəyişiklik yoxdur"), "ok"); return; }
+    try { grid = await api.put(`/api/journal/courses/${course}/grades`, { cells, reason }); toast(t("Saxlanıldı"), "ok"); drawGrades(); }
+    catch (err) {
+      if (err.data && err.data.cells) {
+        for (const x of err.data.cells) { const i = el.querySelector(`[data-s="${x.student_id}"][data-c="${CSS.escape(String(x.component))}"]`); if (i) { i.classList.add("bad"); i.title = x.reason; } }
+        toast(t("{n} xana saxlanmadı: {x}", { n: err.data.cells.length, x: err.data.cells[0].reason }), "err");
+      } else if (err.status === 400 && !reason && /səbəb|reason|причин/i.test(err.message)) {
+        modal({ title: t("Dərc olunmuş balın dəyişməsi"), size: "sm", body: html`<div class="field"><label class="label" for="g-why">${t("Səbəb")}</label><input class="input" id="g-why" maxlength="300"></div>`,
+          actions: [{ label: t("Saxla"), cls: "btn-primary", onClick: (w) => saveGrades(w.querySelector("#g-why").value) }] });
+      } else toast(err.message, "err");
+    }
+  };
+  const drawDebts = async () => {
+    let list = [];
+    try { list = await api.get("/api/journal/debts"); } catch (err) { toast(err.message, "err"); }
+    mount(el, html`${head()}<div class="card"><div class="card-h wrap"><h3>${ic("alert", 17)} ${t("Keçid balını toplamayan fənlər")}</h3>
+        <a class="btn btn-sm" href="/api/journal/debts?format=csv" download>${t("CSV yüklə")}</a></div>
+      <div class="table-wrap"><table class="table"><thead><tr><th>${t("Tələbə")}</th><th>${t("Qrup")}</th><th>${t("Semestr")}</th><th>${t("Fənn")}</th><th>${t("Kredit")}</th><th>${t("Bal")}</th><th>${t("Qiymət")}</th></tr></thead><tbody>
+      ${list.map((x) => html`<tr><td>${x.full_name} <span class="tiny muted">${x.student_no || ""}</span></td><td>${x.grp || "—"}</td><td>${x.term_name}</td><td>${x.course_name}</td>
+        <td>${x.credits}</td><td>${x.score}</td><td>${x.letter}</td></tr>`)}</tbody></table></div>
+      ${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Akademik borc yoxdur")}</p></div>`}</div>`);
+  };
 
   const drawLessons = async () => {
     let list;
@@ -37,9 +91,7 @@ route("/journal", async (el, p, q) => {
   const drawStanding = async () => {
     let list = [];
     if (course) { try { list = await api.get(`/api/journal/courses/${course}/standing`); } catch (err) { toast(err.message, "err"); } }
-    mount(el, html`${head()}<div class="card"><div class="card-h wrap">
-        <select class="input input-sm" id="j-course" aria-label="${t("Fənn")}" style="max-width:360px"><option value="">${t("Fənni seçin")}</option>
-          ${courses.map((c) => html`<option value="${c.id}" ${String(c.id) === String(course) ? "selected" : ""}>${c.code} · ${c.name}</option>`)}</select></div>
+    mount(el, html`${head()}<div class="card"><div class="card-h wrap">${coursePick()}</div>
       ${course ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Tələbə")}</th><th>${t("Qrup")}</th><th>${t("Plan saatı")}</th>
           <th>${t("Buraxılmış saat")}</th><th>${t("Faiz")}</th><th>${t("Vəziyyət")}</th><th></th></tr></thead><tbody>
         ${list.map((x) => html`<tr><td>${x.full_name} <span class="tiny muted">${x.student_no || ""}</span></td><td>${x.group || "—"}</td><td>${x.planned_hours}</td>
@@ -50,10 +102,36 @@ route("/journal", async (el, p, q) => {
         </tbody></table></div>${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Bu fənndə tələbə yoxdur")}</p></div>`}`
         : html`<div class="card-b"><p class="muted" style="margin:0">${t("Tələbələrin buraxılmış saatlarını görmək üçün fənni seçin.")}</p></div>`}</div>`);
   };
-  const draw = () => (view === "lessons" ? drawLessons() : drawStanding());
+  const draw = () => ({ lessons: drawLessons, standing: drawStanding, grades: drawGrades, debts: drawDebts })[view]();
+  on(el, "input", ".grade-in", (e, i) => { edits.set(`${i.dataset.s}:${i.dataset.c}`, i.value.trim()); i.classList.remove("bad"); });
+  on(el, "paste", ".grade-in", (e, i) => {                  // a block copied from Excel: rows by newline, cells by tab
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    if (!/[\t\n]/.test(text)) return;
+    e.preventDefault();
+    const inputs = [...el.querySelectorAll("#g-table tbody tr")].map((tr) => [...tr.querySelectorAll(".grade-in")]);
+    const r0 = inputs.findIndex((r) => r.includes(i)), c0 = inputs[r0].indexOf(i);
+    text.replace(/\r/g, "").split("\n").filter((l, k, a) => l !== "" || k < a.length - 1).forEach((line, dr) => line.split("\t").forEach((v, dc) => {
+      const target = (inputs[r0 + dr] || [])[c0 + dc];
+      if (target) { target.value = v.trim(); edits.set(`${target.dataset.s}:${target.dataset.c}`, v.trim()); }
+    }));
+  });
+  on(el, "click", "#g-save", () => saveGrades(""));
+  on(el, "click", "#g-publish", async () => {
+    try { grid = await api.post(`/api/journal/courses/${course}/grades/publish`); toast(t("Ballar dərc olundu"), "ok"); drawGrades(); }
+    catch (err) { toast(err.message, "err"); }
+  });
+  on(el, "click", "#g-log", async () => {
+    let log = [];
+    try { log = await api.get(`/api/journal/courses/${course}/grades/log`); } catch (err) { toast(err.message, "err"); return; }
+    modal({ title: t("Dəyişiklik jurnalı"), size: "lg", body: log.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Tarix")}</th><th>${t("Tələbə")}</th>
+        <th>${t("Komponent")}</th><th>${t("Əvvəl")}</th><th>${t("Sonra")}</th><th>${t("Kim")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
+      ${log.map((x) => html`<tr><td class="nowrap small">${x.changed_at}</td><td>${x.student}</td><td>${x.component}</td><td>${x.old_score ?? "—"}</td><td>${x.new_score ?? "—"}</td>
+        <td>${x.changed_by_name || "—"}</td><td class="small">${x.reason}</td></tr>`)}</tbody></table></div>`
+      : html`<p class="muted" style="margin:0">${t("Dərc olunmuş bal hələ dəyişdirilməyib")}</p>` });
+  });
   on(el, "click", "[data-view]", (e, b) => { view = b.dataset.view; draw(); });
   on(el, "click", "[data-go]", (e, b) => go(b.dataset.go));
-  on(el, "change", "#j-course", (e, s) => { course = s.value; drawStanding(); });
+  on(el, "change", "#j-course", (e, s) => { course = s.value; (view === "grades" ? drawGrades : drawStanding)(); });
   on(el, "click", "[data-open]", (e, b) => modal({ title: t("Açılış qalığının düzəlişi"), size: "sm",
     body: html`<div class="stack"><div class="row wrap">
       <div class="field"><label class="label" for="o-u">${t("Üzrsüz qayıb saatı")}</label><input class="input" id="o-u" type="number" min="0" value="${b.dataset.u}"></div>

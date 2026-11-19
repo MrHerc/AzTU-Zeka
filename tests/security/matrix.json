@@ -357,6 +357,36 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/journal/courses/{id:int}/grades": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/journal/courses/{id:int}/grades/log": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/journal/courses/{id:int}/lessons": {
   "access": [
    "academic_office",
@@ -381,6 +411,18 @@
    "office",
    "proctor",
    "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/journal/debts": {
+  "access": [
+   "academic_office",
+   "admin",
+   "leader",
+   "office"
   ],
   "audit_read": null,
   "demo": false,
@@ -1157,6 +1199,21 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/journal/courses/{id:int}/grades/publish": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/journal/lessons/{id:int}/teacher": {
   "access": [
    "admin",
@@ -1165,6 +1222,17 @@
   "audit_read": null,
   "demo": false,
   "perm": "journal.correct",
+  "slow": false
+ },
+ "POST /api/journal/students/{id:int}/reconcile": {
+  "access": [
+   "academic_office",
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "POST /api/lessons/{id:int}/cancel": {
@@ -1513,6 +1581,21 @@
   "audit_read": null,
   "demo": false,
   "perm": "directory.manage",
+  "slow": false
+ },
+ "PUT /api/journal/courses/{id:int}/grades": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "PUT /api/journal/lessons/{id:int}/attendance": {

@@ -115,19 +115,20 @@ def transcript_body(holder, data, ctx, rows_, en):
     head = (f"Student: <b>{e(name)}</b> · {e(sp['name_en'])} · group {e(holder.get('group') or '—')} · ID {e(holder.get('student_no') or '—')}" if en
             else f"Tələbə: <b>{e(name)}</b> · “{e(sp['name'])}” ixtisası · qrup {e(holder.get('group') or '—')} · tələbə bileti № {e(holder.get('student_no') or '—')}")
     out = [f"<p class='noindent'>{head}</p>"]
-    tot_cr = tot_w = 0
+    tot_cr = tot_w = all_cr = 0
     for s in scope:
         out.append(f"<h3 class='sem'>{e(s['name_en'] if en else s['name'])}</h3><table class='grades'><tr><th>{'Course' if en else 'Fənn'}</th>"
                    f"<th>{'Credits (ECTS)' if en else 'Kredit (AKTS)'}</th><th>{'Score' if en else 'Bal'}</th><th>{'Grade' if en else 'Qiymət'}</th></tr>")
         for r in s["courses"]:
             out.append(f"<tr><td>{e(r['name_en'] if en else r['name'])}</td><td>{r['credits']}</td><td>{r['score']}</td><td>{r['letter']}</td></tr>")
-            tot_cr += r["credits"]
+            all_cr += r["credits"]
             tot_w += r["credits"] * r["score"]
+            tot_cr += r["credits"] if r.get("passed", True) else 0      # Task 21: only a passed course earns its credits
         out.append("</table>")
-    avg = tot_w / tot_cr if tot_cr else 0
+    avg = tot_w / all_cr if all_cr else 0
     out.append(f"<p class='noindent'><b>{'Total credits' if en else 'Cəmi kredit'}:</b> {tot_cr} · <b>{'Weighted average score' if en else 'Orta çəkili bal'}:</b> "
                f"{avg:.1f}{'' if en else ''}</p>")
-    out.append(f"<p class='muted noindent'>{e(scale_text(ctx.get('grading') or tenant.DEFAULTS['grading'], en))} {'Scores are synthetic (demo).' if en else 'Ballar sintetikdir (demo).'}</p>")
+    out.append(f"<p class='muted noindent'>{e(scale_text(ctx.get('grading') or tenant.DEFAULTS['grading'], en))}</p>")
     return "".join(out)
 
 

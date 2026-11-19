@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import math
 import secrets
 import sqlite3
@@ -17,6 +18,7 @@ from datetime import timedelta
 
 from ...core.i18n import E
 from ...legacy.store import audit, iso, now, setting
+from ...core import tenant
 from ..identity import domain as identity_rules
 from ..identity import service as identity
 from ..journal import service as journal
@@ -38,6 +40,7 @@ TARGETS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "rooms": ("rooms", ("code", "number", "name", "building_id", "floor", "kind", "capacity", "accessible"), "id"),
     "attendance_opening": ("attendance_opening", ("student_id", "course_id", "term_id", "held_hours", "unexcused_hours",
                                                   "excused_hours", "as_of"), "id"),
+    "grades": ("grades", ("user_id", "course_id", "component", "score", "max"), "rowid"),
 }
 UNIT_LINKS = ("classes", "teaching_load")           # these also carry the unit's groups
 STAMPED = ("faculties", "departments", "academic_terms", "courses", "teaching_units", "rooms", "attendance_opening")
@@ -76,6 +79,7 @@ class Context:
         self.rows = {k: repo.table(c, TARGETS[k][0], TARGETS[k][1], TARGETS[k][2]) for k in links}
         self.groups = repo.unit_groups(c)
         self.file_faculties: set[str] = set()          # orgs: faculties of this same file, for their departments
+        self.reason = ""                               # grades: "import:<file name>:<its SHA-256>" (Task 21)
         self._cache: dict = {}
 
     def by(self, name: str, col: str) -> dict:
@@ -121,8 +125,8 @@ def _plan_rows(kind: str, ctx: Context, cells: list[tuple[int, dict]], errors: l
     seen: dict[str, int] = {}
     pairs: dict[tuple[int, int], Item] = {}
     for n, x in cells:
-        if kind == "attendance-opening":
-            x["sourcedId"] = domain.opening_key(x)
+        if kind in domain.COMPOSITE_KEYS:
+            x["sourcedId"] = domain.source_key(kind, x)
         values, problem = domain.draft(kind, x)
         if not problem and x["sourcedId"] in seen:
             problem = E("sourcedId faylda təkrarlanır (sətir {n})", n=seen[x["sourcedId"]])
@@ -234,6 +238,25 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
                 ctx.table("attendance_opening", ("student_id", "course_id", "term_id")).items()}
         values = {"student_id": student_id, "course_id": course_id, "term_id": term_id, **v}
         return Item(n, "attendance_opening", sid, values, natural=keys.get((student_id, course_id, term_id))), None
+    if kind == "grades":
+        course_id, user_id = ctx.linked("courses", v["_course"]), ctx.linked("users", v["_user"])
+        if not course_id:
+            return None, _missing("Fənn", v["_course"])
+        if not user_id or ctx.role(user_id) != "student":
+            return None, _missing("Tələbə", v["_user"])
+        grading = tenant.load(ctx.c)["grading"]
+        cols = {x["name"]: x for x in grading["components"] if not x.get("attendance")} | {grading["exam"]["name"]: grading["exam"]}
+        comp = cols.get(v["component"])
+        if not comp:
+            return None, E("Komponent fənnin sxemində yoxdur: {x}", x=v["component"])
+        if (v["_max"] is not None and v["_max"] != comp["max"]) or v["score"] > comp["max"]:
+            return None, E("Bal 0 ilə {max} arasında olmalıdır", max=comp["max"])
+        keys = {(r["user_id"], r["course_id"], r["component"]): k for k, r in
+                ctx.table("grades", ("user_id", "course_id", "component"), "rowid").items()}
+        item = Item(n, "grades", sid, {"user_id": user_id, "course_id": course_id, "component": v["component"], "score": v["score"],
+                                       "max": comp["max"]}, natural=keys.get((user_id, course_id, v["component"])))
+        item.extra["as_of"] = v["_as_of"]
+        return item, None
     raise ValueError(kind)
 
 
@@ -395,9 +418,11 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
             continue
         values = {k: (new_ids[(v.link, v.source_id)] if isinstance(v, Pending) else v) for k, v in it.values.items()}
         table, cols, key = TARGETS[it.link]
+        legacy = {"source": "legacy", "status": "published", "entered_by": user_id, "reason": ctx.reason, "as_of": it.extra.get("as_of"),
+                  "updated_at": t} if table == "grades" else {}        # an imported score (Task 21): who, from which file
         if it.action == "insert":
             extra: dict = {"synthetic": 0} if table == "users" else {"created_at": t, "updated_at": t} if table in STAMPED else {}
-            rid = repo.insert(c, table, {**values, **extra})
+            rid = repo.insert(c, table, {**values, **extra, **legacy})
             new_ids[(it.link, it.source_id)] = rid
         else:
             rid = it.row_id if it.row_id is not None else 0       # set by _classify for every action but insert
@@ -411,7 +436,7 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
                 if before and (before["role"], before["status"]) != (values["role"], values["status"]):
                     identity.end_all_sessions(c, rid)             # a new role or status starts from a new sign-in
             if it.action in ("update", "overwrite"):
-                repo.update(c, table, rid, {**values, **({"updated_at": t} if table in STAMPED else {})}, key)
+                repo.update(c, table, rid, {**values, **({"updated_at": t} if table in STAMPED else {}), **legacy}, key)
             if it.action == "overwrite":
                 audit(c, user_id, "import_overwrite", it.link, f"#{rid} · {ctx.source}:{it.source_id} · {', '.join(it.extra['fields'])}")
         it.row_id = rid
@@ -446,8 +471,9 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
             raise tables.TableError("Ekrandan ən çox 20 000 sətir idxal olunur; böyük faylı manage.py ilə idxal edin")
         links = {"users": ("users",), "orgs": ("faculties", "departments"), "terms": ("terms",), "courses": ("courses",),
                  "classes": ("classes",), "enrollments": ("unit_teachers", "enrollments", "users"), "timetable": ("timetable",),
-                 "rooms": ("rooms",), "attendance-opening": ("attendance_opening", "users")}[kind]
+                 "rooms": ("rooms",), "attendance-opening": ("attendance_opening", "users"), "grades": ("grades", "users")}[kind]
         ctx = Context(c, source, links)
+        ctx.reason = f"import:{filename}:{hashlib.sha256(data).hexdigest()}"
         ctx.file_faculties = {x["sourcedId"] for _, x in cells if domain.ORG_TYPES.get(domain.norm(x.get("type", ""))) == "faculties"}
         items = _plan_rows(kind, ctx, cells, errors)
         total = len(cells)
@@ -461,6 +487,9 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     c.execute("BEGIN IMMEDIATE")
     try:
         _write(c, ctx, items, user_id, conflicts)
+        if kind == "grades":                            # the final grades follow the imported scores
+            for uid, cid in sorted({(it.values["user_id"], it.values["course_id"]) for it in items if it.action in ("insert", "update", "overwrite")}):
+                journal.refresh_final(c, uid, cid)
         counts = _counts(items)
         audit(c, user_id, "import", kind, f"{source} · {filename} · +{counts['inserted']} ~{counts['updated']} "
                                           f"={counts['unchanged']} !{len(conflicts)}")

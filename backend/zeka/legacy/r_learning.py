@@ -14,6 +14,7 @@ from .common import (R, check_limit, cite_list, course_access, history, kb_cite_
 from ..core import tenant
 from ..core.i18n import E, S, S_, T3
 from ..modules.directory import service as directory
+from ..modules.journal import domain as journal_rules
 from ..modules.journal import service as journal
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows, setting
@@ -84,7 +85,7 @@ def att_summary(c, uid, course_id):
     out["limit"] = int(planned * out["limit_percent"] / 100) if planned else None     # no term yet: unknown, not 0
     out["counted"] = out["absent"] + (out["excused"] if rules["excused_counts_toward_limit"] else 0)
     out["rate"] = round(100 * (out["present"] + out["late"]) / out["total"]) if out["total"] else 100
-    for k in ("student_id", "full_name", "student_no", "group", "planned_lessons", "opening_id"):
+    for k in ("student_id", "full_name", "student_no", "group", "planned_lessons", "opening_id", "held_hours"):
         out.pop(k, None)
     return out
 
@@ -222,33 +223,19 @@ def my_absences(req):
 
 @R("GET", "/api/grades", roles=("student",))
 def grades(req):
+    """Published scores only (Task 21); the attendance component from the journal; past terms from the final grades."""
     c, u = req.db, req.user
-    settings = tenant.load(c)                                 # Task 17: the scheme is the university's setting
-    grading, rule = settings["grading"], settings["attendance"]["points_rule"]
+    grading = tenant.load(c)["grading"]                       # Task 17: the scheme is the university's setting
     out = []
     for co in my_courses(c, u):
-        got = {g["component"]: g for g in rows(c, "SELECT * FROM grades WHERE user_id=? AND course_id=?", (u["id"], co["id"]))}
-        a = att_summary(c, u["id"], co["id"])
-        items, scores = [], {}
-        for comp in grading["components"]:
-            name, mx = comp["name"], comp["max"]
-            if comp.get("attendance"):
-                score = tenant.attendance_points(a["present"] + a["late"] + a["excused"], a["total"], mx, rule)
-                items.append({"name": name, "max": mx, "score": score, "note": "cari göstərici"})
-            else:
-                g = got.get(name)
-                score = g["score"] if g else None
-                items.append({"name": name, "max": mx, "score": score, "note": "" if g else "hələ keçirilməyib"})
-            scores[name] = score
-        exam = got.get(grading["exam"]["name"])
-        result = tenant.outcome(scores, exam["score"] if exam else None, grading)
+        g = journal.student_grades(c, u["id"], co)
+        result = g["result"]
         out.append({"id": co["id"], "name": co["name"], "code": co["code"], "color": co["color"], "credits": co["credits"],
-                    "items": items, "semester": round(result["semester"], 1), "exam": result["exam"], "result": result,
+                    "items": g["items"], "semester": round(result["semester"], 1), "exam": result["exam"], "result": result,
                     "exam_max": grading["exam"]["max"], "exam_min": grading["exam"]["min"]})
-    past = store.transcript_rows(c, u["id"])
-    flat = [r for s in past for r in s["courses"]]
-    gpa = round(sum(r["score"] * r["credits"] for r in flat) / sum(r["credits"] for r in flat), 1) if flat else None
-    return {"courses": out, "past": past, "average": gpa, "credits": sum(r["credits"] for r in flat)}
+    past = journal.transcript(c, u["id"])
+    totals = journal_rules.transcript_totals([r for t in past for r in t["courses"]])
+    return {"courses": out, "past": past, **totals}
 
 
 @R("GET", "/api/courses/{id:int}/attendance", roles=("teacher", "admin", "leader"))
