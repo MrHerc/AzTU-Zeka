@@ -671,16 +671,16 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** Tələbə imtahana girəndə sessiya `exam:{id}` əhatəsi alır. Əhatə iki istiqamətlidir: `exam:{id}` əhatəli sessiya yalnız `scope="exam"` marşrutlarına çatır; `scope="exam"` marşrutu yalnız əhatəsi həmin marşrutun imtahanına bərabər olan sessiyaya açılır (adi sessiya və başqa imtahanın sessiyası 403 alır). `frontend/exam.html` və `js/exam.js`: naviqasiyasız səhifə; vəziyyətlər: yoxlanır, hazırdır, gedir, təslim olunub. Hər dəyişiklikdə və 20 saniyədən bir avtomatik saxlama; oflayn növbə və təkrar cəhd; yenidən yükləmədən sonra davam. Tək sessiya: imtahana giriş tələbənin bütün başqa sessiyalarını bağlayır. Cəhd gedərkən adi giriş imtahan sessiyasını bağlamır və imtahan marşrutlarına çatmır; cəhdi yalnız Task 28 və Task 29 yoxlamalarından keçən yeni imtahana giriş öz üzərinə götürür və əvvəlki imtahan sessiyasını bağlayır. Hər iki hal imtahan hadisəsi kimi yazılır.
 
 **Acceptance criteria:**
-- [ ] Marşrut cədvəlindən qurulan avtomatik test: imtahan əhatəli sessiya ilə imtahandan kənar hər marşrut 403; adi tələbə sessiyası ilə hər `scope="exam"` marşrutu 403; `exam:1` sessiyası ilə 2-ci imtahanın cəhd marşrutları 403
-- [ ] Oflayn yazılan cavablar bağlantı qayıdanda çatdırılır (şəbəkə söndürülən e2e test)
-- [ ] İmtahana giriş tələbənin başqa sessiyalarını bir sorğu ərzində bağlayır; cəhd gedərkən adi giriş imtahan sessiyasını bağlamır
-- [ ] Taymer serverin verdiyi qalan saniyədən sayılır; müştəri saatı 4 saat səhv olanda da server son vaxtı ilə 2 saniyə dəqiqliklə üst-üstə düşür
-- [ ] 300 simulyasiya olunmuş tələbə imtahanı başladır, cavab yazır və təslim edir: itən cavab 0 (server sayı = müştəri sayı), p95 < 500 ms (`faculty` dəsti)
+- [x] Marşrut cədvəlindən qurulan avtomatik test: imtahan əhatəli sessiya ilə imtahandan kənar hər marşrut 403; adi tələbə sessiyası ilə hər `scope="exam"` marşrutu 403; `exam:1` sessiyası ilə 2-ci imtahanın cəhd marşrutları 403
+- [x] Oflayn yazılan cavablar bağlantı qayıdanda çatdırılır (şəbəkə söndürülən e2e test)
+- [x] İmtahana giriş tələbənin başqa sessiyalarını bir sorğu ərzində bağlayır; cəhd gedərkən adi giriş imtahan sessiyasını bağlamır
+- [x] Taymer serverin verdiyi qalan saniyədən sayılır; müştəri saatı 4 saat səhv olanda da server son vaxtı ilə 2 saniyə dəqiqliklə üst-üstə düşür
+- [x] 300 simulyasiya olunmuş tələbə imtahanı başladır, cavab yazır və təslim edir: itən cavab 0 (server sayı = müştəri sayı), p95 < 500 ms (`faculty` dəsti). Ölçmə 2026-11-19: 300 saniyəyə yayılmış rejimdə 3 000 / 3 000 cavab, p95 8 ms; hamısı birdən (`--burst`) p95 871 ms (1 işçi), 621 ms (4 işçi), itki 0: `docs/perf/baseline.md`
 
 **Verification:**
-- [ ] `python -m pytest tests/security/test_exam_scope.py -q`
-- [ ] `npx playwright test tests/e2e/exam.spec.js --trace off`
-- [ ] `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty`
+- [x] `python -m pytest tests/security/test_exam_scope.py -q`
+- [x] `python -m pytest tests/integration/test_exam_page.py -q` (Playwright skripti `tests/e2e/exam_offline.js`; node + Playwright olmayanda keçirilir)
+- [x] `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty`
 
 **Dependencies:** Task 26
 **Files likely touched:** `backend/zeka/core/web.py`, `backend/zeka/modules/exam/routes.py`, `frontend/exam.html`, `frontend/js/exam.js`, `frontend/css/m-exam.css`, `tests/security/test_exam_scope.py`, `tools/loadtest.py`

@@ -113,7 +113,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] T24 Çərçivə xəritəsi və NICE idxalı
 - [x] T25 Təsdiq axını və fənnin konfiqurasiyası
 - [x] T26 İmtahan nüvəsi
-- [ ] T27 İmtahan əhatəli sessiya və imtahan səhifəsi
+- [x] T27 İmtahan əhatəli sessiya və imtahan səhifəsi
 - [ ] T28 SEB inteqrasiyası
 - [ ] T29 Nəzarətçi paneli
 - [ ] T30 Hash zəncirli protokol və nəticənin jurnala keçməsi

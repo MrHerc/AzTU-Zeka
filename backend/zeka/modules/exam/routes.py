@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from ...core.i18n import localize
 from ...core.web import HTTPError, json_resp
-from ...legacy.common import R
-from . import service
+from ...legacy.common import R, start_session
+from . import repo, service
 
 MANAGERS = ("teacher", "dept_head")
 
@@ -54,7 +54,7 @@ def exception(req):
     return _answer(*service.exception(req.db, req.user, req.params["id"], req.params["sid"], req.json()))
 
 
-@R("GET", "/api/exams/{id:int}", roles=("student",))
+@R("GET", "/api/exams/{id:int}", roles=("student",), scope="exam")
 def view(req):
     out = service.view(req.db, req.user, req.params["id"])
     if out is None:
@@ -62,7 +62,7 @@ def view(req):
     return out
 
 
-@R("POST", "/api/exams/{id:int}/start", roles=("student",))
+@R("POST", "/api/exams/{id:int}/start", roles=("student",), scope="exam")
 def start(req):
     status, value = service.start(req.db, req.user, req.params["id"])
     if status == "refused":            # returned, not raised: the refusal's event in the exam log commits
@@ -70,11 +70,35 @@ def start(req):
     return _answer(status, value)
 
 
-@R("PUT", "/api/exams/{id:int}/answers/{qid:int}", roles=("student",))
+@R("PUT", "/api/exams/{id:int}/answers/{qid:int}", roles=("student",), scope="exam")
 def answer(req):
     return _answer(*service.answer(req.db, req.user, req.params["id"], req.params["qid"], req.json()), missing="Sual tapılmadı")
 
 
-@R("POST", "/api/exams/{id:int}/submit", roles=("student",))
+@R("POST", "/api/exams/{id:int}/submit", roles=("student",), scope="exam")
 def submit(req):
     return _answer(*service.submit(req.db, req.user, req.params["id"]))
+
+
+@R("POST", "/api/exams/{id:int}/enter", roles=("student",))
+def enter(req):
+    """Take an exam session (Task 27): every other session of the student ends in this request; an earlier exam
+    session of the same exam is taken over. The new session reaches this exam's routes and nothing else."""
+    c, u, eid = req.db, req.user, req.params["id"]
+    status, value = service.may_enter(c, u, eid)
+    if status == "refused":                        # returned, not raised: the refusal's event in the exam log commits
+        return json_resp({"error": localize(value, req.lang)}, 403)
+    _answer(status, value)
+    earlier = repo.has_session(c, u["id"], f"exam:{eid}")
+    repo.end_sessions(c, u["id"])
+    service.note_session(c, eid, u["id"], "session.takeover" if earlier else "session.entered", {"ip": req.ip})
+    _, headers = start_session(req, u, f"imtahan #{eid}", scope=f"exam:{eid}")
+    return json_resp({"ok": True, "url": f"/static/exam.html?exam={eid}"}, headers=headers)
+
+
+@R("POST", "/api/exams/{id:int}/leave", roles=("student",), scope="exam")
+def leave(req):
+    """End the exam session (the attempt stays as it is: submitted or still running until its deadline)."""
+    from ...legacy.common import session_cookie
+    repo.end_sessions(req.db, req.user["id"], f"exam:{req.params['id']}")
+    return json_resp({"ok": True}, headers=[session_cookie(expire=True)])

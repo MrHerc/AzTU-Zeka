@@ -60,6 +60,12 @@ def start_session(req, u, how: str, scope: str = "full") -> tuple[str, list]:
     c.execute("INSERT INTO sessions(id_hash,user_id,created_at,last_seen,scope,ip,agent) VALUES(?,?,?,?,?,?,?)",
               (identity.session_hash(sid), u["id"], iso(t), iso(t), scope, req.ip, (req.headers.get("User-Agent") or "")[:200]))
     store.audit(c, u["id"], "login", "session", how)
+    if not scope.startswith("exam:"):                  # Task 27: an ordinary sign-in while an exam session runs is an exam event
+        exams = [r["scope"][5:] for r in rows(c, "SELECT DISTINCT scope FROM sessions WHERE user_id=? AND scope LIKE 'exam:%'", (u["id"],))]
+        if exams:
+            from ..modules.exam import service as exam
+            for eid in exams:
+                exam.note_session(c, int(eid), u["id"], "login.during_exam", {"ip": req.ip})
     return sid, [session_cookie(sid, max_age=session_limits(c, u["role"])[1])]
 
 
@@ -140,6 +146,7 @@ def before(req, roles, auth):
     if not req.user and req.path.startswith(("/doc/", "/api/files/", "/syllabus/")) and req.query.get("k"):
         req.user = _key_user(req)
     scope = req.user.get("session_scope") if req.user else None
+    _exam_scope(req, scope)
     pending = scope in identity.SCOPE_OPEN and not req.path.startswith(identity.SCOPE_OPEN[scope])
     must_change = bool(req.user and req.user["must_change"] and not req.path.startswith(MUST_CHANGE_OPEN))
     if (pending or must_change) and not auth:
@@ -152,6 +159,19 @@ def before(req, roles, auth):
         raise HTTPError(401, "Daxil olmamısınız")
     if roles and req.user["role"] not in roles:
         raise HTTPError(403, "Bu bölməyə giriş icazəniz yoxdur")
+
+
+def _exam_scope(req, scope: str | None):
+    """Task 27: a session scoped to an exam reaches that exam's routes and nothing else; an exam's routes answer only a
+    session scoped to that exam (an ordinary session, or another exam's, gets 403)."""
+    in_exam = bool(scope and scope.startswith("exam:"))
+    if req.route_scope == "exam":
+        if not req.user:
+            return                                          # 401 below
+        if not in_exam or scope != f"exam:{req.params.get('id')}":
+            raise HTTPError(403, "Bu imtahana imtahan səhifəsindən daxil olun")
+    elif in_exam:
+        raise HTTPError(403, "İmtahan sessiyası yalnız imtahan səhifəsinə açılır")
 
 
 def after(req, ok):

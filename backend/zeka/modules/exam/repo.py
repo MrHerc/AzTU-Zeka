@@ -112,3 +112,15 @@ def add_event(c, eid: int, kind: str, actor: int | None, student: int | None, da
 
 def events(c, eid: int) -> list[dict]:
     return rows(c, "SELECT * FROM exam_events WHERE exam_id=? ORDER BY seq", (eid,))
+
+
+def has_session(c, uid: int, scope: str) -> bool:
+    return row(c, "SELECT 1 FROM sessions WHERE user_id=? AND scope=? LIMIT 1", (uid, scope)) is not None
+
+
+def end_sessions(c, uid: int, scope: str | None = None):
+    """Every session of the user (entering an exam, Task 27), or only those with ``scope``."""
+    if scope is None:
+        c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+    else:
+        c.execute("DELETE FROM sessions WHERE user_id=? AND scope=?", (uid, scope))

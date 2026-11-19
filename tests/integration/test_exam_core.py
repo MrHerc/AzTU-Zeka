@@ -35,6 +35,14 @@ def student_as(app_db, username):
     return s
 
 
+def in_exam(app_db, username, eid):
+    """A student in an exam session of ``eid`` (Task 27: the exam's routes answer only such a session)."""
+    s = student_as(app_db, username)
+    r = s.post(f"/api/exams/{eid}/enter")
+    assert r.status == 200, r.text
+    return s
+
+
 @pytest.fixture(scope="module")
 def world(app_db):
     admin, teacher = app_db.client("admin"), app_db.client("teacher")
@@ -73,7 +81,7 @@ def opened(world):
 
 
 def test_two_students_get_different_forms_and_a_second_start_returns_the_same_attempt(app_db, world, opened):
-    a, b = student_as(app_db, "ex.a"), student_as(app_db, "ex.b")
+    a, b = in_exam(app_db, "ex.a", opened), in_exam(app_db, "ex.b", opened)
     va, vb = a.post(f"/api/exams/{opened}/start").json, b.post(f"/api/exams/{opened}/start").json
     assert ([x["id"] for x in va["questions"]], [x["options"] for x in va["questions"]]) != \
         ([x["id"] for x in vb["questions"]], [x["options"] for x in vb["questions"]])
@@ -84,7 +92,7 @@ def test_two_students_get_different_forms_and_a_second_start_returns_the_same_at
 
 
 def test_an_answer_after_the_deadline_is_refused_by_the_server_s_clock(app_db, world, opened, monkeypatch):
-    a = student_as(app_db, "ex.a")
+    a = in_exam(app_db, "ex.a", opened)
     v = a.get(f"/api/exams/{opened}").json
     qid = v["questions"][0]["id"]
     assert a.put(f"/api/exams/{opened}/answers/{qid}", {"value": 1}).status == 200
@@ -118,16 +126,16 @@ def test_a_student_off_the_roster_is_refused_with_a_reason_and_the_office_can_le
     run("INSERT INTO attendance(lesson_id,user_id,status) VALUES(?,?,'absent')", (lid, sid))       # 4 of 4 hours missed: not admitted
     assert world["teacher"].post(f"/api/exams/{eid}/open").status == 200
     a = student_as(app_db, "ex.a")
-    r = a.post(f"/api/exams/{eid}/start")
+    r = a.post(f"/api/exams/{eid}/enter")
     assert r.status == 403 and "Davamiyyət" in r.json["error"]
     c = student_as(app_db, "ex.c")
-    assert c.post(f"/api/exams/{eid}/start").status == 403, "not enrolled: not on the roster"
-    assert q("SELECT COUNT(*) n FROM exam_events WHERE exam_id=? AND kind='attempt.refused'", (eid,))[0]["n"] == 2
+    assert c.post(f"/api/exams/{eid}/enter").status == 403, "not enrolled: not on the roster"
+    assert q("SELECT COUNT(*) n FROM exam_events WHERE exam_id=? AND kind='session.refused'", (eid,))[0]["n"] == 2
     office = app_db.client("office")
     assert office.post(f"/api/exams/{eid}/roster/{sid}/exception", {"reason": ""}).status == 400
     assert office.post(f"/api/exams/{eid}/roster/{sid}/exception", {"reason": "Tibbi arayış təqdim edilib"}).status == 200
     assert q("SELECT 1 FROM audit WHERE action='exam_exception' AND detail LIKE ?", (f"%#{sid}%",))
-    assert a.post(f"/api/exams/{eid}/start").status == 200
+    assert a.post(f"/api/exams/{eid}/enter").status == 200 and a.post(f"/api/exams/{eid}/start").status == 200
 
 
 FORBIDDEN = {"answer", "explanation", "correct", "score", "max_score", "secret", "seed", "plan", "purpose"}
@@ -146,8 +154,9 @@ def _keys(obj, path=""):
 def test_every_student_exam_answer_holds_only_allowed_keys(app_db, world):
     eid = make_exam(world, title="Açar sınağı")
     assert world["teacher"].post(f"/api/exams/{eid}/open").status == 200
-    b = student_as(app_db, "ex.b")
-    answers = [b.post(f"/api/exams/{eid}/start").json, b.get(f"/api/exams/{eid}").json, b.get(f"/api/courses/{world['course']}/exams").json]
+    listed = student_as(app_db, "ex.b").get(f"/api/courses/{world['course']}/exams").json
+    b = in_exam(app_db, "ex.b", eid)
+    answers = [b.post(f"/api/exams/{eid}/start").json, b.get(f"/api/exams/{eid}").json, listed]
     qid = answers[0]["questions"][0]["id"]
     answers.append(b.put(f"/api/exams/{eid}/answers/{qid}", {"value": "1"}).json)
     answers.append(b.post(f"/api/exams/{eid}/submit").json)

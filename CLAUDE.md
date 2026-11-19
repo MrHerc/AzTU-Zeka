@@ -31,6 +31,7 @@ python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single tes
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
 python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset faculty [--workers 4]   # docs/perf/baseline.md
+python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty [--burst]      # Task 27: lost answers must be 0
 python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes (must be none)
 
 python tools/i18n.py lint                 # user-visible strings not wrapped for translation (56 known findings)
@@ -125,6 +126,9 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   route fails `tests/security/test_authz_matrix.py` until you run `python tests/security/test_authz_matrix.py` and review
   the diff. Roles and permissions: `backend/zeka/core/perms.py`; `@R(..., perm="roles.grant")` instead of `roles=`.
   A person has a primary role (`users.role`) plus `role_grants` with a scope; a session acts in one (`sessions.role`).
+- **Exam sessions (Task 27).** A session with `sessions.scope='exam:{id}'` reaches only `@R(..., scope="exam")` routes of
+  that exam, and those routes refuse every other session (`_exam_scope()` in `legacy/common.py`). A new exam-page route
+  needs `scope="exam"`; a refusal that must leave an exam event is returned as a 403 response, not raised.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).

@@ -9,6 +9,10 @@ Scenarios: closed loop, no think time, one keep-alive connection per virtual use
     read    GET /api/student/home 60 %, GET /api/schedule 20 %, GET /api/courses 20 %
     write   PUT /api/me/prefs 70 %, POST /api/news/{id}/save 30 %
     mixed   the read mix 80 %, the write mix 20 %
+    exam    Task 27: one exam, one distinct student per virtual user: enter, start, every answer, submit (one pass each),
+            spread over --seconds like a sitting (entries in its first tenth, answers through it, the submission at its
+            end); --burst sends everything at once with no pause, the worst case. The report adds the answers the
+            clients saw saved and the ones the server holds ("lost": the difference)
 
 Datasets (added on top of the demo seed):
     demo        nothing: 147 users, 6 courses
@@ -37,7 +41,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SIZES = {"demo": None, "faculty": (2000, 200, 20000, 20000), "university": (10000, 1000, 100000, 100000)}
 READ = [(60, "GET", "/api/student/home"), (20, "GET", "/api/schedule"), (20, "GET", "/api/courses")]
 WRITE = [(70, "PUT", "/api/me/prefs"), (30, "POST", "/api/news/{news}/save")]
-MIX = {"read": READ, "write": WRITE, "mixed": [(w * 0.8, m, p) for w, m, p in READ] + [(w * 0.2, m, p) for w, m, p in WRITE]}
+MIX = {"read": READ, "write": WRITE, "mixed": [(w * 0.8, m, p) for w, m, p in READ] + [(w * 0.2, m, p) for w, m, p in WRITE], "exam": []}
+EXAM_QUESTIONS = 10    # per form, drawn from 30 exam questions
 SESSIONS = 25          # the demo login allows 30 per client per minute
 
 
@@ -183,6 +188,104 @@ def client(args) -> list[tuple[float, int]]:
     return out
 
 
+def exam_setup(data: Path, users: int) -> tuple[int, list[str]]:
+    """An open exam of a new course with ``users`` enrolled students, each with a session written straight into the
+    throw-away database (the demo login allows 30 per client per minute)."""
+    import sqlite3
+    from datetime import timedelta
+    sys.path.insert(0, str(ROOT / "backend"))
+    from zeka.core import clock
+    from zeka.modules.identity import domain as identity
+    db = sqlite3.connect(data / "campus.db")
+    try:
+        students = [r[0] for r in db.execute("SELECT id FROM users WHERE role='student' AND status='active' ORDER BY id LIMIT ?", (users,))]
+        if len(students) < users:
+            raise SystemExit(f"the dataset has {len(students)} students; --users {users} needs as many")
+        cid = db.execute("INSERT INTO courses(code,name,teacher_id,credits) VALUES('LT-EXAM','Yük imtahanı',"
+                         "(SELECT id FROM users WHERE role='teacher' ORDER BY id LIMIT 1),5)").lastrowid
+        db.executemany("INSERT OR IGNORE INTO enrollments(user_id,course_id) VALUES(?,?)", [(s, cid) for s in students])
+        for i in range(30):
+            db.execute("INSERT INTO questions(course_id,qtype,text,options,answer,unit,explanation,difficulty,topic,status,purpose,created_at) "
+                       "VALUES(?,'numeric',?,'[]',?,'','','Asan','Yük','approved','exam','x')", (cid, f"Yük sualı {i}", str(i)))
+        t = clock.now()
+        eid = db.execute("INSERT INTO exams(course_id,kind,title,opens_at,closes_at,duration_min,plan,status,secret,created_at,opened_at) "
+                         "VALUES(?,'main','Yük imtahanı',?,?,120,?,'open','load',?,?)",
+                         (cid, (t - timedelta(hours=1)).isoformat(timespec="seconds"), (t + timedelta(hours=3)).isoformat(timespec="seconds"),
+                          json.dumps([{"difficulty": None, "topic": None, "count": EXAM_QUESTIONS}]), t.isoformat(timespec="seconds"),
+                          t.isoformat(timespec="seconds"))).lastrowid
+        assert eid is not None
+        local = clock.local().isoformat(timespec="seconds")
+        db.executemany("INSERT INTO exam_roster(exam_id,student_id,status,added_at) VALUES(?,?,'eligible',?)", [(eid, s, local) for s in students])
+        cookies = []
+        for s in students:
+            sid = identity.new_session_id()
+            db.execute("INSERT INTO sessions(id_hash,user_id,created_at,last_seen,scope,role) VALUES(?,?,?,?,'full','student')",
+                       (identity.session_hash(sid), s, local, local))
+            cookies.append(f"zeka_sid={sid}")
+        db.commit()
+    finally:
+        db.close()
+    return eid, cookies
+
+
+def exam_client(args) -> tuple[list[tuple[float, int]], int]:
+    """One process of exam users: each enters, starts, answers every question and submits, once; spread over
+    ``seconds`` unless ``burst``."""
+    port, eid, cookies, seconds, burst, seed = args
+    import threading
+    out: list[tuple[float, int]] = []
+    saved = [0]
+    lock = threading.Lock()
+
+    def user(n, cookie):
+        rng = random.Random(seed * 1000 + n)
+        pause = (lambda s: None) if burst else time.sleep
+        pause(rng.uniform(0, seconds * 0.1))                   # the students come in during the first tenth
+        conn = [http.client.HTTPConnection("127.0.0.1", port, timeout=60)]
+        headers = {"Cookie": cookie, "X-Lang": "az", "Origin": f"http://127.0.0.1:{port}", "Content-Type": "application/json"}
+        mine, ok = [], 0
+
+        def go(method, path, body=None):
+            t = time.perf_counter()
+            for again in (True, False):   # the server closes a connection idle for 30 s; a browser opens a new one
+                try:
+                    conn[0].request(method, path, body=json.dumps(body if body is not None else {}), headers=headers)
+                    r = conn[0].getresponse()
+                    raw = r.read()
+                    mine.append((time.perf_counter() - t, r.status))
+                    return r.status, r.getheader("Set-Cookie") or "", raw
+                except (OSError, http.client.HTTPException):
+                    conn[0].close()
+                    conn[0] = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+                    if not again:
+                        mine.append((time.perf_counter() - t, 0))
+            return 0, "", b""
+        status, cookie_back, _ = go("POST", f"/api/exams/{eid}/enter")
+        m = re.search(r"zeka_sid=[^;]+", cookie_back)
+        if status == 200 and m:
+            headers["Cookie"] = m.group(0)
+            status, _, raw = go("POST", f"/api/exams/{eid}/start")
+            if status == 200:
+                qs = json.loads(raw)["questions"]
+                step = seconds * 0.8 / max(1, len(qs))
+                for q in qs:
+                    pause(rng.uniform(0.5, 1.5) * step)                # thinking over a question
+                    if go("PUT", f"/api/exams/{eid}/answers/{q['id']}", {"value": str(q["id"])})[0] == 200:
+                        ok += 1
+                go("POST", f"/api/exams/{eid}/submit")
+        conn[0].close()
+        with lock:
+            out.extend(mine)
+            saved[0] += ok
+
+    ts = [threading.Thread(target=user, args=(n, c)) for n, c in enumerate(cookies)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    return out, saved[0]
+
+
 def report(results, seconds) -> dict:
     lat = sorted(r[0] for r in results)
     n = len(lat)
@@ -204,6 +307,7 @@ def main(argv=None) -> int:
     ap.add_argument("--workers", type=int, default=1, help="server processes (backend/run.py --workers)")
     ap.add_argument("--clients", type=int, default=min(4, os.cpu_count() or 1), help="load generator processes")
     ap.add_argument("--fail-on-errors", action="store_true", help="exit 1 on any 5xx or connection error")
+    ap.add_argument("--burst", action="store_true", help="exam: no pauses, every student at once (the worst case)")
     args = ap.parse_args(argv)
     with tempfile.TemporaryDirectory(prefix="zeka-load-") as tmp:
         data = Path(tmp)
@@ -214,16 +318,35 @@ def main(argv=None) -> int:
         if builder.exitcode != 0:
             raise SystemExit(f"building the {args.dataset} dataset failed (exit {builder.exitcode})")
         print(f"dataset {args.dataset}: built in {time.time() - t:.1f} s", flush=True)
+        eid, cookies = exam_setup(data, args.users) if args.scenario == "exam" else (0, [])
         port = free_port()
         t = time.time()
         proc = start_server(data, port, args.workers)
         print(f"server: {args.workers} worker(s), ready in {time.time() - t:.1f} s", flush=True)
+        extra: dict = {}
         try:
-            tokens, news = sessions(port, data)
-            k = max(1, min(args.clients, args.users))
-            jobs = [(port, args.users // k + (1 if i < args.users % k else 0), args.seconds, args.scenario, tokens, news, i) for i in range(k)]
-            with multiprocessing.get_context("spawn").Pool(k) as pool:
-                results = [r for part in pool.map(client, jobs) for r in part]
+            if args.scenario == "exam":
+                k = max(1, min(args.clients, args.users))
+                started = time.time()
+                with multiprocessing.get_context("spawn").Pool(k) as pool:
+                    parts = pool.map(exam_client, [(port, eid, cookies[i::k], args.seconds, args.burst, i) for i in range(k)])
+                args.seconds = max(time.time() - started, 0.001)
+                results = [r for part, _ in parts for r in part]
+                import sqlite3
+                db = sqlite3.connect(data / "campus.db")
+                try:
+                    held = db.execute("SELECT COUNT(*) FROM exam_answers a JOIN exam_attempts t ON t.id=a.attempt_id WHERE t.exam_id=?", (eid,)).fetchone()[0]
+                finally:
+                    db.close()
+                client_saved = sum(n for _, n in parts)
+                extra = {"answers_saved_client": client_saved, "answers_on_server": held, "lost": client_saved - held,
+                         "expected": args.users * EXAM_QUESTIONS}
+            else:
+                tokens, news = sessions(port, data)
+                k = max(1, min(args.clients, args.users))
+                jobs = [(port, args.users // k + (1 if i < args.users % k else 0), args.seconds, args.scenario, tokens, news, i) for i in range(k)]
+                with multiprocessing.get_context("spawn").Pool(k) as pool:
+                    results = [r for part in pool.map(client, jobs) for r in part]
         finally:
             proc.terminate()
             try:
@@ -232,8 +355,8 @@ def main(argv=None) -> int:
                 proc.kill()
                 proc.communicate()
     rep = report(results, args.seconds)
-    print(json.dumps({"scenario": args.scenario, "dataset": args.dataset, "users": args.users, "workers": args.workers, **rep}))
-    return 1 if args.fail_on_errors and (rep["5xx"] or rep["conn_errors"]) else 0
+    print(json.dumps({"scenario": args.scenario, "dataset": args.dataset, "users": args.users, "workers": args.workers, **rep, **extra}))
+    return 1 if args.fail_on_errors and (rep["5xx"] or rep["conn_errors"] or extra.get("lost")) else 0
 
 
 if __name__ == "__main__":

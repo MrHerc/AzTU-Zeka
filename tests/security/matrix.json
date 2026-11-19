@@ -344,6 +344,7 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "scope": "exam",
   "slow": false
  },
  "GET /api/exams/{id:int}/manage": {
@@ -1314,6 +1315,25 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/exams/{id:int}/enter": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/leave": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "scope": "exam",
+  "slow": false
+ },
  "POST /api/exams/{id:int}/open": {
   "access": [
    "dept_head",
@@ -1342,6 +1362,7 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "scope": "exam",
   "slow": false
  },
  "POST /api/exams/{id:int}/submit": {
@@ -1351,6 +1372,7 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "scope": "exam",
   "slow": false
  },
  "POST /api/facilities/link-rooms": {
@@ -1842,6 +1864,7 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "scope": "exam",
   "slow": false
  },
  "PUT /api/journal/courses/{id:int}/grades": {

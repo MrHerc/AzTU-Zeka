@@ -120,6 +120,27 @@ def exception(c, user, eid: int, sid: int, body) -> tuple[str, object]:
     return "ok", manage(c, user, eid)
 
 
+def may_enter(c, user, eid: int) -> tuple[str, object]:
+    """('ok', exam) | ('missing', None) | ('refused', reason) | ('closed', reason): whether a student may take an exam
+    session now (Task 27). The checks of Task 28 (Safe Exam Browser) and Task 29 (network list) join here."""
+    e = repo.exam(c, eid)
+    if not e or e["status"] == "draft":
+        return "missing", None
+    r = repo.roster_of(c, eid, user["id"])
+    if not r or r["status"] == "excluded":
+        repo.add_event(c, eid, "session.refused", user["id"], user["id"], {"reason": r["reason"] if r else "not_on_roster"}, _iso(_now()))
+        return "refused", E("Siz bu imtahanın siyahısında deyilsiniz. Dekanlığa müraciət edin.") if not r or r["reason"] != "not_admitted" \
+            else E("Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.")
+    if e["status"] != "open" or _now() >= _t(e["closes_at"]):
+        return "closed", E("İmtahan pəncərəsi açıq deyil")
+    return "ok", e
+
+
+def note_session(c, eid: int, user_id: int, kind: str, data: dict):
+    """An exam session event: entered, took over an earlier exam session, an ordinary sign-in during the attempt."""
+    repo.add_event(c, eid, kind, user_id, user_id, data, _iso(_now()))
+
+
 def _form(c, e: dict, sid: int) -> list[dict]:
     f = repo.form(c, e["id"], sid)
     if not f:

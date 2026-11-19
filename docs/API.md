@@ -806,7 +806,7 @@ give its number back.
 {"url": "/doc/13?k=kQFAz1cbzpw8vYrHxi6Ziu6x"}
 ```
 
-## Exams (Task 26)
+## Exams (Tasks 26–27)
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
@@ -816,10 +816,12 @@ give its number back.
 | `POST` | `/api/exams/{id}/open` | the course's teachers | Open the exam: the roster is drawn once from the course's students; one the journal does not admit is on it as `excluded` |
 | `POST` | `/api/exams/{id}/close` | the course's teachers | Submit what is still running, grade every attempt with the engine, close |
 | `POST` | `/api/exams/{id}/roster/{sid}/exception` | `office` (its faculties), `academic_office`, `admin` | Let a student sit the exam despite the roster, with `{"reason"}`; audited |
-| `GET` | `/api/exams/{id}` | an enrolled student | The exam, the student's roster status and, once started, the student's own form and saved answers and `remaining_s` |
-| `POST` | `/api/exams/{id}/start` | a student on the roster | Start, or get back, the attempt; off the roster `403` with the reason (the refusal is in the exam log) |
-| `PUT` | `/api/exams/{id}/answers/{qid}` | the attempt's student | Save one answer (`{"value"}`); after the deadline by the server's clock `409` |
-| `POST` | `/api/exams/{id}/submit` | the attempt's student | Submit |
+| `POST` | `/api/exams/{id}/enter` | an enrolled student | Enter the exam: every session of the student ends and a new one, scoped to this exam, is set in the cookie; `{"ok": true, "url": "/static/exam.html?exam={id}"}` |
+| `POST` | `/api/exams/{id}/leave` | the exam's session | End the exam session and expire its cookie |
+| `GET` | `/api/exams/{id}` | the exam's session | The exam, the student's roster status and, once started, the student's own form and saved answers and `remaining_s` |
+| `POST` | `/api/exams/{id}/start` | the exam's session, a student on the roster | Start, or get back, the attempt; off the roster `403` with the reason (the refusal is in the exam log) |
+| `PUT` | `/api/exams/{id}/answers/{qid}` | the exam's session | Save one answer (`{"value"}`); after the deadline by the server's clock `409` |
+| `POST` | `/api/exams/{id}/submit` | the exam's session | Submit |
 
 A question's `purpose` (`practice` or `exam`, `PUT /api/questions/{id}`) is chosen by the time it is first approved and
 then fixed (`400`). An exam question is never in the tutor's or Radar's index, never in practice and never in a test
@@ -829,6 +831,17 @@ and the student: the same every time, different between students; a multiple-cho
 and an answer is the index of the option as shown. Times are stored in UTC: 10:00–12:00 in Baku opens at
 `06:00:00+00:00`. An attempt ends at its duration or at the window's end; the periodic job `exam.autosubmit` (every
 minute) submits it without the student. Every step is a row in `exam_events` (Task 30 adds its hash chain).
+
+The exam session (Task 27). The routes marked "the exam's session" are declared `@R(..., scope="exam")` and open
+only to a session whose scope is `exam:{id}` of the same exam: an ordinary session, and the session of another exam,
+get `403`. An exam session gets `403` on every other route (`tests/security/test_exam_scope.py` walks the route
+table). Entering ends all of the student's sessions in the same request (event `session.entered`, or
+`session.takeover` when an earlier exam session was ended). A sign-in during the attempt does not end the exam
+session and cannot reach the exam (event `login.during_exam`). The page `/static/exam.html?exam={id}` has no
+navigation; it saves each answer when it changes and every 20 seconds, keeps unsent answers in `localStorage` while
+offline and sends them when the connection is back, goes on after a reload, and counts the timer from the server's
+`remaining_s` on the browser's monotonic clock, so a wrong system clock does not move the deadline
+(`tests/e2e/exam_offline.js`, run by `tests/integration/test_exam_page.py` when node with Playwright is installed).
 
 ## News and events
 

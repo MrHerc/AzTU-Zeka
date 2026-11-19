@@ -64,6 +64,27 @@ def test_two_valid_requests_share_a_connection(app_db):
     assert statuses(data) == [200, 200]
 
 
+def test_keep_alive_answers_are_not_held_by_nagle(app_db):
+    # Task 27: headers and body are two writes; with Nagle on, the body waited for the client's delayed ACK and every
+    # answer on a kept-alive connection took ~40 ms (200 ms on Windows) while the server's own work took 3-7 ms.
+    import http.client
+    import statistics
+    import time
+    conn = http.client.HTTPConnection("127.0.0.1", app_db.port, timeout=5)
+    took = []
+    try:
+        for _ in range(12):
+            t = time.perf_counter()
+            conn.request("GET", "/api/contact")
+            r = conn.getresponse()
+            r.read()
+            assert r.status == 200 and r.getheader("Connection") != "close"
+            took.append(time.perf_counter() - t)
+    finally:
+        conn.close()
+    assert statistics.median(took[2:]) < 0.025, took
+
+
 # ---------------------------------------------------------------- Content-Length
 @pytest.mark.parametrize("value", ["abc", "-1", "1.5"])
 def test_invalid_content_length_is_400_and_closes_the_connection(app_db, value):

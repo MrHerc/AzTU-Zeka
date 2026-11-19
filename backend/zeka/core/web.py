@@ -154,6 +154,7 @@ class Request:
         self.audit_kind = None          # the route's audit_read kind (Task 13); the handler names whose data it read:
         self.read_owner = None          # the person the data belongs to
         self.read_object = None         # the id of what was read
+        self.route_scope = None         # Task 27: the route's scope ("exam" or None)
 
     def content_length(self) -> int:
         raw = (self.headers.get("Content-Length") or "").strip()
@@ -243,7 +244,7 @@ class Router:
         regex = "^" + re.sub(r"\{(\w+)(:int)?\}", lambda m: f"(?P<{m.group(1)}>{'[0-9]+' if m.group(2) else '[^/]+'})", pattern) + "$"
         self.routes.append((method, re.compile(regex), fn, roles, auth))
 
-    def __call__(self, method, pattern, roles=None, auth=True, demo=False, slow=False, perm=None, audit_read=None):
+    def __call__(self, method, pattern, roles=None, auth=True, demo=False, slow=False, perm=None, audit_read=None, scope=None):
         if perm and roles:
             raise ValueError(f"{method} {pattern}: give roles= or perm=, not both")
 
@@ -252,6 +253,7 @@ class Router:
             fn.slow = slow             # waits on an outside service: runs under SLOW, not GATE
             fn.perm = perm             # Task 13: a permission from core/perms.py, checked as the roles that hold it
             fn.audit_read = audit_read  # Task 13: reading another person's data of this kind is written to the audit log
+            fn.scope = scope           # Task 27: "exam" routes answer only a session scoped to that exam, and only they do
             self.add(method, pattern, fn, perms.roles_for(perm) if perm else roles, auth)
             return fn
         return deco
@@ -304,6 +306,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
         server_version = "Zeka"
         sys_version = ""            # do not advertise the Python version
         timeout = 30                # idle/slow clients cannot hold a worker thread forever
+        disable_nagle_algorithm = True   # headers and body are two writes: with Nagle the body waits ~40 ms for a delayed ACK
 
         def version_string(self):
             return self.server_version
@@ -352,6 +355,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                     try:
                         try:
                             req.audit_kind = getattr(fn, "audit_read", None)
+                            req.route_scope = getattr(fn, "scope", None)
                             before(req, roles, auth)      # inside the try: a 401/403 must still close the DB connection
                             resp = fn(req)
                             after(req, ok=True)

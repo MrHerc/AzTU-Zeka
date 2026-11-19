@@ -63,3 +63,23 @@ export async function teacherExams(tgt, c) {
         : html`<p class="small muted" style="margin:0">${t("Siyahı imtahan açılanda jurnaldan çəkilir.")}</p>`}</div>` });
   });
 }
+
+// A student's exams of a course (Task 27): an open one is entered here; the exam page opens in an exam-only session
+// (every other session of the student ends).
+export async function studentExams(box, c) {
+  let list;
+  try { list = await api.get(`/api/courses/${c.id}/exams`); } catch { return; }
+  if (!list.length) return;
+  mount(box, html`<div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("İmtahanlar")}</h3></div><div class="card-b list">
+    ${list.map((e) => html`<div class="list-item"><div class="grow"><b class="small">${e.title}</b>
+        <div class="tiny muted">${fmtDateTime(e.opens_at)} – ${fmtDateTime(e.closes_at)} · ${t("{n} dəq.", { n: e.duration_min })}</div>
+        ${e.roster === "excluded" ? html`<div class="tiny" style="color:var(--red)">${t("Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.")}</div>` : ""}</div>
+      ${e.status === "open" && e.roster !== "excluded" && e.attempt !== "submitted" && e.attempt !== "graded"
+        ? html`<button class="btn btn-sm btn-primary" data-enter="${e.id}">${ic("shield", 14)} ${e.attempt ? t("Davam et") : t("İmtahana daxil ol")}</button>`
+        : html`${badge(STATUS, e.attempt === "submitted" || e.attempt === "graded" ? "closed" : e.status)}`}</div>`)}</div></div>`);
+  on(box, "click", "[data-enter]", async (e, b) => {
+    if (!confirm(t("İmtahan səhifəsi açılacaq və bu brauzerdəki digər girişləriniz bağlanacaq. Davam edək?"))) return;
+    try { const r = await api.post(`/api/exams/${b.dataset.enter}/enter`); location.href = r.url; }
+    catch (err) { toast(err.message, "err"); }
+  });
+}
