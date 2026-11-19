@@ -212,7 +212,7 @@ and never creates an account from Forma №3 (an unknown teacher, course or grou
 |---|---|---|---|
 | `GET` / `POST` | `/api/integration/keys` | `integration.manage` (`admin`) | Keys / a new key `{"name", "scopes": [...], "per_minute"}` (scopes `grades.read`, `attendance.read`, `registry.read`, `status.read`; 1–600 calls a minute); the key (`zk_…`) is in the answer once and kept as its SHA-256 |
 | `POST` | `/api/integration/keys/{id}/revoke` | as above | Revoke (audited) |
-| `GET` / `POST` | `/api/integration/webhooks` | as above | Webhooks / a new one `{"url", "events"}` (https, or http to this machine; events `grade.published`, `attendance.barred`, `exam.released`); the signing secret is in the answer once |
+| `GET` / `POST` | `/api/integration/webhooks` | as above | Webhooks / a new one `{"url", "events"}` (https, or http to this machine outside prod; no user:password, spaces or bad ports; events `grade.published`, `attendance.barred`, `exam.released`); the signing secret is in the answer once |
 | `POST` | `/api/integration/webhooks/{id}/deactivate`, `GET …/deliveries` | as above | Switch off; the last 100 deliveries with status, attempts, last HTTP status and error |
 | `GET` / `PUT` | `/api/apps` | any / `integration.manage` | The tiles of one's role (the administrator also gets every tile) / save the tiles `{"apps": [{"title", "url" (https), "roles", "icon"?, "note"?}]}` (at most 30) |
 | `GET` | `/api/v1/grades`, `/api/v1/attendance`, `/api/v1/status-changes` (`?since=`), `/api/v1/oneroster.zip` | an API key with the route's scope | The exports below, through the same audited `export.run` |
@@ -222,7 +222,11 @@ signed-in browser); a key reaches no other route. Outside the key's scopes `403`
 over the key's own limit `429`; every call is an `api_call` audit row and sets `last_used_at`. A webhook delivery is a
 `POST` of `{"event", "at", "data"}` with `X-Zeka-Event`, `X-Zeka-Delivery` and `X-Zeka-Signature: t=<unix time>,v1=<hex
 HMAC-SHA256(secret, "<t>.<body>")>`; a failure (not 2xx, refused, timed out) waits 1, 2, 4 … minutes (at most 6 h) and is
-tried up to 12 times by the periodic job `webhooks.send`; no write transaction is open during the request.
+tried up to 12 times by the periodic job `webhooks.send`; no write transaction is open during the request. Redirects are
+not followed (a 3xx is a failure). In prod the address must resolve to public addresses only, checked when each delivery
+goes. A POST has 10 s to connect and 15 s in all; a webhook that times out or refuses waits for the next run. Any error
+fails only its own delivery. When the last try fails, the webhook's creator is told. Finished deliveries are purged after
+90 days. A revoked key still in use is audited (`api_call_revoked`); other `401`s are not.
 `grade.published` comes with publishing and with a change of a published score, `exam.released` with a release, and
 `attendance.barred` from the job `attendance.barred` (every 15 minutes: courses with marks since its last run; once per
 student and course).
@@ -232,12 +236,16 @@ student and course).
 One export service (`backend/zeka/modules/integration/export.py`) behind the screen and the command:
 `GET /api/integration/export/{kind}` (`integration.manage`, a file with `Content-Disposition: attachment`) and
 `python backend/manage.py export --kind grades|attendance|oneroster|registry|status-changes [--since ISO] [--out FILE]`
-(a CSV goes to standard output without `--out`; `oneroster` needs `--out`). Every export writes `export` to the audit log.
+(a CSV goes to standard output without `--out`; `oneroster` needs `--out`; the `--out` file is opened before the export
+and written 0600). Every export writes `export` to the audit log; a OneRoster export adds how many enrolments it left out.
+Over HTTP (the screen and `/api/v1/`) the export routes run in the slow handler slots, and a grades or attendance file
+over 300 000 rows is refused (`400`, naming `since` and `manage.py export`); the command has no cap.
 
 - `oneroster`: a zip of `orgs.csv`, `terms.csv`, `users.csv`, `courses.csv`, `classes.csv`, `enrollments.csv` in the
   columns of the import kinds, so the importer reads them back (import them in that order; study groups must exist
   first). A row's `sourcedId` is the id its first import linked it to, else `zeka:<table>:<id>`; an enrolment's is
-  derived from its class and person. `enrollments.csv` lists each student for every teaching unit of the course they
+  derived from its class and person. A source id that two rows share names neither: both get the `zeka:` form, in
+  every export alike. `enrollments.csv` lists each student for every teaching unit of the course they
   attend (group and subgroup), with `beginDate`/`endDate`, and each unit's teacher as `role=teacher`. Every row is
   exported, deactivated ones too; users are students and teachers. Limits: an enrolment in a course with no unit the
   student attends is not listed, and a student taking a course with another group only through units of several
@@ -245,7 +253,8 @@ One export service (`backend/zeka/modules/integration/export.py`) behind the scr
 - `grades` (`courseSourcedId`, `courseCode`, `userSourcedId`, `identifier`, `component`, `score`, `max`, `status`,
   `source`, `updatedAt`) and `attendance` (`courseSourcedId`, `courseCode`, `userSourcedId`, `identifier`, `lessonId`,
   `lessonDate`, `lessonStart`, `status`, `source`, `markedAt`). With `since` (`?since=` / `--since`, ISO 8601, e.g.
-  `2026-12-01T00:00:00+04:00`; without an offset it is Baku time) only the rows written or changed after that moment:
+  `2026-12-01T00:00:00+04:00`; without an offset it is Baku time; a year outside 1900–2999 is `400`) only the rows
+written or changed at or after that second (so a row written in the second of the last pull comes again, never lost):
   `updated_at` / `marked_at`, compared in the university's wall clock. Drafts are included (`status`). A mark without
   `marked_at` (the demo seed, rows from before Task 20) is never "after". An approved absence excuse stamps the rows it
   excuses.
@@ -560,7 +569,7 @@ Body: `{"ai": <bool>, "external": <bool>}`. `ai` counts as given unless it is `f
 | `GET` | `/api/courses/{id}` | any, with course access | Course page |
 | `GET` | `/api/materials/{id}` | any, with course access | One material with its sections, glossary and further reading |
 | `GET` | `/api/source/chunk/{id}` | any, with course access for students and teachers | One material section, used to open a citation |
-| `GET` | `/api/source/kb/{id}` | any | One knowledge base entry, used to open a campus assistant citation |
+| `GET` | `/api/source/kb/{id}` | any | One published knowledge base entry, used to open a campus assistant citation (a draft or archived one is `404`) |
 | `GET` | `/api/schedule` | any | Current week's timetable and the user's registered events |
 | `GET` | `/api/attendance` | `student` | Attendance per course and the list of absences, late arrivals and excused lessons |
 | `GET` | `/api/me/absences` | `student` | Unexcused absences in a date range that are not already in an open excuse request |
@@ -666,7 +675,7 @@ Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily li
 | `GET` | `/api/kb/{id}` | as above | An article and its versions (who, when, status) |
 | `POST` | `/api/kb` | as above | A new article: `heading` (3–200), `text` (20–8000), `source` (required), `source_ref`, `request` (an e-service code) with `action_label`, `review_at` (YYYY-MM-DD), `status` (`published`, `draft`, `archived`) |
 | `PUT` | `/api/kb/{id}` | as above | Change it: a new version (an article from the seed keeps its first state as version 1); audited |
-| `POST` | `/api/campus/handoff` | the author of the answer | `{"message_id"}` of an assistant answer: a support ticket (category `university`) with the conversation up to it; once per answer, asking again gives the same `ticket_id` |
+| `POST` | `/api/campus/handoff` | the author of the answer | `{"message_id"}` of an assistant answer: a support ticket (category `university`) with that day's conversation up to it; once per answer, asking again gives the same `ticket_id` |
 
 Only a published article is searched; a save reaches every worker's index on its next request (`index_changes`).
 Every campus answer carries a source (`cites`, or `meta.source` for rooms and the timetable) or a `handoff` action;
@@ -687,11 +696,14 @@ answer without a source or a handoff.
 | `POST` | `/api/qa/topics/{id}/draft` | the course's teachers | An answer the offline tutor writes from the course's materials, cited; stored for the teacher only |
 | `POST` | `/api/qa/topics/{id}/faq` | the course's teachers | `{"on": true}`: the question and the accepted answer become a section of the material "Fənnin FAQ-ı" that the tutor searches and cites (every worker); `false` takes it out |
 | `POST` | `/api/qa/reports` | readers of the topic | `{"topic_id", "reply_id"?, "reason"}`; audited |
-| `GET` | `/api/qa/reports` | `qa.moderate` (`office`, `admin`) | Open reports with the reported text and its real author |
+| `GET` | `/api/qa/reports` | `qa.moderate` (`office`: its faculties' students; `admin`) | Open reports with the reported text and its real author |
 | `POST` | `/api/qa/reports/{id}/resolve` | as above | `{"action": "hide" | "keep"}`: hiding takes it from the students (and out of the FAQ); every open report on it is closed; audited |
 
-`POST /api/tutor/{cid}/forward` (a question sent from the tutor) creates a topic, and the teacher's answer through
-`/api/teacher/questions/{id}/answer` is its accepted reply.
+`POST /api/tutor/{cid}/forward` (a question sent from the tutor) creates a **private** topic (`private: true`): only its
+author and the course's teachers read it, and an anonymous one shows "Anonim tələbə" to the teacher too (Checkpoint E).
+The teacher's answer through `/api/teacher/questions/{id}/answer` is its accepted reply (the FAQ follows it). An
+anonymous author's own reply stays anonymous. Only a teacher's accepted answer can go to the FAQ. A draft with no
+source is not saved (`no_source: true`).
 
 ### Office hours (Task 34)
 
@@ -717,13 +729,13 @@ question) and a link to `/office-hours`.
 | `GET` / `POST` | `/api/clubs` | any; proposing: `student`, `teacher`, `dept_head` | Approved clubs (and one's own proposals) with one's membership / propose a club (`name` 3–80, `description` 10–1000): its proposer leads it |
 | `GET` | `/api/clubs/pending`, `POST /api/clubs/{id}/decide` | `clubs.approve` (`office`, `admin`) | Proposals; `{"approve": bool, "note"?}`: an approved club gets the channels "Ümumi" (chat) and "Elanlar" (announcements); audited |
 | `GET` | `/api/clubs/{id}` | any (an unapproved club: its leader and approvers) | The club, one's membership and, for members, its channels |
-| `POST` | `/api/clubs/{id}/join`, `/leave`, `/conduct` | members-to-be / members | Ask to join (a removed member cannot ask again), leave, accept the code of conduct (before the first post) |
+| `POST` | `/api/clubs/{id}/join`, `/leave`, `/conduct` | members-to-be / members | Ask to join (a removed member cannot ask again; one who left asks the leader again and keeps a mute), leave (audited), accept the code of conduct (before the first post) |
 | `GET` | `/api/clubs/{id}/members` | members, `community.moderate` | Members; the leader and moderators also see requests, removals and mutes |
 | `POST` | `/api/clubs/{id}/members/{uid}/{approve,remove,mute}` | the club's leader, `community.moderate` | Let in, remove, or mute (`minutes` 5–43 200, `reason`); never the leader; audited |
-| `GET` | `/api/channels/{id}/messages?since_id=` | the club's members | The last 100 messages, or those after `since_id`; the page polls every 3 seconds; moderators also see hidden ones |
+| `GET` | `/api/channels/{id}/messages?since_id=` | the club's members | The last 100 messages, or those after `since_id` with `hidden`: the ids hidden among the channel's last 400; the page polls every 3 seconds while visible; moderators also see hidden ones |
 | `POST` | `/api/channels/{id}/messages` | the club's members | `{"text"}` (≤ 2 000): 409 before the code of conduct; 403 in an announcements channel unless the leader, and while muted (with the end time); 20 a minute (429) |
 | `POST` | `/api/club-messages/{id}/report`, `/hide` | members / the leader and `community.moderate` | Report (audited) / hide a message |
-| `GET` | `/api/community/reports`, `POST /api/community/reports/{id}/resolve` | `community.moderate` (every club), a club's leader (its own) | Open reports with the message and its author / `{"action": "hide" \| "keep"}`; audited |
+| `GET` | `/api/community/reports`, `POST /api/community/reports/{id}/resolve` | `community.moderate` (every club), a club's leader (its own, without the reporter's name and without reports on the leader's own messages) | Open reports with the message and its author / `{"action": "hide" \| "keep"}` (a leader cannot keep a report on their own message); audited; one open report per person and message; proposals, join requests and reports: 10 per user per 10 minutes |
 
 Every channel route answers 403 to a non-member (`tests/security/test_community_access.py` walks the route table). The
 daily `retention.purge` deletes club messages older than `limits.community_retention_days` (180) with their reports.

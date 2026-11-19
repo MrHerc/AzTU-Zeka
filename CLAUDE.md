@@ -29,7 +29,7 @@ python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1496 tests, about 4.5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1567 tests, about 5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -139,6 +139,16 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 - **Exam log (Task 30, Checkpoint D).** `exam_events` is a hash chain and append-only (triggers in `0301`): a test that
   tampers with it drops and re-creates the triggers (`tamper()` in `tests/integration/test_exam_verify.py`). Every exam
   state change calls `repo.lock(c)` (`BEGIN IMMEDIATE`) before it reads the state it checks.
+- **Modules call each other's `service.py`, never their `repo.py`** (`tests/unit/test_layers.py`, Checkpoint E); from
+  `legacy/` too. A provider without the function gets a one-line pass-through in its service.
+- **E-service steps (Task 46).** Each step of a request type has one role (`request_types.step_roles`); only that role,
+  within its scope (`legacy/common.covers`), acts on it; admin never; `issue` only on the last step. The last step runs
+  the type's `effect` (`r_services.EFFECTS`); `effect = none` answers with the factual template. A type is offered only
+  when `enabled` (prod: 0 until the administrator opens it). Request types in prod come from `0461`, not the seed.
+- **Forum privacy (Checkpoint E).** A question forwarded from the tutor is a private topic (`teacher_questions.private`):
+  its author and the course's teachers only, and an anonymous one hides the name from the teacher too.
+- **Outbound HTTP (webhooks).** `integration/webhooks.py` follows no redirects, refuses non-public addresses in prod at
+  send time, and catches every exception per delivery; a new outbound call copies that, never `urllib.request.urlopen`.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).
@@ -151,7 +161,7 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
-and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`) and Faza 4 (Tasks 23 and 25–30, with Task 36's job runner and e-mail outbox; Checkpoint D: `docs/review/checkpoint-d-2026-11-19.md`; Task 24 is blocked: the NICE file's host is refused by this environment's proxy). `main` is unchanged and the five PRs are still open against it; they are
+and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`) and Faza 4 (Tasks 23 and 25–30, with Task 36's job runner and e-mail outbox; Checkpoint D: `docs/review/checkpoint-d-2026-11-19.md`; Task 24 is blocked: the NICE file's host is refused by this environment's proxy) and Faza 5 (Tasks 31–35, 37 and 46; Checkpoint E: `docs/review/checkpoint-e-2026-11-19.md`). `main` is unchanged and the five PRs are still open against it; they are
 superseded by this branch.
 
 ## Product direction

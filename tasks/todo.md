@@ -896,15 +896,15 @@ Təsir. Hər növ `effect` sahəsi daşıyır: `none` və ya kodda qeydiyyatı o
 Prod rejimində təklif. `request_types.enabled` sütunu: prod rejimində susmaya görə 0, demo rejimində 1. Admin növü açır və bağlayır; bu yalnız bayraqdır, forma və addım redaktoru yoxdur (SPEC Out of Scope). Bağlı növ kataloqda (`GET /api/services`), axtarışda və köməkçinin əməliyyat düyməsində görünmür; ona `POST /api/requests` 404 qaytarır. `effect`-i kodda qeydiyyatda olmayan növ açılmır. Açma və bağlama auditdədir. Prod bazasına növlər, formalar və addımlar `0461_request_types.sql` data miqrasiyası ilə düşür (seed prod rejimində işləmir, Task 5); mətnlər `content/seed.json`-dakı ilə eynidir ki, tərcümə açarları üst-üstə düşsün.
 
 **Acceptance criteria:**
-- [ ] 3 addımlı `academic_leave` müraciətində ilk addımda `issue` 409 qaytarır; hər addımı yalnız həmin addıma təyin olunmuş rol irəli aparır, başqa rol (`admin` daxil) 403 alır
-- [ ] Hər addımın icraçısı, əməli və vaxtı müraciətin tarixçəsində görünür
-- [ ] Test bütün müraciət növlərini gəzir: `effect` ≠ `none` olan növdə son addımdan sonra təsir bazadadır (`absence_excuse`: davamiyyət sətri üzrlüdür; `academic_leave`: `student_status_events` sətri var); `effect = none` olan növün cavabı faktiki şablondan qurulub və belə növ üçün sərbəst `answer` mətni varsa test yıxılır
-- [ ] Prod rejimində admin heç bir növ açmayıbsa `GET /api/services` boş kataloq qaytarır və `POST /api/requests` 404 verir; açılan növ görünür; açma audit hadisəsi yazır; demo rejimində bütün növlər açıqdır
-- [ ] `effect`-i kodda qeydiyyatda olmayan növü açmaq cəhdi 400 qaytarır
-- [ ] `0461_request_types.sql`-dəki növ adları və cavab mətnləri `content/seed.json`-dakı ilə eynidir (test)
+- [x] 3 addımlı `academic_leave` müraciətində ilk addımda `issue` 409 qaytarır; hər addımı yalnız həmin addıma təyin olunmuş rol irəli aparır, başqa rol (`admin` daxil) 403 alır. Qeyd: həmin növdə heç bir addımı olmayan rol (məsələn `academic_leave`-də `dept_head`) müraciəti görmür və 404 alır (Task 13: mövcudluq açılmır); sahibin qərarı
+- [x] Hər addımın icraçısı, əməli və vaxtı müraciətin tarixçəsində görünür
+- [x] Test bütün müraciət növlərini gəzir: `effect` ≠ `none` olan növdə son addımdan sonra təsir bazadadır (`absence_excuse`: davamiyyət sətri üzrlüdür; `academic_leave`: `student_status_events` sətri var); `effect = none` olan növün cavabı faktiki şablondan qurulub və belə növ üçün sərbəst `answer` mətni varsa test yıxılır
+- [x] Prod rejimində admin heç bir növ açmayıbsa `GET /api/services` boş kataloq qaytarır və `POST /api/requests` 404 verir; açılan növ görünür; açma audit hadisəsi yazır; demo rejimində bütün növlər açıqdır
+- [x] `effect`-i kodda qeydiyyatda olmayan növü açmaq cəhdi 400 qaytarır
+- [x] `0461_request_types.sql`-dəki növ adları və cavab mətnləri `content/seed.json`-dakı ilə eynidir (test)
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_service_honesty.py -q`
+- [x] `python -m pytest tests/integration/test_service_honesty.py -q`
 
 **Dependencies:** Task 13, Task 15, Task 20, Task 45
 **Files likely touched:** `backend/zeka/legacy/r_services.py`, `backend/migrations/0460_request_steps.sql` (`request_types.enabled`, `request_types.effect`), `backend/migrations/0461_request_types.sql` (data: növlər, formalar, addımlar və rolları), `content/seed.json`, `frontend/js/services.js`, `frontend/js/admin-settings.js`, `tests/integration/test_service_honesty.py`
@@ -912,9 +912,9 @@ Prod rejimində təklif. `request_types.enabled` sütunu: prod rejimində susmay
 
 ## Checkpoint E: Task 31–37 və Task 46 sonra
 
-- [ ] 50 suallıq dəstdə mənbə düzgünlüyü ≥ 90%
-- [ ] Hər yeni modul təhlükəsizlik matrisindədir
-- [ ] Prod rejimində yalnız adminin açdığı müraciət növləri təklif olunur; `python backend/manage.py jobs status` beş dövri işin hər biri üçün son uğurlu icranı göstərir
+- [x] 50 suallıq dəstdə mənbə düzgünlüyü ≥ 90% (48/50 = 96%, mənbəsiz və ötürməsiz cavab 0)
+- [x] Hər yeni modul təhlükəsizlik matrisindədir (288 marşrut)
+- [x] Prod rejimində yalnız adminin açdığı müraciət növləri təklif olunur; `python backend/manage.py jobs status` beş dövri işin hər biri üçün son uğurlu icranı göstərir (səkkiz iş: 8/8)
 - [ ] Rəy axını keçib; sahiblə baxış
 
 ---
