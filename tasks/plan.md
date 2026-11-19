@@ -112,7 +112,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T23 Struktur sillabus
 - [ ] T24 Çərçivə xəritəsi və NICE idxalı
 - [x] T25 Təsdiq axını və fənnin konfiqurasiyası
-- [ ] T26 İmtahan nüvəsi
+- [x] T26 İmtahan nüvəsi
 - [ ] T27 İmtahan əhatəli sessiya və imtahan səhifəsi
 - [ ] T28 SEB inteqrasiyası
 - [ ] T29 Nəzarətçi paneli

@@ -359,7 +359,7 @@ def practice_turn(c, course, msg, hist, lang="az"):
                      given=s(given), answer=s(engine.answer_display(q)), explanation=q["explanation"], ref=ref)
         return {"text": text, "cites": cites, "meta": {"mode": "practice", "practice_qid": pending, "graded": True, "correct": ok, "topic": q["topic"]}}
     asked = {m["meta"].get("practice_qid") for m in hist if m["role"] == "assistant"}
-    approved = [r["id"] for r in rows(c, "SELECT id FROM questions WHERE course_id=? AND status='approved'", (course["id"],))]
+    approved = [r["id"] for r in rows(c, "SELECT id FROM questions WHERE course_id=? AND status='approved' AND purpose='practice'", (course["id"],))]
     if not approved:
         return {"text": s("Bu fənn üzrə hələ təsdiqlənmiş məşq sualı yoxdur."), "cites": [], "meta": {"mode": "practice"}}
     hits = [] if wants_next else engine.INDEX["questions"].search(msg, k=8, where=lambda m: m["course_id"] == course["id"] and m["status"] == "approved")
@@ -790,6 +790,12 @@ def question_update(req):
         fields["answer"] = json.dumps(answer)
     if b.get("status") in ("draft", "approved"):
         fields["status"] = b["status"]
+    if "purpose" in b:                                  # chosen by the time the question is first approved, then fixed (Task 26)
+        if b["purpose"] not in ("practice", "exam"):
+            raise HTTPError(400, "Sualın təyinatı məşq və ya imtahan olmalıdır")
+        if q["status"] == "approved" and b["purpose"] != (q.get("purpose") or "practice"):
+            raise HTTPError(400, "Təsdiqlənmiş sualın təyinatı dəyişdirilə bilməz")
+        fields["purpose"] = b["purpose"]
     if fields:
         # bandit B608: column names from a fixed whitelist
         c.execute(f"UPDATE questions SET {', '.join(k + '=?' for k in fields)} WHERE id=?", (*fields.values(), q["id"]))  # nosec B608
@@ -845,9 +851,10 @@ def quiz_create(req):
     ids = list(dict.fromkeys(b.ids("question_ids", 200)))
     if not ids:
         raise HTTPError(400, "Ən azı bir sual seçin")
-    ok = {r["id"] for r in rows(c, f"SELECT id FROM questions WHERE course_id=? AND status='approved' AND id IN ({','.join('?' * len(ids))})", (co["id"], *ids))}
-    if len(ok) != len(ids):
-        raise HTTPError(400, "Yalnız təsdiqlənmiş suallar testə əlavə oluna bilər")
+    ok = {r["id"] for r in rows(c, f"SELECT id FROM questions WHERE course_id=? AND status='approved' AND purpose='practice' "  # nosec B608
+                                   f"AND id IN ({','.join('?' * len(ids))})", (co["id"], *ids))}
+    if len(ok) != len(ids):                             # an exam question never goes into a practice test (Task 26)
+        raise HTTPError(400, "Yalnız təsdiqlənmiş məşq sualları testə əlavə oluna bilər")
     title = b.text("title", 200) or "Yeni test"
     kind = "graded" if b.get("kind") == "graded" else "practice"
     qid = c.execute("INSERT INTO quizzes(course_id,title,kind,question_ids,time_limit,attempts,show_explanations,created_at) VALUES(?,?,?,?,?,?,?,?)",

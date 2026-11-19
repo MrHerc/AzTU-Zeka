@@ -806,6 +806,30 @@ give its number back.
 {"url": "/doc/13?k=kQFAz1cbzpw8vYrHxi6Ziu6x"}
 ```
 
+## Exams (Task 26)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `POST` | `/api/courses/{id}/exams` | the course's teachers | Set an exam: `title`, `kind` (main, retake, individual), `day`, `start`, `end` (local time), `duration_min`, `plan` (`[{difficulty, topic, count}]` over the course's exam questions) |
+| `GET` | `/api/courses/{id}/exams` | the course's teachers and staff; an enrolled student | The course's exams; a student sees the open and closed ones with `roster` and `attempt` status |
+| `GET` | `/api/exams/{id}/manage` | the course's teachers, staff (a dean's office: its faculties' students) | The exam, its roster and its attempts |
+| `POST` | `/api/exams/{id}/open` | the course's teachers | Open the exam: the roster is drawn once from the course's students; one the journal does not admit is on it as `excluded` |
+| `POST` | `/api/exams/{id}/close` | the course's teachers | Submit what is still running, grade every attempt with the engine, close |
+| `POST` | `/api/exams/{id}/roster/{sid}/exception` | `office` (its faculties), `academic_office`, `admin` | Let a student sit the exam despite the roster, with `{"reason"}`; audited |
+| `GET` | `/api/exams/{id}` | an enrolled student | The exam, the student's roster status and, once started, the student's own form and saved answers and `remaining_s` |
+| `POST` | `/api/exams/{id}/start` | a student on the roster | Start, or get back, the attempt; off the roster `403` with the reason (the refusal is in the exam log) |
+| `PUT` | `/api/exams/{id}/answers/{qid}` | the attempt's student | Save one answer (`{"value"}`); after the deadline by the server's clock `409` |
+| `POST` | `/api/exams/{id}/submit` | the attempt's student | Submit |
+
+A question's `purpose` (`practice` or `exam`, `PUT /api/questions/{id}`) is chosen by the time it is first approved and
+then fixed (`400`). An exam question is never in the tutor's or Radar's index, never in practice and never in a test
+(`400`); a student sees it only in their own attempt, with the keys `id`, `qtype`, `text`, `options`, `unit` and
+nothing else (`tests/security/test_exam_item_leak.py`). A form is drawn by the plan with a seed of the exam's secret
+and the student: the same every time, different between students; a multiple-choice question's options are shuffled
+and an answer is the index of the option as shown. Times are stored in UTC: 10:00–12:00 in Baku opens at
+`06:00:00+00:00`. An attempt ends at its duration or at the window's end; the periodic job `exam.autosubmit` (every
+minute) submits it without the student. Every step is a row in `exam_events` (Task 30 adds its hash chain).
+
 ## News and events
 
 | Method | Path | Access | Purpose |

@@ -240,12 +240,17 @@ def _question_entry(q) -> tuple:
 _ENTRY_SQL = {
     "chunks": ("SELECT ch.*, m.title AS material FROM chunks ch JOIN materials m ON m.id=ch.material_id WHERE ch.id=?", _chunk_entry),
     "campus": ("SELECT * FROM campus_kb WHERE id=?", _kb_entry),
-    "questions": ("SELECT id, course_id, text, topic, status FROM questions WHERE id=?", _question_entry),
+    "questions": ("SELECT id, course_id, text, topic, status FROM questions WHERE id=? AND purpose='practice'", _question_entry),   # never an exam's (Task 26)
 }
 
 
 def index_question(q: dict):
-    engine.INDEX["questions"].add(*_question_entry(q))
+    """The tutor's and Radar's question index holds practice questions only: an exam question reaches a student only in
+    that student's own attempt (Task 26)."""
+    if (q.get("purpose") or "practice") == "exam":
+        engine.INDEX["questions"].remove(q["id"])
+    else:
+        engine.INDEX["questions"].add(*_question_entry(q))
 
 
 def log_index(c, name: str, ids, op: str = "upsert"):
@@ -284,7 +289,7 @@ def build_indexes(c):
         fresh["chunks"].add(*_chunk_entry(ch))
     for kb in rows(c, "SELECT * FROM campus_kb"):
         fresh["campus"].add(*_kb_entry(kb))
-    for q in rows(c, "SELECT id, course_id, text, topic, status FROM questions"):
+    for q in rows(c, "SELECT id, course_id, text, topic, status FROM questions WHERE purpose='practice'"):
         fresh["questions"].add(*_question_entry(q))
     engine.INDEX.update(fresh)
     engine.INDEX_SEQ[0] = seq

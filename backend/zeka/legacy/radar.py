@@ -473,7 +473,7 @@ def build_plan(c, prof: dict, course: dict, kind: str = "plan", note: str = "", 
     if not topics:
         topics = prof["stats"]["attendance"].get("missed_topics", [])[-2:]
         source = "missed"
-    approved = {r["id"] for r in rows(c, "SELECT id FROM questions WHERE course_id=? AND status='approved'", (cid,))}
+    approved = {r["id"] for r in rows(c, "SELECT id FROM questions WHERE course_id=? AND status='approved' AND purpose='practice'", (cid,))}
     steps = []
     if kind in ("plan", "consult"):
         for topic in topics:

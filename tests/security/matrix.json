@@ -242,6 +242,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/courses/{id:int}/exams": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/courses/{id:int}/roster": {
   "access": [
    "academic_office",
@@ -324,6 +331,29 @@
    "admin",
    "leader",
    "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/exams/{id:int}": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/exams/{id:int}/manage": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "teacher"
   ],
   "audit_read": null,
   "demo": false,
@@ -1170,6 +1200,16 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/courses/{id:int}/exams": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/courses/{id:int}/materials": {
   "access": [
    "teacher"
@@ -1258,6 +1298,55 @@
   "access": [
    "admin",
    "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/close": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/open": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/roster/{sid:int}/exception": {
+  "access": [
+   "academic_office",
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/start": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/submit": {
+  "access": [
+   "student"
   ],
   "audit_read": null,
   "demo": false,
@@ -1744,6 +1833,15 @@
   "audit_read": null,
   "demo": false,
   "perm": "directory.manage",
+  "slow": false
+ },
+ "PUT /api/exams/{id:int}/answers/{qid:int}": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "PUT /api/journal/courses/{id:int}/grades": {

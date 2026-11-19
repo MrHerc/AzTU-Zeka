@@ -1,0 +1,29 @@
+{
+ "Fərdi vaxt": "Индивидуальное время",
+ "Açıqlanıb": "Объявлен",
+ "Buraxılıb": "Допущен",
+ "Buraxılmayıb": "Не допущен",
+ "İstisna": "Исключение",
+ "İmtahanlar": "Экзамены",
+ "Yeni imtahan": "Новый экзамен",
+ "Pəncərə": "Окно",
+ "{n} dəq.": "{n} мин",
+ "Bağla və qiymətləndir": "Закрыть и оценить",
+ "Hələ imtahan yoxdur": "Экзаменов пока нет",
+ "İmtahan yalnız “imtahan sualı” kimi təsdiqlənmiş suallardan qurulur: onlar məşqə, tutora və testlərə düşmür.": "Экзамен строится только из вопросов, утверждённых как «экзаменационные»: они не попадают в тренировку, к тьютору и в тесты.",
+ "Müddət, dəq.": "Длительность, мин",
+ "Plan: hər sətirdə “çətinlik; mövzu; say” (boş xana hər hansı deməkdir)": "План: в каждой строке «сложность; тема; число» (пустое поле — любое)",
+ "Vaxt universitetin saat qurşağındadır. Hər tələbə öz variantını alır; son vaxtı server saatı müəyyən edir.": "Время — в часовом поясе университета. Каждый студент получает свой вариант; срок определяют часы сервера.",
+ "İmtahan açıldı: siyahı jurnaldan çəkildi": "Экзамен открыт: список взят из журнала",
+ "İmtahan bağlandı və qiymətləndirildi": "Экзамен закрыт и оценён",
+ "Hovuzda {n} imtahan sualı": {
+  "one": "В банке {n} экзаменационный вопрос",
+  "few": "В банке {n} экзаменационных вопроса",
+  "many": "В банке {n} экзаменационных вопросов"
+ },
+ "avtomatik": "автоматически",
+ "Siyahı imtahan açılanda jurnaldan çəkilir.": "Список берётся из журнала при открытии экзамена.",
+ "İmtahan sualı": "Экзаменационный вопрос",
+ "İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə düşmür. Təyinat sonra dəyişmir.": "Экзаменационный вопрос виден студенту только на экзамене: не в тренировке, не у тьютора и не в тестах. Назначение потом не меняется.",
+ "İmtahan sualı kimi təsdiqlə": "Утвердить как экзаменационный"
+}

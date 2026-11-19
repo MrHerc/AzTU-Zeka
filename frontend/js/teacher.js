@@ -6,6 +6,7 @@ import { achievementsTeaser } from "./achievements.js";
 import { refreshBadges } from "./shell.js";
 import { radarTeacherAlert } from "./radar.js";
 import { teacherAssignments } from "./assignments.js";
+import { teacherExams } from "./exams.js";
 
 const LET = "ABCD";
 const crumbsT = (...c) => [[t("Əsas"), "/teacher"], ...c];
@@ -121,7 +122,7 @@ route("/teacher/course/:id", async (el, p, q) => {
   catch (e) { return mount(el, html`${pageHead(t("Fənn"), "", "", crumbsT([t("Fənlərim"), "/teacher/courses"]))}
     ${e.status === 404 ? empty("alert", t("Fənn tapılmadı"), t("Bu fənn mövcud deyil və ya ünvan dəyişib."), { label: t("Fənlərim"), go: "/teacher/courses", icon: "book" }) : failed(e.message)}`); }
   const tab = q.tab || "materials";
-  const TABS = [["materials", t("Materiallar"), "file"], ["assignments", t("Tapşırıqlar"), "list"], ["tutor", t("Tutor rejimləri"), "sliders"], ["attendance", t("Davamiyyət"), "calcheck"],
+  const TABS = [["materials", t("Materiallar"), "file"], ["assignments", t("Tapşırıqlar"), "list"], ["exams", t("İmtahanlar"), "shield"], ["tutor", t("Tutor rejimləri"), "sliders"], ["attendance", t("Davamiyyət"), "calcheck"],
     ["insights", t("Analitika"), "chart"], ["tools", t("Texnoloji həllər"), "cpu"], ["test", t("Tutoru sına"), "sparkles"]];
   mount(el, html`${pageHead(c.name, t("{code} · {n} tələbə · {k} kredit", { code: c.code, n: c.students, k: c.credits }),
       html`<label class="sr-only" for="cs">${t("Fənn")}</label><select class="select" id="cs" style="width:auto" aria-label="${t("Fənn")}">${all.map((x) => html`<option value="${x.id}" ${x.id === c.id ? "selected" : ""}>${x.name}</option>`)}</select>`,
@@ -132,6 +133,7 @@ route("/teacher/course/:id", async (el, p, q) => {
   const tgt = $("#tab", el);
   if (tab === "materials") materialsTab(tgt, c);
   else if (tab === "assignments") teacherAssignments(tgt, c);
+  else if (tab === "exams") teacherExams(tgt, c);
   else if (tab === "tutor") tutorTab(tgt, c);
   else if (tab === "attendance") attendanceTab(tgt, c);
   else if (tab === "insights") insightsTab(tgt, c);
@@ -335,20 +337,22 @@ function genTab(tgt, course, detail, q) {
 function qCard(qq, actions = true) {
   return html`<div class="card qcard slide-up" data-q="${qq.id}">
     <div class="row between wrap"><div class="row wrap"><span class="badge b-navy">${QTYPE[qq.qtype]}</span><span class="badge b-gray">${qq.bloom}</span><span class="badge b-gray">${qq.difficulty}</span>
-      ${qq.origin === "ai" ? html`<span class="badge b-blue">${ic("sparkles", 11)} ${t("AI")}</span>` : ""}${badge(qq.status)}</div>
+      ${qq.origin === "ai" ? html`<span class="badge b-blue">${ic("sparkles", 11)} ${t("AI")}</span>` : ""}${badge(qq.status)}
+      ${qq.purpose === "exam" ? html`<span class="badge b-red">${ic("shield", 11)} ${t("İmtahan sualı")}</span>` : ""}</div>
       ${(qq.flags || []).includes("similar") ? html`<span class="badge b-amber">${ic("alert", 11)} ${t("Bankda oxşar sual var")}</span>`
         : (qq.flags || []).includes("source_ok") ? html`<span class="badge b-green">${ic("check", 11)} ${t("Mənbədə təsdiqlənib")}</span>` : ""}</div>
     <div class="mt-sm qcard-text">${md(qq.text)}</div>
     ${qq.qtype === "mcq" ? html`<div class="opts-mini">${qq.options.map((o, i) => html`<div class="om ${i === qq.answer ? "ok" : ""}">${LET[i]}) ${o}</div>`)}</div>`
       : html`<div class="opts-mini"><div class="om ok">${t("Cavab")}: ${qq.qtype === "tf" ? (qq.answer ? t("Doğru") : t("Yanlış")) : `${qq.answer}${qq.unit ? " " + qq.unit : ""}`}</div></div>`}
     <div class="small muted">${md(qq.explanation)}</div>${qq.source ? html`<div class="tiny muted mt-sm">${ic("book", 11)} ${qq.source.material} · ${qq.source.heading}</div>` : ""}
-    ${actions ? html`<div class="row mt wrap">${qq.status === "draft" ? html`<button class="btn btn-sm btn-success" data-approve="${qq.id}">${ic("check", 14)} ${t("Təsdiqlə")}</button>` : ""}
+    ${actions ? html`<div class="row mt wrap">${qq.status === "draft" ? html`<button class="btn btn-sm btn-success" data-approve="${qq.id}">${ic("check", 14)} ${t("Təsdiqlə")}</button>
+      <button class="btn btn-sm" data-approve="${qq.id}" data-purpose="exam" title="${t("İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə düşmür. Təyinat sonra dəyişmir.")}">${ic("shield", 14)} ${t("İmtahan sualı kimi təsdiqlə")}</button>` : ""}
       <button class="btn btn-sm" data-edit="${qq.id}">${ic("edit", 14)} ${t("Redaktə et")}</button>
       <button class="btn btn-sm btn-danger btn-icon" data-delq="${qq.id}" aria-label="${t("Sil")}">${ic("trash", 14)}</button></div>` : ""}</div>`;
 }
 
 function bindQActions(root, list, rerender) {
-  on(root, "click", "[data-approve]", async (e, b) => { try { const nq = await api.put(`/api/questions/${b.dataset.approve}`, { status: "approved" }); Object.assign(list.find((x) => x.id === nq.id), nq); rerender(); toast(t("Sual təsdiqləndi və banka əlavə olundu"), "ok"); } catch (err) { toast(err.message, "err"); } });
+  on(root, "click", "[data-approve]", async (e, b) => { try { const nq = await api.put(`/api/questions/${b.dataset.approve}`, { status: "approved", ...(b.dataset.purpose ? { purpose: b.dataset.purpose } : {}) }); Object.assign(list.find((x) => x.id === nq.id), nq); rerender(); toast(t("Sual təsdiqləndi və banka əlavə olundu"), "ok"); } catch (err) { toast(err.message, "err"); } });
   on(root, "click", "[data-delq]", async (e, b) => { try { await api.del(`/api/questions/${b.dataset.delq}`); list.splice(list.findIndex((x) => x.id === +b.dataset.delq), 1); rerender(); toast(t("Sual silindi"), "ok"); } catch (err) { toast(err.message, "err"); } });
   on(root, "click", "[data-edit]", (e, b) => {
     const qq = list.find((x) => x.id === +b.dataset.edit);
