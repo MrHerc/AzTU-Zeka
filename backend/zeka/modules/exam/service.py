@@ -243,7 +243,7 @@ def submit(c, user, eid: int) -> tuple[str, object]:
     if a["status"] in LIVE:
         t = _iso(_now())
         repo.set_attempt(c, a["id"], status="submitted", submitted_at=t, paused_at=None)
-        repo.add_event(c, eid, "attempt.submitted", user["id"], user["id"], {"attempt_id": a["id"], "auto": False}, t)
+        _submitted(c, eid, a, user["id"], False, t)
     return "ok", view(c, user, eid)
 
 
@@ -253,7 +253,7 @@ def autosubmit(c) -> str:
     done = 0
     for a in repo.overdue(c, t):
         repo.set_attempt(c, a["id"], status="submitted", submitted_at=a["deadline_at"], auto=1)
-        repo.add_event(c, a["exam_id"], "attempt.submitted", None, a["student_id"], {"attempt_id": a["id"], "auto": True}, t)
+        _submitted(c, a["exam_id"], a, None, True, t)
         done += 1
     return f"submitted {done}"
 
@@ -281,15 +281,60 @@ def close(c, user, eid: int) -> tuple[str, object]:
     for a in repo.attempts(c, eid):
         if a["status"] in LIVE:
             repo.set_attempt(c, a["id"], status="submitted", submitted_at=t, auto=1, paused_at=None)
-            repo.add_event(c, eid, "attempt.submitted", user["id"], a["student_id"], {"attempt_id": a["id"], "auto": True}, t)
+            _submitted(c, eid, a, user["id"], True, t)
         items = json.loads(repo.form(c, eid, a["student_id"])["items"])
         qs, answers = repo.questions(c, [x["qid"] for x in items]), repo.answers(c, a["id"])
         score = sum(1 for x in items if x["qid"] in qs and _grade(qs[x["qid"]], x["order"], answers.get(x["qid"])))
         repo.set_attempt(c, a["id"], status="graded", score=float(score), max_score=float(len(items)))
+        repo.add_event(c, eid, "attempt.graded", user["id"], a["student_id"], {"attempt_id": a["id"], "score": float(score),
+                                                                              "max_score": float(len(items))}, t)
     repo.set_exam(c, eid, status="closed", closed_at=t)
     repo.add_event(c, eid, "exam.closed", user["id"], None, {"attempts": len(repo.attempts(c, eid))}, t)
     audit(c, user["id"], "exam_closed", "exam", f"#{eid}")
     return "ok", manage(c, user, eid)
+
+
+def _submitted(c, eid: int, a: dict, actor: int | None, auto: bool, at: str):
+    """The submission event (Task 30) freezes the attempt: its form's seed and the digest of its answers as stored."""
+    f = repo.form(c, eid, a["student_id"])
+    repo.add_event(c, eid, "attempt.submitted", actor, a["student_id"],
+                   {"attempt_id": a["id"], "auto": auto, "form_seed": f["seed"] if f else None,
+                    "answers_sha256": domain.answers_digest(repo.answers(c, a["id"]))}, at)
+
+
+def verify(c, eid: int, root: str | None = None) -> dict | None:
+    """``manage.py exam-verify`` (Task 30): every link of the exam's chain; each submitted attempt's answers against
+    its last submission event and each graded score against its last grading event; the head against ``root`` (the
+    value printed in the protocol and sent by e-mail). ``problems`` is empty when everything holds."""
+    if not repo.exam(c, eid):
+        return None
+    events = repo.events(c, eid)
+    problems: list[dict] = []
+    broken = domain.chain_break(events)
+    if broken:
+        problems.append({"what": "chain", **broken})
+    submitted: dict[int, dict] = {}
+    graded: dict[int, dict] = {}
+    for ev in events:
+        if ev["kind"] in ("attempt.submitted", "attempt.graded"):
+            data = json.loads(ev["data"] or "{}")
+            (submitted if ev["kind"] == "attempt.submitted" else graded)[data.get("attempt_id")] = data   # the last one counts
+    for a in repo.attempts(c, eid):
+        if a["status"] in ("submitted", "graded"):
+            s = submitted.get(a["id"])
+            if not s:
+                problems.append({"what": "attempt", "attempt_id": a["id"], "student_id": a["student_id"], "problem": "no_submission_event"})
+            elif s.get("answers_sha256") != domain.answers_digest(repo.answers(c, a["id"])):
+                problems.append({"what": "attempt", "attempt_id": a["id"], "student_id": a["student_id"], "problem": "answers_changed"})
+        if a["status"] == "graded":
+            g = graded.get(a["id"])
+            if not g or g.get("score") != a["score"]:
+                problems.append({"what": "attempt", "attempt_id": a["id"], "student_id": a["student_id"],
+                                 "problem": "score_changed" if g else "no_grading_event"})
+    head = events[-1]["hash"] if events else domain.GENESIS
+    if root is not None and root.strip().lower() != head:
+        problems.append({"what": "root", "problem": "head_differs", "head": head})
+    return {"exam_id": eid, "events": len(events), "head": head, "problems": problems}
 
 
 # ---------------------------------------------------------------- the proctor panel (Task 29)
@@ -402,6 +447,7 @@ def act(c, user, eid: int, sid: int, action: str, body) -> tuple[str, object]:
             data.update(deadline_at=_iso(new))
         elif action == "end" and a["status"] in LIVE:
             repo.set_attempt(c, a["id"], status="submitted", submitted_at=_iso(t), auto=1, paused_at=None)
+            _submitted(c, eid, a, user["id"], True, _iso(t))
         elif action == "reopen" and a["status"] == "submitted":
             new = t + timedelta(minutes=v["minutes"])
             repo.set_attempt(c, a["id"], status="in_progress", submitted_at=None, auto=0, paused_at=None, deadline_at=_iso(new))

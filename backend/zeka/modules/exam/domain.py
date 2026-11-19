@@ -13,6 +13,7 @@ import ipaddress
 import json
 import random
 import re
+from collections.abc import Mapping
 from datetime import date, datetime, time, timedelta, timezone, tzinfo
 
 from ...core.i18n import E
@@ -182,3 +183,44 @@ def resumed_deadline(deadline: datetime, paused_at: datetime, now: datetime) -> 
 def remaining(deadline: datetime, now: datetime, paused_at: datetime | None) -> int:
     """Seconds left by the server's clock; a paused attempt shows what was left when it stopped."""
     return max(0, int((deadline - (paused_at or now)).total_seconds()))
+
+
+# ---------------------------------------------------------------- the hash chain (Task 30)
+# Every exam has one chain of events ordered by seq (1..N, no gap): hash = sha256(prev_hash + the canonical event),
+# the first event's prev_hash is GENESIS. Changing or removing any stored event breaks a link or the head; the head
+# (the root) leaves the database in the closing protocol and the closing e-mail.
+GENESIS = "0" * 64
+
+
+def canonical_event(exam_id: int, seq: int, kind: str, actor_id: int | None, student_id: int | None, data: dict, at: str) -> str:
+    return json.dumps({"exam_id": exam_id, "seq": seq, "kind": kind, "actor_id": actor_id, "student_id": student_id, "data": data, "at": at},
+                      sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def link(prev_hash: str, canonical: str) -> str:
+    return hashlib.sha256((prev_hash + canonical).encode()).hexdigest()
+
+
+def answers_digest(answers: Mapping[int, str | None]) -> str:
+    """SHA-256 of the canonical JSON of the (qid, stored value) pairs ordered by qid: what a submission froze."""
+    pairs = [[qid, answers[qid]] for qid in sorted(answers)]
+    return hashlib.sha256(json.dumps(pairs, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+
+
+def chain_break(events: list[dict]) -> dict | None:
+    """The first broken link of a chain (events ordered by seq, ``data`` as stored text), or None. A missing seq, a
+    prev_hash that is not the previous hash, and a hash that does not match the event are each a break."""
+    prev = GENESIS
+    for i, ev in enumerate(events, start=1):
+        if ev["seq"] != i:
+            return {"seq": i, "problem": "missing"}
+        if ev["prev_hash"] != prev:
+            return {"seq": i, "problem": "prev_hash"}
+        try:
+            data = json.loads(ev["data"] or "{}")
+        except ValueError:
+            return {"seq": i, "problem": "data"}
+        if link(prev, canonical_event(ev["exam_id"], ev["seq"], ev["kind"], ev["actor_id"], ev["student_id"], data, ev["at"])) != ev["hash"]:
+            return {"seq": i, "problem": "hash"}
+        prev = ev["hash"]
+    return None

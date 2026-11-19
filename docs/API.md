@@ -843,6 +843,16 @@ offline and sends them when the connection is back, goes on after a reload, and 
 `remaining_s` on the browser's monotonic clock, so a wrong system clock does not move the deadline
 (`tests/e2e/exam_offline.js`, run by `tests/integration/test_exam_page.py` when node with Playwright is installed).
 
+The exam log is one hash chain per exam (Task 30): `seq` 1..N without a gap, `hash = sha256(prev_hash + canonical
+event)`, the first `prev_hash` is 64 zeros; an append reads the head and writes the next link under the write lock
+(`BEGIN IMMEDIATE`). A submission (by the student, the periodic job, the closing teacher or a proctor) is an
+`attempt.submitted` event with `attempt_id`, `auto`, `form_seed` and `answers_sha256` (the SHA-256 of the canonical
+JSON of the `(qid, stored value)` pairs ordered by `qid`); closing writes `attempt.graded` (`attempt_id`, `score`,
+`max_score`) for each attempt and then `exam.closed`. `python backend/manage.py exam-verify <id> [--root <hex>]` checks
+every link, each submitted attempt's answers against its last submission event, each graded score against its last
+grading event and, given, the head against the root; it prints the first broken link and every changed attempt and
+exits 1 (0 when all holds, 2 when there is no such exam).
+
 ### Proctor panel (Task 29)
 
 | Method | Path | Who | Purpose |

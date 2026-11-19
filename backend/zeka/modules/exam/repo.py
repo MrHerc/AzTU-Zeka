@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 
 from ...legacy.store import row, rows
+from . import domain
 
 EXAM_PUBLIC = "id, course_id, kind, title, opens_at, closes_at, duration_min, protection, status, attempt_no"
 
@@ -104,10 +105,20 @@ def put_answer(c, aid: int, qid: int, value: str, at: str):
               "value=excluded.value, saved_at=excluded.saved_at", (aid, qid, value, at))
 
 
-def add_event(c, eid: int, kind: str, actor: int | None, student: int | None, data: dict, at: str):
-    """Append to the exam's log; the next seq is taken in the same statement (Task 30 adds the hash chain)."""
-    c.execute("INSERT INTO exam_events(exam_id,seq,kind,actor_id,student_id,data,at) SELECT ?, COALESCE(MAX(seq), 0) + 1, ?, ?, ?, ?, ? "
-              "FROM exam_events WHERE exam_id=?", (eid, kind, actor, student, json.dumps(data, ensure_ascii=False, sort_keys=True), at, eid))
+def add_event(c, eid: int, kind: str, actor: int | None, student: int | None, data: dict, at: str) -> str:
+    """Append to the exam's chain (Task 30): read the head, compute the link, write it, all under the write lock. A
+    connection already in a write transaction holds the lock (sqlite3 opens one only at the first write); otherwise
+    BEGIN IMMEDIATE takes it before the head is read, so two processes never compute from the same head. Returns the
+    new head."""
+    if not c.in_transaction:
+        c.execute("BEGIN IMMEDIATE")
+    head = row(c, "SELECT seq, hash FROM exam_events WHERE exam_id=? ORDER BY seq DESC LIMIT 1", (eid,))
+    seq, prev = (head["seq"] + 1, head["hash"] or domain.GENESIS) if head else (1, domain.GENESIS)
+    text = json.dumps(data, ensure_ascii=False, sort_keys=True)
+    digest = domain.link(prev, domain.canonical_event(eid, seq, kind, actor, student, json.loads(text), at))
+    c.execute("INSERT INTO exam_events(exam_id,seq,kind,actor_id,student_id,data,at,prev_hash,hash) VALUES(?,?,?,?,?,?,?,?,?)",
+              (eid, seq, kind, actor, student, text, at, prev, digest))
+    return digest
 
 
 def events(c, eid: int) -> list[dict]:

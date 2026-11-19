@@ -44,7 +44,12 @@ def main(argv=None) -> int:
     ac.add_argument("--out", required=True, help="CSV file to write (handed to the dean's office)")
     jb = sub.add_parser("jobs", help="periodic jobs (Task 36)")
     jb.add_argument("action", choices=("status", "run"), help="status: each job's last run; run: run what is due now, once")
+    ev = sub.add_parser("exam-verify", help="check an exam's hash chain, its frozen answers and scores (Task 30)")
+    ev.add_argument("exam_id", type=int)
+    ev.add_argument("--root", help="the 64-character root from the closing protocol or e-mail")
     args = ap.parse_args(argv)
+    if args.cmd == "exam-verify":
+        return exam_verify(args.exam_id, args.root)
     if args.cmd == "jobs":
         return run_jobs(args.action)
     if args.cmd == "import":
@@ -73,6 +78,30 @@ def main(argv=None) -> int:
     finally:
         c.close()
     return 0
+
+
+def exam_verify(eid: int, root: str | None) -> int:
+    """0 when the chain, the answers, the scores and (given) the root all hold; 1 with the first broken link and every
+    changed attempt; 2 when there is no such exam. Reads only."""
+    from zeka.modules.exam import service as exam
+    c = store.connect()
+    try:
+        r = exam.verify(c, eid, root)
+    finally:
+        c.close()
+    if r is None:
+        print(f"exam {eid}: not found", file=sys.stderr)
+        return 2
+    print(f"exam {eid}: {r['events']} events, head {r['head']}")
+    for p in r["problems"]:
+        if p["what"] == "chain":
+            print(f"  BROKEN chain at seq {p['seq']}: {p['problem']}")
+        elif p["what"] == "attempt":
+            print(f"  CHANGED attempt {p['attempt_id']} (student {p['student_id']}): {p['problem']}")
+        else:
+            print(f"  ROOT differs: the head is {p['head']}, not the root given")
+    print("FAILED" if r["problems"] else "OK" + (" (root matches)" if root else ""))
+    return 1 if r["problems"] else 0
 
 
 def run_jobs(action: str) -> int:
