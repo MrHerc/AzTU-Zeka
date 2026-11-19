@@ -1,5 +1,6 @@
 """Clubs and channels (tasks/todo.md, Task 35): approval, membership, the code of conduct, announcement channels,
 polling, reports and moderation (audited), muting with its end time, removal, the retention purge and the limits."""
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -131,6 +132,8 @@ def test_the_retention_purge_deletes_old_messages_and_their_reports(app_db, club
         mid = c.execute("INSERT INTO club_messages(channel_id,author_id,text,created_at) VALUES(?,?,?,?)",
                         (club["chat"], club["lead"].user["id"], "köhnə mesaj", old)).lastrowid
         c.execute("INSERT INTO club_reports(message_id,reporter_id,reason,created_at) VALUES(?,?,?,?)", (mid, club["member"].user["id"], "köhnə", old))
+        kept = c.execute("INSERT INTO club_messages(channel_id,author_id,text,created_at) VALUES(?,?,?,?)",   # T-E14: inside 180 days
+                         (club["chat"], club["lead"].user["id"], "179 günlük", (store.now() - timedelta(days=179)).isoformat(timespec="seconds"))).lastrowid
         c.commit()
         assert "club messages 1" in periodic.retention_purge(c)
         c.commit()
@@ -138,9 +141,91 @@ def test_the_retention_purge_deletes_old_messages_and_their_reports(app_db, club
         c.close()
     assert not q("SELECT 1 FROM club_messages WHERE id=?", (mid,)) and not q("SELECT 1 FROM club_reports WHERE message_id=?", (mid,))
     assert q("SELECT 1 FROM club_messages WHERE id=?", (club["message"],)), "a new one stays"
+    assert q("SELECT 1 FROM club_messages WHERE id=?", (kept,)), "179 days old stays"
 
 
 def test_a_member_writes_at_most_twenty_messages_a_minute(app_db, rate_limits):
     w = build_club(app_db, "kb4")
     codes = [w["member"].post(f"/api/channels/{w['chat']}/messages", {"text": f"mesaj {i}"}).status for i in range(21)]
     assert codes.count(200) == 20 and codes[-1] == 429
+
+
+# ---------------------------------------------------------------- Checkpoint E (area B)
+def test_leaving_and_asking_again_keeps_a_mute_and_never_undoes_a_removal(app_db):
+    """SEC-E5: leave deleted the row, so leave + join cleared a removal and a mute."""
+    w = build_club(app_db, "kb5")
+    m, lead, cid = w["member"], w["lead"], w["club"]
+    assert lead.post(f"/api/clubs/{cid}/members/{m.user['id']}/mute", {"minutes": 60, "reason": "Təkrar reklam"}).status == 200
+    assert m.post(f"/api/clubs/{cid}/leave").status == 200
+    assert q("SELECT 1 FROM audit WHERE action='club_leave' AND user_id=? AND detail=?", (m.user["id"], f"#{cid}"))
+    assert m.post(f"/api/clubs/{cid}/join").json["membership"]["status"] == "requested"
+    assert lead.post(f"/api/clubs/{cid}/members/{m.user['id']}/approve").status == 200
+    assert m.post(f"/api/channels/{w['chat']}/messages", {"text": "Yenə buradayam"}).status == 403, "still muted"
+    assert lead.post(f"/api/clubs/{cid}/members/{m.user['id']}/remove").status == 200
+    assert m.post(f"/api/clubs/{cid}/leave").status == 200
+    assert q("SELECT status FROM club_members WHERE club_id=? AND user_id=?", (cid, m.user["id"])) == [{"status": "removed"}]
+    assert m.post(f"/api/clubs/{cid}/join").status == 403
+
+
+def test_a_leader_neither_learns_who_reported_nor_closes_a_report_on_their_own_message(app_db):
+    """TM-E4: the leader saw the reporter and kept the report on their own message out of the office's queue."""
+    w = build_club(app_db, "kb6")
+    on_leader = w["member"].post(f"/api/club-messages/{w['message']}/report", {"reason": "Təhqiramiz ifadə"}).json["id"]
+    theirs = w["member"].post(f"/api/channels/{w['chat']}/messages", {"text": "Bu da mənim mesajım"}).json["id"]
+    assert w["lead"].post(f"/api/club-messages/{theirs}/report", {"reason": "Mövzudan kənar"}).status == 200
+    led = w["lead"].get("/api/community/reports").json
+    assert [r["message_id"] for r in led if r["club_id"] == w["club"]] == [theirs]
+    assert all("reporter" not in r for r in led)
+    office = {r["id"]: r for r in w["office"].get("/api/community/reports").json}
+    assert office[on_leader]["reporter"] == w["member"].user["full_name"], "the office sees it, with the reporter"
+    assert w["lead"].post(f"/api/community/reports/{on_leader}/resolve", {"action": "keep"}).status == 403
+    assert w["office"].post(f"/api/community/reports/{on_leader}/resolve", {"action": "keep"}).status == 200
+
+
+def test_one_open_report_per_person_and_ten_asks_in_ten_minutes(app_db, rate_limits):
+    """TM-E17: 60 reports of one message, 60 proposals and a leave/join loop flooding the leader all went through."""
+    w = build_club(app_db, "kb7")
+    a = w["member"].post(f"/api/club-messages/{w['message']}/report", {"reason": "Spam"}).json["id"]
+    assert w["member"].post(f"/api/club-messages/{w['message']}/report", {"reason": "Spam yenə"}).json["id"] == a
+    assert len(q("SELECT 1 FROM club_reports WHERE message_id=? AND reporter_id=?", (w["message"], w["member"].user["id"]))) == 1
+    out, cid = w["out"], w["club"]
+
+    def asks():
+        return q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND title LIKE '%Kluba üzvlük sorğusu%'", (w["lead"].user["id"],))[0]["n"]
+    before = asks()
+    codes = []
+    for _ in range(11):
+        codes.append(out.post(f"/api/clubs/{cid}/join").status)
+        out.post(f"/api/clubs/{cid}/leave")
+    assert codes[:10] == [200] * 10 and codes[10] == 429, codes
+    assert asks() - before == 10, "the leader is told at most ten times"
+
+
+@pytest.mark.parametrize("bad", ["abc", -1, 0, True, None])
+def test_a_bad_retention_setting_keeps_the_default(app_db, club, bad):
+    """SF-E13: "abc" rolled the whole purge job back; -1 deleted every message."""
+    c = store.connect()
+    try:
+        limits = store.setting(c, "limits") or {}
+        c.execute("UPDATE settings SET value=? WHERE key='limits'", (json.dumps({**limits, "community_retention_days": bad}),))
+        mid = c.execute("INSERT INTO club_messages(channel_id,author_id,text,created_at) VALUES(?,?,?,?)",
+                        (club["chat"], club["lead"].user["id"], "100 günlük", (store.now() - timedelta(days=100)).isoformat(timespec="seconds"))).lastrowid
+        c.commit()
+        try:
+            periodic.retention_purge(c)
+            c.commit()
+        finally:
+            c.execute("UPDATE settings SET value=? WHERE key='limits'", (json.dumps(limits),))
+            c.commit()
+    finally:
+        c.close()
+    assert q("SELECT 1 FROM club_messages WHERE id=?", (mid,)), "inside the default 180 days"
+
+
+def test_a_member_s_poll_names_the_messages_hidden_since(app_db):
+    """SF-E8: a message hidden after the page loaded stayed on a member's screen."""
+    w = build_club(app_db, "kb8")
+    mid = w["member"].post(f"/api/channels/{w['chat']}/messages", {"text": "Gizlənəcək"}).json["id"]
+    assert w["lead"].post(f"/api/club-messages/{mid}/hide").status == 200
+    assert mid in w["member"].get(f"/api/channels/{w['chat']}/messages?since_id={mid}").json["hidden"]
+    assert w["lead"].get(f"/api/channels/{w['chat']}/messages?since_id={mid}").json["hidden"] == [], "a moderator keeps seeing it"

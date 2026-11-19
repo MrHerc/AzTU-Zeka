@@ -67,7 +67,7 @@ def test_only_the_administrator_adds_a_webhook_and_its_address_and_events_are_ch
                 {"url": recv.url, "events": ["grade.deleted"]}, {"url": recv.url, "events": []}):
         assert admin.post("/api/integration/webhooks", bad).status == 400, bad
     made = admin.post("/api/integration/webhooks", {"url": recv.url, "events": ["grade.published", "exam.released"]}).json
-    assert len(made["secret"]) == 64 and "secret" not in json.dumps(admin.get("/api/integration/webhooks").json)
+    assert len(made["secret"]) == 64 and made["secret"] not in json.dumps(admin.get("/api/integration/webhooks").json)   # T-E17: the value
 
 
 def test_a_published_grade_is_delivered_signed_retried_after_a_failure_and_logged(app_db, recv):
@@ -291,3 +291,33 @@ def test_the_scan_writes_nothing_when_no_webhook_wants_barred(app_db, monkeypatc
     finally:
         c.close()
     assert q("SELECT COUNT(*) AS n FROM reminders_sent WHERE kind='barred'")[0]["n"] == before
+
+
+def test_a_deactivated_webhook_gets_nothing_more(app_db, recv):
+    """T-E8: its pending deliveries fail instead of going out, and a later event queues nothing for it."""
+    admin = app_db.client("admin")
+    hook = admin.post("/api/integration/webhooks", {"url": recv.url, "events": ["exam.released"]}).json
+    c = store.connect()
+    try:
+        webhooks.emit(c, "exam.released", {"exam_id": 998})
+        c.commit()
+    finally:
+        c.close()
+    assert app_db.client("office").post(f"/api/integration/webhooks/{hook['id']}/deactivate").status == 403
+    assert admin.post(f"/api/integration/webhooks/{hook['id']}/deactivate").json["active"] == 0
+    assert admin.post(f"/api/integration/webhooks/{hook['id']}/deactivate").status == 404, "once"
+    recv.got.clear()
+    recv.codes.clear()
+    send(store.now() + timedelta(days=1))
+    did = q("SELECT id FROM webhook_deliveries WHERE webhook_id=?", (hook["id"],))[0]["id"]
+    assert not [g for g in recv.got if g["headers"]["X-Zeka-Delivery"] == str(did)]
+    d = q("SELECT status, last_error FROM webhook_deliveries WHERE id=?", (did,))[0]
+    assert d["status"] == "failed" and d["last_error"]
+    c = store.connect()
+    try:
+        webhooks.emit(c, "exam.released", {"exam_id": 997})
+        c.commit()
+    finally:
+        c.close()
+    assert len(q("SELECT 1 FROM webhook_deliveries WHERE webhook_id=?", (hook["id"],))) == 1
+    assert q("SELECT 1 FROM audit WHERE action='webhook_deactivate' AND detail=?", (f"#{hook['id']}",))

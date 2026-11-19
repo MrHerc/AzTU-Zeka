@@ -91,3 +91,16 @@ def test_the_evaluation_set_scores_at_least_45_of_50_and_every_answer_has_a_sour
     assert r.returncode == 0, r.stdout + r.stderr
     right = int(r.stdout.strip().splitlines()[-1].split()[1].split("/")[0])
     assert right >= 45 and "without a source or a handoff: 0" in r.stdout, r.stdout
+
+
+def test_campus_answer_hands_over_when_the_composer_gives_neither_source_nor_handoff(app_db, monkeypatch):
+    """T-E19: the guard in assistant.service.campus_answer (Task 32), reached with a bare composer answer."""
+    from zeka.legacy import tutor
+    from zeka.modules.assistant import service
+    monkeypatch.setattr(tutor, "compose_campus", lambda q, hits, lang: {"text": "Bilmirəm.", "cites": [], "actions": [], "meta": {}})
+    c = store.connect()
+    try:
+        out = service.campus_answer(c, {"id": 1, "role": "student"}, "Yataqxanada növbə necə paylanır", "az")
+    finally:
+        c.close()
+    assert [a["type"] for a in out["actions"]] == ["handoff"]

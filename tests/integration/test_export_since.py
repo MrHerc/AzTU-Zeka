@@ -144,6 +144,7 @@ def test_the_since_queries_use_an_index(world):
 
 
 def test_only_the_administrator_exports(app_db, world):
+    before = q("SELECT COUNT(*) n FROM audit WHERE action='export'")[0]["n"]
     for role in ("teacher", "office", "leader", "student"):
         assert app_db.client(role).get("/api/integration/export/attendance").status == 403, role
     admin = app_db.client("admin")
@@ -152,4 +153,6 @@ def test_only_the_administrator_exports(app_db, world):
     assert reg.status == 200 and reg.text.splitlines()[0] == "student_no,group"
     bad = admin.get("/api/integration/export/registry?columns=student_no,password_hash", lang="en")
     assert bad.status == 400 and "password_hash" in bad.json["error"]
-    assert q("SELECT COUNT(*) n FROM audit WHERE action='export'")[0]["n"] >= 3, "every export is in the audit log"
+    admin_id = q("SELECT id FROM users WHERE username=(SELECT json_extract(value,'$.admin') FROM settings WHERE key='demo_logins')")[0]["id"]
+    got = q("SELECT user_id, entity, detail FROM audit WHERE action='export' ORDER BY id")[before:]
+    assert got == [{"user_id": admin_id, "entity": "registry", "detail": "students"}], "T-E13: the one export that succeeded, by its user"

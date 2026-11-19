@@ -61,8 +61,15 @@ def set_member(c, cid: int, uid: int, **fields):
     c.execute(f"UPDATE club_members SET {sets} WHERE club_id=? AND user_id=?", (*fields.values(), cid, uid))  # nosec B608
 
 
-def leave(c, cid: int, uid: int):
-    c.execute("DELETE FROM club_members WHERE club_id=? AND user_id=? AND role<>'leader'", (cid, uid))
+def rejoin(c, cid: int, uid: int, at: str):
+    """A former member asks again: the row, and a mute on it, stays (Checkpoint E, SEC-E5)."""
+    c.execute("UPDATE club_members SET status='requested', created_at=? WHERE club_id=? AND user_id=? AND status='left'", (at, cid, uid))
+
+
+def leave(c, cid: int, uid: int) -> bool:
+    """A member or a requester leaves: the row stays as ``left`` with its mute; a removal is never undone (SEC-E5)."""
+    return c.execute("UPDATE club_members SET status='left' WHERE club_id=? AND user_id=? AND role<>'leader' AND status IN ('member','requested')",
+                     (cid, uid)).rowcount > 0
 
 
 def messages(c, chid: int, since_id: int, limit: int, with_hidden: bool) -> list[dict]:
@@ -90,12 +97,23 @@ def hide_message(c, mid: int):
     c.execute("UPDATE club_messages SET hidden=1 WHERE id=?", (mid,))
 
 
+def hidden_ids(c, chid: int, window: int) -> list[int]:
+    """The hidden messages among the channel's last ``window``: a member's open page drops them (SF-E8)."""
+    return [r["id"] for r in rows(c, "SELECT id FROM (SELECT id, hidden FROM club_messages WHERE channel_id=? ORDER BY id DESC LIMIT ?) "
+                                     "WHERE hidden=1", (chid, window))]
+
+
+def open_report(c, mid: int, uid: int):
+    return row(c, "SELECT id FROM club_reports WHERE message_id=? AND reporter_id=? AND resolved_at IS NULL", (mid, uid))
+
+
 def add_report(c, mid: int, uid: int, reason: str, at: str) -> int:
     return c.execute("INSERT INTO club_reports(message_id,reporter_id,reason,created_at) VALUES(?,?,?,?)", (mid, uid, reason, at)).lastrowid
 
 
-def open_reports(c, club_ids: list[int] | None) -> list[dict]:
-    """Open reports with the message, its author and club; ``club_ids`` None: all clubs."""
+def open_reports(c, club_ids: list[int] | None, not_author: int | None = None) -> list[dict]:
+    """Open reports with the message, its author and club; ``club_ids`` None: all clubs; ``not_author``: leave out the
+    reports on this person's own messages (a leader's own go to the office, TM-E4)."""
     sql = ("SELECT p.id, p.message_id, p.reason, p.created_at, m.text, m.author_id, a.full_name AS author, ch.club_id, cl.name AS club, "
            "r.full_name AS reporter FROM club_reports p JOIN club_messages m ON m.id=p.message_id JOIN club_channels ch ON ch.id=m.channel_id "
            "JOIN clubs cl ON cl.id=ch.club_id JOIN users a ON a.id=m.author_id JOIN users r ON r.id=p.reporter_id WHERE p.resolved_at IS NULL")
@@ -103,7 +121,8 @@ def open_reports(c, club_ids: list[int] | None) -> list[dict]:
         return rows(c, sql + " ORDER BY p.id LIMIT 200")
     if not club_ids:
         return []
-    return rows(c, sql + f" AND ch.club_id IN ({','.join('?' * len(club_ids))}) ORDER BY p.id LIMIT 200", tuple(club_ids))  # nosec B608
+    return rows(c, sql + f" AND ch.club_id IN ({','.join('?' * len(club_ids))}) AND m.author_id<>? ORDER BY p.id LIMIT 200",  # nosec B608
+                (*club_ids, not_author or 0))
 
 
 def report(c, pid: int):

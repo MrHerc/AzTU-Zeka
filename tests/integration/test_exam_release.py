@@ -1,6 +1,8 @@
 """Releasing an exam's results to the journal (tasks/todo.md, Task 30): the scaled score is published in the exam
 component with its exam and attempt number and the release is audited; the similar-answers list is the teacher's
 only; a retake's result does not erase the first one, and both are shown to the teacher and the dean's office."""
+import json
+
 import pytest
 
 from zeka.legacy import store
@@ -76,6 +78,7 @@ def test_released_scores_reach_the_journal_and_the_release_is_audited(app_db, wo
     assert cell(world, "rl.a") is None, "nothing reaches the journal before the release"
     office = app_db.client("office")
     assert office.post(f"/api/exams/{eid}/release").status == 403
+    hook = app_db.client("admin").post("/api/integration/webhooks", {"url": "https://hooks.example.az/zeka", "events": ["exam.released"]}).json
     r = t.post(f"/api/exams/{eid}/release")
     assert r.status == 200, r.text
     assert t.post(f"/api/exams/{eid}/release").status == 400                  # once
@@ -88,6 +91,8 @@ def test_released_scores_reach_the_journal_and_the_release_is_audited(app_db, wo
     assert q("SELECT 1 FROM audit WHERE action='exam_released' AND detail LIKE ?", (f"#{eid}%",))
     assert q("SELECT 1 FROM notifications WHERE user_id=? AND kind='exam'", (world["ids"]["rl.a"],))
     assert [e["kind"] for e in q("SELECT kind FROM exam_events WHERE exam_id=? ORDER BY seq", (eid,))][-1] == "exam.released"
+    sent = [json.loads(d["payload"]) for d in q("SELECT payload FROM webhook_deliveries WHERE webhook_id=?", (hook["id"],))]
+    assert [(x["event"], x["data"]["exam_id"], x["data"]["released"]) for x in sent] == [("exam.released", eid, 3)], "T-E7: once"
 
 
 def test_only_the_teacher_sees_the_similar_answers(app_db, world):

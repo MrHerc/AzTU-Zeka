@@ -1,5 +1,6 @@
 """Office hours (tasks/todo.md, Task 34): a slot is booked once even by two requests at the same moment, the meeting is
 in both iCal feeds, a cancel tells the other side, a reminder goes once, and the assistant answers with the hours."""
+import json
 import threading
 from datetime import datetime, timedelta, timezone
 
@@ -7,7 +8,6 @@ import pytest
 
 from zeka.core import clock
 from zeka.legacy import periodic, store
-from zeka.modules.qa import office_hours
 
 
 def q(sql, args=()):
@@ -116,15 +116,19 @@ def test_the_reminder_goes_once_to_both_sides(oh, monkeypatch):
     b = next(x for x in oh["aysel"].get("/api/office-hours/bookings").json if x["status"] == "booked")
     at = datetime.fromisoformat(f"{b['day']}T{b['start']}").replace(tzinfo=clock.ZONE) - timedelta(hours=1)
     monkeypatch.setattr(clock, "now", lambda: at.astimezone(timezone.utc))
+
+    def soon(uid):
+        return q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND title LIKE '%yaxınlaşır%'", (uid,))[0]["n"]
+    sides = (oh["aysel"].user["id"], oh["teacher"].user["id"])
+    before = [soon(u) for u in sides]
     c = store.connect()
     try:
-        assert office_hours.remind(c, periodic._once) == 1
-        assert office_hours.remind(c, periodic._once) == 0, "once"
+        periodic.reminders_sla(c)                       # T-E10: the job (reminders.sla) the runner calls, twice
+        periodic.reminders_sla(c)
         c.commit()
     finally:
         c.close()
-    for uid in (oh["aysel"].user["id"], oh["teacher"].user["id"]):
-        assert "yaxınlaşır" in q("SELECT title FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 1", (uid,))[0]["title"]
+    assert [soon(u) - b for u, b in zip(sides, before, strict=True)] == [1, 1], "each side once"
 
 
 def test_the_assistant_answers_with_the_teacher_s_office_hours(oh):
@@ -235,3 +239,37 @@ def test_a_person_s_bookings_are_read_through_an_index_on_both_sides():
     finally:
         c.close()
     assert "SCAN b" not in plan, plan
+
+
+def test_only_the_owner_ends_the_hours_and_their_bookings_are_cancelled(app_db, oh):
+    """T-E9: POST /api/office-hours/{id}/end."""
+    t, tid = oh["teacher"], oh["teacher"].user["id"]
+    hid = next(h["id"] for h in t.post("/api/office-hours", {"weekday": oh["weekday"], "start": "16:00", "end": "16:30", "slot_min": 15,
+                                                               "place": "EK-306"}).json if h["start"] == "16:00")
+    for x in q("SELECT id FROM office_bookings WHERE student_id=? AND teacher_id=? AND status='booked'", (oh["peer"].user["id"], tid)):
+        oh["peer"].post(f"/api/office-hours/bookings/{x['id']}/cancel")    # earlier tests left the peer at the cap of two
+    slot = next(s for s in oh["peer"].get(f"/api/office-hours/teachers/{tid}/free").json if s["hours_id"] == hid)
+    r = oh["peer"].post("/api/office-hours/book", {"hours_id": hid, "day": slot["day"], "start": slot["start"]})
+    assert r.status == 200, r.text
+    bid = r.json["id"]
+    other = q("SELECT username FROM users WHERE role='teacher' AND id<>? ORDER BY id LIMIT 1", (tid,))[0]["username"]
+    logins = q("SELECT value FROM settings WHERE key='demo_logins'")[0]["value"]
+    c = store.connect()
+    try:
+        c.execute("UPDATE settings SET value=? WHERE key='demo_logins'", (json.dumps({**json.loads(logins), "teacher": other}),))
+        c.commit()
+        stranger = app_db.client("teacher")             # the demo's teacher login pointed at another teacher (as in test_exam_gaps)
+        c.execute("UPDATE settings SET value=? WHERE key='demo_logins'", (logins,))
+        c.commit()
+    finally:
+        c.close()
+    assert stranger.user["id"] != tid
+    assert stranger.post(f"/api/office-hours/{hid}/end").status == 404
+    assert q("SELECT status FROM office_bookings WHERE id=?", (bid,))[0]["status"] == "booked"
+    assert t.post(f"/api/office-hours/{hid}/end").status == 200
+    b = q("SELECT status, student_id FROM office_bookings WHERE id=?", (bid,))[0]
+    assert b["status"] == "cancelled"
+    told = q("SELECT title FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 1", (b["student_id"],))[0]["title"]
+    assert "ləğv olundu" in told
+    assert hid not in [s["hours_id"] for s in oh["peer"].get(f"/api/office-hours/teachers/{tid}/free").json]
+    assert t.post(f"/api/office-hours/{hid}/end").status == 404, "once"

@@ -34,19 +34,35 @@ route("/clubs", async (el) => {
 });
 
 route("/clubs/:id", async (el, p) => {
-  let info, channel = null, last = 0, timer = null, msgs = [];
-  const stop = () => { clearTimeout(timer); timer = null; };
+  // gen: a restart (another channel, a send, a hide) makes the reply of a poll still in flight stale (SF-E8)
+  let info, channel = null, last = 0, timer = null, msgs = [], gen = 0, fails = 0;
+  const stop = () => { clearTimeout(timer); timer = null; gen++; };
   const msgRow = (m) => html`<div class="club-msg ${m.hidden ? "hidden-msg" : ""}" data-mid="${m.id}"><div class="small muted"><b>${m.author}</b> · ${when(m.created_at)}
       ${m.hidden ? html` · <span class="badge b-amber">${t("Gizlədilib")}</span>` : ""}</div><div class="club-text">${m.text}</div>
     <div class="row" style="gap:6px">${m.author_id !== S.user.id ? html`<button class="btn btn-ghost btn-xs" data-report="${m.id}">${t("Şikayət et")}</button>` : ""}
       ${info.moderates && !m.hidden ? html`<button class="btn btn-ghost btn-xs" data-hide="${m.id}">${t("Gizlət")}</button>` : ""}</div></div>`;
   const drawMsgs = () => { const box = el.querySelector("#club-msgs"); if (box) { mount(box, html`${msgs.length ? msgs.map(msgRow) : empty("inbox", t("Hələ mesaj yoxdur"))}`); box.scrollTop = box.scrollHeight; } };
+  const status = (text) => { const s = el.querySelector("#club-status"); if (s) s.textContent = text; };
   const poll = async () => {
     if (!el.isConnected || !channel) return stop();
+    const g = gen;
+    if (document.hidden) { timer = setTimeout(poll, POLL_MS); return; }   // a hidden tab does not poll
     try {
       const r = await api.get(`/api/channels/${channel.id}/messages${last ? `?since_id=${last}` : ""}`);
-      if (r.messages.length) { msgs = last ? msgs.concat(r.messages) : r.messages; last = msgs[msgs.length - 1].id; drawMsgs(); }
-    } catch (err) { if (err.status === 403) { stop(); return mount(el, failed(err.message)); } }
+      if (g !== gen) return;
+      const gone = new Set(r.hidden || []);
+      const kept = msgs.filter((m) => !gone.has(m.id));
+      if (r.messages.length || kept.length !== msgs.length) {
+        msgs = last ? kept.concat(r.messages) : r.messages;
+        if (msgs.length) last = Math.max(last, msgs[msgs.length - 1].id);
+        drawMsgs();
+      }
+      if (fails) { fails = 0; status(""); }
+    } catch (err) {
+      if (g !== gen) return;
+      if (err.status === 403) { stop(); return mount(el, failed(err.message)); }
+      if (++fails >= 2) status(t("Bağlantı kəsilib, yenidən cəhd edilir…"));
+    }
     timer = setTimeout(poll, POLL_MS);
   };
   const open = (ch) => { stop(); channel = ch; last = 0; msgs = []; draw(); poll(); };
@@ -59,6 +75,7 @@ route("/clubs/:id", async (el, p) => {
           ${ch.kind === "announce" ? ic("megaphone", 14) : ic("message", 14)} ${ch.name}</button>`)}
         ${info.moderates ? html`<button class="btn btn-ghost btn-sm" data-members>${ic("users", 14)} ${t("Üzvlər")}</button>` : ""}</nav>
         <section class="card club-chat">${channel ? html`<div id="club-msgs" class="club-msgs" aria-live="polite"></div>
+          <div id="club-status" class="small muted" role="status" aria-live="polite"></div>
           ${canWrite ? html`<div class="row" style="gap:8px"><textarea class="input grow" id="club-text" rows="2" maxlength="2000" aria-label="${t("Mesaj")}"></textarea>
             <button class="btn btn-primary" data-send>${ic("send", 15)}</button></div>` : html`<p class="small muted">${t("Bu kanala yalnız klubun rəhbəri yazır.")}</p>`}`
           : empty("inbox", t("Kanal seçin"))}</section></div>`}`);
@@ -110,7 +127,7 @@ route("/staff/clubs", async (el) => {
   const load = async () => {
     let pending = [], reports = [];
     try {
-      [pending, reports] = await Promise.all([api.get("/api/clubs/pending").catch(() => []), api.get("/api/community/reports")]);
+      [pending, reports] = await Promise.all([api.get("/api/clubs/pending").catch((e) => (e.status === 403 ? [] : Promise.reject(e))), api.get("/api/community/reports")]);
     } catch (err) { return mount(el, failed(err.message)); }
     mount(el, html`${pageHead(t("Klublar və şikayətlər"), t("Təklif olunan klubların təsdiqi və kanal şikayətləri; hər addım auditdədir"))}
       <div class="card stack"><b>${t("Təsdiq gözləyən klublar")}</b>${pending.length ? pending.map((c) => html`<div class="row wrap" style="gap:8px;justify-content:space-between">

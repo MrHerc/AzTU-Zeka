@@ -47,15 +47,21 @@ def registrar(app_db):
 def orders(app_db, registrar):
     """A: entered before SINCE. B (an order of 3 days ago) and C (of 12 days ago) after it."""
     students = [x["id"] for x in q("SELECT id FROM users WHERE role='student' ORDER BY id LIMIT 3")]
+    admin = app_db.client("admin")                     # T-E3: D is a student of another faculty
+    fb = admin.post("/api/directory/faculties", {"code": "TMB", "name": "TM B fakültəsi"}).json["id"]
+    gb = admin.post("/api/directory/groups", {"name": "TMB-25-1", "year": 2025, "faculty_id": fb}).json["id"]
+    students.append(admin.post("/api/directory/users", {"username": "tm.d", "full_name": "Sınaq tm.d", "role": "student", "group_id": gb,
+                                                        "student_no": "TM-D"}).json["id"])
     real = clock.now
     out = {}
     try:
-        for name, at, sid, kind, order_date in (("A", BEFORE, students[0], "admission", day(-1)),
-                                                 ("B", AFTER, students[1], "reinstatement", day(-3)),
-                                                 ("C", AFTER, students[2], "admission", day(-12))):
+        for name, at, sid, kind, order_date, effective in (("A", BEFORE, students[0], "admission", day(-1), day(-1)),
+                                                            ("B", AFTER, students[1], "reinstatement", day(-3), day(2)),   # T-E4
+                                                            ("C", AFTER, students[2], "admission", day(-12), day(-12)),
+                                                            ("D", AFTER, students[3], "admission", day(-1), day(-1))):
             clock.now = lambda at=at: at
             r = registrar.post(f"/api/directory/students/{sid}/status", {"kind": kind, "order_no": f"TM-{name}", "order_date": order_date,
-                                                                         "effective_date": order_date})
+                                                                         "effective_date": effective})
             assert r.status == 200, r.text
             out[name] = q("SELECT id FROM student_status_events WHERE order_no=?", (f"TM-{name}",))[0]["id"]
     finally:
@@ -76,13 +82,13 @@ def listed(client, since=SINCE):
 
 def test_every_order_entered_after_the_moment_is_listed_with_the_days_left(registrar, orders, at_noon_after):
     items = listed(registrar)                          # the '+' of the offset arrives as a space; it still reads as +04:00
-    assert set(items) == {orders["B"], orders["C"]}, "A was entered before the moment"
+    assert set(items) == {orders["B"], orders["C"], orders["D"]}, "A was entered before the moment"
     b, c = items[orders["B"]], items[orders["C"]]
     assert (b["kind"], b["order_no"], b["order_date"], b["deadline"], b["days_left"]) == ("reinstatement", "TM-B", day(-3), day(7), 7)
     assert (c["deadline"], c["days_left"]) == (day(-2), -2), "overdue: negative"
     assert b["reported_at"] is None and c["reported_at"] is None and b["student_no"]
     utc = (BASE + timedelta(minutes=1)).astimezone(timezone.utc).isoformat().replace("+00:00", "%2B00:00")
-    assert set(listed(registrar, utc)) == {orders["A"], orders["B"], orders["C"]}, "the same moments in another zone"
+    assert set(listed(registrar, utc)) == {orders["A"], orders["B"], orders["C"], orders["D"]}, "the same moments in another zone"
     assert listed(registrar, (AFTER + timedelta(seconds=1)).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")) == {}
     assert registrar.get("/api/integration/status-changes?since=yesterday").status == 400
 
@@ -106,6 +112,8 @@ def test_who_may_list_and_mark(app_db, orders, at_noon_after):
         assert app_db.client(role).get(f"/api/integration/status-changes?since={SINCE}").status == 200, role
     for role in ("teacher", "student"):
         assert app_db.client(role).get(f"/api/integration/status-changes?since={SINCE}").status == 403, role
+    assert orders["D"] not in listed(app_db.client("office")) and orders["B"] in listed(app_db.client("office")), "T-E3: own faculty only"
+    assert orders["D"] in listed(app_db.client("admin"))
     for role in ("admin", "leader", "office", "teacher", "student"):
         assert app_db.client(role).post(f"/api/integration/status-changes/{orders['C']}/reported").status == 403, role
     assert app_db.client().get("/api/integration/status-changes").status == 401

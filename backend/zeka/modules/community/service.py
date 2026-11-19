@@ -39,6 +39,8 @@ def propose(c, user, body) -> tuple[str, object]:
     v, problem = domain.club_input(body)
     if problem:
         return "invalid", problem
+    if not LIMITS["club_ask"].hit(f"u{user['id']}"):
+        return "limited", T3("Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     cid = repo.add_club(c, v, user["id"], iso(now()))
     audit(c, user["id"], "club_propose", "club", f"#{cid} {v['name'][:60]}")
     return "ok", repo.club(c, cid)
@@ -83,15 +85,20 @@ def join(c, user, cid: int) -> tuple[str, object]:
     if not cl or cl["status"] != "approved" or user["role"] not in WRITERS:
         return "missing", None
     m = repo.membership(c, cid, user["id"])
-    if m:
-        return ("forbidden", T3("Siz bu klubdan çıxarılmısınız")) if m["status"] == "removed" else ("ok", club(c, user, cid))
-    repo.request_join(c, cid, user["id"], iso(now()))
+    if m and m["status"] == "removed":
+        return "forbidden", T3("Siz bu klubdan çıxarılmısınız")
+    if m and m["status"] != "left":
+        return "ok", club(c, user, cid)
+    if not LIMITS["club_ask"].hit(f"u{user['id']}"):           # a leave and join loop does not flood the leader (TM-E3)
+        return "limited", T3("Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
+    (repo.rejoin if m else repo.request_join)(c, cid, user["id"], iso(now()))
     notify(c, cl["leader_id"], "event", T3("Kluba üzvlük sorğusu: {name}", name=cl["name"]), user["full_name"], f"/clubs/{cid}")
     return "ok", club(c, user, cid)
 
 
 def leave(c, user, cid: int) -> tuple[str, object]:
-    repo.leave(c, cid, user["id"])
+    if repo.leave(c, cid, user["id"]):
+        audit(c, user["id"], "club_leave", "club", f"#{cid}")
     return "ok", {"ok": True}
 
 
@@ -153,7 +160,8 @@ def messages(c, user, chid: int, since_id: int) -> tuple[str, object]:
     ch, _ = found
     mod = _moderates(c, user, ch["club_id"])
     page = (repo.messages(c, chid, since_id, domain.PAGE, mod) if since_id else repo.last_messages(c, chid, domain.PAGE, mod))
-    return "ok", {"channel": ch, "messages": page, "moderates": mod}
+    hidden = [] if mod or not since_id else repo.hidden_ids(c, chid, domain.PAGE * 4)
+    return "ok", {"channel": ch, "messages": page, "moderates": mod, "hidden": hidden}
 
 
 def post(c, user, chid: int, body) -> tuple[str, object]:
@@ -183,6 +191,11 @@ def report(c, user, mid: int, body) -> tuple[str, object]:
     reason, problem = domain.reason_input(body)
     if problem:
         return "invalid", problem
+    same = repo.open_report(c, mid, user["id"])
+    if same:                                                    # one open report per person and message
+        return "ok", {"id": same["id"]}
+    if not LIMITS["club_ask"].hit(f"u{user['id']}"):
+        return "limited", T3("Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     pid = repo.add_report(c, mid, user["id"], reason, iso(now()))
     audit(c, user["id"], "club_report", "club_message", f"#{mid} club #{msg['club_id']}")
     return "ok", {"id": pid}
@@ -192,7 +205,10 @@ def queue(c, user) -> tuple[str, object]:
     if perms.has(user["role"], "community.moderate"):
         return "ok", repo.open_reports(c, None)
     led = repo.led_clubs(c, user["id"])
-    return ("ok", repo.open_reports(c, led)) if led else ("forbidden", T3("Bu əməliyyat yalnız klubun rəhbəri və moderatorlar üçündür"))
+    if not led:
+        return "forbidden", T3("Bu əməliyyat yalnız klubun rəhbəri və moderatorlar üçündür")
+    # a leader neither learns who reported nor sees the reports on their own messages: those stay for the office (TM-E4)
+    return "ok", [{k: v for k, v in r.items() if k != "reporter"} for r in repo.open_reports(c, led, not_author=user["id"])]
 
 
 def hide(c, user, mid: int, outcome: str = "hide") -> tuple[str, object]:
@@ -201,6 +217,8 @@ def hide(c, user, mid: int, outcome: str = "hide") -> tuple[str, object]:
         return "missing", None
     if not _moderates(c, user, msg["club_id"]):
         return "forbidden", T3("Bu əməliyyat yalnız klubun rəhbəri və moderatorlar üçündür")
+    if outcome == "keep" and msg["author_id"] == user["id"] and not perms.has(user["role"], "community.moderate"):
+        return "forbidden", T3("Öz mesajınız haqqında şikayətə moderator baxır")
     if outcome == "hide":
         repo.hide_message(c, mid)
     repo.resolve_reports(c, mid, user["id"], outcome, iso(now()))
@@ -220,5 +238,7 @@ def resolve(c, user, pid: int, body) -> tuple[str, object]:
 
 def purge(c) -> int:
     """The periodic purge: messages older than the retention period (``limits.community_retention_days``, 180)."""
-    days = int((setting(c, "limits") or {}).get("community_retention_days") or domain.RETENTION_DAYS)
+    days = (setting(c, "limits") or {}).get("community_retention_days")
+    if not isinstance(days, int) or isinstance(days, bool) or days < 1:     # a bad setting keeps the default (SF-E13)
+        days = domain.RETENTION_DAYS
     return repo.purge_messages(c, iso(now() - timedelta(days=days)))

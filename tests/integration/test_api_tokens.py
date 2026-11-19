@@ -43,6 +43,8 @@ def test_only_the_administrator_manages_keys_and_a_key_is_shown_once_and_kept_as
     admin = app_db.client("admin")
     assert admin.post("/api/integration/keys", {"name": "X açar", "scopes": ["everything"]}).status == 400
     assert admin.post("/api/integration/keys", {"name": "X açar", "scopes": []}).status == 400
+    for n in (0, 601):                                                                       # T-E16
+        assert admin.post("/api/integration/keys", {"name": "X açar", "scopes": ["grades.read"], "per_minute": n}).status == 400, n
     k = key(app_db, ["grades.read"])
     assert k["token"].startswith("zk_") and "token" not in json.dumps(admin.get("/api/integration/keys").json)
     assert not q("SELECT 1 FROM api_tokens WHERE token_hash=? OR prefix=?", (k["token"], k["token"]))

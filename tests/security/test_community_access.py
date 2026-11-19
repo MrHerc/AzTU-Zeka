@@ -40,4 +40,13 @@ def test_a_non_member_gets_403_on_every_channel_route(world, app_db):
 
 def test_a_member_reaches_the_read_routes(world):
     assert call(world["member"], "GET /api/channels/{id:int}/messages", world).status == 200
-    assert call(world["member"], "GET /api/clubs/{id:int}/members", world).status == 200
+    shown = call(world["member"], "GET /api/clubs/{id:int}/members", world).json
+    assert shown and all(set(m) == {"user_id", "full_name", "role"} for m in shown), "T-E5/M32: no requests, removals or mutes"
+
+
+def test_a_person_who_only_asked_to_join_gets_403(app_db):
+    """T-E5: a pending request is not a membership."""
+    w = build_club(app_db, "req")
+    assert w["out"].post(f"/api/clubs/{w['club']}/join").status == 200
+    leaks = {k: s for k in ROUTES if (s := call(w["out"], k, w).status) != 403}
+    assert leaks == {}, leaks

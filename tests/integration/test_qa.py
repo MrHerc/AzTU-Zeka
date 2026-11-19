@@ -262,3 +262,32 @@ def test_the_teacher_s_question_badge_reads_by_index(app_db):
     plan = " ".join(r["detail"] for r in q("EXPLAIN QUERY PLAN SELECT COUNT(*) n FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id "
                                           "WHERE co.teacher_id=? AND tq.status='open'", (1,)))
     assert "idx_courses_teacher" in plan and "SCAN tq" not in plan, plan
+
+
+# ---------------------------------------------------------------- Checkpoint E (test review)
+def test_a_teacher_of_another_course_reads_nothing_there(forum):
+    """T-E1: the demo teacher does not teach the author's other course (neither its teacher nor a teaching unit)."""
+    me = forum["teacher"].user["id"]
+    other = q("SELECT e.course_id FROM enrollments e JOIN courses co ON co.id=e.course_id WHERE e.user_id=? AND co.teacher_id<>? "
+              "AND NOT EXISTS (SELECT 1 FROM teaching_units u WHERE u.course_id=co.id AND u.teacher_id=?) LIMIT 1",
+              (forum["author"].user["id"], me, me))[0]["course_id"]
+    t = forum["author"].post(f"/api/courses/{other}/qa", {"title": "Başqa fənnin anonim sualı", "text": "Bu sualı yalnız fənnin müəllimi görür.",
+                                                          "anonymous": True}).json
+    stranger = forum["teacher"]
+    assert stranger.get(f"/api/courses/{other}/qa").status == 404
+    assert stranger.get(f"/api/qa/topics/{t['id']}").status == 404
+    assert stranger.post(f"/api/qa/topics/{t['id']}/draft").status == 404
+    assert stranger.post(f"/api/qa/topics/{t['id']}/faq", {"on": True}).status == 404
+    rid = forum["author"].post(f"/api/qa/topics/{t['id']}/replies", {"text": "Özüm əlavə edirəm: şərt belədir"}).json["replies"][-1]["id"]
+    assert stranger.post(f"/api/qa/replies/{rid}/accept").status == 404
+
+
+def test_a_hidden_topic_is_gone_for_students_and_kept_for_the_teacher(forum):
+    """T-E6: a report on the topic itself (no reply_id), resolved with hide."""
+    t = new_topic(forum, title="Mövzu özü şikayət olunur")
+    assert forum["peer"].post("/api/qa/reports", {"topic_id": t["id"], "reason": "Fənnə aid deyil"}).status == 200
+    rep = next(x for x in forum["office"].get("/api/qa/reports").json if x["topic_id"] == t["id"] and not x["reply_id"])
+    assert forum["office"].post(f"/api/qa/reports/{rep['id']}/resolve", {"action": "hide"}).status == 200
+    assert forum["peer"].get(f"/api/qa/topics/{t['id']}").status == 404
+    assert t["id"] not in [x["id"] for x in forum["peer"].get(f"/api/courses/{forum['course']}/qa").json]
+    assert forum["teacher"].get(f"/api/qa/topics/{t['id']}").status == 200
