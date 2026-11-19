@@ -29,7 +29,7 @@ python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1567 tests, about 5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1577 tests, about 5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done

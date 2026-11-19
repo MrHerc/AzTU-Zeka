@@ -51,8 +51,9 @@ def _issue_doc(c, actor, r, rt, data, body):
 
 
 def _excuse(c, actor, r, rt, data, body):
-    """``attendance.excuse``: the chosen absences are excused in the journal."""
-    journal.excuse(c, actor["id"], r["id"], r["student_id"], data.get("absences") or [])
+    """``attendance.excuse``: the chosen absences that are still absences are excused in the journal; ``data["excused"]``
+    names those lessons, so the answer and the teachers' notices claim no more (TE46-8)."""
+    data["excused"] = journal.excuse(c, actor["id"], r["id"], r["student_id"], data.get("absences") or [])
 
 
 def _leave(c, actor, r, rt, data, body):
@@ -76,10 +77,11 @@ def registered(effect) -> bool:
     return effect == "none" or effect in EFFECTS
 
 
-def answer_of(rt):
+def answer_of(rt, changed: bool = True):
     """The answer of a completed request that has no document. A type with an effect says what the effect did (its
-    `answer`); a type whose effect is `none` gets the one factual template: no free text claims a change Zəka did not make."""
-    if rt["effect"] != "none":
+    `answer`); a type whose effect is `none`, or whose effect changed nothing, gets the one factual template: no free text
+    claims a change Zəka did not make."""
+    if rt["effect"] != "none" and changed:
         return rt["answer"]
     return T3("Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka-da başqa heç bir qeyd dəyişməyib.",
               unit=UNITS[rt["step_roles"][-1]])
@@ -298,6 +300,13 @@ def _req_for(req, rid):
     return r
 
 
+def _lock(c):
+    """A request's status and step are read under the write lock, so two acts at once run one after the other: no skipped
+    step, no second document, no rejected request with a valid one (TE46-1, TE46-2)."""
+    if not c.in_transaction:
+        c.execute("BEGIN IMMEDIATE")
+
+
 def _event(c, rid, u, action, note=""):
     """One act in the request's history: who, in which role (a person may hold several), what and when."""
     c.execute("INSERT INTO request_events(request_id,actor_id,action,note,created_at,role) VALUES(?,?,?,?,?,?)",
@@ -416,6 +425,7 @@ def post_message(req):
 @R("POST", "/api/requests/{id:int}/resubmit", roles=("student",))
 def resubmit(req):
     c, u = req.db, req.user
+    _lock(c)
     r = _req_for(req, req.params["id"])
     if r["status"] != "returned":
         raise HTTPError(409, "Yalnız düzəlişə qaytarılmış müraciət yenidən göndərilə bilər")
@@ -434,6 +444,7 @@ def resubmit(req):
 @R("POST", "/api/requests/{id:int}/cancel", roles=("student",))
 def cancel(req):
     c, u = req.db, req.user
+    _lock(c)
     r = _req_for(req, req.params["id"])
     if r["status"] not in ("submitted", "returned"):
         raise HTTPError(409, "Bu mərhələdə müraciəti ləğv etmək mümkün deyil")
@@ -446,7 +457,7 @@ def _apply_outcome(c, r, rt, data, actor):
     """The teachers' notices of a fulfilled request (an excuse, a leave, a moved exam); the change itself is the effect."""
     student = row(c, "SELECT full_name FROM users WHERE id=?", (r["student_id"],))
     if rt["code"] == "absence_excuse":
-        ids = data.get("absences") or []
+        ids = data.get("excused", data.get("absences")) or []
         if ids:
             by_teacher = {}
             for x in rows(c, f"SELECT l.day, co.teacher_id, co.name FROM lessons l JOIN courses co ON co.id=l.course_id WHERE l.id IN ({','.join('?' * len(ids))})", tuple(ids)):
@@ -473,8 +484,11 @@ def request_action(req):
     c, u = req.db, req.user
     b = req.json()
     action, note = b.get("action"), b.text("note", 1500)
+    _lock(c)
     r = _req_for(req, req.params["id"])              # outside the role's scope: as if it did not exist (Task 13)
     req.read_owner, req.read_object = r["student_id"], r["id"]
+    if r["student_id"] == u["id"]:                   # a student holding a staff grant decides no request of their own (SR46-1)
+        raise HTTPError(403, "Öz müraciətiniz üzrə qərar verə bilməzsiniz")
     rt = get_type(c, r["type_code"])
     steps, roles = rt["steps"], rt["step_roles"]
     role = roles[min(r["step"], len(roles) - 1)]
@@ -498,11 +512,15 @@ def request_action(req):
             raise HTTPError(409, "Müraciət tələbəyə qaytarılıb")
         if r["step"] >= len(steps) - 1:
             raise HTTPError(409, "Son mərhələdə “Təsdiqlə və tamamla” istifadə edin")
+        nxt = step_actors(c, roles[r["step"] + 1], r["student_id"], data)
+        if not nxt:                                  # nobody holds the next step: it stays here, where it can be returned (TE46-3)
+            raise HTTPError(409, E("Növbəti mərhələni icra edən yoxdur ({unit}): administrator bu rolu təyin etməlidir",
+                                   unit=UNITS[roles[r["step"] + 1]]))
         c.execute("UPDATE requests SET status='in_progress', step=step+1, updated_at=? WHERE id=?", (t, r["id"]))
         _event(c, r["id"], u, "approved", steps[r["step"]])
         notify(c, r["student_id"], "request", "Müraciətiniz növbəti mərhələyə keçdi", T3("{type}: {step}", type=rt["name"], step=steps[r["step"] + 1]), link)
         student = row(c, "SELECT full_name FROM users WHERE id=?", (r["student_id"],))      # only the next step's role, in its scope
-        notify(c, step_actors(c, roles[r["step"] + 1], r["student_id"], data), "request", T3("Yeni müraciət: {type}", type=rt["name"]),
+        notify(c, nxt, "request", T3("Yeni müraciət: {type}", type=rt["name"]),
                T3("{name} · {service}", name=f"{student['full_name']} · № {r['id']}", service=steps[r["step"] + 1]), f"/office/request/{r['id']}")
     elif action == "issue":
         if r["status"] == "returned":
@@ -518,7 +536,8 @@ def request_action(req):
             c.execute("UPDATE requests SET status='ready', document_id=?, updated_at=? WHERE id=?", (doc["id"], t, r["id"]))
             msg = "Sənədiniz hazırdır"
         else:
-            c.execute("UPDATE requests SET status='ready', answer=?, updated_at=? WHERE id=?", (store._txt(answer_of(rt)), t, r["id"]))
+            changed = rt["effect"] != "attendance.excuse" or bool(data.get("excused"))
+            c.execute("UPDATE requests SET status='ready', answer=?, updated_at=? WHERE id=?", (store._txt(answer_of(rt, changed)), t, r["id"]))
             msg = "Müraciətiniz təmin edildi"
         _apply_outcome(c, r, rt, data, u)
         _event(c, r["id"], u, "issued", note)

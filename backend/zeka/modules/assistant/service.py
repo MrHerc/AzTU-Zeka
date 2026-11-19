@@ -43,6 +43,8 @@ def campus_answer(c, user, masked: str, lang: str) -> dict:
         out = tutor.compose_campus(masked, hits, lang)
     offered = kb_repo.offered_codes(c)                         # a closed e-service has no button (Task 46)
     out["actions"] = [a for a in out["actions"] if a["type"] != "request" or a["code"] in offered]
+    if out["meta"].get("no_source") and "free_application" not in offered:     # the text offers no closed service (TE46-7)
+        out["text"] = S("Bu barədə universitetin bilik bazasında məlumat tapılmadı. Sualınızı dəstək xidmətinə ötürə bilərsiniz.", lang)
     if not (out["cites"] or out["meta"].get("source") or out["meta"].get("greeting") or any(a["type"] == "handoff" for a in out["actions"])):
         out["actions"] = [{"type": "handoff", "label": S("Dəstək xidmətinə ötür", lang)}, *out["actions"]]
     return out

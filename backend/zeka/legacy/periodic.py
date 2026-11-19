@@ -63,11 +63,12 @@ def reminders_sla(c) -> str:
         threshold = "overdue" if due <= t else "soon"
         roles = J(r["step_roles"], []) or ["office"]
         office = step_actors(c, roles[min(r["step"], len(roles) - 1)], r["student_id"], J(r["data"], {}) or {})   # the step's role (Task 46)
-        if not office or not _once(c, "request", r["id"], threshold):   # nobody to tell yet: try again next run (SF-8)
+        # once per threshold and step: the role of a later step hears about it too (TE46-9)
+        if not office or not _once(c, "request", r["id"], f"{threshold}:{r['step']}"):   # nobody to tell yet: try again next run (SF-8)
             continue
         title = (T3("Müraciətin müddəti keçdi: {name}", name=r["name"]) if threshold == "overdue"
                  else T3("Müraciətin müddəti bir gündən az qalıb: {name}", name=r["name"]))
-        notify(c, office, "request", title, r["due_at"].replace("T", " ")[:16], f"/office/requests/{r['id']}")
+        notify(c, office, "request", title, r["due_at"].replace("T", " ")[:16], f"/office/request/{r['id']}")   # the page's route (OLD-2)
         sent += 1
     for k in rows(c, "SELECT id, subject, priority, created_at, assignee_id FROM support_tickets WHERE status IN ('open','in_progress') "
                      "AND assignee_id IS NOT NULL"):

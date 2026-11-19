@@ -199,3 +199,26 @@ def test_0331_makes_every_question_not_posted_in_the_forum_private(tmp_path, mdi
         assert [r[0] for r in c.execute("SELECT private FROM teacher_questions ORDER BY id")] == [1, 1, 0]
     finally:
         c.close()
+
+
+def test_0462_gives_a_demo_database_s_office_the_academic_office_and_leaves_prod_alone(tmp_path, mdir):
+    """Checkpoint E, TE46-5: a demo database seeded before Task 46 had nobody for the academic office's steps."""
+    for v, _, path in migrate.discover():
+        if v < 462:
+            put(mdir, path.name, path.read_text(encoding="utf-8"))
+    src = next(p for v, _, p in migrate.discover() if v == 462)
+    for demo in (True, False):
+        c = sqlite3.connect(tmp_path / f"{demo}.db")
+        try:
+            migrate.apply(c, mdir)
+            office = c.execute("INSERT INTO users(username,full_name,role) VALUES('nigar','Nigar','office')").lastrowid
+            if demo:
+                c.execute("INSERT INTO settings(key,value) VALUES('demo_logins','{}')")
+            c.commit()
+            put(mdir, src.name, src.read_text(encoding="utf-8"))
+            migrate.apply(c, mdir)
+            got = c.execute("SELECT COUNT(*) FROM role_grants WHERE user_id=? AND role='academic_office'", (office,)).fetchone()[0]
+            assert got == (1 if demo else 0), demo
+        finally:
+            c.close()
+            (mdir / src.name).unlink()

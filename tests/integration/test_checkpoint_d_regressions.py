@@ -357,7 +357,7 @@ def test_sf8_a_request_with_no_office_to_tell_is_reminded_once_there_is_one(copy
     copy.execute("UPDATE requests SET due_at=? WHERE id=?", (store.iso(store.now() - timedelta(hours=1)), r["id"]))
     copy.execute("UPDATE users SET group_id=NULL WHERE id=?", (r["student_id"],))        # no dean's office covers the student
     marked = lambda: copy.execute("SELECT COUNT(*) FROM reminders_sent WHERE kind='request' AND obj_id=?", (r["id"],)).fetchone()[0]  # noqa: E731
-    told = lambda: copy.execute("SELECT COUNT(*) FROM notifications WHERE link=?", (f"/office/requests/{r['id']}",)).fetchone()[0]  # noqa: E731
+    told = lambda: copy.execute("SELECT COUNT(*) FROM notifications WHERE link=?", (f"/office/request/{r['id']}",)).fetchone()[0]  # noqa: E731
     before = told()
     periodic.reminders_sla(copy)
     assert marked() == 0

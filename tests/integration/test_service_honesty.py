@@ -290,8 +290,10 @@ def test_in_prod_a_closed_type_is_nowhere_and_an_opened_one_is_offered(app_db, s
     assert student.get("/api/services").json["types"] == []
     assert student.post("/api/requests", free).status == 404
     assert not [x for x in student.get(SEARCH).json["results"] if x["group"] == "E-xidmətlər"]
-    asked = student.post("/api/campus/ask", {"message": "Kosmik gəmi biletini haradan alım?"}).json["answer"]["meta"]
+    answer = student.post("/api/campus/ask", {"message": "Kosmik gəmi biletini haradan alım?"}).json["answer"]
+    asked = answer["meta"]
     assert not [a for a in asked["actions"] if a["type"] == "request"], "no action button for a closed type"
+    assert "ərizə" not in answer["content"], "nor a text that offers it (TE46-7)"
     r = admin.put("/api/admin/request-types/free_application", {"enabled": True})
     assert r.status == 200 and next(x for x in r.json if x["code"] == "free_application")["enabled"] is True
     assert [t["code"] for t in student.get("/api/services").json["types"]] == ["free_application"]
@@ -338,3 +340,175 @@ def test_0461_has_the_names_and_answers_of_content_seed_json(tmp_path):
         assert (g["description"], g["outcome"], g["document"]) == (rt["description"], rt.get("outcome", ""), rt.get("document")), code
         assert json.loads(g["steps"]) == rt["steps"] and json.loads(g["fields"]) == rt["fields"], code
         assert json.loads(g["step_roles"]) == rt["step_roles"] and g["effect"] == rt["effect"] and g["enabled"] == 0, code
+
+
+# ---------------------------------------------------------------- Checkpoint E (the Task 46 review)
+def office_as(app_db, role):
+    """Another session of the demo's dean's office, acting in ``role``."""
+    c = app_db.client("office")
+    if role != "office":
+        assert c.post("/api/me/role", {"role": role}).status == 200
+    return c
+
+
+def other_course(student_id, course):
+    return q("SELECT course_id FROM enrollments WHERE user_id=? AND course_id<>? ORDER BY course_id LIMIT 1", (student_id, course))[0]["course_id"]
+
+
+def told(rid, since):
+    return {r["user_id"] for r in q("SELECT user_id FROM notifications WHERE link=? AND id>?", (f"/office/request/{rid}", since))}
+
+
+def last_note():
+    return q("SELECT COALESCE(MAX(id), 0) n FROM notifications")[0]["n"]
+
+
+def test_two_acts_at_once_run_one_after_the_other(app_db, monkeypatch, pdf_bytes):
+    """TE46-1 / TE46-2: both read the step before either wrote: a skipped step, two QR documents for one request."""
+    import threading
+    import time
+    from zeka.legacy import common, r_services
+    monkeypatch.setattr(common, "_TX_GUARD", False)              # this test holds the write lock on purpose
+    student = demo_student(app_db, 14)
+    rid = file_request(student, "enrollment_certificate", None, pdf_bytes)["id"]
+    a, b = office_as(app_db, "academic_office"), office_as(app_db, "academic_office")
+    real = r_services._req_for
+
+    def slow(req, i):
+        r = real(req, i)
+        time.sleep(0.3)                                            # both requests are inside before either writes
+        return r
+    monkeypatch.setattr(r_services, "_req_for", slow)
+
+    def both(action):
+        out = []
+        ts = [threading.Thread(target=lambda c=c: out.append(c.post(f"/api/requests/{rid}/action", {"action": action, "note": "x"}).status))
+              for c in (a, b)]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        return sorted(out)
+    assert both("approve") == [200, 409], "the second sees the last step"
+    assert q("SELECT step FROM requests WHERE id=?", (rid,))[0]["step"] == 1
+    assert both("issue") == [200, 409], "the second sees a closed request"
+    assert len(q("SELECT 1 FROM documents WHERE request_id=?", (rid,))) == 1
+    assert [e["action"] for e in q("SELECT action FROM request_events WHERE request_id=? ORDER BY id", (rid,))] == ["submitted", "approved", "issued"]
+
+
+def test_a_student_with_a_staff_grant_decides_no_request_of_their_own(app_db, pdf_bytes):
+    """SR46-1: a student employee of the office approved and issued their own certificate."""
+    admin, student = app_db.client("admin"), demo_student(app_db, 13)
+    sid = student.user["id"]
+    rid = file_request(student, "enrollment_certificate", None, pdf_bytes)["id"]
+    g = admin.post(f"/api/admin/users/{sid}/roles", {"role": "academic_office"}).json["id"]
+    run("UPDATE users SET totp_enabled_at=? WHERE id=?", (store.iso(store.now()), sid))     # the second factor a staff role needs
+    try:
+        assert student.post("/api/me/role", {"role": "academic_office"}).status == 200
+        for action in ("approve", "issue", "reject"):
+            assert student.post(f"/api/requests/{rid}/action", {"action": action, "note": "x"}).status == 403, action
+        assert q("SELECT step, status FROM requests WHERE id=?", (rid,))[0] == {"step": 0, "status": "submitted"}
+        assert not q("SELECT 1 FROM documents WHERE request_id=?", (rid,))
+    finally:
+        admin.delete(f"/api/admin/users/{sid}/roles/{g}")
+        run("UPDATE users SET totp_enabled_at=NULL WHERE id=?", (sid,))
+
+
+def test_a_step_nobody_holds_is_not_entered(app_db, actors, course, pdf_bytes):
+    """TE46-3: exam_reschedule for a course no department head covers stuck at step 2 for good."""
+    student = app_db.client("student")
+    other = other_course(student.user["id"], course)
+    rid = file_request(student, "exam_reschedule", other, pdf_bytes)["id"]
+    r = actors["office"].post(f"/api/requests/{rid}/action", {"action": "approve"})
+    assert r.status == 409 and "administrator" in r.json["error"], r.text
+    assert q("SELECT step FROM requests WHERE id=?", (rid,))[0]["step"] == 0
+    assert actors["office"].post(f"/api/requests/{rid}/action", {"action": "reject", "note": "Kafedra müdiri təyin olunmayıb"}).status == 200
+
+
+def test_a_department_head_of_another_course_neither_sees_nor_acts(app_db, actors, course, pdf_bytes):
+    """TE46-4 (M1–M3): the department head's scope is the course the request names."""
+    student = app_db.client("student")
+    mine = file_request(student, "exam_reschedule", course, pdf_bytes)["id"]
+    theirs = file_request(student, "exam_reschedule", other_course(student.user["id"], course), pdf_bytes)["id"]
+    dh = actors["dept_head"]
+    assert dh.get(f"/api/requests/{mine}").status == 200, "its own course: visible"
+    assert dh.get(f"/api/requests/{theirs}").status == 404
+    assert dh.post(f"/api/requests/{theirs}/action", {"action": "approve"}).status == 404
+    listed = {x["id"] for x in dh.get("/api/requests?status=all").json}
+    assert mine in listed and theirs not in listed
+
+
+def test_the_academic_office_reads_the_attachment_of_its_step(app_db, registrar, pdf_bytes):
+    """TE46-4 (M7)."""
+    rid = file_request(demo_student(app_db, 15), "academic_leave", None, pdf_bytes)["id"]
+    fid = registrar.get(f"/api/requests/{rid}").json["attachments"][0]["id"]
+    assert registrar.get(f"/api/files/{fid}").status == 200
+
+
+def test_every_notice_of_a_request_goes_to_its_step_s_role(app_db, registrar, pdf_bytes):
+    """TE46-4 (M4–M6, M8), TE46-9, OLD-2: the new request, the resubmission, the student's message and the overdue reminder
+    go to the holders of the current step's role (and the reminder's link opens the page)."""
+    admin = app_db.client("admin")
+    faculty = q("SELECT id FROM faculties ORDER BY id LIMIT 1")[0]["id"]
+    leyla, elcin, nigar = uid("leyla"), uid("elcin"), uid("nigar")
+    g1 = admin.post(f"/api/admin/users/{leyla}/roles", {"role": "office", "scope_type": "faculty", "scope_id": faculty}).json["id"]
+    g2 = admin.post(f"/api/admin/users/{elcin}/roles", {"role": "academic_office"}).json["id"]
+    academic, office = {nigar, elcin}, {nigar, leyla}
+    try:
+        student = demo_student(app_db, 16)
+        mark = last_note()
+        rid = file_request(student, "enrollment_certificate", None, pdf_bytes)["id"]
+        assert told(rid, mark) == academic, "a new request: the academic office's first step"
+        assert registrar.post(f"/api/requests/{rid}/action", {"action": "return", "note": "Təyinatı dəqiqləşdirin"}).status == 200
+        mark = last_note()
+        rt = TYPES["enrollment_certificate"]
+        assert student.post(f"/api/requests/{rid}/resubmit", {"data": form(student, rt, None)}).status == 200
+        assert told(rid, mark) == academic, "a resubmission"
+        mark = last_note()
+        assert student.post(f"/api/requests/{rid}/messages", {"text": "Sənəd təcili lazımdır"}).status == 200
+        assert told(rid, mark) == academic, "the student's message"
+        from zeka.legacy import periodic
+        leave = file_request(student, "academic_leave", None, pdf_bytes)["id"]
+        past = store.iso(store.now() - timedelta(hours=1))
+        run("UPDATE requests SET due_at=? WHERE id IN (?,?)", (past, rid, leave))
+
+        def sla():
+            c = store.connect()
+            try:
+                periodic.reminders_sla(c)
+                c.commit()
+            finally:
+                c.close()
+        mark = last_note()
+        sla()
+        assert told(rid, mark) == academic and told(leave, mark) == office, "overdue: the step's role, a link that opens"
+        assert app_db.client("office").post(f"/api/requests/{leave}/action", {"action": "approve"}).status == 200
+        mark = last_note()
+        sla()
+        assert told(leave, mark) >= {elcin}, "the next step's role hears it is overdue too (TE46-9)"
+    finally:
+        admin.delete(f"/api/admin/users/{leyla}/roles/{g1}")
+        admin.delete(f"/api/admin/users/{elcin}/roles/{g2}")
+
+
+def test_an_excuse_whose_absences_were_corrected_claims_nothing(app_db, actors, pdf_bytes):
+    """TE46-8: the absences were corrected to present before the approval; the answer and the teachers still said
+    "excused"."""
+    student = demo_student(app_db, 17)
+    req = file_request(student, "absence_excuse", None, pdf_bytes)
+    rid, lessons = req["id"], req["data"]["absences"]
+    run(f"UPDATE attendance SET status='present' WHERE user_id=? AND lesson_id IN ({','.join('?' * len(lessons))})",  # nosec B608
+        (student.user["id"], *lessons))
+    before = q("SELECT COUNT(*) n FROM notifications WHERE title LIKE '%qayıb üzrlü%'")[0]["n"]
+    assert actors["office"].post(f"/api/requests/{rid}/action", {"action": "approve"}).status == 200
+    done = actors["office"].post(f"/api/requests/{rid}/action", {"action": "issue"}).json
+    assert done["answer"].endswith("Zəka-da başqa heç bir qeyd dəyişməyib."), done["answer"]
+    assert q("SELECT COUNT(*) n FROM notifications WHERE title LIKE '%qayıb üzrlü%'")[0]["n"] == before
+    assert not q("SELECT 1 FROM attendance WHERE request_id=?", (rid,))
+
+
+def test_a_type_that_promises_only_the_dean_s_office_sees_its_documents_has_only_its_steps():
+    """SR46-3: a type's steps decide who reads its attachments (may_read_request)."""
+    for code, rt in TYPES.items():
+        if "yalnız dekanlıq görür" in (rt.get("privacy") or ""):
+            assert set(rt["step_roles"]) == {"office"}, code

@@ -362,12 +362,16 @@ def log_change(c, uid: int, course_id: int, component: str, old, new, by: int | 
     repo.add_change(c, uid, course_id, component, old, new, by, reason, at)
 
 
-def excuse(c, by: int, request_id: int, student_id: int, lesson_ids: list[int]) -> None:
+def excuse(c, by: int, request_id: int, student_id: int, lesson_ids: list[int]) -> list[int]:
     """The effect ``attendance.excuse`` of an approved absence excuse (Task 46): the absences become excused, with who and
-    when (an export --since sees them, Task 37), and the final grades they move are recomputed."""
-    if lesson_ids:
-        for cid in repo.excuse(c, request_id, student_id, lesson_ids, by, iso(now())):
-            refresh_finals(c, cid, [student_id])
+    when (an export --since sees them, Task 37), and the final grades they move are recomputed. Returns the lessons whose
+    absence was excused (an absence corrected meanwhile is not)."""
+    if not lesson_ids:
+        return []
+    changed, courses = repo.excuse(c, request_id, student_id, lesson_ids, by, iso(now()))
+    for cid in courses:
+        refresh_finals(c, cid, [student_id])
+    return changed
 
 
 def refresh_final(c, uid: int, course_id: int):

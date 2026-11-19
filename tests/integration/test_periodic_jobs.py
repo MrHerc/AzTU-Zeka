@@ -45,12 +45,12 @@ def test_an_overdue_request_reminds_the_dean_s_office_once(copy):
     r = copy.execute("SELECT r.id, r.student_id FROM requests r WHERE r.status IN ('submitted','in_progress') ORDER BY r.id LIMIT 1").fetchone()
     copy.execute("UPDATE requests SET due_at=? WHERE id=?", (store.iso(store.now() - timedelta(hours=1)), r["id"]))
     copy.commit()
-    before = copy.execute("SELECT COUNT(*) FROM notifications WHERE link=?", (f"/office/requests/{r['id']}",)).fetchone()[0]
+    before = copy.execute("SELECT COUNT(*) FROM notifications WHERE link=?", (f"/office/request/{r['id']}",)).fetchone()[0]
     periodic.reminders_sla(copy)
     periodic.reminders_sla(copy)
-    after = copy.execute("SELECT COUNT(*) FROM notifications WHERE link=?", (f"/office/requests/{r['id']}",)).fetchone()[0]
-    assert after > before and copy.execute("SELECT COUNT(*) FROM reminders_sent WHERE kind='request' AND obj_id=? AND threshold='overdue'",
-                                           (r["id"],)).fetchone()[0] == 1
+    after = copy.execute("SELECT COUNT(*) FROM notifications WHERE link=?", (f"/office/request/{r['id']}",)).fetchone()[0]
+    assert after > before and copy.execute("SELECT COUNT(*) FROM reminders_sent WHERE kind='request' AND obj_id=? AND threshold LIKE 'overdue:%'",
+                                           (r["id"],)).fetchone()[0] == 1, "once per step (Checkpoint E, TE46-9)"
 
 
 def test_lessons_are_made_from_tomorrow_never_into_the_past(copy):

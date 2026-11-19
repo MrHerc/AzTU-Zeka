@@ -291,3 +291,12 @@ def test_a_hidden_topic_is_gone_for_students_and_kept_for_the_teacher(forum):
     assert forum["peer"].get(f"/api/qa/topics/{t['id']}").status == 404
     assert t["id"] not in [x["id"] for x in forum["peer"].get(f"/api/courses/{forum['course']}/qa").json]
     assert forum["teacher"].get(f"/api/qa/topics/{t['id']}").status == 200
+
+
+def test_the_old_questions_page_gives_no_id_of_an_anonymous_asker(forum):
+    """OLD-1 (the security review): "Anonim tələbə" came with the student's id, which names them in the journal."""
+    tid = forward(forum, "Anonim: məni tanımasın, sualım budur", anonymous=True)
+    item = next(x for x in forum["teacher"].get("/api/teacher/questions").json if x["id"] == tid)
+    assert item["student"] == "Anonim tələbə" and "student_id" not in item
+    home = [x for x in forum["teacher"].get("/api/teacher/home").json["questions"] if x["id"] == tid]
+    assert all("student_id" not in x for x in home)

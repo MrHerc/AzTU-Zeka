@@ -695,8 +695,9 @@ def teacher_questions(req):
     qs = rows(req.db, "SELECT tq.*, co.name course, co.color, u.full_name student FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id "
                       "JOIN users u ON u.id=tq.student_id WHERE co.teacher_id=? ORDER BY tq.status='answered', tq.id DESC", (req.user["id"],))
     for q in qs:
-        if q["anonymous"]:
+        if q["anonymous"]:                           # no id either: it names the student elsewhere (Checkpoint E, OLD-1)
             q["student"] = "Anonim tələbə"
+            q.pop("student_id", None)
     return qs
 
 

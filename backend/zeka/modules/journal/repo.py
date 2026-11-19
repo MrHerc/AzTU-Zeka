@@ -60,12 +60,17 @@ def write_marks(c, lid: int, values: list[tuple[int, str]], by: int, at: str):
                   "marked_at=excluded.marked_at", [(lid, uid, st, by, at) for uid, st in values])
 
 
-def excuse(c, request_id: int, student_id: int, lesson_ids: list[int], by: int, at: str) -> list[int]:
-    """The student's absences on these lessons become excused by the request; returns the courses of the lessons."""
+def excuse(c, request_id: int, student_id: int, lesson_ids: list[int], by: int, at: str) -> tuple[list[int], list[int]]:
+    """The student's absences on these lessons become excused by the request: (the lessons changed, their courses). A mark
+    corrected to present or late meanwhile stays as it is."""
     marks = ",".join("?" * len(lesson_ids))
-    c.execute("UPDATE attendance SET status='excused', request_id=?, marked_by=?, marked_at=? WHERE user_id=? AND status='absent' "
-              f"AND lesson_id IN ({marks})", (request_id, by, at, student_id, *lesson_ids))  # nosec B608 - placeholders only
-    return [x["course_id"] for x in rows(c, f"SELECT DISTINCT course_id FROM lessons WHERE id IN ({marks})", tuple(lesson_ids))]  # nosec B608
+    changed = [x[0] for x in c.execute("UPDATE attendance SET status='excused', request_id=?, marked_by=?, marked_at=? WHERE user_id=? "
+                                       f"AND status='absent' AND lesson_id IN ({marks}) RETURNING lesson_id",  # nosec B608 - placeholders only
+                                       (request_id, by, at, student_id, *lesson_ids)).fetchall()]
+    if not changed:
+        return [], []
+    marks = ",".join("?" * len(changed))
+    return changed, [x["course_id"] for x in rows(c, f"SELECT DISTINCT course_id FROM lessons WHERE id IN ({marks})", tuple(changed))]  # nosec B608
 
 
 def dept_head_covers(c, uid: int, course_id: int, department_id: int | None) -> bool:

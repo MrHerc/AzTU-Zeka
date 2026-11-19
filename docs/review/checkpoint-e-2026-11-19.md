@@ -162,7 +162,29 @@ is latent (it bites only if the test anchor moves to a Saturday).
 
 ## Task 46
 
-<!-- TASK46 -->
+Two reviewers ran on `4c63b4a`: `agent-skills:code-reviewer` (TE46-) and `ecc:security-reviewer` (SR46-). The
+Faza 5 security review added OLD-1 and OLD-2. A separate agent tried to refute all of them, with probes; the races were
+widened with a barrier in `_req_for`.
+
+Result: 11 confirmed, 1 partial (SR46-3), 2 refuted (SR46-2, TE46-6). Fixes are in the commit after `4c63b4a`; tests
+are in `test_service_honesty.py`, `test_qa.py` and `test_schema_migrations.py`.
+
+| Id | Severity | Finding | Fix |
+|---|---|---|---|
+| TE46-1 | Required | Two approves at once both passed: step 0 → 2, the department head's step skipped (a double click was enough) | The request's status and step are read under the write lock (`_lock`, `BEGIN IMMEDIATE`) in action, resubmit and cancel; the race test fails without it |
+| TE46-2 | Required | Two issues at once: two QR documents (and two status orders) for one request; reject + issue left a rejected request with a valid document | Same lock |
+| SR46-1 | Medium | A student with a staff grant approved and issued their own certificate, excused their own absences | 403 on one's own request |
+| TE46-3 | Required | exam_reschedule's department-head step had nobody in the demo (and in prod for a course with no head): stuck for good, nobody told | Approve refuses (409) when nobody holds the next step; the current role can still return or reject |
+| OLD-1 | Medium | `/api/teacher/questions` (and the teacher's home) gave `student_id` with "Anonim tələbə" (older code; it undid SEC-E3) | The id is dropped for an anonymous asker |
+| TE46-4 | Required (tests) | 8 of 9 mutants of the scope and notice rules survived | Tests for a department head of another course, the academic office's attachment, and every notice (new, resubmitted, message, overdue) going to the step's role; a mutant of `covers` now fails |
+| TE46-5 | Low | A demo database seeded before Task 46 had no academic office: certificates stuck at step 0 | `0462`: the demo's dean's office also gets the academic office (only where demo logins exist) |
+| TE46-7 | Low | In prod with every type closed, the assistant still offered a "sərbəst ərizə" | Another text when it is closed (the home page's quick links remain: open) |
+| TE46-8 | Low | An excuse whose absences were corrected to present meanwhile still said "excused" to the student and the teachers | Only the lessons actually excused count; none: the factual template, no notice |
+| TE46-9 | Low | The overdue reminder was once per request, so a later step's role never heard of it | Once per threshold and step |
+| OLD-2 | Low | The SLA reminder linked to `/office/requests/{id}`, a page that does not exist (since Task 36) | `/office/request/{id}` |
+| SR46-3 | Low (partial, latent) | A step role reads the request's attachments whatever the current step | A content test: a type that promises only the dean's office sees its documents has only office steps |
+| SR46-2 | — | The student sees staff names in the history | Refuted: acceptance criterion 2 asks for it |
+| TE46-6 | — | A closed type's returned request can still be resubmitted | Refuted: in-flight requests must finish (the spec scopes "closed" to the offer) |
 
 ## Security review (security-review skill, `afbfeae..4c63b4a`)
 
@@ -200,6 +222,8 @@ which uses it) returns `tq.*` with `student_id` for anonymous topics, private fo
   403 for every other role.
 - Task 46: certificates and transcripts moved to the academic office; the demo's Nigar has an academic-office grant.
 - Task 46: individual_plan's outcome text still says the plan is "added to your profile".
+- Task 46: the home page's quick links still lead to a closed type in prod ("Xidmət tapılmadı"); the demo has no
+  department head, so its exam_reschedule stops at the office (409) until the administrator grants one.
 - Open low items: AR-E14, TM-E8, PY-E3 (since), AR-E11, PY-E6, AR-E10, and the off-topic draft scoring (area A side
   finding).
 - From earlier checkpoints: T24 (the NICE file's host is blocked by the proxy); T28 (the owner's reference .seb file and
