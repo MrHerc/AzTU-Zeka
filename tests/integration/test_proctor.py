@@ -217,5 +217,7 @@ def test_a_change_of_state_is_on_the_board_at_the_next_poll(app_db, world, monke
     assert all(e["seq"] > seq for e in b["events"]) and b["seq"] == b["events"][-1]["seq"]
     assert t.get(f"/api/exams/{eid}/board?after={b['seq']}").json["events"] == []
 
-    monkeypatch.setattr(domain, "SIGNAL_CAP", 2)                         # a looping page cannot flood the log
-    assert s.post(f"/api/exams/{eid}/signals", {"kind": "reconnect"}).json["kept"] is False
+    monkeypatch.setattr(domain, "SIGNAL_CAP", 2)                         # a looping page cannot flood the log ...
+    assert s.post(f"/api/exams/{eid}/signals", {"kind": "blur"}).json["kept"] is True
+    assert s.post(f"/api/exams/{eid}/signals", {"kind": "blur"}).json["kept"] is False
+    assert s.post(f"/api/exams/{eid}/signals", {"kind": "reconnect"}).json["kept"] is True   # ... and blur spam hides no other kind

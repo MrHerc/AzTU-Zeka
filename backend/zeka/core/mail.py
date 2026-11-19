@@ -52,16 +52,20 @@ def connect(cfg: dict) -> smtplib.SMTP:
         s: smtplib.SMTP = smtplib.SMTP_SSL(cfg["host"], cfg["port"], timeout=TIMEOUT, context=ssl.create_default_context())
     else:
         s = smtplib.SMTP(cfg["host"], cfg["port"], timeout=TIMEOUT)
+    try:
         if cfg["tls"] == "starttls":
             s.starttls(context=ssl.create_default_context())
-    if cfg["user"]:
-        s.login(cfg["user"], cfg["password"])
+        if cfg["user"]:
+            s.login(cfg["user"], cfg["password"])
+    except BaseException:
+        s.close()                                     # Checkpoint D (PY-6): no half-open connection left behind
+        raise
     return s
 
 
 def send(s: smtplib.SMTP, cfg: dict, to: str, subject: str, body: str, lang: str = "az") -> None:
     m = EmailMessage()
-    m["From"], m["To"], m["Subject"] = cfg["sender"], to, subject
+    m["From"], m["To"], m["Subject"] = cfg["sender"], to, " ".join(subject.split())   # a line break in a title is no header (SEC-2)
     m["Message-ID"] = make_msgid(domain=cfg["sender"].rsplit("@", 1)[-1])
     m.set_content(body)
     m["Content-Language"] = lang                     # after set_content, which clears the Content-* headers
@@ -69,7 +73,9 @@ def send(s: smtplib.SMTP, cfg: dict, to: str, subject: str, body: str, lang: str
 
 
 def permanent(ex: Exception) -> bool:
-    """A refusal that another attempt will not change (a 5xx answer, e.g. an unknown recipient)."""
+    """A refusal of this message that another attempt will not change: its recipient refused for good, or its content
+    refused (5xx after DATA). A 5xx about the sender, the greeting or the login is the relay's setting: every message
+    waits and is tried again (Checkpoint D, CR-6)."""
     if isinstance(ex, smtplib.SMTPRecipientsRefused):
         return all(code >= 500 for code, _ in ex.recipients.values())
-    return isinstance(ex, smtplib.SMTPResponseException) and ex.smtp_code >= 500 and not isinstance(ex, smtplib.SMTPAuthenticationError)
+    return isinstance(ex, smtplib.SMTPDataError) and ex.smtp_code >= 500

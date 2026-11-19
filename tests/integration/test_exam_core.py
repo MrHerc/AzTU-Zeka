@@ -93,7 +93,7 @@ def test_two_students_get_different_forms_and_a_second_start_returns_the_same_at
 
 def test_an_answer_after_the_deadline_is_refused_by_the_server_s_clock(app_db, world, opened, monkeypatch):
     a = in_exam(app_db, "ex.a", opened)
-    v = a.get(f"/api/exams/{opened}").json
+    v = a.post(f"/api/exams/{opened}/start").json            # idempotent: the test does not lean on an earlier one (T-21)
     qid = v["questions"][0]["id"]
     assert a.put(f"/api/exams/{opened}/answers/{qid}", {"value": 1}).status == 200
     late = clock.now() + timedelta(minutes=61)
@@ -103,6 +103,7 @@ def test_an_answer_after_the_deadline_is_refused_by_the_server_s_clock(app_db, w
 
 def test_the_next_autosubmit_cycle_submits_an_attempt_past_its_deadline(app_db, world, opened, monkeypatch):
     sid = world["students"]["ex.b"]
+    in_exam(app_db, "ex.b", opened).post(f"/api/exams/{opened}/start")   # its own attempt (T-21)
     late = clock.now() + timedelta(minutes=61)
     monkeypatch.setattr(clock, "now", lambda: late)
     c = store.connect()
@@ -174,6 +175,7 @@ def test_a_window_entered_in_baku_time_is_kept_in_utc(world):
 
 
 def test_closing_grades_the_attempts(app_db, world, opened):
+    in_exam(app_db, "ex.a", opened).post(f"/api/exams/{opened}/start")     # at least one attempt of its own (T-21)
     r = world["teacher"].post(f"/api/exams/{opened}/close")
     assert r.status == 200
     graded = q("SELECT status, score, max_score FROM exam_attempts WHERE exam_id=?", (opened,))

@@ -126,6 +126,11 @@ def test_a_course_with_scores_is_published_only_with_the_office_s_audited_permis
 def test_a_student_sees_only_the_published_version(app_db, actors):
     t, cid = actors["teacher"], actors["course"]
     student = app_db.client("student")
+    actors["admin"].post(f"/api/directory/courses/{cid}/enrollments", {"user_id": student.user["id"]})   # alone too (T-21)
+    if not student.get(f"/api/courses/{cid}/syllabus").json["published"]:           # alone, no earlier test published one
+        vid = version(actors)
+        assert step(t, actors, vid, "submit").status == 200 and step(actors["head"], actors, vid, "approve").status == 200
+        assert step(actors["registrar"], actors, vid, "publish", override=True, note="Kafedranın qərarı №15").status == 200
     pub = student.get(f"/api/courses/{cid}/syllabus").json["published"]
     draft = version(actors, lambda d: d.update(description="Hələ dərc olunmamış qaralama"))
     assert student.get(f"/api/courses/{cid}/syllabus").json["published"]["id"] == pub["id"]
@@ -145,3 +150,19 @@ def test_the_queues_hold_what_waits_for_each_role(app_db, actors):
     assert vid in [x["id"] for x in reg.get("/api/syllabi/queue").json]
     other = app_db.client("teacher")
     assert other.get("/api/syllabi/queue").status == 403
+
+
+def test_an_older_version_is_not_published_over_a_newer_one(app_db, actors):
+    # Checkpoint D (CR-5): v1 approved and waiting, v2 published, then v1 published from the queue configured the
+    # course from v1 while v2 stayed "published"
+    t, head, reg = actors["teacher"], actors["head"], actors["registrar"]
+    old = version(actors)
+    assert step(t, actors, old, "submit").status == 200 and step(head, actors, old, "approve").status == 200
+    new = version(actors, lambda d: d["rules"].update(attendance_limit=15, ai_policy="allowed"))
+    assert step(t, actors, new, "submit").status == 200 and step(head, actors, new, "approve").status == 200
+    publish = {"override": True, "note": "Kafedranın qərarı №14"}      # earlier tests of this module wrote scores
+    assert step(reg, actors, new, "publish", **publish).status == 200
+    assert step(reg, actors, old, "publish", **publish).status == 403
+    queued = {x["id"] for x in reg.get("/api/syllabi/queue").json}
+    assert q("SELECT attendance_limit FROM courses WHERE id=?", (actors["course"],))[0]["attendance_limit"] == 15
+    assert new not in queued

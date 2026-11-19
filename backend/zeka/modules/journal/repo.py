@@ -199,5 +199,14 @@ def put_exam_grade(c, uid: int, course_id: int, component: str, score: float, ma
 
 def exam_locked(c, course_id: int, uid: int) -> bool:
     """Whether the student's exam score sits on a statement the dean's office has closed."""
-    return row(c, "SELECT 1 FROM grades g JOIN users u ON u.id=g.user_id JOIN exam_statements s ON s.exam_id=g.exam_id AND s.group_id=u.group_id "
+    return row(c, "SELECT 1 FROM grades g JOIN users u ON u.id=g.user_id JOIN exam_roster r ON r.exam_id=g.exam_id AND r.student_id=g.user_id "
+                  "JOIN exam_statements s ON s.exam_id=g.exam_id AND s.group_id=COALESCE(r.group_id, u.group_id) "
                   "WHERE g.user_id=? AND g.course_id=? AND g.exam_id IS NOT NULL LIMIT 1", (uid, course_id)) is not None
+
+
+def locked_students(c, course_id: int) -> set[int]:
+    """The students of the course whose exam score sits on a statement the dean's office has closed (Task 30)."""
+    return {r["user_id"] for r in rows(c, "SELECT g.user_id FROM grades g JOIN users u ON u.id=g.user_id JOIN exam_roster r ON r.exam_id=g.exam_id "
+                                          "AND r.student_id=g.user_id JOIN exam_statements s ON s.exam_id=g.exam_id "
+                                          "AND s.group_id=COALESCE(r.group_id, u.group_id) WHERE g.course_id=? AND g.exam_id IS NOT NULL",
+                                       (course_id,))}

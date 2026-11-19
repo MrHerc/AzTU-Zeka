@@ -27,7 +27,7 @@ python backend/manage.py exam-verify ID [--root HEX]  # an exam's hash chain, fr
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1276 tests, about 3 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1376 tests, about 3.5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -35,7 +35,7 @@ python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset facu
 python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty [--burst]      # Task 27: lost answers must be 0
 python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes (must be none)
 
-python tools/i18n.py lint                 # user-visible strings not wrapped for translation (70 known: official documents are Azerbaijani)
+python tools/i18n.py lint                 # user-visible strings not wrapped for translation (72 known: official documents are Azerbaijani)
 python tools/i18n.py extract              # refresh i18n/source/*, write untranslated keys to i18n/todo/*.json
 python tools/i18n.py build                # i18n/{en,ru}/*.json -> frontend/locales/*.json + backend/zeka/core/locales/*.json
 python tools/i18n.py stats                # coverage per language (must stay 100%)
@@ -133,6 +133,9 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   needs `scope="exam"`; a refusal that must leave an exam event is returned as a 403 response, not raised.
   Task 29 adds the exam's network list to every such request (`exam.service.check_request`, committed before the 403)
   and the proctor board (`/proctor`, `frontend/js/proctor.js`, polled every 5 s).
+- **Exam log (Task 30, Checkpoint D).** `exam_events` is a hash chain and append-only (triggers in `0301`): a test that
+  tampers with it drops and re-creates the triggers (`tamper()` in `tests/integration/test_exam_verify.py`). Every exam
+  state change calls `repo.lock(c)` (`BEGIN IMMEDIATE`) before it reads the state it checks.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).
@@ -141,11 +144,11 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test
   never reads the real date.
 
-## Branch state (2026-11-18)
+## Branch state (2026-11-19)
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
-and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`). `main` is unchanged and the five PRs are still open against it; they are
+and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`) and Faza 4 (Tasks 23 and 25–30, with Task 36's job runner and e-mail outbox; Checkpoint D: `docs/review/checkpoint-d-2026-11-19.md`; Task 24 is blocked: the NICE file's host is refused by this environment's proxy). `main` is unchanged and the five PRs are still open against it; they are
 superseded by this branch.
 
 ## Product direction

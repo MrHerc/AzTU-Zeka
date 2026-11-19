@@ -14,7 +14,7 @@ BACKEND = Path(__file__).resolve().parent
 ROOT = BACKEND.parent  # repository: frontend/, content/, data/, logs/
 sys.path.insert(0, str(BACKEND))
 
-from zeka.core import clock, config, jobs, migrate  # noqa: E402
+from zeka.core import clock, config, jobs, mail, migrate  # noqa: E402
 from zeka.legacy import api, store  # noqa: E402
 from zeka.core.security import CFG, LOOPBACK  # noqa: E402
 from zeka.core import web  # noqa: E402
@@ -22,7 +22,10 @@ from zeka.core.web import make_server  # noqa: E402
 
 LOG_MAX = 5 * 1024 * 1024
 JOBS_ON = os.environ.get("ZEKA_JOBS", "1") != "0"         # the periodic jobs (Task 36); 0 turns the runner off
-JOBS_DELAY = float(os.environ.get("ZEKA_JOBS_DELAY", "15"))   # seconds after start before the first cycle
+try:
+    JOBS_DELAY = float(os.environ.get("ZEKA_JOBS_DELAY", "15"))   # seconds after start before the first cycle
+except ValueError:
+    sys.exit("ZEKA_JOBS_DELAY saniyə sayı olmalıdır (məs. 15)")
 
 
 def normalize_public_url(value: str) -> str:
@@ -84,6 +87,10 @@ def main():
     if public:
         CFG.allowed_hosts = {public.split("://", 1)[1].lower()}
     CFG.access_log = os.environ.get("ZEKA_ACCESS_LOG", "1" if exposed else "0") == "1"
+    try:
+        mail.settings()                       # a wrong e-mail setting stops the start, not every message later (Checkpoint D, SF-5)
+    except mail.MailConfigError as ex:
+        ap.error(f"e-poçt ayarı: {ex}")
     try:
         store.init(reset=args.reset)
     except migrate.MigrationError as ex:     # files and database disagree: never start on a guessed schema
@@ -192,7 +199,7 @@ def supervise(args, log):
         spawn()
     if JOBS_ON:
         spawn("jobs")
-    fast, gave_up = 0, False
+    fast, gave_up, runner_fails = 0, False, 0
     while children:
         try:
             pid, status = os.wait()
@@ -202,8 +209,10 @@ def supervise(args, log):
         if stopping or started is None:
             continue
         if pid == jobs_pid[0]:                               # the runner: restarted on its own, never counted against the workers
-            log(f"job runner {pid} exited (status {status}); restarting")
-            time.sleep(1)
+            runner_fails = runner_fails + 1 if time.monotonic() - started < 60 else 0
+            wait = min(60, 2 ** runner_fails)                # a runner that keeps failing is restarted ever more slowly (PY-14)
+            log(f"job runner {pid} exited (status {status}); restarting in {wait} s")
+            time.sleep(wait)
             spawn("jobs")
             continue
         log(f"worker {pid} exited (status {status}); restarting")

@@ -98,8 +98,12 @@ def exam_verify(eid: int, root: str | None) -> int:
             print(f"  BROKEN chain at seq {p['seq']}: {p['problem']}")
         elif p["what"] == "attempt":
             print(f"  CHANGED attempt {p['attempt_id']} (student {p['student_id']}): {p['problem']}")
+        elif p["what"] == "event":
+            print(f"  FOREIGN event at seq {p['seq']}: {p['problem']}")
+        elif p["what"] == "anchor":
+            print(f"  ANCHOR {p['document']} (seq {p['seq']}): {p['problem']}")
         else:
-            print(f"  ROOT differs: the head is {p['head']}, not the root given")
+            print(f"  ROOT not in the chain (the head is {p['head']})")
     print("FAILED" if r["problems"] else "OK" + (" (root matches)" if root else ""))
     return 1 if r["problems"] else 0
 

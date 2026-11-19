@@ -120,6 +120,8 @@ def actions(c, user, co: dict, v: dict | None) -> list[str]:
             continue
         if user["role"] == "dept_head" and not _covers(c, user, co):
             continue
+        if action == "publish" and (cur := repo.published(c, co["id"])) and cur["version"] > v["version"]:
+            continue                                     # Checkpoint D, CR-5: an older version never replaces a newer one
         out.append(action)
     return out
 

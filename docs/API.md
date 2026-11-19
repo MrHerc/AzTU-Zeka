@@ -815,22 +815,27 @@ give its number back.
 | `GET` | `/api/exams/{id}/manage` | the course's teachers, staff (a dean's office: its faculties' students) | The exam, its roster and its attempts |
 | `POST` | `/api/exams/{id}/open` | the course's teachers | Open the exam: the roster is drawn once from the course's students; one the journal does not admit is on it as `excluded` |
 | `POST` | `/api/exams/{id}/close` | the course's teachers | Submit what is still running, grade every attempt with the engine, close |
-| `POST` | `/api/exams/{id}/roster/{sid}/exception` | `office` (its faculties), `academic_office`, `admin` | Let a student sit the exam despite the roster, with `{"reason"}`; audited |
+| `POST` | `/api/exams/{id}/roster/{sid}/exception` | `office` (its faculties), `academic_office`, `admin` | Let a student sit the exam despite the roster, with `{"reason"}`; only while the exam is open (`409`); audited |
 | `POST` | `/api/exams/{id}/enter` | an enrolled student | Enter the exam: every session of the student ends and a new one, scoped to this exam, is set in the cookie; `{"ok": true, "url": "/static/exam.html?exam={id}"}` |
-| `POST` | `/api/exams/{id}/leave` | the exam's session | End the exam session and expire its cookie |
+| `POST` | `/api/exams/{id}/leave` | the exam's session | End the exam session and expire its cookie; `409` while the student's attempt is running (submit first) |
 | `GET` | `/api/exams/{id}` | the exam's session | The exam, the student's roster status and, once started, the student's own form and saved answers and `remaining_s` |
 | `POST` | `/api/exams/{id}/start` | the exam's session, a student on the roster | Start, or get back, the attempt; off the roster `403` with the reason (the refusal is in the exam log) |
 | `PUT` | `/api/exams/{id}/answers/{qid}` | the exam's session | Save one answer (`{"value"}`); after the deadline by the server's clock `409` |
-| `POST` | `/api/exams/{id}/submit` | the exam's session | Submit |
+| `POST` | `/api/exams/{id}/submit` | the exam's session | Submit; the page's own submit at the deadline sends `{"auto": true}`, refused with `409` while time is left by the server's clock or the attempt is paused |
 
 A question's `purpose` (`practice` or `exam`, `PUT /api/questions/{id}`) is chosen by the time it is first approved and
-then fixed (`400`). An exam question is never in the tutor's or Radar's index, never in practice and never in a test
+then fixed (`400`). An approved exam question does not go back to draft (`400`), and while an exam of its course is
+open it is neither changed nor deleted (`409`); each change and deletion of an exam question is audited. An exam question is never in the tutor's or Radar's index, never in practice and never in a test
 (`400`); a student sees it only in their own attempt, with the keys `id`, `qtype`, `text`, `options`, `unit` and
 nothing else (`tests/security/test_exam_item_leak.py`). A form is drawn by the plan with a seed of the exam's secret
 and the student: the same every time, different between students; a multiple-choice question's options are shuffled
 and an answer is the index of the option as shown. Times are stored in UTC: 10:00–12:00 in Baku opens at
 `06:00:00+00:00`. An attempt ends at its duration or at the window's end; the periodic job `exam.autosubmit` (every
-minute) submits it without the student. Every step is a row in `exam_events` (Task 30 adds its hash chain).
+minute) submits it without the student. Every step is a row in `exam_events` (Task 30 adds its hash chain). The roster
+keeps the group each student was in when it was drawn: a later move to another group does not move the student's
+result to another statement. A refusal (`session.refused`, `attempt.refused`, `seb.refused`) is logged at most 10 times
+per student, exam and kind; the `403` itself is always given. Entering an exam that is not open is refused before
+anything is logged; a student whose attempt was extended past the window may enter again until it ends.
 
 The exam session (Task 27). The routes marked "the exam's session" are declared `@R(..., scope="exam")` and open
 only to a session whose scope is `exam:{id}` of the same exam: an ordinary session, and the session of another exam,
@@ -839,9 +844,13 @@ table). Entering ends all of the student's sessions in the same request (event `
 `session.takeover` when an earlier exam session was ended). A sign-in during the attempt does not end the exam
 session and cannot reach the exam (event `login.during_exam`). The page `/static/exam.html?exam={id}` has no
 navigation; it saves each answer when it changes and every 20 seconds, keeps unsent answers in `localStorage` while
-offline and sends them when the connection is back, goes on after a reload, and counts the timer from the server's
+offline (in memory, with a warning not to close the page, when the browser refuses storage) and sends them when the
+connection is back, goes on after a reload, and counts the timer from the server's
 `remaining_s` on the browser's monotonic clock, so a wrong system clock does not move the deadline
 (`tests/e2e/exam_offline.js`, run by `tests/integration/test_exam_page.py` when node with Playwright is installed).
+An answer the server refuses as invalid (`400`, `404`) is dropped; one refused after the deadline is dropped and counted
+on the final card; a `401`/`403` reloads the exam; any other failure keeps the answer queued. A manual submit waits for
+the queue and is refused on the page while answers are still unsent.
 
 The exam log is one hash chain per exam (Task 30): `seq` 1..N without a gap, `hash = sha256(prev_hash + canonical
 event)`, the first `prev_hash` is 64 zeros; an append reads the head and writes the next link under the write lock
@@ -851,24 +860,32 @@ JSON of the `(qid, stored value)` pairs ordered by `qid`); closing writes `attem
 `max_score`) for each attempt and then `exam.closed`. `python backend/manage.py exam-verify <id> [--root <hex>]` checks
 every link, each submitted attempt's answers against its last submission event, each graded score against its last
 grading event and, given, the head against the root; it prints the first broken link and every changed attempt and
-exits 1 (0 when all holds, 2 when there is no such exam).
+exits 1 (0 when all holds, 2 when there is no such exam). The problems it names: a broken `chain` link;
+`submission_after_close` and `grading_after_close` events; per attempt `attempt_missing`, `student_changed`,
+`status_changed`, `no_submission_event`, `answers_changed`, `form_changed` (the event carries `form_sha256`),
+`no_grading_event`, `score_changed` (score or `max_score`); per anchor document `anchor_missing`, `anchor_unreadable`,
+`root_differs` (read from the document's hashed payload); and `not_in_chain` for a `--root` that is no link of the chain.
+`exam_events` is append-only in the database too (migration `0301`: an `UPDATE` or `DELETE` aborts); someone with the
+database file can still drop the triggers, so the e-mailed root is the real guard.
 
 ### Protocol, release and statements (Task 30)
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
-| `POST` | `/api/exams/{id}/release` | the course's teachers | Release a closed exam: each graded attempt's raw score, scaled to the exam component (`exam/domain.scale`, half up to one decimal), is published in the journal with `exam_id` and `attempt_no`; an earlier published score goes to the grade journal; audited; the students are notified |
+| `POST` | `/api/exams/{id}/release` | the course's teachers | Release a closed exam: each graded attempt's raw score (clamped to its maximum), scaled to the exam component (`exam/domain.scale`, half up to one decimal), is published in the journal with `exam_id` and `attempt_no`; an earlier published score goes to the grade journal; a student without a graded attempt gets nothing; audited; the students are notified. Answer: `{"ok", "released": n, "skipped": [{"student_id", "reason": "statement_closed" or "newer_exam", "exam_id"}]}` |
 | `GET` | `/api/exams/{id}/results` | the course's teachers, staff (a dean's office: its students) | Each roster student's `raw`, `points`, `semester`, `total`, `letter` and `status`: `passed`, `exam_min`, `pass_mark`, `not_admitted`, `absent` |
 | `GET` | `/api/courses/{id}/exam-results` | as above | Every released exam of the course with its results: a retake next to the first attempt |
 | `GET` | `/api/exams/{id}/statements` | as above | The groups of a released exam and whether each statement is closed (with its document) |
 | `GET` | `/api/exam-statements` | `office`, `academic_office`, `admin` | Released exams with a group the user serves, and how many statements are closed |
 | `POST` | `/api/exams/{id}/statements/{gid}/close` | `office` (its faculties), `academic_office`, `admin` | Close a group's statement: a QR document (`exam_statement`) with the results and the chain's head; once (`409`) |
-| `PUT` | `/api/exams/{id}/scores/{sid}` | `office` | After the statement is closed: `score`, `reason` and `appeal_id` (a `grade_appeal` request of the student) or `order_no`; written to the journal and the grade journal, `score.changed` in the exam log; the attempt is not changed. Before the statement is closed `409`, and from then on the journal refuses the teacher's change of that cell (`403`) |
+| `PUT` | `/api/exams/{id}/scores/{sid}` | `office` | After the statement is closed: `score`, `reason` and `appeal_id` (a `grade_appeal` request of the student, not rejected or cancelled, used once) or `order_no` (with at least one digit); written to the journal and the grade journal, `score.changed` in the exam log; the attempt is not changed; answer `{"ok", "score"}`. Before the statement is closed `409`, and `409` when the journal's exam score of the student comes from another exam; from then on the journal refuses the teacher's change of that cell (`403`) |
 | `GET` | `/api/exams/{id}/analysis` | the course's teachers only | Each question's share of correct answers and commonest wrong answers; pairs of students with the same wrong answers to at least two questions (a signal, not a verdict) |
 
 Closing an exam issues the protocol (`exam_protocol`, a QR document through Task 45's stored payload: facts, counts,
 incidents, the proctors' actions, `seq` and `root` of the chain at closing) and queues the root by e-mail
-(`exam.root`) to the course's teacher and the dean's offices of the roster's groups. The verification page of the
+(`exam.root`) to the course's teacher and the dean's offices of the roster's groups; release, each closed statement and
+each changed score mail the new root too, with the stage and `seq` (an audit row `exam_root_mailed`, or
+`exam_root_not_mailed` when no recipient has an address). The verification page of the
 protocol and of a statement shows the full root. `exam-verify` also checks that the event at each printed `seq` still
 has the printed root, and `--root` passes when the given root is a link of the chain.
 
@@ -877,7 +894,7 @@ has the printed root, and `--root` passes when the given root is a link of the c
 | Method | Path | Who | Purpose |
 |---|---|---|---|
 | `GET` | `/exam/{id}/config.seb?k={token}` | anyone with the exam's token (SEB fetches it itself) | The exam's `.seb` file (`application/seb`): start at the portal, only this host, keys sent, no VM, clipboard or screen capture, the quit password hashed |
-| `POST` | `/api/exams/{id}/seb-verify?n={value}` | the exam's session | Marks the session verified when SEB's hash is right: the `X-SafeExamBrowser-ConfigKeyHash` header over `PUBLIC_URL` + this request's raw target, or `{"url", "config_key_hash"}` from the JS API over the page URL; both must carry the session's one-time value `n`. A refusal is `403` and a `seb.refused` event |
+| `POST` | `/api/exams/{id}/seb-verify?n={value}` | the exam's session | Marks the session verified when SEB's hash is right: the `X-SafeExamBrowser-ConfigKeyHash` header over `PUBLIC_URL` + this request's raw target, or `{"url", "config_key_hash"}` from the JS API over the page URL; both must carry the session's one-time value `n`. A refusal is `403` and a `seb.refused` event; a success ends the student's other exam sessions (`session.takeover`) |
 
 An exam with `"protection": "seb"` hands out a launch link (`sebs://` for https, `seb://` for http) to its students
 (`seb_link` in the course's exam list) and shows the teacher the link, the Config Key and the quit password
@@ -894,8 +911,8 @@ configuration. It does not prove an unmodified SEB.
 | `GET` | `/api/proctor/exams` | `proctor`, `teacher`, `dept_head`, `academic_office`, `admin` | Exams to watch: assigned ones; for a teacher the open exams of the courses they head; for the academic office and the administrator every open exam |
 | `PUT` | `/api/exams/{id}/proctors` | the course's teachers, `academic_office`, `admin` | Assign proctors with `{"usernames": [...]}` (active staff only, at most 20); replaces the list; in the exam log and audited |
 | `GET` | `/api/exams/{id}/board?after={seq}` | the exam's proctors, the course's teachers, `academic_office`, `admin` | Every student on the roster: `attempt`, `answered`/`total`, `remaining_s`, `online`, `seen_s`, `ip`, `flags` (counts of `client.blur`, `client.fullscreen_exit`, `client.reconnect`, `net.changed`, `net.refused`, `login.during_exam`); `events` after `seq` (at most 100) and the new `seq`. The page polls it every 5 seconds |
-| `POST` | `/api/exams/{id}/students/{sid}/{action}` | as the board | `extend` (`minutes` 1–240), `pause`, `resume`, `end`, `reopen` (`minutes` from now), `unlock` (the student's sign-in lock); `reason` (3–300 characters) is required; only for a student on this exam's roster (`404` otherwise); a wrong state is `409`. Each is a `proctor.{action}` event with the reason and an audit row; the answer is the board |
-| `POST` | `/api/exams/{id}/signals` | the exam's session | `{"kind": "blur" | "fullscreen_exit" | "reconnect"}` from the exam page; at most 300 per student and exam (`{"kept": false}` beyond) |
+| `POST` | `/api/exams/{id}/students/{sid}/{action}` | as the board | `extend` (`minutes` 1–240), `pause`, `resume`, `end`, `reopen` (`minutes` from now), `unlock` (the student's sign-in lock, only while the exam is open); `reason` (3–300 characters) is required; only for a student on this exam's roster (`404` otherwise); a wrong state is `409`. Each is a `proctor.{action}` event with the reason and an audit row; the answer is the board |
+| `POST` | `/api/exams/{id}/signals` | the exam's session | `{"kind": "blur" | "fullscreen_exit" | "reconnect"}` from the exam page; at most 300 of each kind per student and exam (`{"kept": false}` beyond); none once the exam is closed |
 
 A paused attempt takes no answers (`409`, the page keeps them queued) and its clock stands still: resuming moves the
 deadline by the pause; the periodic submission skips it. The network list (`allowed_cidrs` of the exam, set when it

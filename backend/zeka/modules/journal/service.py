@@ -473,6 +473,41 @@ def put_exam_score(c, by: int, course_id: int, student_id: int, score: float, ex
     refresh_finals(c, course_id, [student_id])
 
 
+def put_exam_scores(c, by: int, course_id: int, scores: list[tuple[int, float]], exam_id: int, attempt_no: int, reason: str
+                    ) -> tuple[list[int], list[dict]]:
+    """A released exam's scores in one pass (Checkpoint D, AR-2): the course's rows read once, the finals refreshed once.
+    A score of another exam stays when that exam's attempt is later (a retake over a main exam) or, for the same attempt
+    number, when the dean's office has closed its statement (TM-6, CR-7); those come back as skipped with the reason."""
+    co = repo.course(c, course_id)
+    col = next(x for x in columns(c, co) if x["kind"] == "exam")
+    current = repo.grade_rows(c, course_id)
+    locked = repo.locked_students(c, course_id)
+    at = iso(now())
+    written, skipped = [], []
+    for sid, score in scores:
+        cur = current.get((sid, col["key"]))
+        if cur and cur["exam_id"] and cur["exam_id"] != exam_id:
+            theirs = cur["attempt_no"] or 1
+            if theirs > attempt_no:
+                skipped.append({"student_id": sid, "reason": "newer_exam", "exam_id": cur["exam_id"]})
+                continue
+            if theirs == attempt_no and sid in locked:
+                skipped.append({"student_id": sid, "reason": "statement_closed", "exam_id": cur["exam_id"]})
+                continue
+        repo.put_exam_grade(c, sid, course_id, col["key"], score, col["max"], by, at, exam_id, attempt_no, "exam")
+        if cur and cur["status"] == "published" and cur["score"] != score:
+            repo.add_change(c, sid, course_id, col["key"], cur["score"], score, by, reason, at)
+        written.append(sid)
+    refresh_finals(c, course_id, written)
+    return written, skipped
+
+
+def exam_cell(c, course_id: int, student_id: int) -> dict | None:
+    """The student's exam-component row (with exam_id and attempt_no), or None."""
+    col = exam_column(c, course_id)
+    return repo.grade_rows(c, course_id, student_id).get((student_id, col["key"]))
+
+
 def exam_column(c, course_id: int) -> dict:
     """The course's exam component (key, max) by its grading scheme."""
     return next(x for x in columns(c, repo.course(c, course_id)) if x["kind"] == "exam")

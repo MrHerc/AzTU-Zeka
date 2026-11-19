@@ -82,7 +82,7 @@ def answer(req):
 
 @R("POST", "/api/exams/{id:int}/submit", roles=("student",), scope="exam")
 def submit(req):
-    return _answer(*service.submit(req.db, req.user, req.params["id"]))
+    return _answer(*service.submit(req.db, req.user, req.params["id"], req.json().get("auto") is True))
 
 
 @R("POST", "/api/exams/{id:int}/enter", roles=("student",))
@@ -95,7 +95,12 @@ def enter(req):
         return json_resp({"error": localize(value, req.lang)}, 403)
     _answer(status, value)
     earlier = repo.has_session(c, u["id"], f"exam:{eid}")
-    repo.end_sessions(c, u["id"])
+    if value["protection"] == "seb":
+        # an SEB-verified session ends only when the new one is verified too (Checkpoint D, TM-9): an entry from an
+        # ordinary browser must not knock the student out of SEB
+        repo.end_sessions_except(c, u["id"], f"exam:{eid}")
+    else:
+        repo.end_sessions(c, u["id"])
     service.note_session(c, eid, u["id"], "session.takeover" if earlier else "session.entered", {"ip": req.ip})
     sid, headers = start_session(req, u, f"imtahan #{eid}", scope=f"exam:{eid}")
     url = f"/static/exam.html?exam={eid}"
@@ -108,8 +113,12 @@ def enter(req):
 
 @R("POST", "/api/exams/{id:int}/leave", roles=("student",), scope="exam")
 def leave(req):
-    """End the exam session (the attempt stays as it is: submitted or still running until its deadline)."""
+    """End the exam session once the attempt is over. While it runs (or is paused) leaving is refused: a leave, an
+    ordinary sign-in and a new entry would otherwise hide the sign-in from the exam's log (Checkpoint D, TM-7)."""
     from ...legacy.common import session_cookie
+    a = repo.attempt(req.db, req.params["id"], req.user["id"])
+    if a and a["status"] in service.LIVE:
+        raise HTTPError(409, "Cəhd davam edir: imtahandan çıxmaq üçün əvvəlcə təslim edin")
     repo.end_sessions(req.db, req.user["id"], f"exam:{req.params['id']}")
     return json_resp({"ok": True}, headers=[session_cookie(expire=True)])
 

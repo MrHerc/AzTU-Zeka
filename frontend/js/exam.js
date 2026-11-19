@@ -21,6 +21,12 @@ let submitting = false;
 let lastBlur = 0;
 let wasFull = false;
 let sebTried = false;
+let memQueue = null;      // the queue lives in memory; localStorage keeps a copy for a reload (Checkpoint D, SF-2)
+let storageOk = true;
+let flushing = null;      // the save that is running: a submit waits for it (SF-3)
+let lateDropped = 0;      // answers that reached the server after the deadline, said on the final card (SF-9)
+let loadTimer = 0;        // one retry timer for load() (SF-17)
+let loadBusy = false;
 
 // Task 28: Safe Exam Browser. On Windows SEB adds the hash header to this request itself; on macOS and iOS the JS API
 // gives the hash of this page's URL. The server checks either against the exam's Config Key.
@@ -36,8 +42,14 @@ async function sebVerify() {
   return r.status === 200;
 }
 
-function queue() { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } }
-function keep(q) { try { localStorage.setItem(KEY, JSON.stringify(q)); } catch { /* private mode: the answer still goes out now */ } }
+function queue() {
+  if (memQueue === null) { try { memQueue = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { storageOk = false; memQueue = {}; } }
+  return { ...memQueue };
+}
+function keep(q) {
+  memQueue = { ...q };
+  try { localStorage.setItem(KEY, JSON.stringify(q)); storageOk = true; } catch { storageOk = false; }   // memory still holds it
+}
 
 async function api(method, path, body) {
   try {
@@ -58,6 +70,11 @@ const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s 
 
 function status() {
   const waiting = Object.keys(queue()).length;
+  const warn = storageOk ? "" : `<span class="exam-badge warn">${esc(t("Brauzer cavabları yadda saxlaya bilmir: səhifəni bağlamayın"))}</span> `;
+  return warn + badge(waiting);
+}
+
+function badge(waiting) {
   if (!online) return `<span class="exam-badge warn">${esc(t("Bağlantı yoxdur: {n} cavab növbədədir", { n: waiting }))}</span>`;
   if (saving || waiting) return `<span class="exam-badge">${esc(t("Saxlanılır…"))}</span>`;
   return `<span class="exam-badge ok">${esc(t("Hamısı saxlanılıb"))}</span>`;
@@ -94,6 +111,7 @@ function draw() {
   }
   if (a.status !== "in_progress") {
     root.innerHTML = `${head}<section class="exam-card"><h2>${esc(t("Cavablarınız qəbul olundu"))}</h2>
+      ${lateDropped ? `<p class="exam-badge warn">${esc(t("{n} cavab vaxt bitəndən sonra çatdı və qəbul olunmadı", { n: lateDropped }))}</p>` : ""}
       <p class="exam-muted">${esc(t("Nəticəni müəllim açıqlayandan sonra portalda görəcəksiniz."))}</p>
       <button class="btn" id="leave">${esc(t("Çıxış"))}</button></section>`;
     return;
@@ -115,6 +133,13 @@ function tick() {
 }
 
 async function load() {
+  if (loadBusy) return false;
+  loadBusy = true;
+  try { return await loadOnce(); } finally { loadBusy = false; }
+}
+
+async function loadOnce() {
+  clearTimeout(loadTimer);
   const r = await api("GET", `/api/exams/${id}`);
   if (r.status === 403 && nonce && !sebTried) {
     sebTried = true;
@@ -125,41 +150,59 @@ async function load() {
       <a class="btn" href="/">${esc(t("Portala qayıt"))}</a></section>`;
     return false;
   }
-  if (r.status !== 200) { setTimeout(load, 3000); return false; }
+  if (r.status !== 200) {                                           // the server is busy or away: one retry timer, said on the page
+    loadTimer = setTimeout(load, 3000);
+    if (!view) root.innerHTML = `<section class="exam-card"><p>${esc(t("Server cavab vermir: yenidən cəhd edilir…"))}</p></section>`;
+    return false;
+  }
   view = r.data;
   if (view.attempt) syncClock(view.attempt.remaining_s);
   draw();
   return true;
 }
 
-async function flush() {
-  if (saving || !view || !view.attempt || view.attempt.status !== "in_progress") return;
-  saving = true;
-  try {
-    for (const [qid, value] of Object.entries(queue())) {
-      const r = await api("PUT", `/api/exams/${id}/answers/${qid}`, { value });
-      if (r.status === 0) break;                                   // offline: keep the rest for later
-      const q = queue();
-      if (r.status === 200) { if (JSON.stringify(q[qid]) === JSON.stringify(value)) delete q[qid]; keep(q); syncClock(r.data.remaining_s); }
-      else if (r.status === 409) {                                   // paused, or over: the server's state wins
-        await load();
-        if (!view || !view.attempt || !["in_progress", "paused"].includes(view.attempt.status)) keep({});
-        return;
+function flush() {
+  if (flushing) return flushing;
+  if (!view || !view.attempt || view.attempt.status !== "in_progress") return Promise.resolve();
+  flushing = (async () => {
+    saving = true;
+    try {
+      for (const [qid, value] of Object.entries(queue())) {
+        const r = await api("PUT", `/api/exams/${id}/answers/${qid}`, { value });
+        if (r.status === 0) break;                                 // offline: keep the rest for later
+        const q = queue();
+        if (r.status === 200) { if (JSON.stringify(q[qid]) === JSON.stringify(value)) delete q[qid]; keep(q); syncClock(r.data.remaining_s); }
+        else if (r.status === 409) {                                 // paused, or over: the server's state wins
+          await load();
+          if (!view || !view.attempt || !["in_progress", "paused"].includes(view.attempt.status)) {
+            lateDropped += Object.keys(queue()).length;                // said on the final card, never silently (SF-9)
+            keep({});
+            draw();
+          }
+          return;
+        } else if (r.status === 400 || r.status === 404) { delete q[qid]; keep(q); }   // refused for good: not on the form
+        else if (r.status === 401 || r.status === 403) { await load(); return; }       // the session or the network list: the page says why
+        else { online = false; break; }                              // a 5xx, the gate's 503: the answer waits (Checkpoint D, SF-1)
       }
-      else { delete q[qid]; keep(q); }                              // refused for good (not on the form): do not retry forever
-    }
-  } finally { saving = false; tick(); }
+    } finally { saving = false; flushing = null; tick(); }
+  })();
+  return flushing;
 }
 
 async function submit(auto = false) {
   if (submitting) return;
   if (!auto && !confirm(t("Təslim etmək istəyirsiniz? Bundan sonra cavab dəyişmir."))) return;
   submitting = true;
-  await flush();
-  const r = await api("POST", `/api/exams/${id}/submit`);
-  submitting = false;
-  if (r.status === 200) { keep({}); view = r.data; draw(); }
-  else if (r.status === 0) setTimeout(() => submit(true), 3000);   // offline at the deadline: the server submits it anyway
+  try {
+    await flush();
+    await flush();                                    // the save that was running, then what came in meanwhile (SF-3)
+    if (!auto && Object.keys(queue()).length) { alert(t("Bəzi cavablar hələ göndərilməyib: bağlantını yoxlayın və yenidən təslim edin")); return; }
+    const r = await api("POST", `/api/exams/${id}/submit`, { auto });
+    if (r.status === 200) { lateDropped += Object.keys(queue()).length; keep({}); view = r.data; draw(); }
+    else if (r.status === 409) await load();          // the server's clock says more time (or a pause): go on (NEW-G1)
+    else if (auto && (r.status === 0 || r.status >= 500)) setTimeout(() => submit(true), 3000);   // the server submits it at the deadline anyway
+    else alert(r.data.error || t("Bağlantı yoxdur"));    // a manual submit that did not go through is never silent (SF-10)
+  } finally { submitting = false; }
 }
 
 root.addEventListener("change", (ev) => {
@@ -202,11 +245,14 @@ document.addEventListener("fullscreenchange", () => {
 window.addEventListener("offline", () => { online = false; tick(); });
 setInterval(tick, 1000);
 setInterval(() => {
-  if (Object.keys(queue()).length && view && view.attempt && view.attempt.status === "in_progress") { flush(); return; }
-  if (!view || !view.attempt || view.attempt.status !== "in_progress") return;
+  if (!view || !view.attempt) return;
+  const was = view.attempt.status;
+  if (was === "in_progress" && Object.keys(queue()).length) { flush(); return; }
+  if (was !== "in_progress" && was !== "submitted") return;      // submitted too: a proctor may reopen it (NEW-G2)
   api("GET", `/api/exams/${id}`).then((r) => {
+    if (r.status === 401 || r.status === 403) { load(); return; }   // the session ended: the page says why (SF-17)
     if (r.status !== 200) return;
-    if (r.data.attempt && r.data.attempt.status !== "in_progress") { view = r.data; draw(); }  // paused or ended by a proctor
+    if (r.data.attempt && r.data.attempt.status !== was) { view = r.data; syncClock(view.attempt.remaining_s); draw(); }
     else syncClock(r.data.attempt && r.data.attempt.remaining_s);
     tick();
   });

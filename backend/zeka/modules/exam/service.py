@@ -3,6 +3,7 @@ attempt per student, answers checked against the server's clock, an automatic su
 ``exam.autosubmit`` job), grading when the exam closes, and every step in the exam's log."""
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import secrets
@@ -29,6 +30,19 @@ def _t(s: str) -> datetime:
     return datetime.fromisoformat(s)
 
 
+def _refusal(c, eid: int, kind: str, user_id: int, data: dict):
+    """A refusal event, at most REFUSAL_CAP of a kind per student and exam: the refusal itself (403) always happens,
+    but a script cannot flood the exam's log, its protocol counts or the board."""
+    if repo.count_events(c, eid, user_id, kind) < domain.REFUSAL_CAP:
+        repo.add_event(c, eid, kind, user_id, user_id, data, _iso(_now()))
+
+
+def question_locked(c, q: dict) -> bool:
+    """An exam question is not edited or deleted while an exam of its course is open (Checkpoint D, CR-3/TM-4): forms
+    drawn from it would show or grade something else."""
+    return (q.get("purpose") or "practice") == "exam" and repo.open_exam_of(c, q["course_id"])
+
+
 def may_manage(c, user, cid: int) -> bool:
     """The course's teachers (its head or a unit's teacher) set, open and close its exams."""
     from ..learning import service as learning
@@ -43,7 +57,7 @@ def create(c, user, cid: int, body) -> tuple[str, object]:
     co = repo.course(c, cid)
     if not co or not may_manage(c, user, cid):
         return "missing", None
-    v, problem = domain.exam_input(body, clock.ZONE, 0)
+    v, problem = domain.exam_input(body, clock.ZONE)
     if problem:
         return "invalid", problem
     problem = domain.plan_problem(repo.pool(c, cid), v["plan"])
@@ -96,6 +110,9 @@ def open_exam(c, user, eid: int) -> tuple[str, object]:
         return "missing", None
     if e["status"] != "draft":
         return "invalid", E("İmtahan artıq açılıb")
+    problem = domain.plan_problem(repo.pool(c, e["course_id"]), json.loads(e["plan"]))   # the pool may have shrunk since
+    if problem:
+        return "invalid", problem
     from ..journal import service as journal
     standing = {s["student_id"]: s["status"] for s in journal.course_standing(c, e["course_id"])}
     at = _iso(_now())
@@ -116,6 +133,8 @@ def exception(c, user, eid: int, sid: int, body) -> tuple[str, object]:
     from ...legacy.common import serves
     if not e or not serves(c, user, sid) or sid not in repo.enrolled(c, e["course_id"]):
         return "missing", None
+    if e["status"] != "open":
+        return "closed", E("İstisna yalnız açıq imtahana verilir")         # a draft's roster is drawn anew when it opens
     reason = " ".join(str(body.get("reason") or "").split())[:300]
     if len(reason) < 3:
         return "invalid", E("İstisnanın səbəbini yazın")
@@ -133,15 +152,19 @@ def may_enter(c, user, eid: int, ip: str = "") -> tuple[str, object]:
     e = repo.exam(c, eid)
     if not e or e["status"] == "draft":
         return "missing", None
+    if e["status"] != "open":                         # a closed exam's chain takes no more refusals (Checkpoint D, CR-11)
+        return "closed", E("İmtahan pəncərəsi açıq deyil")
     r = repo.roster_of(c, eid, user["id"])
     if not r or r["status"] == "excluded":
-        repo.add_event(c, eid, "session.refused", user["id"], user["id"], {"reason": r["reason"] if r else "not_on_roster"}, _iso(_now()))
+        _refusal(c, eid, "session.refused", user["id"], {"reason": r["reason"] if r else "not_on_roster"})
         return "refused", E("Siz bu imtahanın siyahısında deyilsiniz. Dekanlığa müraciət edin.") if not r or r["reason"] != "not_admitted" \
             else E("Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.")
-    if e["status"] != "open" or _now() >= _t(e["closes_at"]):
+    a = repo.attempt(c, eid, user["id"])
+    running = bool(a and a["status"] in LIVE and _now() < _t(a["deadline_at"]))
+    if e["status"] != "open" or (_now() >= _t(e["closes_at"]) and not running):   # an extended attempt still comes back in (TM-18)
         return "closed", E("İmtahan pəncərəsi açıq deyil")
     if not domain.ip_allowed(json.loads(e["allowed_cidrs"] or "[]"), ip):
-        repo.add_event(c, eid, "session.refused", user["id"], user["id"], {"reason": "network", "ip": ip}, _iso(_now()))
+        _refusal(c, eid, "session.refused", user["id"], {"reason": "network", "ip": ip})
         return "refused", NETWORK
     return "ok", e
 
@@ -161,7 +184,7 @@ def check_request(c, eid: int, user, ip: str, session_ip: str | None, session_id
     if not e:
         return None
     if not domain.ip_allowed(json.loads(e["allowed_cidrs"] or "[]"), ip):
-        repo.add_event(c, eid, "net.refused", user["id"], user["id"], {"ip": ip, "session_ip": session_ip}, _iso(_now()))
+        _refusal(c, eid, "net.refused", user["id"], {"ip": ip, "session_ip": session_ip})
         return NETWORK
     if session_ip and ip != session_ip:
         repo.add_event(c, eid, "net.changed", user["id"], user["id"], {"from": session_ip, "to": ip}, _iso(_now()))
@@ -172,8 +195,11 @@ def check_request(c, eid: int, user, ip: str, session_ip: str | None, session_id
 
 
 def note_session(c, eid: int, user_id: int, kind: str, data: dict):
-    """An exam session event: entered, took over an earlier exam session, an ordinary sign-in during the attempt."""
-    repo.add_event(c, eid, kind, user_id, user_id, data, _iso(_now()))
+    """An exam session event: entered, took over an earlier exam session, an ordinary sign-in during the attempt. Only
+    while the exam is open: a stale exam session after the close adds nothing to its chain (Checkpoint D, CR-11)."""
+    e = repo.exam(c, eid)
+    if e and e["status"] == "open":
+        repo.add_event(c, eid, kind, user_id, user_id, data, _iso(_now()))
 
 
 def _form(c, e: dict, sid: int) -> list[dict]:
@@ -198,7 +224,7 @@ def start(c, user, eid: int) -> tuple[str, object]:
     if not r or r["status"] == "excluded":
         why = E("Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.") if r and r["reason"] == "not_admitted" \
             else E("Siz bu imtahanın siyahısında deyilsiniz. Dekanlığa müraciət edin.")
-        repo.add_event(c, eid, "attempt.refused", user["id"], user["id"], {"reason": r["reason"] if r else "not_on_roster"}, _iso(t))
+        _refusal(c, eid, "attempt.refused", user["id"], {"reason": r["reason"] if r else "not_on_roster"})
         return "refused", why
     if e["status"] != "open" or not _t(e["opens_at"]) <= t < _t(e["closes_at"]):
         return "closed", E("İmtahan pəncərəsi açıq deyil")
@@ -212,7 +238,7 @@ def view(c, user, eid: int) -> dict | None:
     """What a student sees: the exam, their place on the roster and, once started, their own form (public keys only),
     their saved answers and the seconds left by the server's clock."""
     e = repo.exam(c, eid)
-    if not e or user["id"] not in repo.enrolled(c, e["course_id"]) or e["status"] == "draft":
+    if not e or not repo.is_enrolled(c, e["course_id"], user["id"]) or e["status"] == "draft":   # one indexed lookup (AR-9)
         return None
     r, a = repo.roster_of(c, eid, user["id"]), repo.attempt(c, eid, user["id"])
     out: dict = {"exam": _public_exam(e), "roster": r["status"] if r else None, "attempt": None, "questions": []}
@@ -230,6 +256,7 @@ def view(c, user, eid: int) -> dict | None:
 
 
 def answer(c, user, eid: int, qid: int, body) -> tuple[str, object]:
+    repo.lock(c)                                       # Checkpoint D (TM-10): no answer lands after a submission froze it
     e = repo.exam(c, eid)
     a = repo.attempt(c, eid, user["id"]) if e else None
     if not a:
@@ -247,10 +274,15 @@ def answer(c, user, eid: int, qid: int, body) -> tuple[str, object]:
     return "ok", {"saved": True, "remaining_s": max(0, int((_t(a["deadline_at"]) - _now()).total_seconds()))}
 
 
-def submit(c, user, eid: int) -> tuple[str, object]:
+def submit(c, user, eid: int, auto: bool = False) -> tuple[str, object]:
+    """The student's submission. ``auto`` is the page's own at its 00:00: refused (409) while the server's deadline has
+    not passed or the attempt is paused, so a proctor's extension or pause in the last seconds is kept (NEW-G1)."""
+    repo.lock(c)                                       # Checkpoint D (CR-1): never turns a graded attempt back
     a = repo.attempt(c, eid, user["id"])
     if not a:
         return "missing", None
+    if auto and (a["status"] == "paused" or (a["status"] == "in_progress" and _now() < _t(a["deadline_at"]))):
+        return "closed", E("Vaxt hələ bitməyib: nəzarətçi vaxt əlavə edib və ya imtahanı dayandırıb")
     if a["status"] in LIVE:
         t = _iso(_now())
         repo.set_attempt(c, a["id"], status="submitted", submitted_at=t, paused_at=None)
@@ -260,6 +292,7 @@ def submit(c, user, eid: int) -> tuple[str, object]:
 
 def autosubmit(c) -> str:
     """The job ``exam.autosubmit``: every attempt past its deadline and not submitted is submitted, without the student."""
+    repo.lock(c)                                       # Checkpoint D (AR-1): the overdue list and the writes see one state
     t = _iso(_now())
     done = 0
     for a in repo.overdue(c, t):
@@ -283,42 +316,51 @@ def _grade(q: dict, order: list[int], stored: str | None) -> bool:
 
 def close(c, user, eid: int) -> tuple[str, object]:
     """Grade every submitted attempt (an attempt still running is submitted first) and close the exam."""
+    repo.lock(c)                                       # Checkpoint D: a second close or a late submit waits, then sees "closed"
     e = repo.exam(c, eid)
     if not e or not may_manage(c, user, e["course_id"]):
         return "missing", None
     if e["status"] != "open":
         return "invalid", E("Yalnız açıq imtahan bağlanır")
     t = _iso(_now())
+    forms, answers_of = repo.forms_full(c, eid), repo.answers_of_exam(c, eid)        # three reads for the whole exam (AR-3)
+    qs = repo.questions(c, sorted({x["qid"] for f in forms.values() for x in json.loads(f["items"])}))
     for a in repo.attempts(c, eid):
+        f = forms.get(a["student_id"])
+        items, answers = (json.loads(f["items"]) if f else []), answers_of.get(a["id"], {})
         if a["status"] in LIVE:
             repo.set_attempt(c, a["id"], status="submitted", submitted_at=t, auto=1, paused_at=None)
-            _submitted(c, eid, a, user["id"], True, t)
-        items = json.loads(repo.form(c, eid, a["student_id"])["items"])
-        qs, answers = repo.questions(c, [x["qid"] for x in items]), repo.answers(c, a["id"])
+            _submitted(c, eid, a, user["id"], True, t, f, answers)
         score = sum(1 for x in items if x["qid"] in qs and _grade(qs[x["qid"]], x["order"], answers.get(x["qid"])))
         repo.set_attempt(c, a["id"], status="graded", score=float(score), max_score=float(len(items)))
         repo.add_event(c, eid, "attempt.graded", user["id"], a["student_id"], {"attempt_id": a["id"], "score": float(score),
                                                                               "max_score": float(len(items))}, t)
     repo.set_exam(c, eid, status="closed", closed_at=t)
     repo.add_event(c, eid, "exam.closed", user["id"], None, {"attempts": len(repo.attempts(c, eid))}, t)
-    _protocol(c, user, repo.exam(c, eid))
+    doc = _protocol(c, user, repo.exam(c, eid))
     audit(c, user["id"], "exam_closed", "exam", f"#{eid}")
-    return "ok", manage(c, user, eid)
+    out = manage(c, user, eid) or {}
+    return "ok", {**out, "root_mailed": doc["root_mailed"]}
 
 
-def _submitted(c, eid: int, a: dict, actor: int | None, auto: bool, at: str):
-    """The submission event (Task 30) freezes the attempt: its form's seed and the digest of its answers as stored."""
-    f = repo.form(c, eid, a["student_id"])
+def _submitted(c, eid: int, a: dict, actor: int | None, auto: bool, at: str, form: dict | None = None, answers: dict | None = None):
+    """The submission event (Task 30) freezes the attempt: its form (seed and the digest of its items, Checkpoint D TM-5)
+    and the digest of its answers as stored."""
+    f = form if form is not None else repo.form(c, eid, a["student_id"])
     repo.add_event(c, eid, "attempt.submitted", actor, a["student_id"],
                    {"attempt_id": a["id"], "auto": auto, "form_seed": f["seed"] if f else None,
-                    "answers_sha256": domain.answers_digest(repo.answers(c, a["id"]))}, at)
+                    "form_sha256": hashlib.sha256(f["items"].encode()).hexdigest() if f else None,
+                    "answers_sha256": domain.answers_digest(answers if answers is not None else repo.answers(c, a["id"]))}, at)
 
 
 def verify(c, eid: int, root: str | None = None) -> dict | None:
-    """``manage.py exam-verify`` (Task 30): every link of the exam's chain; each submitted attempt's answers against
-    its last submission event and each graded score against its last grading event; the head against ``root`` (the
-    value printed in the protocol and sent by e-mail). ``problems`` is empty when everything holds."""
-    if not repo.exam(c, eid):
+    """``manage.py exam-verify`` (Task 30, Checkpoint D): every link of the exam's chain; no attempt event after the
+    exam closed; every attempt row against its events (it exists, belongs to the student, its status, its form, its
+    answers as frozen at the last submission, its score and maximum as graded); every printed anchor (the protocol and
+    the statements, read from their hashed payloads); ``root`` (from an e-mail) must be a link of the chain.
+    ``problems`` is empty when everything holds."""
+    e = repo.exam(c, eid)
+    if not e:
         return None
     events = repo.events(c, eid)
     problems: list[dict] = []
@@ -327,44 +369,80 @@ def verify(c, eid: int, root: str | None = None) -> dict | None:
         problems.append({"what": "chain", **broken})
     submitted: dict[int, dict] = {}
     graded: dict[int, dict] = {}
+    owner: dict[int, int] = {}
+    closed_at = None
     for ev in events:
+        if ev["kind"] == "exam.closed" and closed_at is None:
+            closed_at = ev["seq"]
         if ev["kind"] in ("attempt.submitted", "attempt.graded"):
             data = json.loads(ev["data"] or "{}")
-            (submitted if ev["kind"] == "attempt.submitted" else graded)[data.get("attempt_id")] = data   # the last one counts
-    for a in repo.attempts(c, eid):
+            aid = data.get("attempt_id")
+            if ev["kind"] == "attempt.submitted" and closed_at is not None:    # nothing submits after the close (TM-1)
+                problems.append({"what": "event", "seq": ev["seq"], "problem": "submission_after_close"})
+            if ev["kind"] == "attempt.graded" and closed_at is not None and ev["seq"] > closed_at:
+                problems.append({"what": "event", "seq": ev["seq"], "problem": "grading_after_close"})
+            (submitted if ev["kind"] == "attempt.submitted" else graded)[aid] = data          # the last one counts
+            owner.setdefault(aid, ev["student_id"])
+    rows_ = {a["id"]: a for a in repo.attempts(c, eid)}
+    forms = repo.forms_full(c, eid)
+    answers_of = repo.answers_of_exam(c, eid)
+    bad = lambda a, why: problems.append({"what": "attempt", "attempt_id": a["id"] if isinstance(a, dict) else a,  # noqa: E731
+                                          "student_id": a["student_id"] if isinstance(a, dict) else owner.get(a), "problem": why})
+    for aid in owner:
+        if aid not in rows_:
+            bad(aid, "attempt_missing")                                     # deleted after its events (TM-2)
+    for a in rows_.values():
+        if a["id"] in owner and owner[a["id"]] != a["student_id"]:
+            bad(a, "student_changed")
+        if closed_at is not None and a["status"] != "graded":
+            bad(a, "status_changed")
         if a["status"] in ("submitted", "graded"):
             s = submitted.get(a["id"])
+            f = forms.get(a["student_id"])
             if not s:
-                problems.append({"what": "attempt", "attempt_id": a["id"], "student_id": a["student_id"], "problem": "no_submission_event"})
-            elif s.get("answers_sha256") != domain.answers_digest(repo.answers(c, a["id"])):
-                problems.append({"what": "attempt", "attempt_id": a["id"], "student_id": a["student_id"], "problem": "answers_changed"})
+                bad(a, "no_submission_event")
+            else:
+                if s.get("answers_sha256") != domain.answers_digest(answers_of.get(a["id"], {})):
+                    bad(a, "answers_changed")
+                if f and (s.get("form_seed") != f["seed"] or (s.get("form_sha256") and s["form_sha256"] != hashlib.sha256(f["items"].encode()).hexdigest())):
+                    bad(a, "form_changed")                                  # TM-5
         if a["status"] == "graded":
             g = graded.get(a["id"])
-            if not g or g.get("score") != a["score"]:
-                problems.append({"what": "attempt", "attempt_id": a["id"], "student_id": a["student_id"],
-                                 "problem": "score_changed" if g else "no_grading_event"})
+            if not g:
+                bad(a, "no_grading_event")
+            elif g.get("score") != a["score"] or ("max_score" in g and g["max_score"] != a["max_score"]):
+                bad(a, "score_changed")
     head = events[-1]["hash"] if events else domain.GENESIS
     by_seq = {ev["seq"]: ev["hash"] for ev in events}
+    if closed_at is not None and not e["protocol_id"]:
+        problems.append({"what": "anchor", "document": "protocol", "seq": closed_at, "problem": "anchor_missing"})
     for name, data in _anchors(c, eid):
-        if by_seq.get(data.get("seq")) != data.get("root"):
+        if data is None:
+            problems.append({"what": "anchor", "document": name, "seq": None, "problem": "anchor_unreadable"})
+        elif by_seq.get(data.get("seq")) != data.get("root"):
             problems.append({"what": "anchor", "document": name, "seq": data.get("seq"), "problem": "root_differs"})
     if root is not None and root.strip().lower() not in by_seq.values():
         problems.append({"what": "root", "problem": "not_in_chain", "head": head})
     return {"exam_id": eid, "events": len(events), "head": head, "problems": problems}
 
 
-def _anchors(c, eid: int) -> list[tuple[str, dict]]:
-    """The documents that printed a link of the chain: the closing protocol and each group's statement."""
+def _anchors(c, eid: int) -> list[tuple[str, dict | None]]:
+    """The documents that printed a link of the chain: the closing protocol and each group's statement, read from the
+    payload whose hash the document carries (Checkpoint D, TM-16); a document missing or changed reads as None."""
+    from ...legacy.store import payload_state
     e = repo.exam(c, eid)
-    out = []
+    out: list[tuple[str, dict | None]] = []
+
+    def read(name: str, did: int):
+        d = repo.document(c, did)
+        if not d or payload_state(d) != "ok":
+            out.append((name, None))
+        else:
+            out.append((name, json.loads(d["payload"]).get("data") or {}))
     if e and e["protocol_id"]:
-        d = repo.document(c, e["protocol_id"])
-        if d:
-            out.append(("protocol", json.loads(d["data"] or "{}")))
+        read("protocol", e["protocol_id"])
     for st in repo.statements(c, eid).values():
-        d = repo.document(c, st["document_id"])
-        if d:
-            out.append((f"statement {st['group_id']}", json.loads(d["data"] or "{}")))
+        read(f"statement {st['group_id']}", st["document_id"])
     return out
 
 
@@ -390,7 +468,7 @@ def seb_file(c, eid: int, token: str) -> bytes | None:
     if not e or e["protection"] != "seb" or e["status"] not in ("draft", "open") or not isinstance(token, str):
         return None
     st = seb_settings(e)
-    return seb.to_file(st["config"]) if hmac.compare_digest(token, st["token"]) else None
+    return seb.to_file(st["config"]) if hmac.compare_digest(token.encode(), st["token"].encode()) else None
 
 
 def seb_verify(c, user, eid: int, session_id: int, nonce: str | None, raw_target: str, header: str | None, body) -> tuple[str, object]:
@@ -407,9 +485,12 @@ def seb_verify(c, user, eid: int, session_id: int, nonce: str | None, raw_target
     ok = seb.header_ok(base, raw_target, header or "", key, nonce or "") or seb.page_ok(base, page, js_hash, key, nonce or "")
     at = _iso(_now())
     if not ok:
-        repo.add_event(c, eid, "seb.refused", user["id"], user["id"], {"header": bool(header), "js": bool(js_hash)}, at)
+        _refusal(c, eid, "seb.refused", user["id"], {"header": bool(header), "js": bool(js_hash)})
         return "refused", SEB_NEEDED
     repo.set_seb_ok(c, session_id)
+    if repo.has_other_session(c, user["id"], f"exam:{eid}", session_id):     # now the earlier exam session gives way
+        repo.end_sessions_except(c, user["id"], f"exam:{eid}", keep_id=session_id)
+        repo.add_event(c, eid, "session.takeover", user["id"], user["id"], {"seb": True}, at)
     repo.add_event(c, eid, "seb.verified", user["id"], user["id"], {"path": "header" if header and seb.header_ok(base, raw_target, header, key, nonce or "") else "js"}, at)
     return "ok", {"ok": True, "seb": True}
 
@@ -493,6 +574,7 @@ def board(c, user, eid: int, after: int = 0) -> dict | None:
 def act(c, user, eid: int, sid: int, action: str, body) -> tuple[str, object]:
     """A proctor's action on one student of the exam's roster, always with a reason, always in the exam's log:
     extend (minutes), pause, resume, end, reopen (minutes from now), unlock (the student's sign-in lock)."""
+    repo.lock(c)                                       # Checkpoint D (TM-10): an extension never races the autosubmit
     e = repo.exam(c, eid)
     if not e or not may_proctor(c, user, e) or not repo.roster_of(c, eid, sid):
         return "missing", None
@@ -504,6 +586,8 @@ def act(c, user, eid: int, sid: int, action: str, body) -> tuple[str, object]:
     wrong = "closed", E("Bu əməliyyat cəhdin indiki vəziyyətində mümkün deyil")
     data: dict = {"reason": v["reason"]}
     if action == "unlock":
+        if e["status"] != "open":
+            return wrong                                # the sign-in lock is the exam's business only while it runs
         from ..identity import service as identity
         target = identity.account(c, sid)
         if not target:
@@ -541,7 +625,10 @@ def signal(c, user, eid: int, body) -> tuple[str, object]:
     kind = body.get("kind")
     if kind not in domain.SIGNALS:
         return "invalid", E("Naməlum siqnal")
-    if repo.count_events(c, eid, user["id"], "client.") >= domain.SIGNAL_CAP:
+    e = repo.exam(c, eid)
+    if not e or e["status"] != "open":                # nothing is added to a closed exam's chain (Checkpoint D, CR-11)
+        return "ok", {"ok": True, "kept": False}
+    if repo.count_events(c, eid, user["id"], f"client.{kind}") >= domain.SIGNAL_CAP:    # per kind: blur spam does not hide the rest
         return "ok", {"ok": True, "kept": False}
     repo.add_event(c, eid, f"client.{kind}", user["id"], user["id"], {}, _iso(_now()))
     return "ok", {"ok": True, "kept": True}
@@ -558,7 +645,6 @@ def _protocol(c, user, e: dict) -> dict:
     incidents and the chain's root at closing, which also goes by e-mail to the course's teacher and the dean's offices."""
     from ...legacy.common import BASE_URL
     from ...legacy.store import issue_document
-    from ..comms import service as comms
     eid = e["id"]
     h = repo.head(c, eid)
     co = repo.course(c, e["course_id"])
@@ -579,12 +665,26 @@ def _protocol(c, user, e: dict) -> dict:
             "group_ids": groups, "seq": h["seq"], "root": h["hash"]}
     doc = issue_document(c, "exam_protocol", co["teacher_id"], "İmtahan protokolu", data, user["id"], "IMP")
     repo.set_exam(c, eid, protocol_id=doc["id"])
-    params = {"title": e["title"], "root": h["hash"], "exam_id": eid, "verify_url": f"{BASE_URL['value']}/verify/{doc['verify_code']}"}
+    doc["root_mailed"] = _send_root(c, e, "close", f"{BASE_URL['value']}/verify/{doc['verify_code']}")
+    return doc
+
+
+def _send_root(c, e: dict, what: str, verify_url: str = "") -> int:
+    """The chain's head leaves the database after every step that ends a stage (closing, release, a statement, an
+    office's score change; Checkpoint D, TM-3): by e-mail to the course's teacher and the dean's offices of the exam's
+    groups. Returns how many messages were queued; none (no relay, no address) is in the audit log, never silent (TM-12)."""
+    from ..comms import service as comms
+    h = repo.head(c, e["id"])
+    co = repo.course(c, e["course_id"])
+    groups = sorted({r["group_id"] for r in repo.roster_groups(c, e["id"]) if r["group_id"]})
+    params = {"title": e["title"], "root": h["hash"], "seq": h["seq"], "exam_id": e["id"], "what": what, "verify_url": verify_url}
     people = [repo.person(c, co["teacher_id"])] + repo.offices_of_groups(c, groups)
+    sent = 0
     for p in {x["id"]: x for x in people if x}.values():
         lang = (J(p["prefs"], {}) or {}).get("lang") or "az"
-        comms.queue_to(c, p["email"] or "", "exam.root", "exam.root", params, lang, p["id"])
-    return doc
+        sent += bool(comms.queue_to(c, p["email"] or "", "exam.root", "exam.root", params, lang, p["id"]))
+    audit(c, None, "exam_root_mailed" if sent else "exam_root_not_mailed", "exam", f"#{e['id']} · {what} · seq {h['seq']} · {h['hash']} · {sent}")
+    return sent
 
 
 def may_read_doc(c, user, doc: dict) -> bool:
@@ -603,6 +703,7 @@ def release(c, user, eid: int) -> tuple[str, object]:
     """The teacher releases a closed exam: each graded attempt's raw score, scaled to the exam component, is published
     in the journal with the exam and its attempt number; an earlier result (a first attempt before a retake) stays in its
     exam and in the grade journal."""
+    repo.lock(c)
     e = repo.exam(c, eid)
     if not e or not may_manage(c, user, e["course_id"]):
         return "missing", None
@@ -611,19 +712,18 @@ def release(c, user, eid: int) -> tuple[str, object]:
     from ...legacy.store import notify
     from ..journal import service as journal
     col = journal.exam_column(c, e["course_id"])
-    shown = []
-    for a in repo.attempts(c, eid):
-        if a["status"] == "graded":
-            pts = domain.scale(a["score"], a["max_score"], col["max"])
-            journal.put_exam_score(c, user["id"], e["course_id"], a["student_id"], pts, eid, e["attempt_no"], f"imtahan #{eid}: {e['title']}")
-            shown.append(a["student_id"])
+    scores = [(a["student_id"], domain.scale(min(a["score"], a["max_score"]), a["max_score"], col["max"]))   # never above the component
+              for a in repo.attempts(c, eid) if a["status"] == "graded"]
+    shown, skipped = journal.put_exam_scores(c, user["id"], e["course_id"], scores, eid, e["attempt_no"], f"imtahan #{eid}: {e['title']}")
     t = _iso(_now())
     repo.set_exam(c, eid, status="released")
-    repo.add_event(c, eid, "exam.released", user["id"], None, {"scores": len(shown), "component": col["key"], "max": col["max"]}, t)
+    repo.add_event(c, eid, "exam.released", user["id"], None, {"scores": len(shown), "skipped": skipped, "component": col["key"],
+                                                               "max": col["max"]}, t)
     if shown:
         notify(c, shown, "exam", T3("İmtahan nəticəsi açıqlandı: {title}", title=e["title"]), "", "/student/grades")
-    audit(c, user["id"], "exam_released", "exam", f"#{eid} · {len(shown)}")
-    return "ok", results(c, user, eid)
+    audit(c, user["id"], "exam_released", "exam", f"#{eid} · {len(shown)} · skipped {len(skipped)}")
+    _send_root(c, e, "release")
+    return "ok", {"ok": True, "released": len(shown), "skipped": skipped}
 
 
 def _rows(c, e: dict, students: list[dict]) -> list[dict]:
@@ -646,7 +746,10 @@ def _rows(c, e: dict, students: list[dict]) -> list[dict]:
 
 
 def _may_see_results(c, user, e: dict) -> bool:
-    return user["role"] in STAFF or may_manage(c, user, e["course_id"])
+    """The journal's own read rule (Checkpoint D, SEC-4): the course's teachers, a department head whose grant covers the
+    course, the registry offices and leadership; a dean's office then sees only its faculties' students."""
+    from ..journal import service as journal
+    return journal.can_read_course(c, user, e["course_id"])
 
 
 def results(c, user, eid: int) -> dict | None:
@@ -664,7 +767,8 @@ def results(c, user, eid: int) -> dict | None:
 
 def course_results(c, user, cid: int) -> list[dict] | None:
     """Every released exam of a course with its results, a retake next to the first attempt: neither replaces the other."""
-    if not repo.course(c, cid) or not (user["role"] in STAFF or may_manage(c, user, cid)):
+    from ..journal import service as journal
+    if not repo.course(c, cid) or not journal.can_read_course(c, user, cid):
         return None
     return [r for r in (results(c, user, e["id"]) for e in repo.exams_of(c, cid, ("released",))) if r]
 
@@ -676,9 +780,13 @@ def statements(c, user, eid: int) -> dict | None:
         return None
     closed = repo.statements(c, eid)
     groups: dict[int, dict] = {}
+    served: dict[int, bool] = {}
     for r in repo.roster_groups(c, eid):
-        if r["group_id"] and (user["role"] != "office" or repo.office_serves_group(c, user["id"], r["group_id"])):
-            g = groups.setdefault(r["group_id"], {"group_id": r["group_id"], "group_name": r["group_name"], "students": 0})
+        gid = r["group_id"]
+        if gid and gid not in served:
+            served[gid] = user["role"] != "office" or repo.office_serves_group(c, user["id"], gid)   # once per group (AR-5)
+        if gid and served[gid]:
+            g = groups.setdefault(gid, {"group_id": gid, "group_name": r["group_name"], "students": 0})
             g["students"] += 1
     for g in groups.values():
         st = closed.get(g["group_id"])
@@ -690,7 +798,7 @@ def statements(c, user, eid: int) -> dict | None:
 def statement_list(c, user) -> list[dict]:
     """The dean's office's page: the released exams with a group it serves, and how many of their statements are closed."""
     out = []
-    for e in repo.released_exams(c):
+    for e in (repo.released_exams_for_office(c, user["id"]) if user["role"] == "office" else repo.released_exams(c)):   # AR-5
         st = statements(c, user, e["id"])
         if st and st["groups"]:
             out.append({**e, "groups": len(st["groups"]), "closed": sum(1 for g in st["groups"] if g["closed"])})
@@ -700,6 +808,7 @@ def statement_list(c, user) -> list[dict]:
 def close_statement(c, user, eid: int, gid: int) -> tuple[str, object]:
     """The dean's office closes a group's statement: a QR document of the group's results with the chain's head; from
     then on an exam score of the group changes only through the office (``change_score``)."""
+    repo.lock(c)                                       # Checkpoint D (CR-10): a second close waits, then answers 409
     e = repo.exam(c, eid)
     if not e or e["status"] != "released" or (user["role"] == "office" and not repo.office_serves_group(c, user["id"], gid)):
         return "missing", None
@@ -720,12 +829,14 @@ def close_statement(c, user, eid: int, gid: int) -> tuple[str, object]:
     repo.add_statement(c, eid, gid, doc["id"], user["id"], t)
     repo.add_event(c, eid, "statement.closed", user["id"], None, {"group_id": gid, "document_id": doc["id"], "reg_no": doc["reg_no"]}, t)
     audit(c, user["id"], "exam_statement_closed", "exam", f"#{eid} · {students[0]['group_name']} · {doc['reg_no']}")
+    _send_root(c, e, "statement")
     return "ok", statements(c, user, eid)
 
 
 def change_score(c, user, eid: int, sid: int, body) -> tuple[str, object]:
     """After the statement is closed, the dean's office changes an exam score with a reason and a grade appeal of the
     student or an order number; the change is in the grade journal and the exam log; the attempt itself is not touched."""
+    repo.lock(c)
     e = repo.exam(c, eid)
     from ...legacy.common import serves
     if not e or e["status"] != "released" or not serves(c, user, sid):
@@ -742,16 +853,25 @@ def change_score(c, user, eid: int, sid: int, body) -> tuple[str, object]:
     appeal, order = body.get("appeal_id"), " ".join(str(body.get("order_no") or "").split())[:40]
     if len(reason) < 3:
         return "invalid", E("Dəyişikliyin səbəbini yazın")
-    if appeal is not None and (not isinstance(appeal, int) or isinstance(appeal, bool) or not repo.appeal_of(c, appeal, sid)):
-        return "invalid", E("Bu tələbənin belə apellyasiya müraciəti yoxdur")
-    if appeal is None and not order:
+    if appeal is not None:
+        req_ = repo.appeal_state(c, appeal, sid) if isinstance(appeal, int) and not isinstance(appeal, bool) else None
+        if not req_:
+            return "invalid", E("Bu tələbənin belə apellyasiya müraciəti yoxdur")
+        if req_["status"] in ("rejected", "cancelled") or repo.appeal_used(c, sid, e["course_id"], appeal):   # SEC-6
+            return "invalid", E("Bu apellyasiya rədd edilib, ləğv olunub və ya artıq tətbiq edilib")
+    elif not order or not any(ch.isdigit() for ch in order):
         return "invalid", E("Apellyasiya müraciətini və ya əmrin nömrəsini göstərin")
+    cell = journal.exam_cell(c, e["course_id"], sid)
+    if cell and cell["exam_id"] and cell["exam_id"] != eid:                     # CR-7: the journal holds another exam's score
+        return "closed", E("Tələbənin jurnaldakı imtahan balı başqa imtahandandır: dəyişiklik o imtahanda aparılır")
+    score = domain.points(score)                                                # the one rounding rule (PY-9)
     basis = f"apellyasiya #{appeal}" if appeal is not None else f"əmr № {order}"
     journal.put_exam_score(c, user["id"], e["course_id"], sid, float(score), eid, e["attempt_no"], f"{reason} · {basis}", source="appeal")
     t = _iso(_now())
     repo.add_event(c, eid, "score.changed", user["id"], sid, {"score": float(score), "reason": reason, "appeal_id": appeal, "order_no": order or None}, t)
     audit(c, user["id"], "exam_score_changed", "exam", f"#{eid} · #{sid} · {score} · {reason} · {basis}")
-    return "ok", results(c, user, eid)
+    _send_root(c, e, "score")
+    return "ok", {"ok": True, "score": float(score)}
 
 
 def analysis(c, user, eid: int) -> dict | None:

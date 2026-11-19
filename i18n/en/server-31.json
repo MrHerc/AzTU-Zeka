@@ -1,0 +1,18 @@
+{
+ "İmtahan açıq ikən onun sualı dəyişdirilmir və silinmir": "While an exam is open, its questions cannot be changed or deleted",
+ "Təsdiqlənmiş imtahan sualı qaralamaya qaytarılmır": "An approved exam question cannot go back to draft",
+ "Suallarıma cavablar": "Answers to my questions",
+ "Dəstək planı": "Support plan",
+ "Mərhələ: {stage} (hadisə № {seq})": "Stage: {stage} (event no. {seq})",
+ "nəticə açıqlandı": "results released",
+ "qrupun cədvəli bağlandı": "group statement closed",
+ "dekanlıq balı dəyişdi": "score changed by the dean's office",
+ "Sual bazası artıq imtahan planını ödəmir": "The question pool no longer covers the exam plan",
+ "Cəhd davam edir: imtahandan çıxmaq üçün əvvəlcə təslim edin": "Your attempt is in progress: submit it before leaving the exam",
+ "İstisna yalnız açıq imtahana verilir": "An exception can only be granted for an open exam",
+ "Vaxt hələ bitməyib: nəzarətçi vaxt əlavə edib və ya imtahanı dayandırıb": "Time is not up yet: a proctor has added time or paused the exam",
+ "Tələbənin jurnaldakı imtahan balı başqa imtahandandır: dəyişiklik o imtahanda aparılır": "The student's exam score in the journal comes from another exam: make the change in that exam",
+ "Bu apellyasiya rədd edilib, ləğv olunub və ya artıq tətbiq edilib": "This appeal has been rejected, cancelled or already applied",
+ "Fənnin təsviri mətn olmalıdır": "The course description must be text",
+ "Fənnin təsviri ən çox 4000 simvoldur": "The course description is at most 4000 characters"
+}

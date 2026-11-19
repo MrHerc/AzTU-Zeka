@@ -2,7 +2,7 @@
 
 Each in-app notification kind may also go by e-mail. A person turns e-mail off or on per kind; the kinds that would
 flood an inbox (news, events, practice tests, the academy, Radar digests) start off, the rest start on. A failed
-attempt is tried again after 1, 2, 4, ... minutes (at most six hours) and given up after ``MAX_ATTEMPTS``.
+attempt is tried again after 1, 2, 4, ... minutes (at most six hours) and given up after ``MAX_ATTEMPTS`` (about three days).
 """
 from __future__ import annotations
 
@@ -14,9 +14,10 @@ from ...core.i18n import E, S_
 KINDS = {"request": S_("Müraciətlər"), "message": S_("Dekanlıqdan mesajlar"), "support": S_("Dəstək sorğuları"),
          "exam": S_("İmtahanlar"), "assignment": S_("Tapşırıqlar"), "attendance": S_("Davamiyyət"), "schedule": S_("Dərs cədvəli"),
          "syllabus": S_("Sillabus"), "news": S_("Xəbərlər"), "event": S_("Tədbirlər"), "quiz": S_("Testlər"),
-         "academy": S_("AI Akademiya"), "radar": S_("Zəka Radar")}
+         "academy": S_("AI Akademiya"), "radar": S_("Zəka Radar"), "question": S_("Tələbə sualları"),
+         "answer": S_("Suallarıma cavablar"), "plan": S_("Dəstək planı")}
 OFF_BY_DEFAULT = frozenset({"news", "event", "quiz", "academy", "radar"})
-MAX_ATTEMPTS = 8
+MAX_ATTEMPTS = 20                                 # about three days of waits (Checkpoint D, T-7): an outage does not lose mail
 
 
 def wants_email(prefs: dict, kind: str) -> bool:

@@ -15,7 +15,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timedelta
 
-from ..core import jobs
+from ..core import clock, jobs
 from ..core.i18n import T3
 from . import radar, store, support
 from .common import office_for
@@ -33,7 +33,13 @@ def retention_purge(c) -> str:
     hits = c.execute("DELETE FROM rate_hits WHERE ts<?", (time.time() - 86400,)).rowcount        # the longest window is minutes
     blocks = c.execute("DELETE FROM login_blocks WHERE COALESCE(until, first)<?", (time.time() - 86400,)).rowcount
     sessions = c.execute("DELETE FROM sessions WHERE last_seen<?", (iso(t - timedelta(seconds=identity.MAX_IDLE)),)).rowcount
-    return f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions}"
+    old = (clock.now() - KEEP_LOGS).isoformat(timespec="seconds")   # job and outbox times are aware UTC (Checkpoint D, AR-13)
+    runs = c.execute("DELETE FROM job_runs WHERE started_at<? AND status<>'running'", (old,)).rowcount
+    mails = c.execute("DELETE FROM outbox WHERE created_at<? AND status IN ('sent','failed','skipped')", (old,)).rowcount
+    return f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions} · job runs {runs} · mails {mails}"
+
+
+KEEP_LOGS = timedelta(days=90)
 
 
 def _once(c, kind: str, obj_id: int, threshold: str) -> bool:
@@ -49,11 +55,12 @@ def reminders_sla(c) -> str:
                      "WHERE r.status IN ('submitted','in_progress') AND r.due_at IS NOT NULL AND r.due_at<?", (iso(t + DAY),)):
         due = datetime.fromisoformat(r["due_at"])
         threshold = "overdue" if due <= t else "soon"
-        if not _once(c, "request", r["id"], threshold):
+        office = office_for(c, r["student_id"])
+        if not office or not _once(c, "request", r["id"], threshold):   # nobody to tell yet: try again next run (SF-8)
             continue
         title = (T3("Müraciətin müddəti keçdi: {name}", name=r["name"]) if threshold == "overdue"
                  else T3("Müraciətin müddəti bir gündən az qalıb: {name}", name=r["name"]))
-        notify(c, office_for(c, r["student_id"]), "request", title, r["due_at"].replace("T", " ")[:16], f"/office/requests/{r['id']}")
+        notify(c, office, "request", title, r["due_at"].replace("T", " ")[:16], f"/office/requests/{r['id']}")
         sent += 1
     for k in rows(c, "SELECT id, subject, priority, created_at, assignee_id FROM support_tickets WHERE status IN ('open','in_progress') "
                      "AND assignee_id IS NOT NULL"):

@@ -88,7 +88,7 @@ route("/proctor/:id", async (el, p) => {
       ${tab("done", t("Təslim edib"))}${tab("waiting", t("Başlamayıb"))}${tab("flagged", t("Diqqət"))}`);
     if (!(document.activeElement && document.activeElement.classList.contains("px-act"))) {
       mount(el.querySelector("#px-rows"), shown().length ? html`${shown().map(row)}` : html`<tr><td colspan="7" class="muted small">${t("Bu süzgəcdə tələbə yoxdur")}</td></tr>`);
-      fetchedAt = performance.now();
+      tick();                                     // the time left counts from when the data came, not from this redraw (SF-13)
     }
     mount(el.querySelector("#px-feed"), feed.length ? html`${feed.slice().reverse().map(entry)}` : html`<p class="small muted" style="margin:0">${t("Hələ hadisə yoxdur")}</p>`);
   };
@@ -116,8 +116,11 @@ route("/proctor/:id", async (el, p) => {
     if (!tick()) return;
     try {
       const next = await api.get(`/api/exams/${id}/board?after=${seq}`);
-      data = next; feed = feed.concat(next.events).slice(-60); seq = next.seq; stale = false;
-    } catch { stale = true; }
+      data = next; feed = feed.concat(next.events).slice(-60); seq = next.seq; stale = false; fetchedAt = performance.now();
+    } catch (err) {
+      if ([401, 403, 404].includes(err.status)) { mount(el, failed(err.message)); return; }   // not a lost connection: said, not polled (SF-13)
+      stale = true;
+    }
     if (!document.querySelector(".modal") && tick()) update();       // an open action dialog is not redrawn under the proctor
     setTimeout(poll, POLL_MS);
   };
@@ -140,7 +143,7 @@ route("/proctor/:id", async (el, p) => {
         if (NEEDS_MINUTES.includes(action)) body.minutes = Number(w.querySelector("#px-min").value);
         try {
           const next = await api.post(`/api/exams/${id}/students/${sid}/${action}`, body);
-          data = next; feed = feed.concat(next.events.filter((x) => x.seq > seq)).slice(-60); seq = Math.max(seq, next.seq);
+          data = next; feed = feed.concat(next.events.filter((x) => x.seq > seq)).slice(-60); seq = Math.max(seq, next.seq); fetchedAt = performance.now();
           toast(t("Saxlanıldı"), "ok"); setTimeout(update, 0);
         } catch (err) { toast(err.message, "err"); return false; }
       } }] });

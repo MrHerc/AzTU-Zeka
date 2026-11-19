@@ -71,7 +71,7 @@ route("/teacher/syllabus", async (el, p, q) => {
           <button class="btn" id="print">${ic("printer", 15)} ${t("Çap et")}</button>
           ${st.can_edit ? html`<button class="btn btn-primary" id="save">${ic("check", 15)} ${t("Yeni versiya kimi saxla")}</button>` : ""}</div></div>
       <div class="grid g-12"><div class="stack">
-        <div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Fənnin təsviri")}</h3></div><div class="card-b"><textarea class="textarea" data-f="description" aria-label="${t("Fənnin təsviri")}">${s.description}</textarea></div></div>
+        <div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Fənnin təsviri")}</h3></div><div class="card-b"><textarea class="textarea" data-f="description" maxlength="4000" aria-label="${t("Fənnin təsviri")}">${s.description}</textarea></div></div>
         <div class="card" data-tour="outcomes"><div class="card-h"><h3>${ic("target", 17)} ${t("Təlim nəticələri")}</h3><button class="btn btn-sm" id="add-o">${ic("plus", 13)} ${t("Əlavə et")}</button></div>
           <div class="table-wrap"><table class="table"><thead><tr><th>${t("Kod")}</th><th>${t("Nəticə")}</th><th>${t("Bloom səviyyəsi")}</th><th></th></tr></thead><tbody>
           ${s.outcomes.map((o, i) => html`<tr><td><b>${o.id}</b></td><td><input class="input" data-o-text="${i}" value="${o.text}" aria-label="${t("Nəticə")}"></td>

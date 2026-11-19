@@ -96,7 +96,7 @@ def test_an_exam_question_is_not_put_in_a_test_and_keeps_its_purpose(app_db, lea
     teacher = app_db.client("teacher")
     r = teacher.post("/api/quizzes", {"course_id": COURSE, "title": "Məşq", "question_ids": leak["ids"][:2]})
     assert r.status == 400
-    assert teacher.put(f"/api/questions/{leak['ids'][0]}", {"purpose": "practice"}).status == 400
+    assert teacher.put(f"/api/questions/{leak['ids'][0]}", {"purpose": "practice"}).status in (400, 409)   # 409 while an exam is open
     draft = q("SELECT id FROM questions WHERE course_id=? AND status='draft' ORDER BY id LIMIT 1", (COURSE,))
     if draft:
         assert teacher.put(f"/api/questions/{draft[0]['id']}", {"purpose": "elsewhere"}).status == 400

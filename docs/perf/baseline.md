@@ -69,7 +69,7 @@ Dəyişikliyin tətbiqi gecikmə vermir (hədd ≤ 200 ms). Tam yenidənqurma yo
 ## İmtahan ssenarisi (Task 27), 2026-11-19
 
 Ölçmə: `faculty` dəsti, 300 tələbə, hər biri bir dəfə: giriş, başlanğıc, 10 cavab, təslim (3 900 sorğu). Hər
-cavab PUT `BEGIN IMMEDIATE` ilə yazılır və tam `fsync` ilə commit olunur (`synchronous=FULL`).
+cavab PUT adi (gecikdirilmiş) tranzaksiyada yazılır və tam `fsync` ilə commit olunur (`synchronous=FULL`).
 
 | Rejim | İşçi | p50 | p95 | p99 | İtən cavab | 5xx |
 |---|---|---|---|---|---|---|

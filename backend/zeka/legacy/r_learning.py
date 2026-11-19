@@ -779,6 +779,7 @@ def question_update(req):
     c = req.db
     q = q_load(c, req.params["id"])
     _own_question(req, q)
+    _exam_question_free(c, q)
     b = req.json()
     fields = {k: str(b[k])[:3000] for k in ("text", "explanation", "topic", "bloom", "difficulty", "unit") if k in b}
     options = [str(o)[:300] for o in b.array("options")][:6] if "options" in b else q["options"]
@@ -789,6 +790,8 @@ def question_update(req):
     if "answer" in b:
         fields["answer"] = json.dumps(answer)
     if b.get("status") in ("draft", "approved"):
+        if q.get("purpose") == "exam" and q["status"] == "approved" and b["status"] == "draft":
+            raise HTTPError(400, "Təsdiqlənmiş imtahan sualı qaralamaya qaytarılmır")   # its purpose would come loose (Checkpoint D)
         fields["status"] = b["status"]
     if "purpose" in b:                                  # chosen by the time the question is first approved, then fixed (Task 26)
         if b["purpose"] not in ("practice", "exam"):
@@ -802,7 +805,15 @@ def question_update(req):
     nq = row(c, "SELECT * FROM questions WHERE id=?", (q["id"],))
     store.index_question(nq)
     store.log_index(c, "questions", [nq["id"]])
+    if (q.get("purpose") or "practice") == "exam" and fields:
+        store.audit(c, req.user["id"], "exam_question_changed", "question", f"#{q['id']} · {', '.join(sorted(fields))}")
     return q_out(c, nq)
+
+
+def _exam_question_free(c, q):
+    from ..modules.exam import service as exam
+    if exam.question_locked(c, q):
+        raise HTTPError(409, "İmtahan açıq ikən onun sualı dəyişdirilmir və silinmir")
 
 
 def _check_answer(qtype, options, answer):
@@ -824,6 +835,9 @@ def _check_answer(qtype, options, answer):
 def question_delete(req):
     q = q_load(req.db, req.params["id"])
     _own_question(req, q)
+    _exam_question_free(req.db, q)
+    if (q.get("purpose") or "practice") == "exam":
+        store.audit(req.db, req.user["id"], "exam_question_deleted", "question", f"#{q['id']}")
     req.db.execute("DELETE FROM questions WHERE id=?", (q["id"],))
     engine.INDEX["questions"].remove(q["id"])
     store.log_index(req.db, "questions", [q["id"]], "delete")

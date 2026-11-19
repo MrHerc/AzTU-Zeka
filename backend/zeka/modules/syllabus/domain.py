@@ -41,7 +41,17 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
     """(the clean syllabus, None) or ({}, the reason). ``rules``: the university's settings (tenant.load)."""
     if not isinstance(data, dict):
         return {}, E("Sillabus məlumatı düzgün deyil")
-    out: dict = {"description": _text(data.get("description") or "", 0, 4000) or ""}
+    description = data.get("description")
+    if description is not None and not isinstance(description, str):
+        return {}, E("Fənnin təsviri mətn olmalıdır")
+    # paragraphs stay (Checkpoint D, PY-5): spaces are tidied per line, more than one blank line becomes one
+    lines = [" ".join(line.split()) for line in (description or "").splitlines()]
+    desc = "\n".join(lines).strip()
+    while "\n\n\n" in desc:
+        desc = desc.replace("\n\n\n", "\n\n")
+    if len(desc) > 4000:
+        return {}, E("Fənnin təsviri ən çox 4000 simvoldur")
+    out: dict = {"description": desc}
 
     outcomes = data.get("outcomes")
     if not isinstance(outcomes, list) or not 1 <= len(outcomes) <= 20:
@@ -192,7 +202,7 @@ STEPS = {
     "return": (("submitted", "approved"), "returned", None),          # dept_head from submitted, academic_office from approved
 }
 RETURNS_BY = {"submitted": "dept_head", "approved": "academic_office"}
-TUTOR = {"allowed": (["socratic", "explain", "practice"], 0), "limited": (["socratic", "practice"], 0), "forbidden": (["socratic"], 1)}
+TUTOR = {"allowed": (("socratic", "explain", "practice"), 0), "limited": (("socratic", "practice"), 0), "forbidden": (("socratic",), 1)}
 
 
 def step(status: str, action: str, role: str) -> str | None:
@@ -213,7 +223,7 @@ def course_grading(data: dict, grading: dict) -> dict:
     return {"components": comps, "exam": {"name": exam["name"], "max": exam["weight"], "min": grading["exam"]["min"]}}
 
 
-def tutor_modes(ai_policy: str) -> tuple[list[str], int]:
+def tutor_modes(ai_policy: str) -> tuple[tuple[str, ...], int]:
     """The tutor's modes and lock from the syllabus's AI policy: forbidden leaves only the Socratic mode, which never
     gives a final answer, and locks it; limited drops the explaining mode."""
     return TUTOR.get(ai_policy, TUTOR["limited"])
@@ -238,4 +248,4 @@ def diff(a: dict, b: dict) -> list[dict]:
         if a.get(section) != b.get(section):
             out.append({"section": section, "change": "changed", "key": section, "before": a.get(section), "after": b.get(section)})
     order = {s: i for i, s in enumerate(("description", "outcomes", "plan", "assessment", "rules", "prerequisites", "literature", "workload"))}
-    return sorted(out, key=lambda x: (order[x["section"]], x["key"]))
+    return sorted(out, key=lambda x: (order[x["section"]], (0, int(x["key"]), "") if str(x["key"]).isdigit() else (1, 0, str(x["key"]))))  # week 2 before 10

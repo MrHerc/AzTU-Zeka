@@ -1,0 +1,10 @@
+{
+ "Brauzer cavabları yadda saxlaya bilmir: səhifəni bağlamayın": "Браузер не может сохранить ответы: не закрывайте страницу",
+ "{n} cavab vaxt bitəndən sonra çatdı və qəbul olunmadı": {
+  "one": "{n} ответ пришёл после окончания времени и не принят",
+  "few": "{n} ответа пришли после окончания времени и не приняты",
+  "many": "{n} ответов пришли после окончания времени и не приняты"
+ },
+ "Server cavab vermir: yenidən cəhd edilir…": "Сервер не отвечает: повторная попытка…",
+ "Bəzi cavablar hələ göndərilməyib: bağlantını yoxlayın və yenidən təslim edin": "Некоторые ответы ещё не отправлены: проверьте подключение и сдайте снова"
+}

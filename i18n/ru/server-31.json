@@ -1,0 +1,18 @@
+{
+ "İmtahan açıq ikən onun sualı dəyişdirilmir və silinmir": "Пока экзамен открыт, его вопросы нельзя изменять или удалять",
+ "Təsdiqlənmiş imtahan sualı qaralamaya qaytarılmır": "Утверждённый экзаменационный вопрос нельзя вернуть в черновик",
+ "Suallarıma cavablar": "Ответы на мои вопросы",
+ "Dəstək planı": "План поддержки",
+ "Mərhələ: {stage} (hadisə № {seq})": "Этап: {stage} (событие № {seq})",
+ "nəticə açıqlandı": "результаты объявлены",
+ "qrupun cədvəli bağlandı": "ведомость группы закрыта",
+ "dekanlıq balı dəyişdi": "балл изменён деканатом",
+ "Sual bazası artıq imtahan planını ödəmir": "Банк вопросов больше не покрывает план экзамена",
+ "Cəhd davam edir: imtahandan çıxmaq üçün əvvəlcə təslim edin": "Попытка продолжается: чтобы выйти из экзамена, сначала сдайте работу",
+ "İstisna yalnız açıq imtahana verilir": "Исключение можно предоставить только для открытого экзамена",
+ "Vaxt hələ bitməyib: nəzarətçi vaxt əlavə edib və ya imtahanı dayandırıb": "Время ещё не истекло: наблюдатель добавил время или приостановил экзамен",
+ "Tələbənin jurnaldakı imtahan balı başqa imtahandandır: dəyişiklik o imtahanda aparılır": "Экзаменационный балл студента в журнале относится к другому экзамену: изменение вносится в том экзамене",
+ "Bu apellyasiya rədd edilib, ləğv olunub və ya artıq tətbiq edilib": "Эта апелляция отклонена, отменена или уже применена",
+ "Fənnin təsviri mətn olmalıdır": "Описание дисциплины должно быть текстом",
+ "Fənnin təsviri ən çox 4000 simvoldur": "Описание дисциплины — не более 4000 символов"
+}

@@ -121,7 +121,7 @@ export async function teacherExams(tgt, c) {
 // (every other session of the student ends).
 export async function studentExams(box, c) {
   let list;
-  try { list = await api.get(`/api/courses/${c.id}/exams`); } catch { return; }
+  try { list = await api.get(`/api/courses/${c.id}/exams`); } catch (err) { mount(box, failed(err.message)); return; }   // never an empty box (SF-16)
   if (!list.length) return;
   mount(box, html`<div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("İmtahanlar")}</h3></div><div class="card-b list">
     ${list.map((e) => html`<div class="list-item"><div class="grow"><b class="small">${e.title}</b>

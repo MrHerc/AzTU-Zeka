@@ -60,9 +60,12 @@ def roster_of(c, eid: int, sid: int):
 
 
 def put_roster(c, eid: int, sid: int, status: str, reason: str | None, by: int | None, at: str):
-    c.execute("INSERT INTO exam_roster(exam_id,student_id,status,reason,added_by,added_at) VALUES(?,?,?,?,?,?) "
+    """The student's place on the roster, with the group the student is in now when the row is first drawn
+    (Checkpoint D, TM-19: a later move to another group keeps the statement's group)."""
+    c.execute("INSERT INTO exam_roster(exam_id,student_id,status,reason,added_by,added_at,group_id) "
+              "VALUES(?,?,?,?,?,?,(SELECT group_id FROM users WHERE id=?)) "
               "ON CONFLICT(exam_id,student_id) DO UPDATE SET status=excluded.status, reason=excluded.reason, added_by=excluded.added_by, "
-              "added_at=excluded.added_at", (eid, sid, status, reason, by, at))
+              "added_at=excluded.added_at", (eid, sid, status, reason, by, at, sid))
 
 
 def form(c, eid: int, sid: int):
@@ -227,9 +230,9 @@ def document(c, did: int):
 
 def roster_groups(c, eid: int) -> list[dict]:
     """Each student of the roster with their group and faculty."""
-    return rows(c, "SELECT r.student_id, r.status, u.full_name, u.student_no, u.group_id, sg.name AS group_name, sg.faculty_id "
-                   "FROM exam_roster r JOIN users u ON u.id=r.student_id LEFT JOIN study_groups sg ON sg.id=u.group_id "
-                   "WHERE r.exam_id=? ORDER BY sg.name, u.full_name", (eid,))
+    return rows(c, "SELECT r.student_id, r.status, u.full_name, u.student_no, COALESCE(r.group_id, u.group_id) AS group_id, "
+                   "sg.name AS group_name, sg.faculty_id FROM exam_roster r JOIN users u ON u.id=r.student_id "
+                   "LEFT JOIN study_groups sg ON sg.id=COALESCE(r.group_id, u.group_id) WHERE r.exam_id=? ORDER BY sg.name, u.full_name", (eid,))
 
 
 def office_serves_group(c, uid: int, gid: int) -> bool:
@@ -285,3 +288,61 @@ def set_seb_nonce(c, id_hash: str, nonce: str):
 
 def set_seb_ok(c, session_id: int):
     c.execute("UPDATE sessions SET seb_ok=1 WHERE id=?", (session_id,))
+
+
+def open_exam_of(c, cid: int) -> bool:
+    return row(c, "SELECT 1 FROM exams WHERE course_id=? AND status='open' LIMIT 1", (cid,)) is not None
+
+
+def end_sessions_except(c, uid: int, scope: str, keep_id: int | None = None):
+    """Every session of the user but those with ``scope`` (or, with ``keep_id``, every ``scope`` session but that one)."""
+    if keep_id is None:
+        c.execute("DELETE FROM sessions WHERE user_id=? AND (scope IS NULL OR scope<>?)", (uid, scope))
+    else:
+        c.execute("DELETE FROM sessions WHERE user_id=? AND scope=? AND id<>?", (uid, scope, keep_id))
+
+
+def has_other_session(c, uid: int, scope: str, session_id: int) -> bool:
+    return row(c, "SELECT 1 FROM sessions WHERE user_id=? AND scope=? AND id<>? LIMIT 1", (uid, scope, session_id)) is not None
+
+
+# ---------------------------------------------------------------- Checkpoint D
+def lock(c):
+    """Take the write lock before an attempt's state is read and changed (Checkpoint D, CR-1/AR-1): the read and the
+    write of a transition then see the same state in every worker. sqlite3 opens a transaction only at the first write,
+    so a connection already in one holds the lock."""
+    if not c.in_transaction:
+        c.execute("BEGIN IMMEDIATE")
+
+
+def forms_full(c, eid: int) -> dict[int, dict]:
+    return {r["student_id"]: r for r in rows(c, "SELECT student_id, seed, items FROM exam_forms WHERE exam_id=?", (eid,))}
+
+
+def answers_of_exam(c, eid: int) -> dict[int, dict[int, str]]:
+    out: dict[int, dict[int, str]] = {}
+    for r in rows(c, "SELECT x.attempt_id, x.qid, x.value FROM exam_answers x JOIN exam_attempts a ON a.id=x.attempt_id WHERE a.exam_id=?", (eid,)):
+        out.setdefault(r["attempt_id"], {})[r["qid"]] = r["value"]
+    return out
+
+
+def appeal_state(c, rid: int, sid: int):
+    return row(c, "SELECT id, status FROM requests WHERE id=? AND student_id=? AND type_code='grade_appeal'", (rid, sid))
+
+
+def appeal_used(c, uid: int, course_id: int, rid: int) -> bool:
+    return row(c, "SELECT 1 FROM grade_changes WHERE user_id=? AND course_id=? AND reason LIKE ? LIMIT 1",
+               (uid, course_id, f"%· apellyasiya #{rid}")) is not None
+
+
+def released_exams_for_office(c, uid: int) -> list[dict]:
+    """The released exams with a student of the office's faculties, newest first (the faculty filter before the limit)."""
+    return rows(c, f"SELECT DISTINCT {', '.join('e.' + k.strip() for k in EXAM_PUBLIC.split(','))}, co.code AS course_code, "  # nosec B608
+                   "co.name AS course_name FROM exams e JOIN courses co ON co.id=e.course_id JOIN exam_roster r ON r.exam_id=e.id "
+                   "JOIN users u ON u.id=r.student_id JOIN study_groups sg ON sg.id=u.group_id JOIN role_grants g ON g.scope_id=sg.faculty_id "
+                   "AND g.user_id=? AND g.role='office' AND g.scope_type='faculty' WHERE e.status='released' ORDER BY e.closes_at DESC LIMIT 200",
+                (uid,))
+
+
+def is_enrolled(c, cid: int, uid: int) -> bool:
+    return row(c, "SELECT 1 FROM enrollments WHERE course_id=? AND user_id=? LIMIT 1", (cid, uid)) is not None

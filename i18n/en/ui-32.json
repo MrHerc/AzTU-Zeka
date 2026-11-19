@@ -1,0 +1,9 @@
+{
+ "Brauzer cavabları yadda saxlaya bilmir: səhifəni bağlamayın": "The browser cannot store your answers: do not close the page",
+ "{n} cavab vaxt bitəndən sonra çatdı və qəbul olunmadı": {
+  "one": "{n} answer arrived after time was up and was not accepted",
+  "other": "{n} answers arrived after time was up and were not accepted"
+ },
+ "Server cavab vermir: yenidən cəhd edilir…": "The server is not responding: retrying…",
+ "Bəzi cavablar hələ göndərilməyib: bağlantını yoxlayın və yenidən təslim edin": "Some answers have not been sent yet: check your connection and submit again"
+}

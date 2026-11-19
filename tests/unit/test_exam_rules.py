@@ -13,7 +13,7 @@ def test_a_window_entered_in_baku_time_opens_in_utc():
     baku = ZoneInfo("Asia/Baku")
     assert domain.to_utc(date(2026, 12, 10), "10:00", baku).isoformat() == "2026-12-10T06:00:00+00:00"
     v, problem = domain.exam_input({"title": "Yekun imtahan", "day": "2026-12-10", "start": "10:00", "end": "12:00", "duration_min": 90,
-                                    "plan": PLAN}, baku, 20)
+                                    "plan": PLAN}, baku)
     assert problem is None and v["opens_at"] == "2026-12-10T06:00:00+00:00" and v["closes_at"] == "2026-12-10T08:00:00+00:00"
 
 
@@ -21,7 +21,7 @@ def test_bad_exams_are_refused():
     base = {"title": "Yekun imtahan", "day": "2026-12-10", "start": "10:00", "end": "12:00", "duration_min": 90, "plan": PLAN}
     for bad in ({"start": "12:00", "end": "10:00"}, {"duration_min": 150}, {"duration_min": 2}, {"kind": "x"}, {"plan": []},
                 {"plan": [{"count": 0}]}, {"allowed_cidrs": ["10.0.0.0/33"]}, {"day": "10.12.2026"}, {"title": "x"}):
-        assert domain.exam_input({**base, **bad}, None, 20)[1] is not None, bad
+        assert domain.exam_input({**base, **bad}, None)[1] is not None, bad
 
 
 def test_two_students_get_different_forms_and_one_student_always_the_same():
@@ -50,3 +50,22 @@ def test_an_attempt_ends_at_its_duration_or_the_window_s_end():
     s = datetime(2026, 12, 10, 6, 0, tzinfo=timezone.utc)
     assert domain.deadline(s, 90, s + timedelta(hours=2)) == s + timedelta(minutes=90)
     assert domain.deadline(s + timedelta(minutes=60), 90, s + timedelta(hours=2)) == s + timedelta(hours=2)
+
+
+def test_overlapping_plan_items_never_fail_a_student_at_start():
+    # Checkpoint D (T-5): {Asan: 3} and {topic Om: 3} share questions; the old draw sampled the first item at random and
+    # left the second short for about a quarter of the seeds (ValueError -> 500 at start)
+    pool = [{"id": i, "qtype": "numeric", "options": "[]", "difficulty": "Asan" if i < 4 else "Orta", "topic": "Om" if i in (1, 2, 3, 6, 7) else "Kirxhof"}
+            for i in range(8)]
+    plan = [{"difficulty": "Asan", "topic": None, "count": 3}, {"difficulty": None, "topic": "Om", "count": 3}]
+    assert domain.plan_problem(pool, plan) is None
+    forms = set()
+    for s in range(200):
+        f = domain.build_form(pool, plan, f"seed-{s}")
+        ids = [x["qid"] for x in f]
+        assert len(ids) == len(set(ids)) == 6
+        assert sum(1 for i in ids if i < 4) >= 3 and sum(1 for i in ids if i in (1, 2, 3, 6, 7)) >= 3
+        forms.add(tuple(sorted(ids)))
+    assert domain.build_form(pool, plan, "seed-7") == domain.build_form(pool, plan, "seed-7")
+    # one more Om question than the pool can give while Asan takes its three: refused at creation, not at start
+    assert domain.plan_problem(pool, [{"difficulty": "Asan", "topic": None, "count": 4}, {"difficulty": None, "topic": "Om", "count": 3}]) is not None

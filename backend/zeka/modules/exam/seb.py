@@ -123,7 +123,7 @@ def header_ok(base: str, raw_target: str, received: str, key: str, nonce: str) -
     must carry the session's one-time value."""
     if not received or not nonce or parse_qs(urlsplit(raw_target).query).get("n") != [nonce]:
         return False
-    return hmac.compare_digest(request_hash(base.rstrip("/") + raw_target, key), received.strip().lower())
+    return hmac.compare_digest(request_hash(base.rstrip("/") + raw_target, key).encode(), received.strip().lower().encode())   # bytes: no TypeError
 
 
 def page_ok(base: str, page_url: str, received: str, key: str, nonce: str) -> bool:
@@ -134,7 +134,7 @@ def page_ok(base: str, page_url: str, received: str, key: str, nonce: str) -> bo
     u, b = urlsplit(page_url), urlsplit(base)
     if (u.scheme, u.netloc) != (b.scheme, b.netloc) or parse_qs(u.query).get("n") != [nonce]:
         return False
-    return hmac.compare_digest(request_hash(page_url, key), received.strip().lower())
+    return hmac.compare_digest(request_hash(page_url, key).encode(), received.strip().lower().encode())
 
 
 def launch_link(base: str, exam_id: int, token: str) -> str:

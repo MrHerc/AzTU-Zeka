@@ -74,11 +74,16 @@ def _claim(c: sqlite3.Connection, job: Job, holder: str, t: datetime) -> int | N
     c.execute("BEGIN IMMEDIATE")
     try:
         last_ok = c.execute("SELECT MAX(started_at) FROM job_runs WHERE name=? AND status='ok'", (job.name,)).fetchone()[0]
-        busy = c.execute("SELECT 1 FROM job_runs WHERE name=? AND status='running' AND started_at>?",
-                         (job.name, _iso(t - STALE_RUN))).fetchone()
+        # Checkpoint D (CR-8, SF-20): only a run of another holder that still holds the lease is in progress; a row left
+        # 'running' by a runner that died (its lease is gone) or by this one (a failed bookkeeping write) blocks nothing
+        busy = c.execute("SELECT 1 FROM job_runs r JOIN job_lease l ON l.name=? AND l.holder=r.holder AND l.expires_at>? "
+                         "WHERE r.name=? AND r.status='running' AND r.started_at>? AND r.holder<>?",
+                         (LEASE, _iso(t), job.name, _iso(t - STALE_RUN), holder)).fetchone()
         if busy or (last_ok and datetime.fromisoformat(last_ok) + job.interval > t):
             c.rollback()
             return None
+        c.execute("UPDATE job_runs SET status='error', detail='the runner stopped during this run' WHERE name=? AND status='running'",
+                  (job.name,))
         rid = c.execute("INSERT INTO job_runs(name, started_at, status, holder) VALUES(?,?,'running',?)",
                         (job.name, _iso(t), holder)).lastrowid
         c.commit()
@@ -140,6 +145,10 @@ def loop(connect: Callable[[], sqlite3.Connection], holder: str, every: float = 
                             log(f"job {name} failed; see job_runs")
             except Exception as ex:                   # noqa: BLE001  the runner outlives a bad cycle (a locked database, a full disk)
                 log(f"job runner cycle failed: {type(ex).__name__}: {ex}")
+                try:
+                    c.rollback()                      # Checkpoint D (PY-2): a half-open transaction would refuse every next cycle
+                except sqlite3.Error:
+                    pass
             for _ in range(int(every)):
                 if stop():
                     break

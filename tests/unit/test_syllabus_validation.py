@@ -82,3 +82,20 @@ def test_the_first_draft_follows_the_scheme_and_forma3_and_validates_once_outcom
     assert d["workload"] == {"lecture": 30.0, "seminar": 15.0, "lab": 0.0, "independent": 105.0}
     assert d["literature"] == [{"title": "Mühazirə 1", "kind": "extra"}] and d["rules"]["attendance_limit"] == 25.0
     assert domain.validate(d, RULES)[1] is None
+
+
+def test_the_description_keeps_its_paragraphs_and_a_too_long_one_is_refused():
+    # Checkpoint D (PY-5): a 4 001-character description was saved empty with 200, and line breaks were lost
+    clean, problem = domain.validate(changed(["description"], "Birinci  abzas.\n\n\n\nİkinci   abzas.\nDavamı."), RULES)
+    assert problem is None and clean["description"] == "Birinci abzas.\n\nİkinci abzas.\nDavamı."
+    assert domain.validate(changed(["description"], "x" * 4001), RULES)[1] is not None
+    assert domain.validate(changed(["description"], ["x"]), RULES)[1] is not None
+    assert domain.validate(changed(["description"], "x" * 4000), RULES)[1] is None
+
+
+def test_the_diff_orders_plan_weeks_as_numbers_and_tutor_modes_are_constants():
+    a = changed(["plan"], [{"week": w, "topic": f"Mövzu {w}", "outcomes": ["N1"], "activity": ""} for w in (2, 10)])
+    b = changed(["plan"], [{"week": w, "topic": f"Yeni {w}", "outcomes": ["N1"], "activity": ""} for w in (2, 10)])
+    assert [x["key"] for x in domain.diff(domain.validate(a, RULES)[0], domain.validate(b, RULES)[0]) if x["section"] == "plan"] == ["2", "10"]
+    modes, locked = domain.tutor_modes("forbidden")
+    assert modes == ("socratic",) and locked == 1 and isinstance(modes, tuple)

@@ -59,6 +59,12 @@ def exam(app_db, world, answers: dict, kind="main"):
     return eid
 
 
+def t_get(client, path):
+    r = client.get(path)
+    assert r.status == 200, r.text
+    return r.json
+
+
 def cell(world, name):
     rows = q("SELECT * FROM grades WHERE user_id=? AND course_id=? AND exam_id IS NOT NULL", (world["ids"][name], world["course"]))
     return rows[0] if rows else None
@@ -76,7 +82,8 @@ def test_released_scores_reach_the_journal_and_the_release_is_audited(app_db, wo
     a, b = cell(world, "rl.a"), cell(world, "rl.b")
     assert (a["score"], a["status"], a["exam_id"], a["attempt_no"], a["source"]) == (50.0, "published", eid, 1, "exam")
     assert (b["score"], b["exam_id"]) == (0.0, eid)
-    rows = {x["full_name"]: x for x in r.json["rows"]}
+    assert r.json["released"] == 3 and r.json["skipped"] == []
+    rows = {x["full_name"]: x for x in t_get(t, f"/api/exams/{eid}/results")["rows"]}
     assert rows["Açıqlama rl.a"]["points"] == 50.0 and rows["Açıqlama rl.b"]["status"] in ("exam_min", "pass_mark")
     assert q("SELECT 1 FROM audit WHERE action='exam_released' AND detail LIKE ?", (f"#{eid}%",))
     assert q("SELECT 1 FROM notifications WHERE user_id=? AND kind='exam'", (world["ids"]["rl.a"],))

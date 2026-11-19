@@ -26,12 +26,13 @@ HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$", re.ASCII)
 
 
 def to_utc(day: date, hhmm: str, zone: tzinfo | None) -> datetime:
-    """A local wall time of the university as an aware UTC time (no zone database: taken as UTC)."""
-    local = datetime.combine(day, time.fromisoformat(hhmm)).replace(tzinfo=zone or timezone.utc)
-    return local.astimezone(timezone.utc)
+    """A local wall time of the university as an aware UTC time. Without a zone database (a Windows demo without
+    tzdata; prod refuses to start) the wall time is the computer's own, as clock.local() takes it."""
+    wall = datetime.combine(day, time.fromisoformat(hhmm))
+    return (wall.replace(tzinfo=zone) if zone else wall.astimezone()).astimezone(timezone.utc)
 
 
-def exam_input(body, zone: tzinfo | None, pool_size: int) -> tuple[dict, dict | None]:
+def exam_input(body, zone: tzinfo | None) -> tuple[dict, dict | None]:
     """title, kind, day (YYYY-MM-DD), start and end (HH:MM local), duration_min, plan, protection, allowed_cidrs."""
     title = " ".join(str(body.get("title") or "").split())
     if not 3 <= len(title) <= 200:
@@ -85,14 +86,57 @@ def _fits(q: dict, item: dict) -> bool:
     return (not item["difficulty"] or q.get("difficulty") == item["difficulty"]) and (not item["topic"] or q.get("topic") == item["topic"])
 
 
+def _assign(pool: list[dict], plan: list[dict], rng: random.Random) -> list[list[dict]] | None:
+    """Questions for every item of the plan, each question used once, or None when no such choice exists. The items
+    may overlap (a difficulty and a topic): an augmenting-path matching finds a choice whenever one exists, so a plan
+    accepted at creation never fails a student at start (Checkpoint D, T-5). The candidates are tried in the seed's
+    order, so each student gets their own questions and the same seed gives the same ones."""
+    order = sorted(pool, key=lambda q: q["id"])
+    rng.shuffle(order)
+    cand = [[q for q in order if _fits(q, item)] for item in plan]
+    slots = [i for i, item in enumerate(plan) for _ in range(item["count"])]
+    held: dict[int, int] = {}                 # question id -> slot
+    slot_q: dict[int, dict] = {}              # slot -> question
+    for s in range(len(slots)):
+        came: dict[int, tuple[int, dict]] = {}   # question id -> (the slot that reached it, the question)
+        frontier, seen, found = [s], {s}, None
+        while frontier and found is None:
+            nxt = []
+            for sl in frontier:
+                for q in cand[slots[sl]]:
+                    if q["id"] in came:
+                        continue
+                    came[q["id"]] = (sl, q)
+                    if q["id"] not in held:
+                        found = q
+                        break
+                    if held[q["id"]] not in seen:
+                        seen.add(held[q["id"]])
+                        nxt.append(held[q["id"]])
+                if found is not None:
+                    break
+            frontier = nxt
+        if found is None:
+            return None
+        step: dict | None = found
+        while step is not None:              # walk the path back: each slot takes the question it reached
+            sl, _ = came[step["id"]]
+            before = slot_q.get(sl)
+            slot_q[sl], held[step["id"]] = step, sl
+            step = before
+    return [[slot_q[s] for s in range(len(slots)) if slots[s] == i] for i in range(len(plan))]
+
+
 def plan_problem(pool: list[dict], plan: list[dict]) -> dict | None:
-    """Whether the pool holds enough exam questions for every item of the plan (each question used once)."""
-    used: set[int] = set()
+    """Whether the pool holds enough exam questions for every item of the plan, each question used once."""
     for item in plan:
-        free = [q["id"] for q in pool if q["id"] not in used and _fits(q, item)]
-        if len(free) < item["count"]:
-            return E("Hovuzda bu plan üçün kifayət qədər imtahan sualı yoxdur: lazımdır {need}, var {have}", need=item["count"], have=len(free))
-        used.update(free[:item["count"]])
+        have = sum(1 for q in pool if _fits(q, item))
+        if have < item["count"]:
+            return E("Hovuzda bu plan üçün kifayət qədər imtahan sualı yoxdur: lazımdır {need}, var {have}", need=item["count"], have=have)
+    if _assign(pool, plan, random.Random(0)) is None:
+        need = sum(item["count"] for item in plan)
+        have = len({q["id"] for q in pool if any(_fits(q, item) for item in plan)})
+        return E("Hovuzda bu plan üçün kifayət qədər imtahan sualı yoxdur: lazımdır {need}, var {have}", need=need, have=have)
     return None
 
 
@@ -104,13 +148,10 @@ def build_form(pool: list[dict], plan: list[dict], seed_hex: str) -> list[dict]:
     """[{qid, order}] for one student: the plan's questions in a shuffled order, a multiple-choice question's options
     shuffled too (``order[i]`` is the original index of the option shown i-th). The same seed gives the same form."""
     rng = random.Random(seed_hex)
-    chosen: list[dict] = []
-    used: set[int] = set()
-    for item in plan:
-        free = sorted((q for q in pool if q["id"] not in used and _fits(q, item)), key=lambda q: q["id"])
-        picked = rng.sample(free, item["count"])
-        used.update(q["id"] for q in picked)
-        chosen += picked
+    picked = _assign(pool, plan, rng)
+    if picked is None:
+        raise ValueError("Sual bazası artıq imtahan planını ödəmir")
+    chosen = [q for group in picked for q in group]
     rng.shuffle(chosen)
     out = []
     for q in chosen:
@@ -147,6 +188,7 @@ ACTIONS = {"extend": True, "pause": False, "resume": False, "end": False, "reope
 # What the exam page reports by itself (the board counts them); everything else a client sends is refused.
 SIGNALS = ("blur", "fullscreen_exit", "reconnect")
 SIGNAL_CAP = 300                                  # per student and exam: a looping page cannot flood the log
+REFUSAL_CAP = 10                                  # refusal events per student, exam and kind (Checkpoint D, TM-11): the 403 stays
 
 
 def ip_allowed(cidrs: list[str], ip: str) -> bool:
@@ -238,6 +280,11 @@ def scale(raw: float, raw_max: float, component_max: float) -> float:
         return 0.0
     points = Decimal(str(raw)) * Decimal(str(component_max)) / Decimal(str(raw_max))
     return float(points.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def points(value: float) -> float:
+    """A score entered by hand, by the same rule as ``scale``: half up to one decimal."""
+    return float(Decimal(str(value)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def result_status(roster: str | None, attempt: str | None, outcome: dict | None) -> str:
