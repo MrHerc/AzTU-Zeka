@@ -38,13 +38,13 @@ Abbreviations in the tables:
 | Confirmed (including confirmed with a lower severity) | 88 + 3 = **91** |
 | Partial (mechanism real, claim overstated or part refuted) | **24** |
 | Refuted | **3** (PY-4, PY-10, PY-13) |
-| Fixed in `1a6ac58` | **85** ids, 3 of them only in part (AR-4, AR-9, CR-9) |
+| Fixed in `1a6ac58` and `28f65c6` | **87** ids (AR-4, CR-9 and SF-7's backoff completed in `28f65c6`); AR-9 only in part |
 | Fixed without a dedicated regression test | **25** of those 85 |
 | Open: an owner decision | **7** ids in 6 topics (SF-14, TM-8, SEC-3, TM-17, TM-13, TM-14, AR-8), plus retake eligibility (from TM-6) |
 | Open: deferred | **3** (AR-7, AR-10, AR-11), plus the polling part of AR-9 |
 | Open: test-only gaps | **14** (T-1, T-4, T-8–T-11, T-15, T-16, T-19, T-20, T-22, T-23, T-27, T-28) |
-| No change: informational, nit or by design | **6** (SEC-9, PY-8, AR-12, AR-14 (the load rerun is pending), AR-17, SF-7's backoff) |
-| Confirmed and still open | **20**: 4 owner decisions, 2 deferred, 12 test gaps, 2 info/nit; plus AR-4 and AR-9, which are only partly fixed |
+| No change: informational, nit or by design | **4** (SEC-9, PY-8, AR-12, AR-17); AR-14 is answered by the load rerun (below) |
+| Confirmed and still open | **18**: 4 owner decisions, 2 deferred, 12 test gaps; plus AR-9, which is only partly fixed |
 
 ## A. Attempt state, races, the write lock
 
@@ -58,7 +58,7 @@ unconditionally, so a request that read during the write window of `close()` cou
 | AR-1 | Graded goes back to submitted; release skips the student and loses the score | Confirmed, High | Same lock; `autosubmit` locks before `overdue` | `cd::test_cr1_…`; `gaps::test_t3_…` |
 | AR-2 | `release()` is N+1 under the lock; 213 ms at 300 students over HTTP | Confirmed, Medium | `journal/service.py` `put_exam_scores` (batch, one `refresh_finals`); release returns `{ok, released, skipped}` | `cd::test_ar2_close_and_release_of_300_students_keep_the_write_lock_short` |
 | AR-3 | `close()` runs about 11 statements per attempt under the lock; 264 ms at 1 000 | Confirmed, Medium | Forms, answers and questions are read once before the first write; grading is done in memory | `cd::test_ar2_…` |
-| AR-4 | `results()` is N+1; `change_score` builds results under the lock | Confirmed, Low | **In part:** `change_score` returns `{ok, score}`. `results()` still calls `student_grades` per student (open, Low) | none |
+| AR-4 | `results()` is N+1; `change_score` builds results under the lock | Confirmed, Low | `change_score` returns `{ok, score}`; `results()` and `refresh_finals` use `journal.published_results` (a fixed number of queries per course, `28f65c6`) | equivalence test owed (see below) |
 | TM-10 | An answer read before a submit, end or close is written after it (false `answers_changed`) | Confirmed, Medium | Lock-first in `answer` and `act` | `cd::test_cr1_…` (submit path); no separate answer/act test |
 | CR-2 | Close and release hold the lock "for seconds" | Partial, Medium | As AR-2 and AR-3 | `cd::test_ar2_…` |
 | CR-10 | Two concurrent statement closes give 500 instead of 409 | Confirmed, Low | `close_statement` locks first; the second waits, then gets 409 | no test |
@@ -141,8 +141,8 @@ The triggers stop mistakes, not someone who holds the database file. The e-maile
 | AR-13 | `job_runs` and `outbox` are never purged | Confirmed, Low | `retention_purge` drops finished runs and mail older than 90 days | no test |
 | PY-14 | A bad `ZEKA_JOBS_DELAY` gives a bare traceback; a failing runner restarts every second | Partial, Low | Clear exit message; restart backoff up to 60 s | no test |
 | PY-6 | A failed `starttls`/`login` leaves a socket | Partial, nit | `connect` closes on failure | no test |
-| CR-9 | `question`, `answer` and `plan` are e-mailed and cannot be switched off | Partial, Low | **In part:** the kinds are in `KINDS` with labels and can now be switched off. `plan` is still on by default; the proposed `OFF_BY_DEFAULT` entry was not made (open) | no test |
-| SF-7 | A failing job has no backoff, and `job_runs` grows | Partial, Low | Growth is handled by AR-13. **Per-job backoff: open** | — |
+| CR-9 | `question`, `answer` and `plan` are e-mailed and cannot be switched off | Partial, Low | The kinds are in `KINDS` with labels and can be switched off; `plan` is off by default like `radar` (`28f65c6`) | `tests/unit/test_comms_domain.py` |
+| SF-7 | A failing job has no backoff, and `job_runs` grows | Partial, Low | Growth is handled by AR-13. A failing job waits 1, 2, 4 … minutes, at most its interval and 30 min (`core/jobs.py`, `28f65c6`) | `test_jobs.py::test_a_failing_job_waits_longer_after_each_failure` |
 | AR-7 | Radar snapshot and retention purge cost | Partial, Low | **Deferred** (see below) | — |
 | AR-17 | `notify_email` loops over 10 000 recipients and queues none | Confirmed, nit | None (optional) | — |
 | PY-4 | 999-variable SQLite limit | Mostly refuted | — | — |
@@ -183,7 +183,7 @@ The NEW-G1 server rule has no dedicated test either.
 | AR-8 | `analysis()` similarity is O(n²) in the request | Partial, Low | **Open: owner decision** (threshold) | — |
 | AR-11 | The syllabus queue is N+1 with no pagination | Confirmed, Low | **Deferred** | — |
 | AR-12 | Legacy imports the new modules in a cycle (inside functions) | Partial, nit | None | — |
-| AR-14 | No scaling check covers the new write paths | Partial, Low | `cd::test_ar2_…` covers close and release at 300. The load rerun after the fixes is still to do | — |
+| AR-14 | No scaling check covers the new write paths | Partial, Low | `cd::test_ar2_…` covers close and release at 300. The load rerun after the fixes: 3 000 / 3 000, 0 lost, p95 11 ms, board p95 28 ms | `tools/loadtest.py --scenario exam` |
 | PY-13 | `build_form` depends on `random` staying stable | Refuted (the form is stored once) | — | — |
 
 ## T. Test review
@@ -227,14 +227,11 @@ T-24, T-26 and T-29 to T-32 (all Low) were not re-verified.
 
 - **Fixed without a dedicated regression test:**
   - A: CR-10, AR-5
-  - F: SEC-2/SF-6, PY-3, CR-6, AR-6, SF-5, SF-8, AR-13, PY-14, PY-6, CR-9
+  - F: SEC-2/SF-6, PY-3, CR-6, AR-6, SF-5, SF-8, AR-13, PY-14, PY-6
   - G: all ten frontend fixes (including the NEW-G1 server rule) and the AR-9 lookup
   - H: CR-12
   - This falls short of the method's rule. These tests are owed before Checkpoint E.
-- **Partly fixed:**
-  - AR-4: `results()` is still N+1.
-  - CR-9: `plan` is still e-mailed by default.
-  - SF-7: no per-job backoff.
+- **Partly fixed:** AR-9 (the polling volume is deferred). AR-4, CR-9 and SF-7 were completed in `28f65c6`.
 - **Test gaps** from area T, listed above.
 
 ## Verification at this point
@@ -258,8 +255,9 @@ T-24, T-26 and T-29 to T-32 (all Low) were not re-verified.
   reference file is missing.
 - **E-mail:** no real SMTP relay. The 5xx classification, the time budget and the three-day retry were exercised
   against fakes and a closed port only.
-- **Load:** the 300-student exam load test was not rerun after the lock-first changes. Lock contention under real
-  concurrency, across processes, is measured only by the in-suite 300-student close/release test.
+- **Load:** the 300-student exam load test was rerun after the fixes on one worker: 3 000 / 3 000 answers, 0 lost,
+  p95 11 ms, board p95 28 ms (`docs/perf/baseline.md`). Lock contention across several worker processes is measured
+  only by the in-suite close/release test and the two-process chain test.
 - **Untested fixes:** 25 fixes have no dedicated regression test (above), including all of the frontend fixes.
 - **The races:** they were reproduced with threads on separate connections, not with separate worker processes.
 - **GPL vectors:** the Moodle `quizaccess_seb` vectors are GPL. They stay in the scratchpad and are not committed, so
