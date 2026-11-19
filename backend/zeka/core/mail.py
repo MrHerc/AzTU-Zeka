@@ -69,7 +69,10 @@ def send(s: smtplib.SMTP, cfg: dict, to: str, subject: str, body: str, lang: str
     m["Message-ID"] = make_msgid(domain=cfg["sender"].rsplit("@", 1)[-1])
     m.set_content(body)
     m["Content-Language"] = lang                     # after set_content, which clears the Content-* headers
-    s.send_message(m)
+    try:
+        s.send_message(m)
+    except smtplib.SMTPNotSupportedError as ex:       # a non-ASCII address and a relay without SMTPUTF8: this message alone (PY-3)
+        raise ValueError(f"the relay does not accept this address: {ex}") from ex
 
 
 def permanent(ex: Exception) -> bool:

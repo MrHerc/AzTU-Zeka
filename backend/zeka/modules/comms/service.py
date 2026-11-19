@@ -123,7 +123,10 @@ def send_due(c, now: datetime | None = None) -> str:
             n = m["attempts"] + 1
             try:
                 if conn is None:
-                    conn = mail.connect(cfg)
+                    try:
+                        conn = mail.connect(cfg)
+                    except ValueError as ex:             # a setting the relay cannot take (a non-ASCII password): all wait (PY-3)
+                        raise smtplib.SMTPException(f"{type(ex).__name__}: {ex}") from ex
                 mail.send(conn, cfg, u["email"] if u else m["address"], subject, text, m["lang"])
             except ValueError as ex:                    # this message cannot be written (a header, an address): it alone fails
                 fail(m, n, f"{type(ex).__name__}: {ex}")

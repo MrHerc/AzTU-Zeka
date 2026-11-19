@@ -230,12 +230,16 @@ T-24, T-26 and T-29 to T-32 (all Low) were not re-verified.
 
 ## Other open items
 
-- **Fixed without a dedicated regression test:**
-  - A: CR-10, AR-5
-  - F: SEC-2/SF-6, PY-3, CR-6, AR-6, SF-5, SF-8, AR-13, PY-14, PY-6
-  - G: the NEW-G1 server rule and the AR-9 lookup (the ten frontend fixes have browser tests now)
-  - H: CR-12
-  - This falls short of the method's rule. These tests are owed before Checkpoint E.
+- **Regression tests owed after the fixes: written.** Each id has a test that fails on `823bc4d` and passes now,
+  except where noted:
+  - Server (`tests/integration/test_checkpoint_d_regressions.py`, `tests/unit/test_checkpoint_d_units.py`): CR-10,
+    AR-5, NEW-G1 (server rule), SEC-2, SF-6, PY-3, CR-6 (sender and greeting; the login case already held before),
+    AR-6, PY-6, SF-5, PY-14 (the clear message; the runner's restart backoff has no test), SF-8, AR-13, CR-12 (skipped
+    where `time.tzset` is missing), AR-4 (an equivalence test over 120 students: new code, so it cannot fail before).
+  - Browser (`tests/e2e/exam_checkpoint_d.js`): the ten frontend fixes, and BUG-flush (above).
+  - Writing them found two more defects in PY-3's area, both fixed and tested: a non-ASCII SMTP password failed every
+    message for good (the login's `UnicodeEncodeError` was taken for a bad message; now every message waits), and a
+    non-ASCII address on a relay without SMTPUTF8 held back the rest of the run (now that message alone fails).
 - **Partly fixed:** AR-9 (the polling volume is deferred). AR-4, CR-9 and SF-7 were completed in `28f65c6`.
 - **Test gaps** from area T, listed above.
 
@@ -254,7 +258,8 @@ SEC-3, TM-17): the dean's office of any faculty still sees an exam's SEB block i
 
 ## Verification at this point
 
-- Full suite: **1374 passed, 2 skipped**, about 3.5 min.
+- Full suite: **1374 passed, 2 skipped**, about 3.5 min, at `1a6ac58`; after the security fix, the follow-up fixes
+  and the owed tests: **1409 passed, 2 skipped**, about 4 min.
   - The two skips are the SEB owner reference file (`tests/fixtures/reference.seb` and `.key`, not supplied yet) and
     `SEB_TEST_VECTORS`.
   - With the Moodle vectors from the scratchpad: 7 passed.
@@ -276,7 +281,7 @@ SEC-3, TM-17): the dean's office of any faculty still sees an exam's SEB block i
 - **Load:** the 300-student exam load test was rerun after the fixes on one worker: 3 000 / 3 000 answers, 0 lost,
   p95 11 ms, board p95 28 ms (`docs/perf/baseline.md`). Lock contention across several worker processes is measured
   only by the in-suite close/release test and the two-process chain test.
-- **Untested fixes:** the server-side ones listed above (the frontend fixes have browser tests now).
+- **Untested:** the job runner's restart backoff under `--workers` (PY-14), and the test-only gaps of area T.
 - **The races:** they were reproduced with threads on separate connections, not with separate worker processes.
 - **GPL vectors:** the Moodle `quizaccess_seb` vectors are GPL. They stay in the scratchpad and are not committed, so
   CI cannot run them.
