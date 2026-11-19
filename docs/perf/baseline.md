@@ -78,6 +78,10 @@ cavab PUT `BEGIN IMMEDIATE` ilə yazılır və tam `fsync` ilə commit olunur (`
 | Hamısı birdən, fasiləsiz (`--burst`) | 4 | 254 ms | 621 ms | 754 ms | 0 / 3 000 | 0 |
 | Bir tələbə | 1 | 3 ms | 6 ms | 6 ms | 0 | 0 |
 
+T30-dan sonra (hash zənciri hər hadisədə, 3 nəzarətçi lövhəni 5 saniyədən bir sorğulayır; `--proctors 3`, standart):
+yayılmış 300 saniyə, 1 işçi: p50 4 ms, p95 14 ms, p99 39 ms, 3 000 / 3 000 cavab, itki 0, 5xx 0; lövhə 201 sorğu,
+p95 27 ms, xəta 0.
+
 Meyar (p95 < 500 ms, itən cavab 0) yayılmış rejimdə ödənir. `--burst` ən pis haldır: 300 müştəri fasiləsiz sorğu
 göndərir və gecikmə növbədir (Little qanunu: 300 / 435 sorğu/s ≈ 0,7 s). Real imtahanda cavablar dəqiqələrə yayılır.
 

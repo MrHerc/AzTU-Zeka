@@ -119,7 +119,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T30 Hash zəncirli protokol və nəticənin jurnala keçməsi
 
 ### Checkpoint D · saat 52
-- [ ] 300 simulyasiya olunmuş tələbə ilə sınaq imtahanı: `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty` 0 itki və p95 < 500 ms verir. Əmr T27-də yazılır və T30-dan sonra yenidən işlədilir (hash zənciri və nəzarətçi sorğusu yükə əlavə olunur)
+- [x] 300 simulyasiya olunmuş tələbə ilə sınaq imtahanı: `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty` 0 itki və p95 < 500 ms verir. Əmr T27-də yazılır və T30-dan sonra yenidən işlədilir (hash zənciri və nəzarətçi sorğusu yükə əlavə olunur; 2026-11-19: itki 0, p95 14 ms, lövhə p95 27 ms)
 - [ ] Windows kompüterində SEB ilə əl sınağı (sahib)
 
 ### Faza 5 — Köməkçi, sual-cavab, icma, inteqrasiya · saat 52–62

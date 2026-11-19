@@ -188,7 +188,7 @@ def client(args) -> list[tuple[float, int]]:
     return out
 
 
-def exam_setup(data: Path, users: int) -> tuple[int, list[str]]:
+def exam_setup(data: Path, users: int) -> tuple[int, list[str], str]:
     """An open exam of a new course with ``users`` enrolled students, each with a session written straight into the
     throw-away database (the demo login allows 30 per client per minute)."""
     import sqlite3
@@ -216,6 +216,10 @@ def exam_setup(data: Path, users: int) -> tuple[int, list[str]]:
         assert eid is not None
         local = clock.local().isoformat(timespec="seconds")
         db.executemany("INSERT INTO exam_roster(exam_id,student_id,status,added_at) VALUES(?,?,'eligible',?)", [(eid, s, local) for s in students])
+        teacher = db.execute("SELECT teacher_id FROM courses WHERE id=?", (cid,)).fetchone()[0]
+        tsid = identity.new_session_id()                          # the course's teacher watches the board (Task 29)
+        db.execute("INSERT INTO sessions(id_hash,user_id,created_at,last_seen,scope,role) VALUES(?,?,?,?,'full','teacher')",
+                   (identity.session_hash(tsid), teacher, local, local))
         cookies = []
         for s in students:
             sid = identity.new_session_id()
@@ -225,7 +229,29 @@ def exam_setup(data: Path, users: int) -> tuple[int, list[str]]:
         db.commit()
     finally:
         db.close()
-    return eid, cookies
+    return eid, cookies, f"zeka_sid={tsid}"
+
+
+def board_poll(port: int, eid: int, cookie: str, stop, out: list):
+    """A proctor's board (Task 29): one request every 5 seconds with the last event seen, until ``stop`` is set."""
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+    headers = {"Cookie": cookie, "X-Lang": "az"}
+    seq = 0
+    while not stop.is_set():
+        t = time.perf_counter()
+        try:
+            conn.request("GET", f"/api/exams/{eid}/board?after={seq}", headers=headers)
+            r = conn.getresponse()
+            raw = r.read()
+            out.append((time.perf_counter() - t, r.status))
+            if r.status == 200:
+                seq = json.loads(raw)["seq"]
+        except (OSError, http.client.HTTPException):
+            out.append((time.perf_counter() - t, 0))
+            conn.close()
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+        stop.wait(5)
+    conn.close()
 
 
 def exam_client(args) -> tuple[list[tuple[float, int]], int]:
@@ -308,6 +334,7 @@ def main(argv=None) -> int:
     ap.add_argument("--clients", type=int, default=min(4, os.cpu_count() or 1), help="load generator processes")
     ap.add_argument("--fail-on-errors", action="store_true", help="exit 1 on any 5xx or connection error")
     ap.add_argument("--burst", action="store_true", help="exam: no pauses, every student at once (the worst case)")
+    ap.add_argument("--proctors", type=int, default=3, help="exam: boards polled every 5 s during the sitting (Task 29)")
     args = ap.parse_args(argv)
     with tempfile.TemporaryDirectory(prefix="zeka-load-") as tmp:
         data = Path(tmp)
@@ -318,7 +345,7 @@ def main(argv=None) -> int:
         if builder.exitcode != 0:
             raise SystemExit(f"building the {args.dataset} dataset failed (exit {builder.exitcode})")
         print(f"dataset {args.dataset}: built in {time.time() - t:.1f} s", flush=True)
-        eid, cookies = exam_setup(data, args.users) if args.scenario == "exam" else (0, [])
+        eid, cookies, proctor = exam_setup(data, args.users) if args.scenario == "exam" else (0, [], "")
         port = free_port()
         t = time.time()
         proc = start_server(data, port, args.workers)
@@ -327,9 +354,20 @@ def main(argv=None) -> int:
         try:
             if args.scenario == "exam":
                 k = max(1, min(args.clients, args.users))
+                import threading
+                stop = threading.Event()
+                boards: list[list[tuple[float, int]]] = [[] for _ in range(args.proctors)]
+                watchers = [threading.Thread(target=board_poll, args=(port, eid, proctor, stop, boards[i])) for i in range(args.proctors)]
+                for w in watchers:
+                    w.start()
                 started = time.time()
-                with multiprocessing.get_context("spawn").Pool(k) as pool:
-                    parts = pool.map(exam_client, [(port, eid, cookies[i::k], args.seconds, args.burst, i) for i in range(k)])
+                try:
+                    with multiprocessing.get_context("spawn").Pool(k) as pool:
+                        parts = pool.map(exam_client, [(port, eid, cookies[i::k], args.seconds, args.burst, i) for i in range(k)])
+                finally:
+                    stop.set()
+                    for w in watchers:
+                        w.join()
                 args.seconds = max(time.time() - started, 0.001)
                 results = [r for part, _ in parts for r in part]
                 import sqlite3
@@ -339,8 +377,11 @@ def main(argv=None) -> int:
                 finally:
                     db.close()
                 client_saved = sum(n for _, n in parts)
+                polls = sorted(t for b in boards for t, _ in b)
                 extra = {"answers_saved_client": client_saved, "answers_on_server": held, "lost": client_saved - held,
-                         "expected": args.users * EXAM_QUESTIONS}
+                         "expected": args.users * EXAM_QUESTIONS, "board_polls": len(polls),
+                         "board_errors": sum(1 for b in boards for _, st in b if st != 200),
+                         "board_p95_ms": round(1000 * polls[min(len(polls) - 1, int(0.95 * len(polls)))]) if polls else None}
             else:
                 tokens, news = sessions(port, data)
                 k = max(1, min(args.clients, args.users))
