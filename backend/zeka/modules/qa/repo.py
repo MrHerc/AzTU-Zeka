@@ -142,9 +142,16 @@ def add_booking(c, h: dict, student_id: int, day: str, start: str, end: str, top
                      (h["id"], h["teacher_id"], student_id, day, start, end, topic, at)).lastrowid
 
 
-def open_bookings_with(c, student_id: int, teacher_id: int, today: str) -> int:
-    return row(c, "SELECT COUNT(*) AS n FROM office_bookings WHERE student_id=? AND teacher_id=? AND status='booked' AND day>=?",
-               (student_id, teacher_id, today))["n"]
+def lock(c):
+    """The write lock before a check and its write (the cap of upcoming bookings, Checkpoint E, TM-E9)."""
+    if not c.in_transaction:
+        c.execute("BEGIN IMMEDIATE")
+
+
+def open_bookings_with(c, student_id: int, teacher_id: int, today: str, hhmm: str) -> int:
+    """Upcoming bookings only: one that ended earlier today no longer counts (CR-E4)."""
+    return row(c, "SELECT COUNT(*) AS n FROM office_bookings WHERE student_id=? AND teacher_id=? AND status='booked' "
+                  "AND (day>? OR (day=? AND end>?))", (student_id, teacher_id, today, today, hhmm))["n"]
 
 
 def booking(c, bid: int):
@@ -155,8 +162,9 @@ def cancel_booking(c, bid: int, by: int, at: str):
     c.execute("UPDATE office_bookings SET status='cancelled', cancelled_at=?, cancelled_by=? WHERE id=?", (at, by, bid))
 
 
-def future_bookings_of_hours(c, hid: int, today: str) -> list[dict]:
-    return rows(c, "SELECT * FROM office_bookings WHERE hours_id=? AND status='booked' AND day>=?", (hid, today))
+def future_bookings_of_hours(c, hid: int, today: str, hhmm: str) -> list[dict]:
+    return rows(c, "SELECT * FROM office_bookings WHERE hours_id=? AND status='booked' AND (day>? OR (day=? AND end>?))",
+                (hid, today, today, hhmm))
 
 
 def bookings_for(c, uid: int, first: str, last: str) -> list[dict]:

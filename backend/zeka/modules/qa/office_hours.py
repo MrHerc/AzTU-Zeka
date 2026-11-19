@@ -25,6 +25,8 @@ def add_hours(c, user, body) -> tuple[str, object]:
     v, problem = domain.hours_input(body)
     if problem:
         return "invalid", problem
+    if domain.overlaps(v, repo.hours_of(c, user["id"])):
+        return "invalid", T3("Bu aralıq mövcud qəbul saatınızla üst-üstə düşür")
     hid = repo.add_hours(c, user["id"], v, iso(now()))
     audit(c, user["id"], "office_hours_add", "office_hours", f"#{hid} {v['weekday']} {v['start']}-{v['end']}")
     return "ok", repo.hours_of(c, user["id"])
@@ -35,7 +37,7 @@ def drop_hours(c, user, hid: int) -> tuple[str, object]:
     h = repo.hours(c, hid)
     if not h or h["teacher_id"] != user["id"] or not h["active"]:
         return "missing", None
-    for b in repo.future_bookings_of_hours(c, hid, _today().isoformat()):
+    for b in repo.future_bookings_of_hours(c, hid, _today().isoformat(), now().strftime("%H:%M")):   # a past meeting stays as it was
         _cancel(c, user, b)
     repo.drop_hours(c, hid)
     audit(c, user["id"], "office_hours_drop", "office_hours", f"#{hid}")
@@ -65,10 +67,11 @@ def book(c, user, body) -> tuple[str, object]:
         return "missing", None
     day, start = body.text("day", 10), body.text("start", 5)
     topic = " ".join(body.text("topic", 400).split())[:300] or None
+    repo.lock(c)                                         # the free-slot check and the cap are read under the write lock (TM-E9)
     slot = next((s for s in free(c, user, h["teacher_id"]) or [] if s["hours_id"] == h["id"] and s["day"] == day and s["start"] == start), None)
     if not slot:
         return "taken", T3("Bu vaxt artıq tutulub və ya keçib")
-    if repo.open_bookings_with(c, user["id"], h["teacher_id"], _today().isoformat()) >= domain.MAX_OPEN_PER_TEACHER:
+    if repo.open_bookings_with(c, user["id"], h["teacher_id"], _today().isoformat(), now().strftime("%H:%M")) >= domain.MAX_OPEN_PER_TEACHER:
         return "invalid", T3("Bu müəllimlə ən çox iki gələcək görüşünüz ola bilər")
     try:
         bid = repo.add_booking(c, h, user["id"], day, start, slot["end"], topic, iso(now()))
@@ -106,10 +109,12 @@ def calendar_events(c, uid: int, first: str, last: str) -> list[dict]:
     """The person's bookings in the shape of the iCal feed's lessons (a distinct UID per booking)."""
     out = []
     for b in repo.bookings_for(c, uid, first, last):
-        other = b["student"] if b["teacher_id"] == uid else b["teacher"]
+        mine = b["student_id"] == uid
+        # an external calendar service reads the feed: the teacher's events name no student and carry no topic (TM-E10)
         out.append({"id": b["id"], "uid": f"office-{b['id']}", "day": b["day"], "start": b["start"], "end": b["end"],
-                    "status": "cancelled" if b["status"] == "cancelled" else "scheduled", "course": S("Qəbul saatı: {name}", "az", name=other), "kind": "",
-                    "room": b["place"] or b["online_url"] or "", "note": b["topic"] or ""})
+                    "status": "cancelled" if b["status"] == "cancelled" else "scheduled",
+                    "course": S("Qəbul saatı: {name}", "az", name=b["teacher"]) if mine else S("Qəbul saatı", "az"), "kind": "",
+                    "room": b["place"] or b["online_url"] or "", "note": (b["topic"] or "") if mine else ""})
     return out
 
 

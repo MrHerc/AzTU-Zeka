@@ -1,6 +1,8 @@
 """The rules of a course forum (tasks/todo.md, Task 33). No I/O."""
 from __future__ import annotations
 
+import re
+
 from ...core.i18n import E, S_
 
 ANONYMOUS = S_("Anonim tələbə")
@@ -40,14 +42,19 @@ BOOK_AHEAD_DAYS = 14
 MAX_OPEN_PER_TEACHER = 2          # future bookings a student holds with one teacher: nobody takes a whole week
 
 
+HHMM = re.compile(r"([01][0-9]|2[0-3]):[0-5][0-9]")        # ASCII digits only: "+9:00" and other digits are refused
+
+
 def _minutes(hhmm: str) -> int | None:
-    try:
-        h, m = hhmm.split(":")
-        if len(h) == 2 and len(m) == 2 and 0 <= int(h) < 24 and 0 <= int(m) < 60:
-            return int(h) * 60 + int(m)
-    except (ValueError, AttributeError):
-        pass
-    return None
+    if not isinstance(hhmm, str) or not HHMM.fullmatch(hhmm):
+        return None
+    return int(hhmm[:2]) * 60 + int(hhmm[3:])
+
+
+def overlaps(v: dict, ranges: list[dict]) -> bool:
+    """A new weekly range on the same weekday that shares a minute with an existing one (Checkpoint E, CR-E5)."""
+    a, b = _minutes(v["start"]) or 0, _minutes(v["end"]) or 0
+    return any(r["weekday"] == v["weekday"] and a < (_minutes(r["end"]) or 0) and (_minutes(r["start"]) or 0) < b for r in ranges)
 
 
 def _hhmm(minutes: int) -> str:
