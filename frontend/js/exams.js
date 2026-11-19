@@ -1,6 +1,6 @@
 // Exams of a course (Task 26): the teacher sets an exam (window in local time, duration, plan over the exam question
 // pool), opens it (the roster is drawn from the journal's admission), follows the attempts and closes it (grading).
-import { api, html, mount, on, ic, toast, modal, fmtDateTime, empty, t } from "./core.js";
+import { api, html, mount, on, ic, toast, modal, fmtDateTime, empty, t, go } from "./core.js";
 
 const KIND = () => ({ main: t("Əsas"), retake: t("Təkrar"), individual: t("Fərdi vaxt") });
 const STATUS = () => ({ draft: [t("Qaralama"), "b-gray"], open: [t("Açıq"), "b-green"], closed: [t("Bağlanıb"), "b-blue"], released: [t("Açıqlanıb"), "b-navy"] });
@@ -29,6 +29,8 @@ export async function teacherExams(tgt, c) {
         <div class="field"><label class="label" for="ex-dur">${t("Müddət, dəq.")}</label><input class="input" id="ex-dur" type="number" min="5" value="90"></div></div>
       <div class="field"><label class="label" for="ex-plan">${t("Plan: hər sətirdə “çətinlik; mövzu; say” (boş xana hər hansı deməkdir)")}</label>
         <textarea class="input" id="ex-plan" rows="3" placeholder="Asan;;10&#10;Orta;Om qanunu;5"></textarea></div>
+      <div class="field"><label class="label" for="ex-cidrs">${t("Şəbəkə siyahısı: imtahan otağının ünvan blokları, vergüllə (boş: hər yerdən)")}</label>
+        <input class="input mono" id="ex-cidrs" placeholder="10.20.30.0/24"></div>
       <div class="tiny muted">${t("Vaxt universitetin saat qurşağındadır. Hər tələbə öz variantını alır; son vaxtı server saatı müəyyən edir.")}</div></div>`,
     actions: [{ label: t("Saxla"), cls: "btn-primary", onClick: async (w) => {
       const plan = w.querySelector("#ex-plan").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
@@ -38,7 +40,8 @@ export async function teacherExams(tgt, c) {
       try {
         await api.post(`/api/courses/${c.id}/exams`, { title: w.querySelector("#ex-title").value, kind: w.querySelector("#ex-kind").value,
           day: w.querySelector("#ex-day").value, start: w.querySelector("#ex-start").value, end: w.querySelector("#ex-end").value,
-          duration_min: Number(w.querySelector("#ex-dur").value), plan });
+          duration_min: Number(w.querySelector("#ex-dur").value), plan,
+          allowed_cidrs: w.querySelector("#ex-cidrs").value.split(/[\s,]+/).filter(Boolean) });
         toast(t("Saxlanıldı"), "ok"); teacherExams(tgt, c);
       } catch (err) { toast(err.message, "err"); return false; }
     } }] }));
@@ -54,13 +57,27 @@ export async function teacherExams(tgt, c) {
     let m;
     try { m = await api.get(`/api/exams/${b.dataset.manage}/manage`); } catch (err) { toast(err.message, "err"); return; }
     const att = Object.fromEntries(m.attempts.map((a) => [a.student_id, a]));
-    modal({ title: m.exam.title, size: "lg", body: html`<div class="stack">
-      <div class="small muted">${t("Hovuzda {n} imtahan sualı", { n: m.pool })} · ${badge(STATUS, m.exam.status)}</div>
+    const w = modal({ title: m.exam.title, size: "lg", body: html`<div class="stack">
+      <div class="row wrap"><div class="small muted grow">${t("Hovuzda {n} imtahan sualı", { n: m.pool })} · ${badge(STATUS, m.exam.status)}
+        · ${m.exam.allowed_cidrs.length ? t("Şəbəkə: {list}", { list: m.exam.allowed_cidrs.join(", ") }) : t("Şəbəkə məhdudiyyəti yoxdur")}</div>
+        ${m.exam.status === "open" ? html`<button class="btn btn-sm btn-primary" id="ex-board">${ic("eye", 14)} ${t("Lövhə")}</button>` : ""}</div>
+      <div class="field"><label class="label" for="ex-proctors">${t("Nəzarətçilər: istifadəçi adları, vergüllə")}</label>
+        <div class="row"><input class="input grow mono" id="ex-proctors" value="${m.proctors.map((x) => x.username).join(", ")}">
+        <button class="btn btn-sm" id="ex-proctors-save">${t("Saxla")}</button></div></div>
       ${m.roster.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Tələbə")}</th><th>${t("Siyahı")}</th><th>${t("Cəhd")}</th><th>${t("Bal")}</th></tr></thead><tbody>
         ${m.roster.map((r) => html`<tr><td>${r.full_name} <span class="tiny muted">${r.student_no || ""}</span></td><td>${badge(ROSTER, r.status)}${r.reason ? html`<div class="tiny muted">${r.reason}</div>` : ""}</td>
           <td class="small">${att[r.student_id] ? att[r.student_id].status : "—"}${att[r.student_id] && att[r.student_id].auto ? html` <span class="badge b-amber">${t("avtomatik")}</span>` : ""}</td>
           <td>${att[r.student_id] && att[r.student_id].score != null ? `${att[r.student_id].score} / ${att[r.student_id].max_score}` : "—"}</td></tr>`)}</tbody></table></div>`
         : html`<p class="small muted" style="margin:0">${t("Siyahı imtahan açılanda jurnaldan çəkilir.")}</p>`}</div>` });
+    const box = w.el;
+    const board = box.querySelector("#ex-board");
+    if (board) board.onclick = () => { w.close(); go(`/proctor/${m.exam.id}`); };
+    box.querySelector("#ex-proctors-save").onclick = async () => {
+      try {
+        await api.put(`/api/exams/${m.exam.id}/proctors`, { usernames: box.querySelector("#ex-proctors").value.split(/[\s,]+/).filter(Boolean) });
+        toast(t("Saxlanıldı"), "ok");
+      } catch (err) { toast(err.message, "err"); }
+    };
   });
 }
 

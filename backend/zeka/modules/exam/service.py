@@ -13,6 +13,7 @@ from ...legacy.store import audit
 from . import domain, repo
 
 STAFF = ("admin", "academic_office", "office", "dept_head", "leader")
+LIVE = ("in_progress", "paused")                       # an attempt not yet submitted
 
 
 def _now() -> datetime:
@@ -78,7 +79,8 @@ def manage(c, user, eid: int) -> dict | None:
     from ...legacy.common import serves
     roster = [r for r in repo.roster(c, eid) if serves(c, user, r["student_id"])]
     shown = {r["student_id"] for r in roster}
-    return {"exam": {**_public_exam(e), "plan": json.loads(e["plan"])}, "roster": roster,
+    return {"exam": {**_public_exam(e), "plan": json.loads(e["plan"]), "allowed_cidrs": json.loads(e["allowed_cidrs"] or "[]")},
+            "proctors": repo.proctors(c, eid), "roster": roster,
             "attempts": [{k: a[k] for k in ("student_id", "full_name", "status", "started_at", "deadline_at", "submitted_at", "auto", "score", "max_score")}
                          for a in repo.attempts(c, eid) if a["student_id"] in shown], "pool": len(repo.pool(c, e["course_id"]))}
 
@@ -120,9 +122,10 @@ def exception(c, user, eid: int, sid: int, body) -> tuple[str, object]:
     return "ok", manage(c, user, eid)
 
 
-def may_enter(c, user, eid: int) -> tuple[str, object]:
+def may_enter(c, user, eid: int, ip: str = "") -> tuple[str, object]:
     """('ok', exam) | ('missing', None) | ('refused', reason) | ('closed', reason): whether a student may take an exam
-    session now (Task 27). The checks of Task 28 (Safe Exam Browser) and Task 29 (network list) join here."""
+    session now (Task 27): on the roster, from an address on the exam's network list (Task 29). Task 28 (Safe Exam
+    Browser) joins here."""
     e = repo.exam(c, eid)
     if not e or e["status"] == "draft":
         return "missing", None
@@ -133,7 +136,28 @@ def may_enter(c, user, eid: int) -> tuple[str, object]:
             else E("Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.")
     if e["status"] != "open" or _now() >= _t(e["closes_at"]):
         return "closed", E("İmtahan pəncərəsi açıq deyil")
+    if not domain.ip_allowed(json.loads(e["allowed_cidrs"] or "[]"), ip):
+        repo.add_event(c, eid, "session.refused", user["id"], user["id"], {"reason": "network", "ip": ip}, _iso(_now()))
+        return "refused", NETWORK
     return "ok", e
+
+
+NETWORK = E("Bu ünvandan imtahana daxil olmaq olmaz: imtahan otağının şəbəkəsindən daxil olun")
+
+
+def check_request(c, eid: int, user, ip: str, session_ip: str | None, session_id: int) -> dict | None:
+    """Every request of an exam session (Task 29): an address off the exam's network list is refused and logged; a
+    change of address on the list is a board event. Returns the refusal, or None. The caller commits the event."""
+    e = repo.exam(c, eid)
+    if not e:
+        return None
+    if not domain.ip_allowed(json.loads(e["allowed_cidrs"] or "[]"), ip):
+        repo.add_event(c, eid, "net.refused", user["id"], user["id"], {"ip": ip, "session_ip": session_ip}, _iso(_now()))
+        return NETWORK
+    if session_ip and ip != session_ip:
+        repo.add_event(c, eid, "net.changed", user["id"], user["id"], {"from": session_ip, "to": ip}, _iso(_now()))
+        repo.set_session_ip(c, session_id, ip)
+    return None
 
 
 def note_session(c, eid: int, user_id: int, kind: str, data: dict):
@@ -186,7 +210,8 @@ def view(c, user, eid: int) -> dict | None:
         qs = repo.questions(c, [x["qid"] for x in items])
         answers = repo.answers(c, a["id"])
         out["attempt"] = {"status": a["status"], "started_at": a["started_at"], "deadline_at": a["deadline_at"], "submitted_at": a["submitted_at"],
-                          "remaining_s": max(0, int((_t(a["deadline_at"]) - _now()).total_seconds())) if a["status"] == "in_progress" else 0,
+                          "remaining_s": domain.remaining(_t(a["deadline_at"]), _now(), _t(a["paused_at"]) if a["paused_at"] else None)
+                          if a["status"] in LIVE else 0,
                           "answers": {str(k): v for k, v in answers.items()}}
         if a["status"] == "in_progress":
             out["questions"] = [domain.public(qs[x["qid"]], x["order"]) for x in items if x["qid"] in qs]
@@ -198,6 +223,8 @@ def answer(c, user, eid: int, qid: int, body) -> tuple[str, object]:
     a = repo.attempt(c, eid, user["id"]) if e else None
     if not a:
         return "missing", None
+    if a["status"] == "paused":
+        return "closed", E("İmtahan nəzarətçi tərəfindən dayandırılıb: cavablar davam edəndə göndəriləcək")
     if a["status"] != "in_progress" or _now() > _t(a["deadline_at"]):
         return "closed", E("İmtahanın vaxtı bitib: cavab qəbul olunmur")
     if qid not in {x["qid"] for x in _form(c, e, user["id"])}:
@@ -213,9 +240,9 @@ def submit(c, user, eid: int) -> tuple[str, object]:
     a = repo.attempt(c, eid, user["id"])
     if not a:
         return "missing", None
-    if a["status"] == "in_progress":
+    if a["status"] in LIVE:
         t = _iso(_now())
-        repo.set_attempt(c, a["id"], status="submitted", submitted_at=t)
+        repo.set_attempt(c, a["id"], status="submitted", submitted_at=t, paused_at=None)
         repo.add_event(c, eid, "attempt.submitted", user["id"], user["id"], {"attempt_id": a["id"], "auto": False}, t)
     return "ok", view(c, user, eid)
 
@@ -252,8 +279,8 @@ def close(c, user, eid: int) -> tuple[str, object]:
         return "invalid", E("Yalnız açıq imtahan bağlanır")
     t = _iso(_now())
     for a in repo.attempts(c, eid):
-        if a["status"] == "in_progress":
-            repo.set_attempt(c, a["id"], status="submitted", submitted_at=t, auto=1)
+        if a["status"] in LIVE:
+            repo.set_attempt(c, a["id"], status="submitted", submitted_at=t, auto=1, paused_at=None)
             repo.add_event(c, eid, "attempt.submitted", user["id"], a["student_id"], {"attempt_id": a["id"], "auto": True}, t)
         items = json.loads(repo.form(c, eid, a["student_id"])["items"])
         qs, answers = repo.questions(c, [x["qid"] for x in items]), repo.answers(c, a["id"])
@@ -263,6 +290,138 @@ def close(c, user, eid: int) -> tuple[str, object]:
     repo.add_event(c, eid, "exam.closed", user["id"], None, {"attempts": len(repo.attempts(c, eid))}, t)
     audit(c, user["id"], "exam_closed", "exam", f"#{eid}")
     return "ok", manage(c, user, eid)
+
+
+# ---------------------------------------------------------------- the proctor panel (Task 29)
+WATCHERS = ("admin", "academic_office")               # reach every exam's board without an assignment
+
+
+def may_proctor(c, user, e: dict) -> bool:
+    """The exam's assigned proctors, the course's teachers, the academic office and the administrator."""
+    return user["role"] in WATCHERS or repo.is_proctor(c, e["id"], user["id"]) or may_manage(c, user, e["course_id"])
+
+
+def set_proctors(c, user, eid: int, body) -> tuple[str, object]:
+    """Assign the exam's proctors by username (staff accounts only); replaces the list."""
+    e = repo.exam(c, eid)
+    if not e or not (user["role"] in WATCHERS or may_manage(c, user, e["course_id"])):
+        return "missing", None
+    names = body.get("usernames")
+    if not isinstance(names, list) or len(names) > 20 or not all(isinstance(n, str) for n in names):
+        return "invalid", E("Nəzarətçilər ən çox 20 istifadəçi adıdır")
+    names = sorted({n.strip() for n in names if n.strip()})
+    found = {u["username"]: u for u in repo.staff_by_username(c, names)}
+    bad = [n for n in names if n not in found or found[n]["role"] == "student" or found[n]["status"] != "active"]
+    if bad:
+        return "invalid", E("Bu adla aktiv əməkdaş tapılmadı: {names}", names=", ".join(bad))
+    uids = [found[n]["id"] for n in names]
+    at = _iso(_now())
+    repo.set_proctors(c, eid, uids, user["id"], at)
+    repo.add_event(c, eid, "proctors.set", user["id"], None, {"user_ids": uids}, at)
+    audit(c, user["id"], "exam_proctors", "exam", f"#{eid} · {', '.join(names) or '—'}")
+    return "ok", {"proctors": repo.proctors(c, eid)}
+
+
+def watch_list(c, user) -> list[dict]:
+    """The exams on the user's proctor page: assigned ones, the open exams of the courses they head, and for the
+    academic office and the administrator every open exam."""
+    seen: dict[int, dict] = {e["id"]: e for e in repo.proctor_exams(c, user["id"])}
+    more = repo.open_exams(c) if user["role"] in WATCHERS else repo.open_exams(c, user["id"]) if user["role"] in ("teacher", "dept_head") else []
+    for e in more:
+        seen.setdefault(e["id"], e)
+    return sorted(seen.values(), key=lambda e: e["opens_at"])
+
+
+BOARD_FLAGS = ("client.blur", "client.fullscreen_exit", "client.reconnect", "net.changed", "net.refused", "login.during_exam")
+
+
+def board(c, user, eid: int, after: int = 0) -> dict | None:
+    """The live board (polled every 5 s): every student on the roster with the attempt's state, progress, time left,
+    when last seen, the address and the counts of the flagged events; and the exam's events after ``after``."""
+    e = repo.exam(c, eid)
+    if not e or not may_proctor(c, user, e):
+        return None
+    from ...legacy.store import now as local_now
+    t, local = _now(), local_now()
+    attempts = {a["student_id"]: a for a in repo.attempts(c, eid)}
+    counts, last, flags = repo.answer_counts(c, eid), repo.last_answers(c, eid), repo.event_counts(c, eid)
+    sessions = repo.exam_sessions(c, f"exam:{eid}")
+    total = sum(int(x["count"]) for x in json.loads(e["plan"]))
+    students = []
+    for r in repo.roster(c, eid):
+        sid, a, s = r["student_id"], attempts.get(r["student_id"]), sessions.get(r["student_id"])
+        idle = []
+        if s and s["last_seen"]:
+            idle.append((local - datetime.fromisoformat(s["last_seen"])).total_seconds())
+        if a and last.get(a["id"]):
+            idle.append((t - _t(last[a["id"]])).total_seconds())
+        students.append({
+            "student_id": sid, "full_name": r["full_name"], "student_no": r["student_no"], "roster": r["status"], "reason": r["reason"],
+            "attempt": a["status"] if a else None, "answered": counts.get(a["id"], 0) if a else 0, "total": total,
+            "remaining_s": domain.remaining(_t(a["deadline_at"]), t, _t(a["paused_at"]) if a["paused_at"] else None) if a and a["status"] in LIVE else 0,
+            "deadline_at": a["deadline_at"] if a else None, "online": bool(s), "seen_s": int(max(0, min(idle))) if idle else None,
+            "ip": s["ip"] if s else None, "flags": {k: n for k, n in flags.get(sid, {}).items() if k in BOARD_FLAGS}})
+    events = repo.events_after(c, eid, max(0, after))
+    for ev in events:
+        ev["data"] = json.loads(ev["data"] or "{}")
+    return {"exam": {**_public_exam(e), "allowed_cidrs": json.loads(e["allowed_cidrs"] or "[]")}, "now": _iso(t),
+            "students": students, "events": events, "seq": events[-1]["seq"] if events else max(0, after)}
+
+
+def act(c, user, eid: int, sid: int, action: str, body) -> tuple[str, object]:
+    """A proctor's action on one student of the exam's roster, always with a reason, always in the exam's log:
+    extend (minutes), pause, resume, end, reopen (minutes from now), unlock (the student's sign-in lock)."""
+    e = repo.exam(c, eid)
+    if not e or not may_proctor(c, user, e) or not repo.roster_of(c, eid, sid):
+        return "missing", None
+    v, problem = domain.proctor_input(action, body)
+    if problem:
+        return "invalid", problem
+    t = _now()
+    a = repo.attempt(c, eid, sid)
+    wrong = "closed", E("Bu əməliyyat cəhdin indiki vəziyyətində mümkün deyil")
+    data: dict = {"reason": v["reason"]}
+    if action == "unlock":
+        from ..identity import service as identity
+        target = identity.account(c, sid)
+        if not target:
+            return "missing", None
+        identity.unlock(c, user, target, f"imtahan #{eid} · {v['reason']}")
+    else:
+        if e["status"] != "open" or not a:
+            return wrong
+        if action == "extend" and a["status"] in LIVE:
+            new = _t(a["deadline_at"]) + timedelta(minutes=v["minutes"])
+            repo.set_attempt(c, a["id"], deadline_at=_iso(new))
+            data.update(minutes=v["minutes"], deadline_at=_iso(new))
+        elif action == "pause" and a["status"] == "in_progress" and t < _t(a["deadline_at"]):
+            repo.set_attempt(c, a["id"], status="paused", paused_at=_iso(t))
+        elif action == "resume" and a["status"] == "paused":
+            new = domain.resumed_deadline(_t(a["deadline_at"]), _t(a["paused_at"]), t)
+            repo.set_attempt(c, a["id"], status="in_progress", paused_at=None, deadline_at=_iso(new))
+            data.update(deadline_at=_iso(new))
+        elif action == "end" and a["status"] in LIVE:
+            repo.set_attempt(c, a["id"], status="submitted", submitted_at=_iso(t), auto=1, paused_at=None)
+        elif action == "reopen" and a["status"] == "submitted":
+            new = t + timedelta(minutes=v["minutes"])
+            repo.set_attempt(c, a["id"], status="in_progress", submitted_at=None, auto=0, paused_at=None, deadline_at=_iso(new))
+            data.update(minutes=v["minutes"], deadline_at=_iso(new))
+        else:
+            return wrong
+    repo.add_event(c, eid, f"proctor.{action}", user["id"], sid, data, _iso(t))
+    audit(c, user["id"], f"exam_{action}", "exam", f"#{eid} · #{sid} · {v['reason']}")
+    return "ok", board(c, user, eid)
+
+
+def signal(c, user, eid: int, body) -> tuple[str, object]:
+    """What the exam page reports by itself (focus lost, full screen left, reconnected): a board flag, capped per student."""
+    kind = body.get("kind")
+    if kind not in domain.SIGNALS:
+        return "invalid", E("Naməlum siqnal")
+    if repo.count_events(c, eid, user["id"], "client.") >= domain.SIGNAL_CAP:
+        return "ok", {"ok": True, "kept": False}
+    repo.add_event(c, eid, f"client.{kind}", user["id"], user["id"], {}, _iso(_now()))
+    return "ok", {"ok": True, "kept": True}
 
 
 jobs.periodic("exam.autosubmit", timedelta(minutes=1), autosubmit)

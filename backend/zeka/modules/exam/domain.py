@@ -137,3 +137,48 @@ def original_value(q: dict, order: list[int], value):
 def deadline(started: datetime, duration_min: int, closes: datetime) -> datetime:
     """An attempt ends after its duration or when the exam window closes, whichever comes first."""
     return min(started + timedelta(minutes=duration_min), closes)
+
+
+# ---------------------------------------------------------------- the proctor panel (Task 29)
+# action -> needs minutes. Every action needs a reason; extending and reopening also say by how many minutes.
+ACTIONS = {"extend": True, "pause": False, "resume": False, "end": False, "reopen": True, "unlock": False}
+# What the exam page reports by itself (the board counts them); everything else a client sends is refused.
+SIGNALS = ("blur", "fullscreen_exit", "reconnect")
+SIGNAL_CAP = 300                                  # per student and exam: a looping page cannot flood the log
+
+
+def ip_allowed(cidrs: list[str], ip: str) -> bool:
+    """An empty list allows every address; otherwise the address must be in one of the blocks."""
+    if not cidrs:
+        return True
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(addr in ipaddress.ip_network(c, strict=False) for c in cidrs)
+
+
+def proctor_input(action: str, body) -> tuple[dict, dict | None]:
+    """{reason, minutes}: the reason is required (3-300 characters); minutes 1-240 for extend and reopen."""
+    if action not in ACTIONS:
+        return {}, E("Naməlum əməliyyat")
+    reason = " ".join(str(body.get("reason") or "").split())[:300]
+    if len(reason) < 3:
+        return {}, E("Əməliyyatın səbəbini yazın")
+    minutes = body.get("minutes")
+    if ACTIONS[action]:
+        if not isinstance(minutes, int) or isinstance(minutes, bool) or not 1 <= minutes <= 240:
+            return {}, E("Dəqiqə sayı 1 ilə 240 arasında olmalıdır")
+    else:
+        minutes = None
+    return {"reason": reason, "minutes": minutes}, None
+
+
+def resumed_deadline(deadline: datetime, paused_at: datetime, now: datetime) -> datetime:
+    """A paused attempt's clock stops: resuming moves the deadline by the time it stood still."""
+    return deadline + max(timedelta(0), now - paused_at)
+
+
+def remaining(deadline: datetime, now: datetime, paused_at: datetime | None) -> int:
+    """Seconds left by the server's clock; a paused attempt shows what was left when it stopped."""
+    return max(0, int((deadline - (paused_at or now)).total_seconds()))

@@ -843,6 +843,22 @@ offline and sends them when the connection is back, goes on after a reload, and 
 `remaining_s` on the browser's monotonic clock, so a wrong system clock does not move the deadline
 (`tests/e2e/exam_offline.js`, run by `tests/integration/test_exam_page.py` when node with Playwright is installed).
 
+### Proctor panel (Task 29)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` | `/api/proctor/exams` | `proctor`, `teacher`, `dept_head`, `academic_office`, `admin` | Exams to watch: assigned ones; for a teacher the open exams of the courses they head; for the academic office and the administrator every open exam |
+| `PUT` | `/api/exams/{id}/proctors` | the course's teachers, `academic_office`, `admin` | Assign proctors with `{"usernames": [...]}` (active staff only, at most 20); replaces the list; in the exam log and audited |
+| `GET` | `/api/exams/{id}/board?after={seq}` | the exam's proctors, the course's teachers, `academic_office`, `admin` | Every student on the roster: `attempt`, `answered`/`total`, `remaining_s`, `online`, `seen_s`, `ip`, `flags` (counts of `client.blur`, `client.fullscreen_exit`, `client.reconnect`, `net.changed`, `net.refused`, `login.during_exam`); `events` after `seq` (at most 100) and the new `seq`. The page polls it every 5 seconds |
+| `POST` | `/api/exams/{id}/students/{sid}/{action}` | as the board | `extend` (`minutes` 1–240), `pause`, `resume`, `end`, `reopen` (`minutes` from now), `unlock` (the student's sign-in lock); `reason` (3–300 characters) is required; only for a student on this exam's roster (`404` otherwise); a wrong state is `409`. Each is a `proctor.{action}` event with the reason and an audit row; the answer is the board |
+| `POST` | `/api/exams/{id}/signals` | the exam's session | `{"kind": "blur" | "fullscreen_exit" | "reconnect"}` from the exam page; at most 300 per student and exam (`{"kept": false}` beyond) |
+
+A paused attempt takes no answers (`409`, the page keeps them queued) and its clock stands still: resuming moves the
+deadline by the pause; the periodic submission skips it. The network list (`allowed_cidrs` of the exam, set when it
+is created) is checked when a student enters and on every exam-session request: an address off the list gets `403`
+and a `session.refused` or `net.refused` event; a change of address on the list is a `net.changed` event. The address
+is `client_ip()`: with `ZEKA_PROXY_HOPS=1` the right-most `X-Forwarded-For` entry, with `0` the peer address.
+
 ## News and events
 
 | Method | Path | Access | Purpose |

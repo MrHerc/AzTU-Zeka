@@ -347,6 +347,19 @@
   "scope": "exam",
   "slow": false
  },
+ "GET /api/exams/{id:int}/board": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/exams/{id:int}/manage": {
   "access": [
    "academic_office",
@@ -631,6 +644,19 @@
    "admin",
    "leader",
    "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/proctor/exams": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "proctor",
+   "teacher"
   ],
   "audit_read": null,
   "demo": false,
@@ -1355,6 +1381,16 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/exams/{id:int}/signals": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "scope": "exam",
+  "slow": false
+ },
  "POST /api/exams/{id:int}/start": {
   "access": [
    "student"
@@ -1363,6 +1399,19 @@
   "demo": false,
   "perm": null,
   "scope": "exam",
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/students/{sid:int}/{action}": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "POST /api/exams/{id:int}/submit": {
@@ -1865,6 +1914,18 @@
   "demo": false,
   "perm": null,
   "scope": "exam",
+  "slow": false
+ },
+ "PUT /api/exams/{id:int}/proctors": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "PUT /api/journal/courses/{id:int}/grades": {

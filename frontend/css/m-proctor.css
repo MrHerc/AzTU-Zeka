@@ -1,0 +1,13 @@
+/* The proctor panel (Task 29): a live board of an exam's students and its log. */
+.px-live { display: flex; align-items: center; gap: 8px; color: var(--muted); margin: -6px 0 12px; }
+.px-live.px-stale { color: var(--amber, #b45309); }
+.px-filters { margin-bottom: 14px; }
+.px-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.px-table td { vertical-align: middle; }
+.px-table tr.px-flagged td:first-child { box-shadow: inset 3px 0 0 var(--amber, #f5a524); }
+.px-progress { min-width: 110px; }
+.px-progress .progress { margin-bottom: 4px; }
+.px-flag { margin: 2px 4px 2px 0; white-space: nowrap; }
+.px-feed .card-b { max-height: 70vh; overflow: auto; }
+@media (max-width: 1100px) { .px-grid { grid-template-columns: 1fr; } .px-feed .card-b { max-height: 40vh; } }
+.px-act { width: 128px; padding: 6px 8px; font-size: 13px; }

@@ -19,7 +19,7 @@ COOKIE = "zeka_sid"
 BASE_URL = {"value": "http://127.0.0.1:5070"}
 ROLE_HOME = {"student": "/student", "teacher": "/teacher", "office": "/office", "leader": "/leader", "admin": "/admin",
              # new roles (Task 13) start from the closest existing home until their own pages arrive
-             "dept_head": "/teacher", "academic_office": "/admin/directory", "proctor": "/teacher"}
+             "dept_head": "/teacher", "academic_office": "/admin/directory", "proctor": "/proctor"}
 STAFF = ("office", "admin", "leader")
 
 # Tests (ZEKA_TX_GUARD=1): a request may hold SQLite's single write lock for at most 200 ms (Task 7).
@@ -103,7 +103,7 @@ def _own_commit(req):
 
 def _session_user(req, sid: str):
     u = row(req.db, "SELECT u.*, s.id AS session_id, s.created_at AS session_created, s.last_seen AS session_seen, "
-                    "s.scope AS session_scope, s.mfa_at AS session_mfa, s.role AS session_role FROM sessions s "
+                    "s.scope AS session_scope, s.mfa_at AS session_mfa, s.role AS session_role, s.ip AS session_ip FROM sessions s "
                     "JOIN users u ON u.id=s.user_id WHERE s.id_hash=?", (identity.session_hash(sid),))
     if not u:
         return None
@@ -170,6 +170,12 @@ def _exam_scope(req, scope: str | None):
             return                                          # 401 below
         if not in_exam or scope != f"exam:{req.params.get('id')}":
             raise HTTPError(403, "Bu imtahana imtahan səhifəsindən daxil olun")
+        # Task 29: the exam's network list on every request; the refusal or the change of address is logged at once
+        from ..modules.exam import service as exam
+        problem = exam.check_request(req.db, int(req.params["id"]), req.user, req.ip, req.user.get("session_ip"), req.user["session_id"])
+        _own_commit(req)
+        if problem:
+            raise HTTPError(403, problem)
     elif in_exam:
         raise HTTPError(403, "İmtahan sessiyası yalnız imtahan səhifəsinə açılır")
 

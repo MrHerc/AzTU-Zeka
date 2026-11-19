@@ -115,7 +115,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T26 İmtahan nüvəsi
 - [x] T27 İmtahan əhatəli sessiya və imtahan səhifəsi
 - [ ] T28 SEB inteqrasiyası
-- [ ] T29 Nəzarətçi paneli
+- [x] T29 Nəzarətçi paneli
 - [ ] T30 Hash zəncirli protokol və nəticənin jurnala keçməsi
 
 ### Checkpoint D · saat 52

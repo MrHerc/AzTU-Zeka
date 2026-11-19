@@ -129,6 +129,8 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
 - **Exam sessions (Task 27).** A session with `sessions.scope='exam:{id}'` reaches only `@R(..., scope="exam")` routes of
   that exam, and those routes refuse every other session (`_exam_scope()` in `legacy/common.py`). A new exam-page route
   needs `scope="exam"`; a refusal that must leave an exam event is returned as a 403 response, not raised.
+  Task 29 adds the exam's network list to every such request (`exam.service.check_request`, committed before the 403)
+  and the proctor board (`/proctor`, `frontend/js/proctor.js`, polled every 5 s).
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).

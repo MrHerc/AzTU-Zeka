@@ -1,0 +1,10 @@
+{
+ "Əməliyyatın səbəbini yazın": "Укажите причину действия",
+ "Dəqiqə sayı 1 ilə 240 arasında olmalıdır": "Число минут должно быть от 1 до 240",
+ "Bu ünvandan imtahana daxil olmaq olmaz: imtahan otağının şəbəkəsindən daxil olun": "С этого адреса сдавать экзамен нельзя: подключитесь к сети экзаменационной аудитории",
+ "Bu əməliyyat cəhdin indiki vəziyyətində mümkün deyil": "Это действие невозможно в текущем состоянии попытки",
+ "İmtahan nəzarətçi tərəfindən dayandırılıb: cavablar davam edəndə göndəriləcək": "Наблюдатель приостановил экзамен: ответы будут отправлены после возобновления",
+ "Nəzarətçilər ən çox 20 istifadəçi adıdır": "Наблюдателей — не более 20 имён пользователей",
+ "Bu adla aktiv əməkdaş tapılmadı: {names}": "Активный сотрудник с таким именем не найден: {names}",
+ "Naməlum siqnal": "Неизвестный сигнал"
+}

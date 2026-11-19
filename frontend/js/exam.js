@@ -2,6 +2,8 @@
 // ready, running, submitted. Every answer is saved when it changes and every 20 seconds; while offline the answers wait
 // in localStorage and go out when the connection is back; after a reload the attempt goes on. The timer counts the
 // seconds the server gave, on the browser's monotonic clock, so a wrong system clock does not move the deadline.
+// Task 29: a proctor may pause the attempt (the clock stands still, answers wait in the queue); the page tells the board
+// when it loses focus, leaves full screen or comes back online.
 import { t, LANG } from "./i18n.js";
 
 const id = Number(new URLSearchParams(location.search).get("exam")) || 0;
@@ -14,6 +16,8 @@ let deadline = 0;         // performance.now() at which the attempt ends
 let online = true;
 let saving = false;
 let submitting = false;
+let lastBlur = 0;
+let wasFull = false;
 
 function queue() { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } }
 function keep(q) { try { localStorage.setItem(KEY, JSON.stringify(q)); } catch { /* private mode: the answer still goes out now */ } }
@@ -57,11 +61,18 @@ function draw() {
   if (!view) return;
   const e = view.exam, a = view.attempt;
   const head = `<header class="exam-head"><div><div class="exam-muted">${esc(t("İmtahan"))}</div><h1>${esc(e.title)}</h1></div>
-    ${a && a.status === "in_progress" ? `<div class="exam-right"><div class="exam-timer" id="timer" role="timer">${clock(left())}</div><div id="status">${status()}</div></div>` : ""}</header>`;
+    ${a && a.status === "in_progress" ? `<div class="exam-right"><div class="exam-timer" id="timer" role="timer">${clock(left())}</div><div id="status">${status()}</div>
+      ${document.fullscreenEnabled ? `<button class="btn btn-sm" id="fs"${document.fullscreenElement ? " hidden" : ""}>${esc(t("Tam ekran"))}</button>` : ""}</div>` : ""}
+    ${a && a.status === "paused" ? `<div class="exam-right"><div class="exam-timer paused" role="timer">${clock(a.remaining_s)}</div></div>` : ""}</header>`;
   if (!a) {
     root.innerHTML = `${head}<section class="exam-card"><p>${esc(t("Müddət: {n} dəqiqə. Vaxt server saatı ilə ölçülür; cavablar dəyişən kimi saxlanılır.", { n: e.duration_min }))}</p>
       <p class="exam-muted">${esc(t("Bağlantı kəsilsə cavablar bu brauzerdə saxlanılır və bağlantı qayıdanda göndərilir."))}</p>
       <button class="btn btn-primary" id="start">${esc(t("Başla"))}</button></section>`;
+    return;
+  }
+  if (a.status === "paused") {
+    root.innerHTML = `${head}<section class="exam-card"><h2>${esc(t("İmtahan dayandırılıb"))}</h2>
+      <p>${esc(t("Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; davam edəndə cavablarınız göndəriləcək."))}</p></section>`;
     return;
   }
   if (a.status !== "in_progress") {
@@ -109,7 +120,11 @@ async function flush() {
       if (r.status === 0) break;                                   // offline: keep the rest for later
       const q = queue();
       if (r.status === 200) { if (JSON.stringify(q[qid]) === JSON.stringify(value)) delete q[qid]; keep(q); syncClock(r.data.remaining_s); }
-      else if (r.status === 409) { keep({}); await load(); return; }  // the time is over: the server's state wins
+      else if (r.status === 409) {                                   // paused, or over: the server's state wins
+        await load();
+        if (!view || !view.attempt || !["in_progress", "paused"].includes(view.attempt.status)) keep({});
+        return;
+      }
       else { delete q[qid]; keep(q); }                              // refused for good (not on the form): do not retry forever
     }
   } finally { saving = false; tick(); }
@@ -134,10 +149,20 @@ root.addEventListener("change", (ev) => {
   keep(q);
   flush();
 });
+function signal(kind) {
+  if (view && view.attempt && view.attempt.status === "in_progress") api("POST", `/api/exams/${id}/signals`, { kind });
+}
+
+function fullScreen() {
+  if (document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+}
+
 root.addEventListener("click", async (ev) => {
   const b = ev.target.closest("button");
   if (!b) return;
-  if (b.id === "start") {
+  if (b.id === "fs") fullScreen();
+  else if (b.id === "start") {
+    fullScreen();
     b.disabled = true;
     const r = await api("POST", `/api/exams/${id}/start`);
     if (r.status === 200) { view = r.data; syncClock(view.attempt && view.attempt.remaining_s); draw(); }
@@ -145,10 +170,27 @@ root.addEventListener("click", async (ev) => {
   } else if (b.id === "submit") submit(false);
   else if (b.id === "leave") { await api("POST", `/api/exams/${id}/leave`); location.href = "/"; }
 });
-window.addEventListener("online", () => { online = true; flush(); });
+window.addEventListener("online", () => { online = true; flush(); signal("reconnect"); });
+window.addEventListener("blur", () => { if (Date.now() - lastBlur > 3000) { lastBlur = Date.now(); signal("blur"); } });
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement) wasFull = true;
+  else if (wasFull) { wasFull = false; signal("fullscreen_exit"); }
+  const fs = document.getElementById("fs");          // not draw(): an answer being typed must not be wiped
+  if (fs) fs.hidden = Boolean(document.fullscreenElement);
+});
 window.addEventListener("offline", () => { online = false; tick(); });
 setInterval(tick, 1000);
-setInterval(() => { if (Object.keys(queue()).length) flush(); else if (view && view.attempt && view.attempt.status === "in_progress") api("GET", `/api/exams/${id}`).then((r) => { if (r.status === 200) syncClock(r.data.attempt && r.data.attempt.remaining_s); tick(); }); }, 20000);
+setInterval(() => {
+  if (Object.keys(queue()).length && view && view.attempt && view.attempt.status === "in_progress") { flush(); return; }
+  if (!view || !view.attempt || view.attempt.status !== "in_progress") return;
+  api("GET", `/api/exams/${id}`).then((r) => {
+    if (r.status !== 200) return;
+    if (r.data.attempt && r.data.attempt.status !== "in_progress") { view = r.data; draw(); }  // paused or ended by a proctor
+    else syncClock(r.data.attempt && r.data.attempt.remaining_s);
+    tick();
+  });
+}, 20000);
+setInterval(() => { if (view && view.attempt && view.attempt.status === "paused") load().then((ok) => { if (ok) flush(); }); }, 5000);
 document.title = `${t("İmtahan")} · Zəka`;
 await load();
 flush();

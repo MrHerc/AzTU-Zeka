@@ -9,6 +9,7 @@ import "./news.js";
 import "./teacher.js";
 import "./academy.js";
 import "./syllabus.js";
+import "./proctor.js";
 import "./staff.js";
 import "./guide.js";
 import "./support.js";

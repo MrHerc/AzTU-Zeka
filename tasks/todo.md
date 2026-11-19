@@ -709,12 +709,12 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** İmtahan üzrə `proctor` təyinatı. 5 saniyəlik sorğu ilə canlı lövhə: siyahı statusu (`exam_roster`-dən, Task 26), irəliləyiş, son görünmə, hadisələr (fokus itkisi, tam ekrandan çıxış, yenidən qoşulma, ünvan dəyişməsi). Səbəbi məcburi əməliyyatlar: vaxt əlavə et, dayandır, davam etdir, cəhdi bitir, yenidən aç, giriş kilidini aç (yalnız öz imtahan siyahısındakı tələbə üçün). Şəbəkə siyahısı girişdə və hər `scope="exam"` sorğusunda yoxlanır: siyahıdan kənar ünvan 403 alır və jurnala yazılır; siyahı daxilində ünvan dəyişməsi lövhə hadisəsidir.
 
 **Acceptance criteria:**
-- [ ] `allowed_cidrs`-dən kənar ünvandan giriş və cəhd ortasında gələn sorğu rədd olunur və jurnala yazılır. Ünvan `client_ip()`-dən gəlir; `ZEKA_PROXY_HOPS=1` ilə üç hal yoxlanır: `X-Forwarded-For` siyahıdadır (buraxılır), kənardadır (rədd), `içəri-saxta, kənar-real` (rədd: sağdan birinci ünvan götürülür). `ZEKA_PROXY_HOPS=0` ilə başlıq nəzərə alınmır.
-- [ ] Hər nəzarətçi əməliyyatı səbəb tələb edir və imtahan jurnalında görünür
-- [ ] Tələbənin vəziyyət dəyişməsi lövhədə 10 saniyə ərzində əks olunur
+- [x] `allowed_cidrs`-dən kənar ünvandan giriş və cəhd ortasında gələn sorğu rədd olunur və jurnala yazılır. Ünvan `client_ip()`-dən gəlir; `ZEKA_PROXY_HOPS=1` ilə üç hal yoxlanır: `X-Forwarded-For` siyahıdadır (buraxılır), kənardadır (rədd), `içəri-saxta, kənar-real` (rədd: sağdan birinci ünvan götürülür). `ZEKA_PROXY_HOPS=0` ilə başlıq nəzərə alınmır.
+- [x] Hər nəzarətçi əməliyyatı səbəb tələb edir və imtahan jurnalında görünür
+- [x] Tələbənin vəziyyət dəyişməsi lövhədə 10 saniyə ərzində əks olunur
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_proctor.py -q`
+- [x] `python -m pytest tests/integration/test_proctor.py -q`
 
 **Dependencies:** Task 27
 **Files likely touched:** `backend/zeka/modules/exam/{service,repo,routes}.py`, `backend/migrations/0290_proctor.sql` (nəzarətçi təyinatı; `exam_events` Task 26-nın miqrasiyasındadır), `frontend/js/proctor.js`, `frontend/css/m-exam.css`

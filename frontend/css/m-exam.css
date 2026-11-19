@@ -19,3 +19,5 @@
 .exam-input { max-width: 320px; }
 .exam-foot { display: flex; justify-content: flex-end; padding: 16px 0 40px; }
 @media (prefers-color-scheme: dark) { .exam-body, .exam-head { background: #0f172a; } .exam-card, .exam-option { background: #111827; border-color: #1f2937; } }
+.exam-timer.paused { color: var(--muted, #64748b); }
+.exam-head [hidden] { display: none !important; }

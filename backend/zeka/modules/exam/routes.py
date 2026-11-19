@@ -8,6 +8,7 @@ from ...legacy.common import R, start_session
 from . import repo, service
 
 MANAGERS = ("teacher", "dept_head")
+PROCTORS = ("proctor", "teacher", "dept_head", "academic_office", "admin")
 
 
 def _answer(status, value, missing="İmtahan tapılmadı"):
@@ -85,7 +86,7 @@ def enter(req):
     """Take an exam session (Task 27): every other session of the student ends in this request; an earlier exam
     session of the same exam is taken over. The new session reaches this exam's routes and nothing else."""
     c, u, eid = req.db, req.user, req.params["id"]
-    status, value = service.may_enter(c, u, eid)
+    status, value = service.may_enter(c, u, eid, req.ip)
     if status == "refused":                        # returned, not raised: the refusal's event in the exam log commits
         return json_resp({"error": localize(value, req.lang)}, 403)
     _answer(status, value)
@@ -102,3 +103,34 @@ def leave(req):
     from ...legacy.common import session_cookie
     repo.end_sessions(req.db, req.user["id"], f"exam:{req.params['id']}")
     return json_resp({"ok": True}, headers=[session_cookie(expire=True)])
+
+
+# ---------------------------------------------------------------- the proctor panel (Task 29)
+@R("GET", "/api/proctor/exams", roles=PROCTORS)
+def watch_list(req):
+    return service.watch_list(req.db, req.user)
+
+
+@R("GET", "/api/exams/{id:int}/board", roles=PROCTORS)
+def board(req):
+    after = req.query.get("after") or "0"
+    out = service.board(req.db, req.user, req.params["id"], int(after) if after.isascii() and after.isdigit() and len(after) < 10 else 0)
+    if out is None:
+        raise HTTPError(404, "İmtahan tapılmadı")
+    return out
+
+
+@R("PUT", "/api/exams/{id:int}/proctors", roles=("teacher", "dept_head", "academic_office", "admin"))
+def proctors(req):
+    return _answer(*service.set_proctors(req.db, req.user, req.params["id"], req.json()))
+
+
+@R("POST", "/api/exams/{id:int}/students/{sid:int}/{action}", roles=PROCTORS)
+def act(req):
+    return _answer(*service.act(req.db, req.user, req.params["id"], req.params["sid"], str(req.params["action"]), req.json()),
+                   missing="Tələbə bu imtahanın siyahısında tapılmadı")
+
+
+@R("POST", "/api/exams/{id:int}/signals", roles=("student",), scope="exam")
+def signal(req):
+    return _answer(*service.signal(req.db, req.user, req.params["id"], req.json()))

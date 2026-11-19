@@ -40,7 +40,10 @@ def clients(app_db):
     out["admin"].post(f"/api/admin/users/{out['teacher'].user['id']}/roles", {"role": "dept_head"})
     head = app_db.client("teacher")                # and a department head's (Task 20)
     assert head.post("/api/me/role", {"role": "dept_head"}).status == 200
-    return {**out, "academic_office": registrar, "dept_head": head}
+    out["admin"].post(f"/api/admin/users/{out['leader'].user['id']}/roles", {"role": "proctor"})
+    proctor = app_db.client("leader")              # and an exam proctor's (Task 29)
+    assert proctor.post("/api/me/role", {"role": "proctor"}).status == 200
+    return {**out, "academic_office": registrar, "dept_head": head, "proctor": proctor}
 
 
 @pytest.mark.parametrize("method, path, role, fields", _routes())
