@@ -10,8 +10,12 @@ def course(c, cid: int):
     return row(c, "SELECT * FROM courses WHERE id=?", (cid,))
 
 
+def user(c, uid: int):
+    return row(c, "SELECT id, role FROM users WHERE id=?", (uid,))
+
+
 def topics(c, cid: int) -> list[dict]:
-    return rows(c, "SELECT tq.id, tq.course_id, tq.student_id, tq.anonymous, tq.title, tq.tag, tq.status, tq.hidden, tq.faq_chunk_id, "
+    return rows(c, "SELECT tq.id, tq.course_id, tq.student_id, tq.anonymous, tq.private, tq.title, tq.tag, tq.status, tq.hidden, tq.faq_chunk_id, "
                    "tq.created_at, u.full_name AS author, u.role AS author_role, "
                    "(SELECT COUNT(*) FROM qa_replies r WHERE r.topic_id=tq.id AND r.hidden=0) AS replies FROM teacher_questions tq "
                    "JOIN users u ON u.id=tq.student_id WHERE tq.course_id=? ORDER BY tq.id DESC LIMIT 500", (cid,))
@@ -61,10 +65,15 @@ def set_hidden(c, table: str, oid: int, hidden: bool):
               (int(hidden), oid))
 
 
-def faq_material(c, cid: int, title: str, by: int, at: str) -> int:
+def faq_material_id(c, cid: int) -> int | None:
     m = row(c, "SELECT id FROM materials WHERE course_id=? AND filename=?", (cid, FAQ_FILE))
+    return m["id"] if m else None
+
+
+def faq_material(c, cid: int, title: str, by: int, at: str) -> int:
+    m = faq_material_id(c, cid)
     if m:
-        return m["id"]
+        return m
     return c.execute("INSERT INTO materials(course_id,title,filename,text,chunk_count,term_count,uploaded_by,created_at) VALUES(?,?,?,'',0,0,?,?)",
                      (cid, title, FAQ_FILE, by, at)).lastrowid
 
@@ -93,13 +102,14 @@ def add_report(c, tid: int, rid: int | None, uid: int, reason: str, at: str) -> 
     return c.execute("INSERT INTO qa_reports(topic_id,reply_id,reporter_id,reason,created_at) VALUES(?,?,?,?,?)", (tid, rid, uid, reason, at)).lastrowid
 
 
-def open_reports(c) -> list[dict]:
-    """The open reports with what was reported and its real author (a moderator sees an anonymous one, Task 33)."""
+def open_reports(c, scope: str = "1=1", params: tuple = ()) -> list[dict]:
+    """The open reports with what was reported and its real author (a moderator sees an anonymous one, Task 33); ``scope``
+    limits the topic's author (``tq.student_id``)."""
     return rows(c, "SELECT p.id, p.topic_id, p.reply_id, p.reason, p.created_at, tq.title, tq.question, tq.course_id, co.name AS course, "
                    "ta.full_name AS topic_author, tq.anonymous, r.text AS reply_text, ra.full_name AS reply_author, u.full_name AS reporter "
                    "FROM qa_reports p JOIN teacher_questions tq ON tq.id=p.topic_id JOIN courses co ON co.id=tq.course_id "
                    "JOIN users ta ON ta.id=tq.student_id LEFT JOIN qa_replies r ON r.id=p.reply_id LEFT JOIN users ra ON ra.id=r.author_id "
-                   "JOIN users u ON u.id=p.reporter_id WHERE p.resolved_at IS NULL ORDER BY p.id LIMIT 200")
+                   "JOIN users u ON u.id=p.reporter_id WHERE p.resolved_at IS NULL AND " + scope + " ORDER BY p.id LIMIT 200", params)
 
 
 def report(c, pid: int):

@@ -92,7 +92,8 @@ def test_forward_to_teacher_and_answer(student, teacher):
     assert mine["student"] == "Anonim tələbə" and mine["status"] == "open"
     assert teacher.post(f"/api/teacher/questions/{mine['id']}/answer", {"answer": "Gərginlik eksponensial azalır."}).status == 200
     assert next(q for q in teacher.get("/api/teacher/questions").json if q["id"] == mine["id"])["status"] == "answered"
-    assert any("cavab verdi" in n["title"] for n in student.get("/api/notifications").json["items"])
+    told = [n for n in student.get("/api/notifications").json["items"] if "cavab" in n["title"] and n["link"] == f"/qa/1/{mine['id']}"]
+    assert len(told) == 1, "one notice, linking to the forum topic (Checkpoint E, CR-E7)"
     assert teacher.post("/api/teacher/questions/999999/answer", {"answer": "x"}).status == 404
 
 

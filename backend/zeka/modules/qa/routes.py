@@ -66,7 +66,7 @@ def report(req):
 
 @R("GET", "/api/qa/reports", perm="qa.moderate")
 def queue(req):
-    return service.queue(req.db)
+    return service.queue(req.db, req.user)
 
 
 @R("POST", "/api/qa/reports/{id:int}/resolve", perm="qa.moderate")

@@ -11,30 +11,75 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import secrets
+import socket
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 
-from ...core import clock, jobs
-from ...core.i18n import E
-from ...legacy.store import audit, iso, now, row, rows
+from ...core import clock, config, jobs
+from ...core.i18n import E, T3
+from ...legacy.store import audit, iso, notify, now, row, rows
 from ..comms.domain import backoff
 
 EVENTS = ("grade.published", "attendance.barred", "exam.released")
 MAX_ATTEMPTS = 12
 BATCH = 50
 BUDGET_S = 20
+TIMEOUT_S = 10                       # a socket read
+POST_LIMIT_S = 15                    # a whole delivery, however slowly the receiver drips (Checkpoint E, TM-E7)
 LOOPBACK = ("127.0.0.1", "localhost", "::1")
+_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="webhook")
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A 3xx is the receiver's answer, not a new address to send to (Checkpoint E, SF-E2): it becomes an HTTPError."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _url_ok(url: str) -> bool:
+    """https to a named host, or http to this machine outside prod; no spaces, credentials or bad port."""
+    if len(url) > 500 or any(ch.isspace() or ord(ch) < 32 for ch in url):
+        return False
+    try:
+        u = urlsplit(url)
+        _ = u.port                                          # raises ValueError for a port that is not a number in range
+    except ValueError:
+        return False
+    if not u.hostname or u.username or u.password:
+        return False
+    return u.scheme == "https" or (u.scheme == "http" and u.hostname in LOOPBACK and not config.prod())
+
+
+def _address_ok(url: str) -> bool:
+    """At send time: every address the host resolves to is public (loopback only outside prod), so a webhook cannot
+    reach the metadata service or the internal network (Checkpoint E, SEC-E6)."""
+    host = urlsplit(url).hostname or ""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return True                                         # the post itself fails and is retried with the reason
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if not (ip.is_global or (ip.is_loopback and not config.prod())):
+            return False
+    return True
 
 
 def hook_input(body) -> tuple[dict, dict | None]:
     v = {"url": body.text("url", 600), "events": body.array("events")}
-    u = urlsplit(v["url"])
-    if not (u.scheme == "https" or (u.scheme == "http" and u.hostname in LOOPBACK)) or not u.hostname or len(v["url"]) > 500:
+    if not _url_ok(v["url"]):
         return v, E("Ünvan https:// ilə başlamalıdır")
     if not v["events"] or not all(isinstance(e, str) and e in EVENTS for e in v["events"]):
         return v, E("Hadisələr: {events}", events=", ".join(EVENTS))
@@ -92,7 +137,7 @@ def _post(url: str, secret: str, event: str, delivery_id: int, body: bytes) -> i
     req = urllib.request.Request(url, data=body, method="POST", headers={
         "Content-Type": "application/json; charset=utf-8", "User-Agent": "Zeka-Webhooks/1", "X-Zeka-Event": event,
         "X-Zeka-Delivery": str(delivery_id), "X-Zeka-Signature": signature(secret, stamp, body)})
-    with urllib.request.urlopen(req, timeout=10) as r:          # nosec B310: https, or http to this machine only (hook_input)
+    with _OPENER.open(req, timeout=TIMEOUT_S) as r:            # nosec B310: https, or http to this machine outside prod (_url_ok)
         return r.status
 
 
@@ -104,27 +149,40 @@ def send_due(c, t: datetime | None = None) -> str:
     c.commit()
     sent = failed = waiting = 0
     started = time.monotonic()
+    down: set[int] = set()                                     # webhooks that timed out in this run (AR-E3)
     for d in due:
         if time.monotonic() - started > BUDGET_S:
             break
-        if not d["active"]:
-            c.execute("UPDATE webhook_deliveries SET status='failed', last_error='the webhook was deactivated' WHERE id=?", (d["id"],))
+        if not d["active"] or not _url_ok(d["url"]):
+            c.execute("UPDATE webhook_deliveries SET status='failed', last_error='the webhook was deactivated or its address is refused' "
+                      "WHERE id=?", (d["id"],))
             c.commit()
             continue
+        if d["webhook_id"] in down:
+            continue                                            # its next run tries again; the others go now
         n = d["attempts"] + 1
+        code: int | None = None
         try:
-            code = _post(d["url"], d["secret"], d["event"], d["id"], d["payload"].encode())
+            if not _address_ok(d["url"]):
+                raise PermissionError("the address is not public")
+            code = _POOL.submit(_post, d["url"], d["secret"], d["event"], d["id"], d["payload"].encode()).result(timeout=POST_LIMIT_S)
             err = None if 200 <= code < 300 else f"HTTP {code}"
         except urllib.error.HTTPError as ex:
             code, err = ex.code, f"HTTP {ex.code}"
-        except (OSError, ValueError) as ex:                     # refused, timed out, bad TLS: try again later
-            code, err = None, f"{type(ex).__name__}: {ex}"[:300]
+            ex.close()
+        except Exception as ex:                                 # noqa: BLE001  any failure of one delivery is that delivery's (SF-E1)
+            err = f"{type(ex).__name__}: {ex}"[:300]
+            if isinstance(ex, (TimeoutError, FutureTimeout, ConnectionError)):
+                down.add(d["webhook_id"])
         if err is None:
             c.execute("UPDATE webhook_deliveries SET status='sent', attempts=?, last_status=?, last_error=NULL, sent_at=? WHERE id=?",
                       (n, code, iso(now()), d["id"]))
             sent += 1
         elif n >= MAX_ATTEMPTS:
             c.execute("UPDATE webhook_deliveries SET status='failed', attempts=?, last_status=?, last_error=? WHERE id=?", (n, code, err, d["id"]))
+            owner = row(c, "SELECT created_by FROM webhooks WHERE id=?", (d["webhook_id"],))
+            if owner:                                           # the administrator who added it hears (SF-E15)
+                notify(c, owner["created_by"], "message", T3("Webhook çatdırılmadı: {url}", url=d["url"][:80]), err, "/admin/integration")
             failed += 1
         else:
             c.execute("UPDATE webhook_deliveries SET attempts=?, last_status=?, last_error=?, next_at=? WHERE id=?",
@@ -140,16 +198,18 @@ def barred_scan(c) -> str:
     last = row(c, "SELECT MAX(started_at) AS t FROM job_runs WHERE name='attendance.barred' AND status='ok'")["t"]
     # job times are aware UTC, attendance times the naive wall clock of ZEKA_TZ; five minutes of overlap miss nothing
     since = (datetime.fromisoformat(last).astimezone(clock.ZONE).replace(tzinfo=None) - timedelta(minutes=5)) if last else now() - timedelta(days=1)
+    if not any("attendance.barred" in json.loads(w["events"]) for w in rows(c, "SELECT events FROM webhooks WHERE active=1")):
+        return "no webhook wants attendance.barred"            # like the other events, nothing is replayed to a later hook (SF-E3)
     courses = rows(c, "SELECT DISTINCT l.course_id, co.code FROM attendance a JOIN lessons l ON l.id=a.lesson_id JOIN courses co ON co.id=l.course_id "
                       "WHERE a.marked_at>=?", (iso(since),))
-    found = 0
-    for co in courses:
-        for s in journal.course_standing(c, co["course_id"]):
-            if s["status"] == "not_admitted" and c.execute("INSERT OR IGNORE INTO reminders_sent(kind,obj_id,threshold,sent_at) VALUES(?,?,?,?)",
-                                                           ("barred", s["student_id"], str(co["course_id"]), iso(now()))).rowcount:
-                emit(c, "attendance.barred", {"course_id": co["course_id"], "course_code": co["code"], "student_id": s["student_id"],
-                                              "student_no": s["student_no"]})
-                found += 1
+    barred = [(co, s) for co in courses for s in journal.course_standing(c, co["course_id"]) if s["status"] == "not_admitted"]
+    found = 0                                                  # computed first: the write lock is taken only for the writes (AR-E2)
+    for co, s in barred:
+        if c.execute("INSERT OR IGNORE INTO reminders_sent(kind,obj_id,threshold,sent_at) VALUES(?,?,?,?)",
+                     ("barred", s["student_id"], str(co["course_id"]), iso(now()))).rowcount:
+            emit(c, "attendance.barred", {"course_id": co["course_id"], "course_code": co["code"], "student_id": s["student_id"],
+                                          "student_no": s["student_no"]})
+            found += 1
     return f"barred {found}"
 
 

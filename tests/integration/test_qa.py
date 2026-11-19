@@ -123,7 +123,142 @@ def test_bad_input_is_a_400_and_the_old_ask_the_teacher_path_lands_in_the_forum(
     assert forum["peer"].post(f"/api/qa/topics/{t['id']}/replies", {"text": ""}).status == 400
     assert forum["author"].post(f"/api/tutor/{cid}/forward", {"question": "Tutor bu məsələni izah edə bilmədi, kömək edin", "anonymous": True}).status == 200
     topic = next(x for x in forum["teacher"].get(f"/api/courses/{cid}/qa").json if x["title"].startswith("Tutor bu məsələni"))
-    assert topic["anonymous"] is True and topic["author"] == forum["author"].user["full_name"]
+    assert topic["anonymous"] is True and topic["author"] == "Anonim tələbə", "the tutor promises the teacher will not see the name"
     assert forum["teacher"].post(f"/api/teacher/questions/{topic['id']}/answer", {"answer": "Materialın 2-ci bölməsinə baxın."}).status == 200
     got = forum["author"].get(f"/api/qa/topics/{topic['id']}").json
     assert got["status"] == "answered" and got["replies"][-1]["accepted"] == 1 and got["replies"][-1]["by_teacher"] is True
+
+
+# ---------------------------------------------------------------- Checkpoint E (area A)
+def forward(f, text, **extra):
+    assert f["author"].post(f"/api/tutor/{f['course']}/forward", {"question": text, **extra}).status == 200
+    return q("SELECT id FROM teacher_questions WHERE question=? ORDER BY id DESC LIMIT 1", (text,))[0]["id"]
+
+
+def test_a_question_forwarded_from_the_tutor_stays_between_its_author_and_the_teacher(forum):
+    """SEC-E1 / SEC-E3: a forward was the teacher's alone before the forum; classmates never read it, and an anonymous
+    one hides the name from the teacher too."""
+    cid = forum["course"]
+    anon = forward(forum, "Şəxsi sual: imtahana qədər bu mövzunu çatdıra bilmirəm", anonymous=True, context="tutor söhbəti")
+    named = forward(forum, "Laboratoriya işini xəstəliyə görə buraxdım, nə edim?")      # through the API without a context
+    for tid in (anon, named):
+        assert all(x["id"] != tid for x in forum["peer"].get(f"/api/courses/{cid}/qa").json)
+        assert forum["peer"].get(f"/api/qa/topics/{tid}").status == 404
+        assert forum["peer"].post(f"/api/qa/topics/{tid}/replies", {"text": "Mən də"}).status == 404
+        assert forum["peer"].post("/api/qa/reports", {"topic_id": tid, "reason": "uyğun deyil"}).status == 404
+        mine = forum["author"].get(f"/api/qa/topics/{tid}").json
+        assert mine["private"] is True and mine["mine"] is True
+    listed = {x["id"]: x for x in forum["teacher"].get(f"/api/courses/{cid}/qa").json}
+    assert listed[anon]["author"] == "Anonim tələbə" and listed[anon]["private"] is True
+    assert listed[named]["author"] == forum["author"].user["full_name"]
+    assert forum["teacher"].get(f"/api/qa/topics/{anon}").json["author"] == "Anonim tələbə"
+    assert q("SELECT private FROM teacher_questions WHERE context='AI tutor söhbətindən göndərilib'") == [{"private": 1}] * 3, "seeded forwards"
+
+
+def test_the_anonymous_author_s_own_reply_does_not_name_them(forum):
+    """SEC-E2: the topic said "Anonim tələbə" and the author's reply under it said their name."""
+    t = new_topic(forum, anonymous=True, title="Anonim: öz cavabım da anonim qalsın")
+    forum["author"].post(f"/api/qa/topics/{t['id']}/replies", {"text": "Özüm tapdım: işarə konturun istiqamətindən asılıdır."})
+    forum["peer"].post(f"/api/qa/topics/{t['id']}/replies", {"text": "Mənim adım görünsün."})
+    seen = forum["peer"].get(f"/api/qa/topics/{t['id']}").json["replies"]
+    assert [(r["author"], r["anonymous"]) for r in seen] == [("Anonim tələbə", True), ("Sınaq qa.peer", False)]
+    assert forum["author"].user["full_name"] not in str(forum["peer"].get(f"/api/qa/topics/{t['id']}").json)
+    by_teacher = forum["teacher"].get(f"/api/qa/topics/{t['id']}").json["replies"]
+    assert by_teacher[0]["author"] == forum["author"].user["full_name"], "a forum topic's teacher sees the author (Task 33)"
+
+
+def faq_topic(f, title):
+    t = new_topic(f, title=title)
+    rid = f["teacher"].post(f"/api/qa/topics/{t['id']}/replies", {"text": "Konturu bir istiqamətdə gəzin, EHQ-ni ona görə yazın."}).json["replies"][-1]["id"]
+    assert f["teacher"].post(f"/api/qa/replies/{rid}/accept").status == 200
+    assert f["teacher"].post(f"/api/qa/topics/{t['id']}/faq", {"on": True}).json["faq"] is True
+    return t
+
+
+def faq_material():
+    got = q("SELECT id, title FROM materials WHERE filename='qa-faq.md' AND course_id=(SELECT id FROM courses WHERE code='ELM-2105')")
+    return got[0] if got else None
+
+
+def test_deleting_the_faq_material_takes_its_topics_out_of_the_faq_and_nothing_recreates_it_empty(forum):
+    """CR-E6: after the delete the topic still said FAQ and turning FAQ off made a material with no title."""
+    t = faq_topic(forum, "FAQ materialı silinəndə nə olur")
+    assert forum["teacher"].delete(f"/api/materials/{faq_material()['id']}").status == 200
+    assert forum["teacher"].get(f"/api/qa/topics/{t['id']}").json["faq"] is False
+    assert forum["teacher"].post(f"/api/qa/topics/{t['id']}/faq", {"on": True}).json["faq"] is True, "it can go back"
+    assert faq_material()["title"] == "Fənnin FAQ-ı"
+    c = store.connect()                                       # a flag left from before this fix: its section is gone
+    try:
+        c.execute("UPDATE teacher_questions SET faq_chunk_id=987654321 WHERE id=?", (t["id"],))
+        store.delete_material(c, faq_material()["id"])
+        c.execute("UPDATE teacher_questions SET faq_chunk_id=987654321 WHERE id=?", (t["id"],))
+        c.commit()
+    finally:
+        c.close()
+    assert forum["teacher"].post(f"/api/qa/topics/{t['id']}/faq", {"on": False}).json["faq"] is False
+    assert faq_material() is None, "turning FAQ off never creates the material"
+
+
+def test_the_old_answer_route_moves_the_faq_with_the_new_answer(forum):
+    """CR-E7: the accepted reply changed, the FAQ section kept the old answer."""
+    t = faq_topic(forum, "Köhnə səhifədən verilən cavab FAQ-a düşür")
+    assert forum["teacher"].post(f"/api/teacher/questions/{t['id']}/answer", {"answer": "Yeni cavab: Kirxhofun ikinci qanunu."}).status == 200
+    text = q("SELECT text FROM chunks WHERE id=(SELECT faq_chunk_id FROM teacher_questions WHERE id=?)", (t["id"],))[0]["text"]
+    assert text.endswith("Yeni cavab: Kirxhofun ikinci qanunu.")
+    assert forum["teacher"].post("/api/teacher/questions/99999999/answer", {"answer": "x"}).status == 404
+
+
+def test_only_a_teacher_s_answer_reaches_the_faq_the_tutor_cites(forum):
+    """TM-E5: an accepted student reply became the course FAQ the tutor cites as the course's own."""
+    t = new_topic(forum, title="Tələbə cavabı FAQ-a keçməməlidir")
+    rid = forum["peer"].post(f"/api/qa/topics/{t['id']}/replies", {"text": "Mənim cavabım: işarəni təsadüfi seçin."}).json["replies"][-1]["id"]
+    assert forum["teacher"].post(f"/api/qa/replies/{rid}/accept").status == 200
+    r = forum["teacher"].post(f"/api/qa/topics/{t['id']}/faq", {"on": True})
+    assert r.status == 400 and "müəllimin" in r.json["error"]
+    t2 = faq_topic(forum, "FAQ-dakı cavab tələbə cavabı ilə əvəzlənir")
+    peer = forum["peer"].post(f"/api/qa/topics/{t2['id']}/replies", {"text": "Başqa cavab: ehtimal ki, belədir."}).json["replies"][-1]["id"]
+    assert forum["teacher"].post(f"/api/qa/replies/{peer}/accept").json["faq"] is False, "the FAQ leaves with the teacher's answer"
+
+
+def test_a_draft_without_a_source_is_not_saved(forum):
+    """SF-E6: the tutor's refusal was saved as the teacher's AI draft."""
+    t = new_topic(forum, title="Qwzxv plmkjh trrsdv vbnmxq")
+    c = store.connect()
+    try:
+        c.execute("UPDATE teacher_questions SET question='Qwzxv plmkjh trrsdv vbnmxq zzyqw' WHERE id=?", (t["id"],))
+        c.commit()
+    finally:
+        c.close()
+    d = forum["teacher"].post(f"/api/qa/topics/{t['id']}/draft").json
+    assert d == {"ai_draft": None, "no_source": True}
+    assert q("SELECT ai_draft FROM teacher_questions WHERE id=?", (t["id"],)) == [{"ai_draft": None}]
+
+
+def test_a_dean_s_office_moderates_only_its_faculty_s_forum(forum):
+    """TM-E13: an office of another faculty saw an anonymous author's real name in the queue and could resolve it."""
+    t = new_topic(forum, title="Başqa fakültənin dekanlığı görməməlidir")
+    assert forum["peer"].post("/api/qa/reports", {"topic_id": t["id"], "reason": "mövzudan kənar"}).status == 200
+    pid = next(r["id"] for r in forum["office"].get("/api/qa/reports").json if r["topic_id"] == t["id"])
+    office = forum["office"].user["id"]
+    mine = q("SELECT scope_id FROM role_grants WHERE user_id=? AND role='office' AND scope_type='faculty'", (office,))[0]["scope_id"]
+    c = store.connect()
+    try:
+        other = c.execute("INSERT INTO faculties(code,name,created_at,updated_at) VALUES('QA-X','Sınaq fakültəsi','2026-01-01','2026-01-01') "
+                          "ON CONFLICT(code) DO UPDATE SET name=excluded.name RETURNING id").fetchone()[0]
+        c.execute("UPDATE role_grants SET scope_id=? WHERE user_id=? AND role='office' AND scope_type='faculty'", (other, office))
+        c.commit()
+        assert all(r["topic_id"] != t["id"] for r in forum["office"].get("/api/qa/reports").json)
+        assert forum["office"].post(f"/api/qa/reports/{pid}/resolve", {"action": "hide"}).status == 404
+        assert any(r["id"] == pid for r in forum["admin"].get("/api/qa/reports").json), "the administrator sees every faculty"
+    finally:
+        c.execute("UPDATE role_grants SET scope_id=? WHERE user_id=? AND role='office' AND scope_type='faculty'", (mine, office))
+        c.commit()
+        c.close()
+    assert forum["office"].post(f"/api/qa/reports/{pid}/resolve", {"action": "keep"}).status == 200
+
+
+def test_the_teacher_s_question_badge_reads_by_index(app_db):
+    """AR-E4: polled every 30 s, it scanned teacher_questions."""
+    plan = " ".join(r["detail"] for r in q("EXPLAIN QUERY PLAN SELECT COUNT(*) n FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id "
+                                          "WHERE co.teacher_id=? AND tq.status='open'", (1,)))
+    assert "idx_courses_teacher" in plan and "SCAN tq" not in plan, plan

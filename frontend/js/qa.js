@@ -17,7 +17,7 @@ route("/qa", async (el) => {
   try { courses = await api.get("/api/courses"); } catch (err) { return mount(el, failed(err.message)); }
   mount(el, html`${pageHead(t("Sual-cavab"), t("Fənnin müəllimi və qrup yoldaşları ilə sual-cavab"))}
     ${courses.length ? html`<div class="grid g-3">${courses.map((c) => html`<button class="card clickable" data-go="/qa/${c.id}" style="text-align:left">
-      <b>${c.name}</b><div class="small muted">${c.code || ""}</div></button>`)}</div>` : empty(t("Fənniniz yoxdur"))}`);
+      <b>${c.name}</b><div class="small muted">${c.code || ""}</div></button>`)}</div>` : empty("inbox", t("Fənniniz yoxdur"))}`);
   on(el, "click", "[data-go]", (e, b) => go(b.dataset.go));
 });
 
@@ -28,9 +28,9 @@ route("/qa/:cid", async (el, p) => {
   mount(el, html`${pageHead(t("Fənn forumu"), t("Suallar yalnız bu fənnin tələbələrinə və müəlliminə görünür"), html`<button class="btn btn-primary" data-new>${ic("plus", 15)} ${t("Sual ver")}</button>`)}
     ${topics.length ? html`<div class="card"><table class="table"><tbody>${topics.map((x) => html`<tr class="clickable" data-go="/qa/${p.cid}/${x.id}" tabindex="0">
       <td><b>${x.title}</b> ${x.tag ? html`<span class="badge b-gray">${x.tag}</span>` : ""} ${x.faq ? html`<span class="badge b-blue">FAQ</span>` : ""}
-        ${x.hidden ? html`<span class="badge b-amber">${t("Gizlədilib")}</span>` : ""}<div>${byline(x)}</div></td>
+        ${x.hidden ? html`<span class="badge b-amber">${t("Gizlədilib")}</span>` : ""} ${x.private ? html`<span class="badge b-gray" title="${t("Yalnız müəllif və fənnin müəllimləri görür")}">${t("Şəxsi")}</span>` : ""}<div>${byline(x)}</div></td>
       <td><span class="badge ${x.status === "answered" ? "b-green" : "b-gray"}">${x.status === "answered" ? t("Cavablanıb") : t("Açıq")}</span></td>
-      <td class="small muted">${t("{n} cavab", { n: x.replies })}</td></tr>`)}</tbody></table></div>` : empty(t("Hələ sual yoxdur"))}`);
+      <td class="small muted">${t("{n} cavab", { n: x.replies })}</td></tr>`)}</tbody></table></div>` : empty("inbox", t("Hələ sual yoxdur"))}`);
   on(el, "click", "[data-go]", (e, b) => go(b.dataset.go));
   on(el, "keydown", "[data-go]", (e, b) => { if (e.key === "Enter") go(b.dataset.go); });
   on(el, "click", "[data-new]", () => modal({ title: t("Sual ver"),
@@ -49,7 +49,7 @@ route("/qa/:cid", async (el, p) => {
 
 route("/qa/:cid/:tid", async (el, p) => {
   const draw = (x) => mount(el, html`${pageHead(x.title, "", "", [[t("Fənn forumu"), `/qa/${p.cid}`]])}
-    <div class="card stack">${byline(x)} ${x.tag ? html`<span class="badge b-gray">${x.tag}</span>` : ""}<div class="md">${md(x.text)}</div>
+    <div class="card stack">${byline(x)} ${x.tag ? html`<span class="badge b-gray">${x.tag}</span>` : ""} ${x.private ? html`<span class="badge b-gray" title="${t("Yalnız müəllif və fənnin müəllimləri görür")}">${t("Şəxsi")}</span>` : ""}<div class="md">${md(x.text)}</div>
       <div class="row" style="gap:8px">${!x.mine ? html`<button class="btn btn-ghost btn-sm" data-report>${ic("alert", 14)} ${t("Şikayət et")}</button>` : ""}
         ${x.can_moderate_course ? html`<button class="btn btn-ghost btn-sm" data-faq="${x.faq ? "0" : "1"}">${ic("bookmark", 14)} ${x.faq ? t("FAQ-dan çıxar") : t("FAQ-a əlavə et")}</button>
           <button class="btn btn-ai btn-sm" data-draft>${ic("sparkles", 14)} ${t("AI qaralaması")}</button>` : ""}</div></div>
@@ -68,7 +68,7 @@ route("/qa/:cid/:tid", async (el, p) => {
   on(el, "click", "[data-reply]", () => act(async () => { const r = await api.post(`/api/qa/topics/${p.tid}/replies`, { text: el.querySelector("#qa-reply").value }); return r; }));
   on(el, "click", "[data-accept]", (e, b) => act(() => api.post(`/api/qa/replies/${b.dataset.accept}/accept`)));
   on(el, "click", "[data-faq]", (e, b) => act(() => api.post(`/api/qa/topics/${p.tid}/faq`, { on: b.dataset.faq === "1" })));
-  on(el, "click", "[data-draft]", async (e, b) => { b.disabled = true; try { const d = await api.post(`/api/qa/topics/${p.tid}/draft`); x.ai_draft = d.ai_draft; draw(x); } catch (err) { b.disabled = false; toast(err.message, "err"); } });
+  on(el, "click", "[data-draft]", async (e, b) => { b.disabled = true; try { const d = await api.post(`/api/qa/topics/${p.tid}/draft`); if (d.no_source) toast(t("Fənn materiallarında bu suala uyğun mənbə tapılmadı"), "err"); x.ai_draft = d.ai_draft; draw(x); } catch (err) { b.disabled = false; toast(err.message, "err"); } });
   on(el, "click", "[data-use]", () => { el.querySelector("#qa-reply").value = x.ai_draft; el.querySelector("#qa-reply").focus(); });
   on(el, "click", "[data-report]", () => report(+p.tid));
   on(el, "click", "[data-report-reply]", (e, b) => report(+p.tid, +b.dataset.reportReply));
@@ -85,7 +85,7 @@ route("/staff/qa", async (el) => {
         <b>${r.title}</b><div class="small">${t("Müəllif")}: ${r.reply_id ? r.reply_author : r.topic_author}${!r.reply_id && r.anonymous ? html` (${t("anonim")})` : ""}</div>
         <blockquote>${r.reply_id ? r.reply_text : r.question}</blockquote><div><b>${t("Səbəb")}:</b> ${r.reason}</div>
         <div class="row" style="gap:8px"><button class="btn btn-danger btn-sm" data-resolve="${r.id}" data-action="hide">${t("Gizlət")}</button>
-          <button class="btn btn-ghost btn-sm" data-resolve="${r.id}" data-action="keep">${t("Saxla")}</button></div></div>`) : empty(t("Açıq şikayət yoxdur"))}`);
+          <button class="btn btn-ghost btn-sm" data-resolve="${r.id}" data-action="keep">${t("Saxla")}</button></div></div>`) : empty("inbox", t("Açıq şikayət yoxdur"))}`);
   };
   on(el, "click", "[data-resolve]", async (e, b) => {
     try { await api.post(`/api/qa/reports/${b.dataset.resolve}/resolve`, { action: b.dataset.action }); toast(t("Qeyd olundu"), "ok"); load(); }
@@ -107,7 +107,7 @@ route("/office-hours", async (el) => {
   const load = async () => {
     try {
       const bookings = await api.get("/api/office-hours/bookings");
-      const mine = html`<div class="card"><b>${t("Görüşlər")}</b>${bookings.length ? html`<table class="table"><tbody>${bookings.map(bookingRow)}</tbody></table>` : empty(t("Görüş yoxdur"))}</div>`;
+      const mine = html`<div class="card"><b>${t("Görüşlər")}</b>${bookings.length ? html`<table class="table"><tbody>${bookings.map(bookingRow)}</tbody></table>` : empty("inbox", t("Görüş yoxdur"))}</div>`;
       if (teacher) {
         const hours = await api.get("/api/office-hours");
         return mount(el, html`${pageHead(t("Qəbul saatları"), t("Həftəlik qəbul saatlarınız: tələbələr iki həftə qabağa yer tutur"))}
@@ -128,7 +128,7 @@ route("/office-hours", async (el) => {
         <div class="card stack"><label class="field"><span>${t("Müəllim")}</span><select class="input" id="oh-teacher">
           ${teachers.map((x) => html`<option value="${x.id}" ${x.id === pick ? "selected" : ""}>${x.full_name}</option>`)}</select></label>
           ${days.length ? days.map((d) => html`<div><b>${d}</b><div class="row wrap" style="gap:6px">${slots.filter((s) => s.day === d).map((s) =>
-            html`<button class="btn btn-sm" data-slot="${s.hours_id}|${s.day}|${s.start}">${s.start}</button>`)}</div></div>`) : empty(t("Boş vaxt yoxdur"))}</div>${mine}`);
+            html`<button class="btn btn-sm" data-slot="${s.hours_id}|${s.day}|${s.start}">${s.start}</button>`)}</div></div>`) : empty("inbox", t("Boş vaxt yoxdur"))}</div>${mine}`);
     } catch (err) { mount(el, failed(err.message)); }
   };
   on(el, "change", "#oh-teacher", (e, s) => { pick = +s.value; load(); });

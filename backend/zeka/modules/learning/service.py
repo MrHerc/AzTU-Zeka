@@ -17,6 +17,11 @@ def may_teach(c, user, course_id: int) -> bool:
     return user["role"] in ("teacher", "dept_head") and repo.teaches(c, user["id"], course_id)
 
 
+def enrolled(c, user, course_id: int) -> bool:
+    """An active student enrolled in the course today."""
+    return user["role"] == "student" and repo.enrolled(c, user["id"], course_id, now().date().isoformat())
+
+
 def list_for(c, user, course_id: int) -> list[dict] | None:
     """A teacher's view (with counts) or a student's (with their own submission); None for anyone else."""
     if may_teach(c, user, course_id):

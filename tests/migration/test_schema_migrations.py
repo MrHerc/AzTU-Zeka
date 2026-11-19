@@ -178,3 +178,24 @@ def test_0450_starts_each_registry_sequence_after_the_largest_issued_number(tmp_
         assert got == {("AzTU-ARY", 2026): 7, ("AzTU-ARY", 2025): 3, ("AzTU-TRN", 2026): 12}, got   # the key issue_document uses
     finally:
         c.close()
+
+
+def test_0331_makes_every_question_not_posted_in_the_forum_private(tmp_path, mdir):
+    """Checkpoint E, SEC-E1: forwards from the tutor (with or without a context) stay private; forum topics do not."""
+    for v, _, path in migrate.discover():
+        if v < 331:
+            put(mdir, path.name, path.read_text(encoding="utf-8"))
+    c = sqlite3.connect(tmp_path / "qa.db")
+    try:
+        migrate.apply(c, mdir)
+        ids = [c.execute("INSERT INTO teacher_questions(course_id,student_id,question,context,status,created_at) VALUES(1,2,'q',?,'open','2026-01-01')",
+                         (ctx,)).lastrowid for ctx in ("tutor", "", "")]
+        c.execute("INSERT INTO audit(action,entity,detail) VALUES('qa_topic','course',?)", (f"ELM-2105 #{ids[2]}",))
+        c.execute("INSERT INTO audit(action,entity,detail) VALUES('forward_question','course','ELM-2105')")
+        c.commit()
+        src = next(p for v, _, p in migrate.discover() if v == 331)
+        put(mdir, src.name, src.read_text(encoding="utf-8"))
+        migrate.apply(c, mdir)
+        assert [r[0] for r in c.execute("SELECT private FROM teacher_questions ORDER BY id")] == [1, 1, 0]
+    finally:
+        c.close()

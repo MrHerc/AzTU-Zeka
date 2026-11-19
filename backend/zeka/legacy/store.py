@@ -214,6 +214,8 @@ def drop_chunks(c, material_id):
     for i in ids:
         engine.INDEX["chunks"].remove(i)
     log_index(c, "chunks", ids, "delete")
+    # a forum topic whose FAQ section goes with the material is no longer in the FAQ (Checkpoint E, CR-E6)
+    c.execute("UPDATE teacher_questions SET faq_chunk_id=NULL WHERE faq_chunk_id IN (SELECT id FROM chunks WHERE material_id=?)", (material_id,))
     c.execute("DELETE FROM chunks WHERE material_id=?", (material_id,))
 
 
@@ -701,7 +703,8 @@ def seed(c):
     for st, q, anon, hrs in [(students[7], "Kirxhofun ikinci qanununda EHQ-nin işarəsini necə seçməliyəm? Laboratoriya işində nəticəm mənfi çıxdı.", 0, 5),
                              (students[23], "Ev tapşırığının 3-cü məsələsində paralel hissəni düzgün tapmışam, amma ümumi cərəyan uyğun gəlmir. Yoxlaya bilərsinizmi?", 1, 20),
                              (students[41], "RC dövrəsində kondensator boşalanda gərginlik hansı düsturla dəyişir? Materialda yalnız dolma var.", 0, 30)]:
-        c.execute("INSERT INTO teacher_questions(course_id,student_id,anonymous,title,question,context,status,created_at) VALUES(?,?,?,?,?,?,'open',?)",
+        c.execute("INSERT INTO teacher_questions(course_id,student_id,anonymous,title,question,context,status,created_at,private) "
+                  "VALUES(?,?,?,?,?,?,'open',?,1)",
                   (elm, st, anon, textwrap.shorten(q.split("?")[0] + "?", 80, placeholder="…"), q, "AI tutor söhbətindən göndərilib", iso(t0 - timedelta(hours=hrs))))
 
     # ---- e-services

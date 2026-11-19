@@ -17,7 +17,7 @@ route("/clubs", async (el) => {
     mount(el, html`${pageHead(t("Klublar"), t("Tələbə klubları və onların kanalları"), html`<button class="btn btn-primary" data-new>${ic("plus", 15)} ${t("Klub təklif et")}</button>`)}
       ${list.length ? html`<div class="grid g-3">${list.map((c) => html`<div class="card club-card"><b class="clickable" data-go="/clubs/${c.id}">${c.name}</b>
         <div class="small muted">${c.leader} · ${t("{n} üzv", { n: c.members })}</div><p class="small">${c.description}</p><div>${state(c)}</div></div>`)}</div>`
-        : empty(t("Hələ klub yoxdur"))}`);
+        : empty("inbox", t("Hələ klub yoxdur"))}`);
   };
   on(el, "click", "[data-go]", (e, b) => go(b.dataset.go));
   on(el, "click", "[data-join]", async (e, b) => { try { await api.post(`/api/clubs/${b.dataset.join}/join`); toast(t("Sorğu göndərildi"), "ok"); draw(); } catch (err) { toast(err.message, "err"); } });
@@ -40,7 +40,7 @@ route("/clubs/:id", async (el, p) => {
       ${m.hidden ? html` · <span class="badge b-amber">${t("Gizlədilib")}</span>` : ""}</div><div class="club-text">${m.text}</div>
     <div class="row" style="gap:6px">${m.author_id !== S.user.id ? html`<button class="btn btn-ghost btn-xs" data-report="${m.id}">${t("Şikayət et")}</button>` : ""}
       ${info.moderates && !m.hidden ? html`<button class="btn btn-ghost btn-xs" data-hide="${m.id}">${t("Gizlət")}</button>` : ""}</div></div>`;
-  const drawMsgs = () => { const box = el.querySelector("#club-msgs"); if (box) { mount(box, html`${msgs.length ? msgs.map(msgRow) : empty(t("Hələ mesaj yoxdur"))}`); box.scrollTop = box.scrollHeight; } };
+  const drawMsgs = () => { const box = el.querySelector("#club-msgs"); if (box) { mount(box, html`${msgs.length ? msgs.map(msgRow) : empty("inbox", t("Hələ mesaj yoxdur"))}`); box.scrollTop = box.scrollHeight; } };
   const poll = async () => {
     if (!el.isConnected || !channel) return stop();
     try {
@@ -61,7 +61,7 @@ route("/clubs/:id", async (el, p) => {
         <section class="card club-chat">${channel ? html`<div id="club-msgs" class="club-msgs" aria-live="polite"></div>
           ${canWrite ? html`<div class="row" style="gap:8px"><textarea class="input grow" id="club-text" rows="2" maxlength="2000" aria-label="${t("Mesaj")}"></textarea>
             <button class="btn btn-primary" data-send>${ic("send", 15)}</button></div>` : html`<p class="small muted">${t("Bu kanala yalnız klubun rəhbəri yazır.")}</p>`}`
-          : empty(t("Kanal seçin"))}</section></div>`}`);
+          : empty("inbox", t("Kanal seçin"))}</section></div>`}`);
     drawMsgs();
   };
   const send = async () => {
@@ -116,11 +116,11 @@ route("/staff/clubs", async (el) => {
       <div class="card stack"><b>${t("Təsdiq gözləyən klublar")}</b>${pending.length ? pending.map((c) => html`<div class="row wrap" style="gap:8px;justify-content:space-between">
         <div><b>${c.name}</b> · <span class="small muted">${c.leader}</span><div class="small">${c.description}</div></div>
         <div class="row" style="gap:6px"><button class="btn btn-primary btn-sm" data-decide="${c.id}" data-ok="1">${t("Təsdiqlə")}</button>
-          <button class="btn btn-ghost btn-sm" data-decide="${c.id}" data-ok="0">${t("Rədd et")}</button></div></div>`) : empty(t("Gözləyən klub yoxdur"))}</div>
+          <button class="btn btn-ghost btn-sm" data-decide="${c.id}" data-ok="0">${t("Rədd et")}</button></div></div>`) : empty("inbox", t("Gözləyən klub yoxdur"))}</div>
       <div class="card stack"><b>${t("Şikayətlər")}</b>${reports.length ? reports.map((r) => html`<div class="stack"><div class="small muted">${r.club} · ${when(r.created_at)} · ${t("şikayət edən")}: ${r.reporter}</div>
         <div><b>${r.author}:</b> ${r.text}</div><div><b>${t("Səbəb")}:</b> ${r.reason}</div>
         <div class="row" style="gap:6px"><button class="btn btn-danger btn-sm" data-resolve="${r.id}" data-action="hide">${t("Gizlət")}</button>
-          <button class="btn btn-ghost btn-sm" data-resolve="${r.id}" data-action="keep">${t("Saxla")}</button></div></div>`) : empty(t("Açıq şikayət yoxdur"))}</div>`);
+          <button class="btn btn-ghost btn-sm" data-resolve="${r.id}" data-action="keep">${t("Saxla")}</button></div></div>`) : empty("inbox", t("Açıq şikayət yoxdur"))}</div>`);
   };
   on(el, "click", "[data-decide]", async (e, b) => { try { await api.post(`/api/clubs/${b.dataset.decide}/decide`, { approve: b.dataset.ok === "1" }); load(); } catch (err) { toast(err.message, "err"); } });
   on(el, "click", "[data-resolve]", async (e, b) => { try { await api.post(`/api/community/reports/${b.dataset.resolve}/resolve`, { action: b.dataset.action }); load(); } catch (err) { toast(err.message, "err"); } });

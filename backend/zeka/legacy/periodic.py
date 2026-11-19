@@ -38,8 +38,10 @@ def retention_purge(c) -> str:
     mails = c.execute("DELETE FROM outbox WHERE created_at<? AND status IN ('sent','failed','skipped')", (old,)).rowcount
     from ..modules.community import service as community     # club messages past their retention period (Task 35)
     club = community.purge(c)
+    hooks = c.execute("DELETE FROM webhook_deliveries WHERE status IN ('sent','failed') AND created_at<?",
+                      (iso(t - KEEP_LOGS),)).rowcount           # Checkpoint E (AR-E7): finished deliveries, after 90 days
     return (f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions} · job runs {runs} · mails {mails}"
-            f" · club messages {club}")
+            f" · club messages {club} · webhook deliveries {hooks}")
 
 
 KEEP_LOGS = timedelta(days=90)

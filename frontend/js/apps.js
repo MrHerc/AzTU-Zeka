@@ -11,7 +11,7 @@ route("/apps", async (el) => {
   let data;
   const draw = () => mount(el, html`${pageHead(t("Tətbiqlər"), t("Universitetin digər sistemlərinə keçidlər"))}
     ${data.apps.length ? html`<div class="grid g-3">${data.apps.map((a) => html`<a class="card clickable" href="${a.url}" target="_blank" rel="noopener noreferrer">
-      ${ic(a.icon || "external", 20)} <b>${a.title}</b>${a.note ? html`<div class="small muted">${a.note}</div>` : ""}</a>`)}</div>` : empty(t("Hələ tətbiq əlavə olunmayıb"))}
+      ${ic(a.icon || "external", 20)} <b>${a.title}</b>${a.note ? html`<div class="small muted">${a.note}</div>` : ""}</a>`)}</div>` : empty("inbox", t("Hələ tətbiq əlavə olunmayıb"))}
     ${data.all ? html`<div class="card stack"><b>${t("Kafellərin redaktəsi")}</b>
       <textarea class="input" id="apps-json" rows="10" aria-label="${t("Kafellər")}">${JSON.stringify(data.all, null, 1)}</textarea>
       <p class="small muted">${t("Hər kafel: title, url (https://), roles ({roles}), icon, note.", { roles: Object.keys(ROLES()).join(", ") })}</p>
@@ -70,7 +70,7 @@ route("/admin/integration", async (el) => {
     try { log = await api.get(`/api/integration/webhooks/${b.dataset.log}/deliveries`); } catch (err) { return toast(err.message, "err"); }
     modal({ title: t("Çatdırma jurnalı"), body: log.length ? html`<table class="table"><tbody>${log.map((d) => html`<tr><td class="small">${d.created_at.replace("T", " ").slice(0, 16)}</td>
       <td>${EVENTS()[d.event] || d.event}</td><td><span class="badge ${d.status === "sent" ? "b-green" : d.status === "failed" ? "b-red" : "b-gray"}">${d.status}</span></td>
-      <td class="small">${t("{n} cəhd", { n: d.attempts })} ${d.last_status || ""} ${d.last_error || ""}</td></tr>`)}</tbody></table>` : empty(t("Çatdırma yoxdur")),
+      <td class="small">${t("{n} cəhd", { n: d.attempts })} ${d.last_status || ""} ${d.last_error || ""}</td></tr>`)}</tbody></table>` : empty("inbox", t("Çatdırma yoxdur")),
       actions: [{ label: t("Bağla"), cls: "btn-primary" }] });
   });
   if (S.user.role !== "admin") return mount(el, failed(t("Bu bölməyə giriş icazəniz yoxdur")));

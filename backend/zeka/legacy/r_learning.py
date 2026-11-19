@@ -442,9 +442,10 @@ def forward(req):
     q = b.text("question", 2000)
     if not q:
         raise HTTPError(400, "Sual boşdur")
-    c.execute("INSERT INTO teacher_questions(course_id,student_id,anonymous,title,question,context,status,created_at,updated_at) "
-              "VALUES(?,?,?,?,?,?,'open',?,?)", (course["id"], req.user["id"], 1 if b.get("anonymous") else 0, " ".join(q.split())[:80], q,
-                                               b.text("context", 1500), iso(now()), iso(now())))    # a topic of the course forum (Task 33)
+    # a private topic of the course forum: its author and the course's teachers read it (Task 33, Checkpoint E SEC-E1)
+    c.execute("INSERT INTO teacher_questions(course_id,student_id,anonymous,title,question,context,status,created_at,updated_at,private) "
+              "VALUES(?,?,?,?,?,?,'open',?,?,1)", (course["id"], req.user["id"], 1 if b.get("anonymous") else 0, " ".join(q.split())[:80], q,
+                                                 b.text("context", 1500), iso(now()), iso(now())))
     notify(c, course["teacher_id"], "question", "Yeni tələbə sualı", T3("{course}: {text}", course=course["name"], text=q[:90]), "/teacher/questions")
     audit(c, req.user["id"], "forward_question", "course", course["code"])
     return {"ok": True}
@@ -704,14 +705,9 @@ def answer_question(req):
     a = req.json().text("answer")
     if not a:
         raise HTTPError(400, "Cavab boşdur")
-    q = row(c, "SELECT tq.*, co.name course FROM teacher_questions tq JOIN courses co ON co.id=tq.course_id WHERE tq.id=? AND co.teacher_id=?",
-            (req.params["id"], req.user["id"]))
-    if not q:
+    from ..modules.qa import service as qa                  # the topic's accepted reply in the forum; the FAQ follows it (Task 33)
+    if qa.answer(c, req.user, req.params["id"], a[:3000])[0] == "missing":
         raise HTTPError(404, "Sual tapılmadı")
-    from ..modules.qa import repo as qa                     # the answer is the topic's accepted reply in the forum (Task 33)
-    rid = qa.add_reply(c, q["id"], req.user["id"], a[:3000], iso(now()))
-    qa.accept(c, q["id"], rid, a[:3000], iso(now()))
-    notify(c, q["student_id"], "answer", "Müəllim sualınıza cavab verdi", T3("{course}: {text}", course=q["course"], text=a[:90]), f"/student/tutor/{q['course_id']}")
     return {"ok": True}
 
 
