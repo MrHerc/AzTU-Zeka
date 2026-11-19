@@ -593,6 +593,21 @@ def snapshot_history(c):
                       (as_of.date().isoformat(), cc["id"], cc["high"], cc["watch"], cc["ok"], cc["students"]))
 
 
+def snapshot_week(c) -> str:
+    """This week's counts (Task 36, the weekly job ``radar.snapshot``); a second run in the same week replaces them."""
+    frame = Frame(c)
+    an = Analysis(frame, frame.now)
+    week = frame.now.date().isoformat()
+    c.execute("DELETE FROM risk_snapshots WHERE week_start=?", (week,))
+    agg = an.counts()
+    c.execute("INSERT INTO risk_snapshots(week_start,course_id,high,watch,ok,students) VALUES(?,?,?,?,?,?)",
+              (week, 0, agg["high"], agg["watch"], agg["ok"], agg["students"]))
+    for cc in an.course_counts():
+        c.execute("INSERT INTO risk_snapshots(week_start,course_id,high,watch,ok,students) VALUES(?,?,?,?,?,?)",
+                  (week, cc["id"], cc["high"], cc["watch"], cc["ok"], cc["students"]))
+    return week
+
+
 def trend(c, an: Analysis, course_ids=None) -> list[dict]:
     """Weekly high/watch counts: stored snapshots for past weeks plus the live current week."""
     if course_ids and len(course_ids) == 1:

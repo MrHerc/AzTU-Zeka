@@ -22,10 +22,11 @@ ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-u
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 python backend/manage.py import --kind users --source old-sis --file F.csv [--dry-run] [--prefer source]   # Task 16
 python backend/manage.py activation-codes --faculty CODE --out codes.csv   # one-time student codes for a dean's office
+python backend/manage.py jobs status | run          # periodic jobs (Task 36): each job's last run; run what is due now
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1235 tests, about 3 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1252 tests, about 3 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -49,7 +50,8 @@ i18n catalogue, pytest on Python 3.10–3.13 and Windows) and `security.yml` (gi
 
 Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backend/zeka/core/config.py`), `ZEKA_TZ`
 (default `Asia/Baku`; `backend/zeka/core/clock.py`), `ZEKA_DATA` (database and uploads, default `data/`), `ZEKA_WORKERS`,
-`ZEKA_HANDLERS`/`ZEKA_SLOW`/`ZEKA_QUEUE_WAIT` (the handler gate in `backend/zeka/core/web.py`) and, in
+`ZEKA_HANDLERS`/`ZEKA_SLOW`/`ZEKA_QUEUE_WAIT` (the handler gate in `backend/zeka/core/web.py`), `ZEKA_JOBS` (`0` turns the
+periodic job runner off) and `ZEKA_JOBS_DELAY` (seconds before its first cycle, default 15) and, in
 `backend/zeka/core/security.py`, `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`,
 `ZEKA_PROXY_HOPS`, `ZEKA_ACCESS_LOG`. `config.json` (git-ignored, copy from `config.example.json`) or the
 `AZTU_LLM_PROVIDER/BASE_URL/API_KEY/MODEL` env vars switch the AI from the offline engine to a real LLM.
@@ -64,7 +66,9 @@ and serialises JSON. Raise `HTTPError(status, "Azerbaijani message")` for errors
 once per process (`slow=True` routes, which wait on the network, have their own 4 slots); a request that waits longer than
 `ZEKA_QUEUE_WAIT` gets 503 + `Retry-After`. With `--workers N` the supervisor runs `store.init()` (migrations, seed, one
 search-index build), freezes the heap (`gc.freeze()`) and forks; workers share the index pages and restarted ones only
-apply the change log.
+apply the change log. The supervisor also forks the periodic job runner (`backend/zeka/core/jobs.py`; the jobs
+register in `backend/zeka/legacy/periodic.py`) and restarts it like a worker; a single process runs it in a thread. One
+runner works at a time (a lease row), each run is a `job_runs` row.
 
 **Routes** live in `backend/zeka/legacy/r_*.py`, one module per domain, registered by import order in `backend/zeka/legacy/routes.py`
 (`r_core` auth/profile/files, `r_learning` courses/tutor/campus/quizzes/teacher, `r_services` requests/documents,

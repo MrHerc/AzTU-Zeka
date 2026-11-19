@@ -1,0 +1,6 @@
+{
+ "Müraciətin müddəti keçdi: {name}": "Срок рассмотрения обращения истёк: {name}",
+ "Müraciətin müddəti bir gündən az qalıb: {name}": "До срока по обращению осталось меньше суток: {name}",
+ "Dəstək sorğusunun müddəti keçdi: {subject}": "Срок по запросу в поддержку истёк: {subject}",
+ "Tapşırığın son tarixi sabahdır: {title}": "Срок сдачи задания — завтра: {title}"
+}

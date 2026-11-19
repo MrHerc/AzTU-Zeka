@@ -852,13 +852,13 @@ Dövri işlər (dilim 1). Bu gün heç nə öz-özünə işləmir: vaxta bağlı
 - [ ] Bağlantını qəbul edib cavab verməyən saxta SMTP: cəhd 15 saniyədə uğursuz sayılır, növbədəki digər işlər davam edir, öldürülən web işçisi yenə 2 saniyəyə bərpa olunur
 - [ ] Növü bağlayan istifadəçi həmin növdən e-poçt almır
 - [ ] Hər e-poçt alıcının dilindədir
-- [ ] Saat irəli çəkilən test (`core/clock.py`): interval keçəndə reyestrdəki hər dövri iş düz bir dəfə işləyir və `job_runs`-da uğurlu qeyd var; interval keçməyibsə növbəti dövrə heç nə işlətmir; iki icraçı proseslə də hər iş bir dəfə işləyir
-- [ ] Test reyestrdəki iş adlarını gözlənilən siyahı ilə tutuşdurur: `retention.purge`, `reminders.sla`, `lessons.generate`, `radar.snapshot`; `exam.autosubmit` siyahıya Task 26-da əlavə olunur
-- [ ] Xəta verən dövri iş `job_runs`-da səbəblə qalır, digər işləri saxlamır və növbəti dövrədə təkrar cəhd olunur
+- [x] Saat irəli çəkilən test (`core/clock.py`): interval keçəndə reyestrdəki hər dövri iş düz bir dəfə işləyir və `job_runs`-da uğurlu qeyd var; interval keçməyibsə növbəti dövrə heç nə işlətmir; iki icraçı proseslə də hər iş bir dəfə işləyir
+- [x] Test reyestrdəki iş adlarını gözlənilən siyahı ilə tutuşdurur: `retention.purge`, `reminders.sla`, `lessons.generate`, `radar.snapshot`; `exam.autosubmit` siyahıya Task 26-da əlavə olunur
+- [x] Xəta verən dövri iş `job_runs`-da səbəblə qalır, digər işləri saxlamır və növbəti dövrədə təkrar cəhd olunur
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_jobs.py tests/integration/test_email_outbox.py tests/integration/test_periodic_jobs.py -q`
-- [ ] `python backend/manage.py jobs status`
+- [ ] `python -m pytest tests/integration/test_jobs.py tests/integration/test_email_outbox.py tests/integration/test_periodic_jobs.py -q` (dilim 1: `test_jobs.py`, `test_periodic_jobs.py` keçir)
+- [x] `python backend/manage.py jobs status`
 
 **Dependencies:** Task 7; `lessons.generate` işi Task 19 birləşdiriləndən sonra qoşulur
 **Files likely touched:** `backend/zeka/core/jobs.py`, `backend/zeka/modules/comms/{service,repo,routes}.py`, `backend/migrations/0360_comms.sql` (`jobs`, `job_runs`, `outbox`), `backend/manage.py`, `backend/zeka/legacy/{store,radar}.py`, `content/email-templates/`, `tests/integration/test_periodic_jobs.py`

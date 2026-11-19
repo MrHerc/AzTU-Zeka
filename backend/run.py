@@ -4,6 +4,7 @@ import gc
 import os
 import re
 import signal
+import socket
 import sys
 import threading
 import time
@@ -13,13 +14,15 @@ BACKEND = Path(__file__).resolve().parent
 ROOT = BACKEND.parent  # repository: frontend/, content/, data/, logs/
 sys.path.insert(0, str(BACKEND))
 
-from zeka.core import clock, config, migrate  # noqa: E402
+from zeka.core import clock, config, jobs, migrate  # noqa: E402
 from zeka.legacy import api, store  # noqa: E402
 from zeka.core.security import CFG, LOOPBACK  # noqa: E402
 from zeka.core import web  # noqa: E402
 from zeka.core.web import make_server  # noqa: E402
 
 LOG_MAX = 5 * 1024 * 1024
+JOBS_ON = os.environ.get("ZEKA_JOBS", "1") != "0"         # the periodic jobs (Task 36); 0 turns the runner off
+JOBS_DELAY = float(os.environ.get("ZEKA_JOBS_DELAY", "15"))   # seconds after start before the first cycle
 
 
 def normalize_public_url(value: str) -> str:
@@ -104,11 +107,15 @@ def main():
     print(f"AzTU Rəqəmsal Kampus ({config.MODE}): http://127.0.0.1:{args.port}{shown}  (dayandırmaq üçün Ctrl+C)", flush=True)
     if args.workers == 1:
         srv = make_server(args.port, api.R, ROOT / "frontend", api.before, api.after, log, host=args.host)
+        done = threading.Event()
+        if JOBS_ON:     # shortcut: one process runs the jobs in a thread; with --workers the supervisor gives them a process
+            threading.Thread(target=run_jobs, args=(log, done.is_set), daemon=True, name="jobs").start()
         try:
             srv.serve_forever()
         except KeyboardInterrupt:
             pass
         finally:
+            done.set()
             srv.server_close()
         return
     supervise(args, log)
@@ -131,12 +138,27 @@ def worker(args, log):
         web.drain()
 
 
+def run_jobs(log, stop):
+    """The periodic jobs (Task 36): one runner at a time across processes, by the lease in the database."""
+    from zeka.legacy import periodic  # noqa: F401  registers the jobs
+    jobs.loop(store.connect, f"{socket.gethostname()}:{os.getpid()}", stop=stop, log=log, first_delay=JOBS_DELAY)
+
+
+def runner(log):
+    """The job runner's own process, restarted by the supervisor like a worker."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    done = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: done.set())
+    run_jobs(log, done.is_set)
+
+
 def supervise(args, log):
     """Start the workers, restart any that dies, stop them all on SIGTERM or Ctrl+C."""
     children: dict[int, float] = {}
+    jobs_pid = [0]                                             # the job runner (Task 36), restarted like a worker
     stopping = False
 
-    def spawn():
+    def spawn(kind="worker"):
         if stopping:                                           # a stop request wins over a restart
             return
         pid = os.fork()
@@ -144,13 +166,15 @@ def supervise(args, log):
             signal.signal(signal.SIGTERM, signal.SIG_DFL)      # not the supervisor's stop(); worker() sets its own when serving
             code = 0
             try:
-                worker(args, log)
+                runner(log) if kind == "jobs" else worker(args, log)
             except BaseException as ex:                        # noqa: BLE001  a worker must never return into the supervisor loop
-                log(f"worker {os.getpid()} failed: {type(ex).__name__}: {ex}")
-                print(f"worker {os.getpid()} failed: {type(ex).__name__}: {ex}", file=sys.stderr, flush=True)
+                log(f"{kind} {os.getpid()} failed: {type(ex).__name__}: {ex}")
+                print(f"{kind} {os.getpid()} failed: {type(ex).__name__}: {ex}", file=sys.stderr, flush=True)
                 code = 1
             os._exit(code)
         children[pid] = time.monotonic()
+        if kind == "jobs":
+            jobs_pid[0] = pid
 
     def stop(*_):
         nonlocal stopping
@@ -166,6 +190,8 @@ def supervise(args, log):
     gc.freeze()             # the cyclic GC would write to every inherited index object and unshare its pages in each worker
     for _ in range(args.workers):
         spawn()
+    if JOBS_ON:
+        spawn("jobs")
     fast, gave_up = 0, False
     while children:
         try:
@@ -174,6 +200,11 @@ def supervise(args, log):
             break
         started = children.pop(pid, None)
         if stopping or started is None:
+            continue
+        if pid == jobs_pid[0]:                               # the runner: restarted on its own, never counted against the workers
+            log(f"job runner {pid} exited (status {status}); restarting")
+            time.sleep(1)
+            spawn("jobs")
             continue
         log(f"worker {pid} exited (status {status}); restarting")
         if time.monotonic() - started < 2:                   # a worker that dies at once: do not spin

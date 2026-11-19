@@ -1,0 +1,6 @@
+{
+ "Müraciətin müddəti keçdi: {name}": "A request is past its deadline: {name}",
+ "Müraciətin müddəti bir gündən az qalıb: {name}": "Less than a day is left on a request: {name}",
+ "Dəstək sorğusunun müddəti keçdi: {subject}": "A support ticket is past its deadline: {subject}",
+ "Tapşırığın son tarixi sabahdır: {title}": "An assignment is due tomorrow: {title}"
+}

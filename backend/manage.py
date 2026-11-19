@@ -42,7 +42,11 @@ def main(argv=None) -> int:
     ac = sub.add_parser("activation-codes", help="one-time activation codes for a faculty's students, as CSV (Task 16)")
     ac.add_argument("--faculty", required=True, help="faculty code")
     ac.add_argument("--out", required=True, help="CSV file to write (handed to the dean's office)")
+    jb = sub.add_parser("jobs", help="periodic jobs (Task 36)")
+    jb.add_argument("action", choices=("status", "run"), help="status: each job's last run; run: run what is due now, once")
     args = ap.parse_args(argv)
+    if args.cmd == "jobs":
+        return run_jobs(args.action)
     if args.cmd == "import":
         return run_import(args.kind, args.source, Path(args.file), args.dry_run, args.prefer == "source")
     if args.cmd == "activation-codes":
@@ -66,6 +70,26 @@ def main(argv=None) -> int:
     except migrate.MigrationError as ex:
         print(f"error: {ex}", file=sys.stderr)
         return 2
+    finally:
+        c.close()
+    return 0
+
+
+def run_jobs(action: str) -> int:
+    from zeka.core import jobs
+    from zeka.legacy import periodic  # noqa: F401  registers the jobs
+    store.init()
+    c = store.connect()
+    try:
+        if action == "run":
+            for name, result in jobs.run_due(c, f"manage:{os.getpid()}"):
+                print(f"{name}: {result}")
+        for j in jobs.status(c):
+            last = j["last"]
+            shown = f"{last['status']} at {last['started_at']} ({last['ms']} ms) {last['detail'] or ''}".strip() if last else "never ran"
+            print(f"{j['name']:<18} every {j['interval_s'] // 60:>5} min · last ok {j['last_ok'] or '-'} · last: {shown}")
+            if last and last["status"] == "error":
+                print(f"  reason: {last['detail']}")
     finally:
         c.close()
     return 0
