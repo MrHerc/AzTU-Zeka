@@ -811,8 +811,8 @@ give its number back.
 | Method | Path | Who | Purpose |
 |---|---|---|---|
 | `POST` | `/api/courses/{id}/exams` | the course's teachers | Set an exam: `title`, `kind` (main, retake, individual), `day`, `start`, `end` (local time), `duration_min`, `plan` (`[{difficulty, topic, count}]` over the course's exam questions) |
-| `GET` | `/api/courses/{id}/exams` | the course's teachers and staff; an enrolled student | The course's exams; a student sees the open and closed ones with `roster` and `attempt` status |
-| `GET` | `/api/exams/{id}/manage` | the course's teachers, staff (a dean's office: its faculties' students) | The exam, its roster and its attempts |
+| `GET` | `/api/courses/{id}/exams` | the course's teachers, those who read its journal (a department head whose grant covers the course, the registry offices, leadership); an enrolled student | The course's exams; a student sees the open and closed ones with `roster` and `attempt` status |
+| `GET` | `/api/exams/{id}/manage` | the course's teachers, those who read its journal (as above; a dean's office: its faculties' students) | The exam, its roster and its attempts |
 | `POST` | `/api/exams/{id}/open` | the course's teachers | Open the exam: the roster is drawn once from the course's students; one the journal does not admit is on it as `excluded` |
 | `POST` | `/api/exams/{id}/close` | the course's teachers | Submit what is still running, grade every attempt with the engine, close |
 | `POST` | `/api/exams/{id}/roster/{sid}/exception` | `office` (its faculties), `academic_office`, `admin` | Let a student sit the exam despite the roster, with `{"reason"}`; only while the exam is open (`409`); audited |

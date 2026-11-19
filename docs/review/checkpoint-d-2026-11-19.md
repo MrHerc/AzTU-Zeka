@@ -234,6 +234,19 @@ T-24, T-26 and T-29 to T-32 (all Low) were not re-verified.
 - **Partly fixed:** AR-9 (the polling volume is deferred). AR-4, CR-9 and SF-7 were completed in `28f65c6`.
 - **Test gaps** from area T, listed above.
 
+## Security review (the `security-review` skill, Faza 4 range `78534df..HEAD`)
+
+One finding passed the false-positive filter (confidence 8/10). No High findings.
+
+| Id | Claim | Verdict | Fix | Regression test |
+|---|---|---|---|---|
+| SR-1 | `GET /api/exams/{id}/manage` admitted any department head: the roster, exclusion reasons and raw scores before release (and, for a SEB exam, the quit password and token) of another department's exam | Confirmed on a live temporary server, Medium | `manage()` and the staff branch of `list_for()` use the journal's read rule (`journal.can_read_course`), as `/results` does since SEC-4; `STAFF` is removed | `cd::test_sec4_a_department_head_outside_the_course_sees_no_results` (now also `manage` and `/courses/{id}/exams`) |
+
+Checked and not reported: the exam scope isolation, the student's view of questions (public keys only), the object
+checks of the other new routes, XSS in `docs.py`, `exam.js`, `proctor.js` and `exams.js`, SMTP header injection, SQL
+(all parameterised), plistlib (no production caller; entities refused). The SEB items stay with the owner (TM-8,
+SEC-3, TM-17): the dean's office of any faculty still sees an exam's SEB block in `manage`.
+
 ## Verification at this point
 
 - Full suite: **1374 passed, 2 skipped**, about 3.5 min.

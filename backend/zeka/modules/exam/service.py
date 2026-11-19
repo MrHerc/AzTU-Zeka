@@ -14,7 +14,6 @@ from ...core.i18n import E, T3
 from ...legacy.store import J, audit
 from . import domain, repo, seb
 
-STAFF = ("admin", "academic_office", "office", "dept_head", "leader")
 LIVE = ("in_progress", "paused")                       # an attempt not yet submitted
 
 
@@ -83,14 +82,15 @@ def list_for(c, user, cid: int) -> list[dict] | None:
             extra = {"seb_link": seb_settings(repo.exam(c, e["id"]))["link"]} if e["protection"] == "seb" and e["status"] == "open" else {}
             out.append({**e, "roster": r["status"] if r else None, "attempt": a["status"] if a else None, **extra})
         return out
-    if user["role"] in STAFF or may_manage(c, user, cid):
+    from ..journal import service as journal
+    if journal.can_read_course(c, user, cid) or may_manage(c, user, cid):   # the journal's read rule: a dept head of this course only
         return repo.exams_of(c, cid)
     return None
 
 
 def manage(c, user, eid: int) -> dict | None:
     e = repo.exam(c, eid)
-    if not e or not (user["role"] in STAFF or may_manage(c, user, e["course_id"])):
+    if not e or not (_may_see_results(c, user, e) or may_manage(c, user, e["course_id"])):    # roster and raw scores: as /results
         return None
     from ...legacy.common import serves
     roster = [r for r in repo.roster(c, eid) if serves(c, user, r["student_id"])]

@@ -291,6 +291,8 @@ def test_sec4_a_department_head_outside_the_course_sees_no_results(app_db, world
     assert world["teacher"].post(f"/api/exams/{eid}/close").status == 200
     assert head.get(f"/api/exams/{eid}/results").status == 404
     assert head.get(f"/api/courses/{world['course']}/exam-results").status == 404
+    assert head.get(f"/api/exams/{eid}/manage").status == 404, "the roster and the raw scores before release (security review)"
+    assert head.get(f"/api/courses/{world['course']}/exams").status == 404
 
 
 def test_tm19_moving_the_student_keeps_the_statement_lock(app_db, world):
