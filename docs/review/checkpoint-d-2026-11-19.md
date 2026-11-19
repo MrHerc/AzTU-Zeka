@@ -149,8 +149,13 @@ The triggers stop mistakes, not someone who holds the database file. The e-maile
 
 ## G. Exam page, proctor board, exam list (frontend)
 
-None of these fixes has an automated test. `tests/e2e/exam_offline.js` and `test_exam_page.py` were not extended.
-The only check is `node --check`, plus the suite's existing browser test.
+Each fix has a browser test in `tests/e2e/exam_checkpoint_d.js`, run by
+`tests/integration/test_exam_page_checkpoint_d.py` (Playwright, the page's timers on a fake clock, failures from
+`page.route()`); each test fails on `823bc4d` and passes now. Writing them found **BUG-flush**: in the rewritten
+`flush()` an empty queue ended the async body before `flushing` was assigned, so `flushing` stayed a settled promise
+and no later answer was sent (after a reload with an attempt running; an automatic submit then lost the queued
+answers). Fixed: `flushing` is cleared in the promise's `finally` (`frontend/js/exam.js`); test
+`test_bug_flush_an_empty_first_flush_does_not_block_every_later_save`, failing on the code before the fix.
 
 | Id | Claim | Verdict | Fix (`frontend/js/…`) |
 |---|---|---|---|
@@ -167,7 +172,7 @@ The only check is `node --check`, plus the suite's existing browser test.
 | AR-9 | The 20 s poll fetches the whole view | Confirmed, optional | **In part:** the enrolment check is one indexed lookup (`repo.is_enrolled`). Polling volume is deferred |
 | AR-10 | Every board poll is a full snapshot; `act()` rebuilds it under the lock | Confirmed, optional | **Deferred** |
 
-The NEW-G1 server rule has no dedicated test either.
+The NEW-G1 page side is tested (`{"auto": true}`); its server rule's test is listed under Other open items.
 
 ## H. Syllabus and other items
 
@@ -228,7 +233,7 @@ T-24, T-26 and T-29 to T-32 (all Low) were not re-verified.
 - **Fixed without a dedicated regression test:**
   - A: CR-10, AR-5
   - F: SEC-2/SF-6, PY-3, CR-6, AR-6, SF-5, SF-8, AR-13, PY-14, PY-6
-  - G: all ten frontend fixes (including the NEW-G1 server rule) and the AR-9 lookup
+  - G: the NEW-G1 server rule and the AR-9 lookup (the ten frontend fixes have browser tests now)
   - H: CR-12
   - This falls short of the method's rule. These tests are owed before Checkpoint E.
 - **Partly fixed:** AR-9 (the polling volume is deferred). AR-4, CR-9 and SF-7 were completed in `28f65c6`.
@@ -271,7 +276,7 @@ SEC-3, TM-17): the dean's office of any faculty still sees an exam's SEB block i
 - **Load:** the 300-student exam load test was rerun after the fixes on one worker: 3 000 / 3 000 answers, 0 lost,
   p95 11 ms, board p95 28 ms (`docs/perf/baseline.md`). Lock contention across several worker processes is measured
   only by the in-suite close/release test and the two-process chain test.
-- **Untested fixes:** 25 fixes have no dedicated regression test (above), including all of the frontend fixes.
+- **Untested fixes:** the server-side ones listed above (the frontend fixes have browser tests now).
 - **The races:** they were reproduced with threads on separate connections, not with separate worker processes.
 - **GPL vectors:** the Moodle `quizaccess_seb` vectors are GPL. They stay in the scratchpad and are not committed, so
   CI cannot run them.

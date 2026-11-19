@@ -164,7 +164,7 @@ async function loadOnce() {
 function flush() {
   if (flushing) return flushing;
   if (!view || !view.attempt || view.attempt.status !== "in_progress") return Promise.resolve();
-  flushing = (async () => {
+  const run = (async () => {
     saving = true;
     try {
       for (const [qid, value] of Object.entries(queue())) {
@@ -184,8 +184,10 @@ function flush() {
         else if (r.status === 401 || r.status === 403) { await load(); return; }       // the session or the network list: the page says why
         else { online = false; break; }                              // a 5xx, the gate's 503: the answer waits (Checkpoint D, SF-1)
       }
-    } finally { saving = false; flushing = null; tick(); }
+    } finally { saving = false; tick(); }
   })();
+  // cleared after it settles: with an empty queue the body ends before `run` is assigned (security review, BUG-flush)
+  flushing = run.finally(() => { flushing = null; });
   return flushing;
 }
 
