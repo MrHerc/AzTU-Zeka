@@ -21,6 +21,7 @@ from . import radar, store, support
 from .common import office_for
 from .store import iso, notify, now, rows
 from ..modules.identity import domain as identity
+from ..modules.comms import service as _comms  # noqa: F401  registers outbox.send (Task 36, slice 2)
 
 DAY = timedelta(days=1)
 

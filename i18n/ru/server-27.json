@@ -1,0 +1,11 @@
+{
+ "Dekanlıqdan mesajlar": "Сообщения из деканата",
+ "Bildiriş ayarları düzgün deyil": "Неверные настройки уведомлений",
+ "İmtahan protokolu: {title}": "Протокол экзамена: {title}",
+ "Bu məktubu Zəka-dakı bildiriş ayarlarınıza görə alırsınız. Dəyişmək: {url}": "Вы получили это письмо согласно вашим настройкам уведомлений в Zəka. Изменить: {url}",
+ "Zəncirin kökü (64 simvol):": "Корень цепочки (64 символа):",
+ "Bu məktubu saxlayın: imtahan jurnalını yoxlamaq üçün kök bazadan kənarda qalmalıdır.": "Сохраните это письмо: для проверки журнала экзамена корень должен храниться вне базы данных.",
+ "Yoxlama: python backend/manage.py exam-verify {id} --root {root}": "Проверка: python backend/manage.py exam-verify {id} --root {root}",
+ "Portalda açın: {url}": "Открыть на портале: {url}",
+ "Protokol: {url}": "Протокол: {url}"
+}

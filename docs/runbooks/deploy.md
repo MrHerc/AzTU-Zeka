@@ -47,8 +47,16 @@ Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_ho
 | `AZTU_LLM_BASE_URL` | boş | OpenAI-uyğun və ya Azure son nöqtəsi |
 | `AZTU_LLM_API_KEY` | boş | LLM açarı. Yalnız `infra/.env`-də saxlanır, o da git-ə düşmür |
 | `AZTU_LLM_MODEL` | boş | Modelin adı |
+| `ZEKA_SMTP_HOST` | `smtp.aztu.edu.az` | E-poçt releyi (Task 36). Boş olarsa e-poçt növbəyə yazılmır, bildirişlər yalnız portalda görünür |
+| `ZEKA_SMTP_PORT` | `587` | Relenin portu. `ssl` ilə adətən `465` |
+| `ZEKA_SMTP_TLS` | `starttls` | `starttls`, `ssl` və ya `none`. `none` yalnız bu maşındakı relə (127.0.0.1) üçün: parol şəbəkədən açıq getmir |
+| `ZEKA_SMTP_USER` | `zeka@aztu.edu.az` | İstəyə görə relə girişi |
+| `ZEKA_SMTP_PASSWORD` | boş | Relenin parolu. Yalnız `infra/.env`-də saxlanır, git-ə düşmür |
+| `ZEKA_SMTP_FROM` | `zeka@aztu.edu.az` | Göndərənin ünvanı |
 
 `ZEKA_ACCESS_CODE` və `ZEKA_ALLOW_OPEN_DEMO` yalnız demo üçündür: prod-da istifadə olunmur.
+
+E-poçt `outbox` cədvəli ilə gedir: hər dəqiqə `outbox.send` işi vaxtı çatan məktubları alıcının dilində göndərir. Relə əlçatmazdırsa məktub itmir, 1, 2, 4 ... dəqiqədən sonra (ən çox 6 saat) yenidən cəhd olunur; 8 cəhddən sonra `failed` qalır. Vəziyyət: `python backend/manage.py jobs status` və `SELECT status, COUNT(*) FROM outbox GROUP BY status`.
 
 ## TLS
 

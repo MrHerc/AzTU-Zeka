@@ -271,6 +271,7 @@ route("/profile", async (el) => {
         ${["student", "teacher", "dept_head"].includes(me.role) ? html`<div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Təqvim lenti")}</h3></div>
           <div class="card-b stack" id="cal-box"><span class="small muted">…</span></div></div>` : ""}
         <div class="card"><div class="card-h"><h3>${ic("lock", 17)} ${t("Sessiyalarım")}</h3></div><div class="card-b stack" id="sessions-box"><span class="small muted">…</span></div></div>
+        <div class="card"><div class="card-h"><h3>${ic("bell", 17)} ${t("E-poçt bildirişləri")}</h3></div><div class="card-b stack" id="mail-box"><span class="small muted">…</span></div></div>
         <div class="card"><div class="card-h"><h3>${ic("compass", 17)} ${t("Bələdçilər")}</h3><span class="badge b-blue">${done} / ${tours.length}</span></div><div class="card-b stack">
           <div class="small muted">${t("Səhifə bələdçilərinin neçəsini keçdiyinizi göstərir.")}</div>
           <div class="progress"><span style="width:${tours.length ? Math.round((100 * done) / tours.length) : 0}%"></span></div>
@@ -300,6 +301,21 @@ route("/profile", async (el) => {
     drawSessions();
   });
   drawSessions();
+  // Task 36: which notification kinds also come by e-mail (in the language chosen above)
+  const drawMail = async () => {
+    const box = $("#mail-box", el);
+    if (!box) return;
+    let m;
+    try { m = await api.get("/api/me/notifications"); } catch { return mount(box, html`<span class="small muted">—</span>`); }
+    mount(box, html`<p class="small muted" style="margin:0">${m.address ? t("Ünvan: {address}. Portaldakı bildirişlər həmişə görünür; burada yalnız e-poçt seçilir.", { address: m.address })
+        : t("Hesabınızda e-poçt ünvanı yoxdur: bildirişlər yalnız portalda görünür.")}${m.relay ? "" : html` ${t("Universitet e-poçt göndərişini hələ qoşmayıb.")}`}</p>
+      <div class="mail-kinds">${m.kinds.map((k) => html`<label class="check"><input type="checkbox" data-mail-kind="${k.kind}" ${k.email ? "checked" : ""}> ${k.label}</label>`)}</div>`);
+  };
+  on(el, "change", "[data-mail-kind]", async (e, b) => {
+    try { await api.put("/api/me/notifications", { email: { [b.dataset.mailKind]: b.checked } }); toast(t("Saxlanıldı"), "ok"); }
+    catch (err) { b.checked = !b.checked; toast(err.message, "err"); }
+  });
+  drawMail();
   const drawSso = async () => {
     const box = $("#sso-box", el);
     if (!box) return;

@@ -1,1 +1,2 @@
 /* staff pages (v0.3) */
+.mail-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 14px; }

@@ -579,6 +579,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/me/notifications": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/me/roles": {
   "access": "any",
   "audit_read": null,
@@ -1966,6 +1973,13 @@
   "audit_read": null,
   "demo": false,
   "perm": "journal.correct",
+  "slow": false
+ },
+ "PUT /api/me/notifications": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "PUT /api/me/prefs": {

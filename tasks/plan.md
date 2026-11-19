@@ -129,7 +129,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] T33 Müəllimə sual və fənn forumu
 - [ ] T34 Qəbul saatları
 - [ ] T35 Klublar və kanallar
-- [ ] T36 E-poçt bildirişləri və dövri işlər — saat 22–36-da qurulur (zolaq 3); T26 və T30 ondan asılıdır
+- [x] T36 E-poçt bildirişləri və dövri işlər — saat 22–36-da qurulur (zolaq 3); T26 və T30 ondan asılıdır
 - [ ] T37 İnteqrasiya mərkəzi
 - [ ] T46 E-xidmətlərin dürüstlüyü
 

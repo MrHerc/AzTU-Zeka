@@ -869,6 +869,18 @@ is created) is checked when a student enters and on every exam-session request: 
 and a `session.refused` or `net.refused` event; a change of address on the list is a `net.changed` event. The address
 is `client_ip()`: with `ZEKA_PROXY_HOPS=1` the right-most `X-Forwarded-For` entry, with `0` the peer address.
 
+## E-mail notifications (Task 36)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` | `/api/me/notifications` | everyone signed in | `address`, `relay` (whether the university has set a relay) and each notification `kind` with its `label` and `email` (on or off) |
+| `PUT` | `/api/me/notifications` | everyone signed in | `{"email": {kind: bool}}` for known kinds (`400` otherwise); merged into the person's settings |
+
+News, events, practice tests, the academy and Radar digests start off; every other kind starts on. A notification is
+queued as an e-mail (table `outbox`) in the same transaction, in the recipient's language; the periodic job
+`outbox.send` sends what is due, tries a failed message again after 1, 2, 4, ... minutes (at most six hours, eight
+attempts) and stops a run after one attempt at a relay that is down or silent (15 s socket timeout).
+
 ## News and events
 
 | Method | Path | Access | Purpose |

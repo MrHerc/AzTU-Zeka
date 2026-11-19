@@ -98,6 +98,9 @@ def notify(c, user_ids, kind, title, body="", link="", when=None, read=False):
     for uid in ([user_ids] if isinstance(user_ids, int) else user_ids):
         c.execute("INSERT INTO notifications(user_id,kind,title,body,link,created_at,read_at) VALUES(?,?,?,?,?,?,?)",
                   (uid, kind, _txt(title), _txt(body), link, t, t if read else None))
+    if not when:                                                # a seeded (demo) notification is never e-mailed
+        from ..modules.comms import service as comms               # Task 36: the e-mail copy, in the same transaction
+        comms.notify_email(c, [user_ids] if isinstance(user_ids, int) else list(user_ids), kind, title, body, link)
 
 
 # ---------------------------------------------------------------- files
