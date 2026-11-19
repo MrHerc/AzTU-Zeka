@@ -134,6 +134,7 @@ LIMITS = {
     "password_fail": RateLimiter(100, 900),
     "sso": RateLimiter(30, 60),             # single sign-on starts per client per minute
     "room": RateLimiter(60, 60),            # public room pages (QR codes on the doors, Task 18) per client per minute
+    "club_post": RateLimiter(20, 60),       # club channel messages per user per minute (Task 35)
     "ical": RateLimiter(30, 60),            # fetches of one calendar feed (Task 19) per minute
     "ical_client": RateLimiter(600, 60),    # calendar feed fetches per client per minute (calendar services share addresses)
 }

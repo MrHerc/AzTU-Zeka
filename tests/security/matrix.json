@@ -203,6 +203,51 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/channels/{id:int}/messages": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/clubs": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/clubs/pending": {
+  "access": [
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "clubs.approve",
+  "slow": false
+ },
+ "GET /api/clubs/{id:int}": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/clubs/{id:int}/members": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/community/reports": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/contact": {
   "access": "public",
   "audit_read": null,
@@ -1379,6 +1424,79 @@
   "slow": false
  },
  "POST /api/campus/handoff": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/channels/{id:int}/messages": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/club-messages/{id:int}/hide": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/club-messages/{id:int}/report": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/clubs": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/clubs/{id:int}/conduct": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/clubs/{id:int}/decide": {
+  "access": [
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "clubs.approve",
+  "slow": false
+ },
+ "POST /api/clubs/{id:int}/join": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/clubs/{id:int}/leave": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/clubs/{id:int}/members/{uid:int}/{action}": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/community/reports/{id:int}/resolve": {
   "access": "any",
   "audit_read": null,
   "demo": false,

@@ -824,12 +824,12 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** Klub (ad, təsvir, rəhbər, dekanlığın təsdiqi), üzvlük sorğusu, kanallar, mesajlar (≤ 2 000 simvol), `GET .../messages?since_id=` ilə 3 saniyəlik sorğu, elan kanalı (yalnız rəhbər yazır), tədbirlər mövcud xəbər və qeydiyyat axını ilə. Moderasiya: şikayət → növbə; mesajı gizlət, üzvü müddətli sustur, kənarlaşdır. İlk yazıdan əvvəl davranış qaydalarının qəbulu. Saxlama müddəti (susmaya görə 180 gün) fon işi ilə. İstifadəçi üzrə limit.
 
 **Acceptance criteria:**
-- [ ] Üzv olmayan hər kanal marşrutunda 403 alır
-- [ ] Şikayət olunan mesaj `community.moderate` icazəsi olanların növbəsinə düşür; hər moderasiya addımı auditdədir
-- [ ] Susdurulan üzvün yazısı susdurmanın bitmə vaxtı ilə rədd olunur; müddəti keçən mesajları fon işi silir
+- [x] Üzv olmayan hər kanal marşrutunda 403 alır (marşrut cədvəlindən: `test_community_access`)
+- [x] Şikayət olunan mesaj `community.moderate` icazəsi olanların növbəsinə düşür; hər moderasiya addımı auditdədir
+- [x] Susdurulan üzvün yazısı susdurmanın bitmə vaxtı ilə rədd olunur; müddəti keçən mesajları fon işi silir
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_community.py tests/security/test_community_access.py -q`
+- [x] `python -m pytest tests/integration/test_community.py tests/security/test_community_access.py -q`
 
 **Dependencies:** Task 13, Task 36
 **Files likely touched:** `backend/zeka/modules/community/{domain,service,repo,routes}.py`, `backend/migrations/0365_community.sql` (Task 36-dan asılıdır: boş bazada `0360`-dan sonra işləyir), `frontend/js/community.js`, `frontend/css/m-community.css`

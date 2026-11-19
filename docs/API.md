@@ -650,6 +650,25 @@ A booking is an event of both people's iCal feeds (`UID:office-{id}`, `CANCELLED
 "… müəllimin qəbul saatı" with the weekly ranges of the student's teachers (the one named, when a name is in the
 question) and a link to `/office-hours`.
 
+### Clubs and channels (Task 35)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` / `POST` | `/api/clubs` | any; proposing: `student`, `teacher`, `dept_head` | Approved clubs (and one's own proposals) with one's membership / propose a club (`name` 3–80, `description` 10–1000): its proposer leads it |
+| `GET` | `/api/clubs/pending`, `POST /api/clubs/{id}/decide` | `clubs.approve` (`office`, `admin`) | Proposals; `{"approve": bool, "note"?}`: an approved club gets the channels "Ümumi" (chat) and "Elanlar" (announcements); audited |
+| `GET` | `/api/clubs/{id}` | any (an unapproved club: its leader and approvers) | The club, one's membership and, for members, its channels |
+| `POST` | `/api/clubs/{id}/join`, `/leave`, `/conduct` | members-to-be / members | Ask to join (a removed member cannot ask again), leave, accept the code of conduct (before the first post) |
+| `GET` | `/api/clubs/{id}/members` | members, `community.moderate` | Members; the leader and moderators also see requests, removals and mutes |
+| `POST` | `/api/clubs/{id}/members/{uid}/{approve,remove,mute}` | the club's leader, `community.moderate` | Let in, remove, or mute (`minutes` 5–43 200, `reason`); never the leader; audited |
+| `GET` | `/api/channels/{id}/messages?since_id=` | the club's members | The last 100 messages, or those after `since_id`; the page polls every 3 seconds; moderators also see hidden ones |
+| `POST` | `/api/channels/{id}/messages` | the club's members | `{"text"}` (≤ 2 000): 409 before the code of conduct; 403 in an announcements channel unless the leader, and while muted (with the end time); 20 a minute (429) |
+| `POST` | `/api/club-messages/{id}/report`, `/hide` | members / the leader and `community.moderate` | Report (audited) / hide a message |
+| `GET` | `/api/community/reports`, `POST /api/community/reports/{id}/resolve` | `community.moderate` (every club), a club's leader (its own) | Open reports with the message and its author / `{"action": "hide" \| "keep"}`; audited |
+
+Every channel route answers 403 to a non-member (`tests/security/test_community_access.py` walks the route table). The
+daily `retention.purge` deletes club messages older than `limits.community_retention_days` (180) with their reports.
+Club events use the existing news and registration flow.
+
 ## Tests and Test Studio
 
 | Method | Path | Access | Purpose |

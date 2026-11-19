@@ -1,0 +1,11 @@
+/* Clubs and channels (Task 35) */
+.club-card p { margin: 6px 0; }
+.club-layout { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: start; }
+.club-channels { display: flex; flex-direction: column; gap: 6px; }
+.club-chat { display: flex; flex-direction: column; gap: 10px; min-height: 420px; }
+.club-msgs { flex: 1; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.club-msg { border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.club-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.club-msg.hidden-msg { opacity: .6; }
+.btn-xs { padding: 2px 8px; font-size: 12px; }
+@media (max-width: 720px) { .club-layout { grid-template-columns: 1fr; } .club-channels { flex-direction: row; flex-wrap: wrap; } }

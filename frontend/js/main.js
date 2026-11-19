@@ -18,6 +18,7 @@ import "./radar.js";
 import "./admin-directory.js";
 import "./admin-kb.js";
 import "./qa.js";
+import "./community.js";
 import "./admin-import.js";
 import "./admin-settings.js";
 import "./timetable-admin.js";

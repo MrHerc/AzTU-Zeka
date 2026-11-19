@@ -36,7 +36,10 @@ def retention_purge(c) -> str:
     old = (clock.now() - KEEP_LOGS).isoformat(timespec="seconds")   # job and outbox times are aware UTC (Checkpoint D, AR-13)
     runs = c.execute("DELETE FROM job_runs WHERE started_at<? AND status<>'running'", (old,)).rowcount
     mails = c.execute("DELETE FROM outbox WHERE created_at<? AND status IN ('sent','failed','skipped')", (old,)).rowcount
-    return f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions} · job runs {runs} · mails {mails}"
+    from ..modules.community import service as community     # club messages past their retention period (Task 35)
+    club = community.purge(c)
+    return (f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions} · job runs {runs} · mails {mails}"
+            f" · club messages {club}")
 
 
 KEEP_LOGS = timedelta(days=90)
