@@ -155,6 +155,47 @@ def leave_body(holder, data, ctx, doc):
             f"<p>Akademik məzuniyyət müddətində tələbənin statusu saxlanılır; təhsilin bərpası üçün müddət bitməzdən əvvəl dekanlığa müraciət edilməlidir.")
 
 
+KIND_AZ = {"main": "əsas", "retake": "təkrar", "individual": "fərdi vaxt"}
+RESULT_AZ = {"passed": "keçdi", "exam_min": "imtahan balı minimumdan aşağı", "pass_mark": "cəm keçid balından aşağı",
+             "not_admitted": "buraxılmayıb", "absent": "gəlməyib"}
+INCIDENT_AZ = {"client.blur": "pəncərədən çıxma", "client.fullscreen_exit": "tam ekrandan çıxma", "client.reconnect": "yenidən qoşulma",
+               "net.changed": "ünvan dəyişməsi", "net.refused": "kənar ünvandan sorğu", "login.during_exam": "imtahan zamanı başqa giriş",
+               "session.refused": "rədd edilmiş giriş", "session.takeover": "başqa kompüterdən davam"}
+ACTION_AZ = {"proctor.extend": "vaxt əlavəsi", "proctor.pause": "dayandırma", "proctor.resume": "davam etdirmə", "proctor.end": "cəhdin bitirilməsi",
+             "proctor.reopen": "cəhdin yenidən açılması", "proctor.unlock": "giriş kilidinin açılması"}
+
+
+def _root_line(data) -> str:
+    return (f'<p class="small">Hadisə zəncirinin kökü (№ {e(str(data.get("seq")))} hadisə):<br><code style="word-break:break-all">'
+            f'{e(data.get("root") or "")}</code></p>')
+
+
+def exam_protocol_body(data) -> str:
+    """The closing protocol of an exam (Task 30): facts, counts, incidents, the proctors' actions and the chain's root."""
+    r, a = data.get("roster") or {}, data.get("attempts") or {}
+    window = f'{dmy(data.get("opens_at") or "", True)} – {dmy(data.get("closes_at") or "", True)}'
+    facts = [("Fənn", data.get("course")), ("İmtahan", f'{data.get("title")} · {KIND_AZ.get(data.get("kind"), data.get("kind"))} · {data.get("attempt_no")}-ci cəhd'),
+             ("Pəncərə (UTC)", window), ("Müddət", f'{data.get("duration_min")} dəq.'),
+             ("Siyahı", f'buraxılıb {r.get("eligible", 0)} · istisna {r.get("exception", 0)} · buraxılmayıb {r.get("excluded", 0)}'),
+             ("Cəhdlər", f'başlayıb {a.get("started", 0)} · avtomatik təslim {a.get("auto", 0)} · gəlməyib {a.get("absent", 0)}')]
+    inc = ", ".join(f"{INCIDENT_AZ.get(k, k)}: {n}" for k, n in (data.get("incidents") or {}).items()) or "yoxdur"
+    act = ", ".join(f"{ACTION_AZ.get(k, k)}: {n}" for k, n in (data.get("actions") or {}).items()) or "yoxdur"
+    rows_ = "".join(f"<tr><th>{e(k)}</th><td>{e(str(v))}</td></tr>" for k, v in facts + [("Hadisələr", inc), ("Nəzarətçi əməliyyatları", act)])
+    return f'<table class="grades">{rows_}</table>{_root_line(data)}'
+
+
+def exam_statement_body(data) -> str:
+    """A group's exam-and-grade statement (Task 30), closed by the dean's office."""
+    num = lambda v: "—" if v is None else f"{v:g}"  # noqa: E731
+    body = "".join(f'<tr><td>{i}</td><td>{e(x.get("full_name") or "")}</td><td style="white-space:nowrap">{e(x.get("student_no") or "")}</td><td>{num(x.get("semester"))}</td>'
+                   f'<td>{num(x.get("points"))}</td><td>{num(x.get("total"))}</td><td>{e(x.get("letter") or "—")}</td>'
+                   f'<td>{e(RESULT_AZ.get(x.get("status"), x.get("status") or ""))}</td></tr>' for i, x in enumerate(data.get("rows") or [], 1))
+    head = (f'<p>Fənn: <b>{e(data.get("course") or "")}</b> · Qrup: <b>{e(data.get("group_name") or "")}</b> · '
+            f'{e(data.get("title") or "")} ({e(str(data.get("attempt_no")))}-ci cəhd)</p>')
+    return (head + '<table class="grades"><thead><tr><th>№</th><th>Tələbə</th><th>Bilet №</th><th>Semestr</th><th>İmtahan</th>'
+            f'<th>Cəm</th><th>Qiymət</th><th>Nəticə</th></tr></thead><tbody>{body}</tbody></table>{_root_line(data)}')
+
+
 def render_document(doc: dict, holder: dict, issuer: dict, ctx: dict, transcript=None, lang: str = "az") -> str:
     data = json.loads(doc["data"] or "{}")
     uni, base = ctx["university"], ctx["base_url"]
@@ -185,6 +226,10 @@ def render_document(doc: dict, holder: dict, issuer: dict, ctx: dict, transcript
             content, title = transcript_body(holder, data, ctx, transcript or [], en), ("ACADEMIC TRANSCRIPT" if en else doc["title"])
         elif t == "academic_leave":
             content, title, en = leave_body(holder, data, ctx, doc), doc["title"], False
+        elif t == "exam_protocol":
+            content, title, en = exam_protocol_body(data), doc["title"], False
+        elif t == "exam_statement":
+            content, title, en = exam_statement_body(data), doc["title"], False
         else:
             content, title = e(json.dumps(data, ensure_ascii=False)), doc["title"]
         copies = data.get("copies")
@@ -231,6 +276,17 @@ def render_unverified(doc: dict, ctx: dict, lang: str, state: str) -> str:
     return _page(f"{doc['title']} · {doc['reg_no']}", body)
 
 
+def _chain_row(doc: dict, s) -> list[tuple[str, str]]:
+    """An exam document (Task 30) shows the full root of the exam's event chain it printed, to compare with the e-mail."""
+    try:
+        data = json.loads(doc.get("data") or "{}")
+    except (TypeError, ValueError):
+        return []
+    if doc.get("kind") not in ("exam_protocol", "exam_statement") or not data.get("root"):
+        return []
+    return [(e(s("Zəncirin kökü")), f'<code style="word-break:break-all">{e(data["root"])}</code>')]
+
+
 def render_verify(doc: dict | None, holder: dict | None, ctx: dict, lang: str = "az", state: str = "ok") -> str:
     uni = ctx["university"]
     s = lambda text, **k: S(text, lang, **k)  # noqa: E731
@@ -247,7 +303,7 @@ def render_verify(doc: dict | None, holder: dict | None, ctx: dict, lang: str = 
             (e(s("Sənəd sahibi")), e(_initials(holder["full_name"])) if holder else "—"),
             (e(s("Verən qurum")), f"{e(uni['short'])} — {e(issuer_unit)}"),
             (e(s("Məzmun bütövlüyü")), f"SHA-256 ✓ <code>{e(doc['hash'][:12])}</code>"),
-        ])
+        ] + _chain_row(doc, s))
         head = (f'<div class="v-icon">✓</div><h1>{e(s("Sənəd etibarlıdır"))}</h1><p>{e(s("Sənəd universitetin rəsmi reyestrində qeydiyyatdadır."))}</p>' if ok else
                 f'<div class="v-icon">✕</div><h1>{e(s("Sənəd ləğv edilib"))}</h1>'
                 f'<p>{e(s("{date} tarixində ləğv edilib. Səbəb: {reason}", date=dmy(doc["revoked_at"]), reason=doc["revoked_reason"] or "—"))}</p>')

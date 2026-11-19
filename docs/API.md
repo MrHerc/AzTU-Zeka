@@ -853,6 +853,25 @@ every link, each submitted attempt's answers against its last submission event, 
 grading event and, given, the head against the root; it prints the first broken link and every changed attempt and
 exits 1 (0 when all holds, 2 when there is no such exam).
 
+### Protocol, release and statements (Task 30)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `POST` | `/api/exams/{id}/release` | the course's teachers | Release a closed exam: each graded attempt's raw score, scaled to the exam component (`exam/domain.scale`, half up to one decimal), is published in the journal with `exam_id` and `attempt_no`; an earlier published score goes to the grade journal; audited; the students are notified |
+| `GET` | `/api/exams/{id}/results` | the course's teachers, staff (a dean's office: its students) | Each roster student's `raw`, `points`, `semester`, `total`, `letter` and `status`: `passed`, `exam_min`, `pass_mark`, `not_admitted`, `absent` |
+| `GET` | `/api/courses/{id}/exam-results` | as above | Every released exam of the course with its results: a retake next to the first attempt |
+| `GET` | `/api/exams/{id}/statements` | as above | The groups of a released exam and whether each statement is closed (with its document) |
+| `GET` | `/api/exam-statements` | `office`, `academic_office`, `admin` | Released exams with a group the user serves, and how many statements are closed |
+| `POST` | `/api/exams/{id}/statements/{gid}/close` | `office` (its faculties), `academic_office`, `admin` | Close a group's statement: a QR document (`exam_statement`) with the results and the chain's head; once (`409`) |
+| `PUT` | `/api/exams/{id}/scores/{sid}` | `office` | After the statement is closed: `score`, `reason` and `appeal_id` (a `grade_appeal` request of the student) or `order_no`; written to the journal and the grade journal, `score.changed` in the exam log; the attempt is not changed. Before the statement is closed `409`, and from then on the journal refuses the teacher's change of that cell (`403`) |
+| `GET` | `/api/exams/{id}/analysis` | the course's teachers only | Each question's share of correct answers and commonest wrong answers; pairs of students with the same wrong answers to at least two questions (a signal, not a verdict) |
+
+Closing an exam issues the protocol (`exam_protocol`, a QR document through Task 45's stored payload: facts, counts,
+incidents, the proctors' actions, `seq` and `root` of the chain at closing) and queues the root by e-mail
+(`exam.root`) to the course's teacher and the dean's offices of the roster's groups. The verification page of the
+protocol and of a statement shows the full root. `exam-verify` also checks that the event at each printed `seq` still
+has the printed root, and `--root` passes when the given root is a link of the chain.
+
 ### Proctor panel (Task 29)
 
 | Method | Path | Who | Purpose |

@@ -116,7 +116,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T27 İmtahan əhatəli sessiya və imtahan səhifəsi
 - [ ] T28 SEB inteqrasiyası
 - [x] T29 Nəzarətçi paneli
-- [ ] T30 Hash zəncirli protokol və nəticənin jurnala keçməsi
+- [x] T30 Hash zəncirli protokol və nəticənin jurnala keçməsi
 
 ### Checkpoint D · saat 52
 - [ ] 300 simulyasiya olunmuş tələbə ilə sınaq imtahanı: `python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty` 0 itki və p95 < 500 ms verir. Əmr T27-də yazılır və T30-dan sonra yenidən işlədilir (hash zənciri və nəzarətçi sorğusu yükə əlavə olunur)

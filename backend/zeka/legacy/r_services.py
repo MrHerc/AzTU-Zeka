@@ -495,6 +495,9 @@ def revoke(req):
 
 
 def _doc_allowed(req, d):
+    if d["kind"] in ("exam_protocol", "exam_statement"):         # Task 30: a course's exam documents, not a person's
+        from ..modules.exam import service as exam
+        return exam.may_read_doc(req.db, req.user, d)
     return d["holder_id"] == req.user["id"] or req.user["role"] in STAFF and serves(req.db, req.user, d["holder_id"])
 
 
@@ -502,7 +505,7 @@ def _doc_allowed(req, d):
 def doc_link(req):
     if not LIMITS["link"].hit(f"u{req.user['id']}"):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
-    d = row(req.db, "SELECT id, holder_id FROM documents WHERE id=?", (req.params["id"],))
+    d = row(req.db, "SELECT id, holder_id, kind, data FROM documents WHERE id=?", (req.params["id"],))
     if not d or not _doc_allowed(req, d):
         raise HTTPError(404, "Sənəd tapılmadı")
     return {"url": f"/doc/{d['id']}?k={make_key(req.db, 'doc', d['id'], req.user['id'])}"}

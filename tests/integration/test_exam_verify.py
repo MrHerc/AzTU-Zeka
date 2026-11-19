@@ -111,10 +111,12 @@ def test_a_removed_event_fails_and_the_removed_last_one_fails_against_the_root(a
     assert verify(eid)["problems"][0] == {"what": "chain", "seq": 4, "problem": "missing"}
 
     eid, _ = sitting(app_db, world)
-    root = events(eid)[-1]["hash"]
-    run("DELETE FROM exam_events WHERE id=?", (events(eid)[-1]["id"],))
-    assert verify(eid)["problems"] == []                      # the shorter chain is consistent in itself ...
-    assert verify(eid, root)["problems"][0]["what"] == "root"  # ... but not with the root kept outside the database
+    last = events(eid)[-1]
+    run("DELETE FROM exam_events WHERE id=?", (last["id"],))
+    # the shorter chain is consistent in itself, but the closing protocol printed the removed link ...
+    assert verify(eid)["problems"] == [{"what": "anchor", "document": "protocol", "seq": last["seq"], "problem": "root_differs"}]
+    # ... and so did the e-mail
+    assert verify(eid, last["hash"])["problems"][-1]["what"] == "root"
 
 
 def test_answers_changed_after_a_submission_fail_and_a_resubmission_after_reopen_does_not(app_db, world):
@@ -152,6 +154,9 @@ def test_a_chain_rewritten_in_the_database_fails_against_the_root(app_db, world)
                                                          json.loads(e["data"]), e["at"]))
             c.execute("UPDATE exam_events SET data=?, prev_hash=?, hash=? WHERE id=?", (e["data"], prev, h, e["id"]))
             prev = h
+        pid = c.execute("SELECT protocol_id FROM exams WHERE id=?", (eid,)).fetchone()[0]
+        data = json.loads(c.execute("SELECT data FROM documents WHERE id=?", (pid,)).fetchone()[0])
+        c.execute("UPDATE documents SET data=? WHERE id=?", (json.dumps({**data, "root": prev}), pid))   # and the protocol's line
         c.commit()
     finally:
         c.close()

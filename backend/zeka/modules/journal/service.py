@@ -297,6 +297,8 @@ def save_grades(c, user, course_id: int, body, answer: bool = True) -> tuple[str
             continue
         if not s["writable"]:
             return "forbidden", E("Bu tələbə sizin tədris vahidinizin siyahısında deyil")
+        if col["kind"] == "exam" and repo.exam_locked(c, course_id, s["id"]):
+            return "forbidden", E("İmtahan cədvəli dekanlıqda bağlanıb: bu balı yalnız dekanlıq apellyasiya və ya əmrlə dəyişir")
         value, problem = domain.cell_value(cell.get("score"), col["max"])
         if problem:
             errors.append({"student_id": sid, "component": key, "reason": problem})
@@ -455,3 +457,22 @@ def write_cell(c, user, course_id: int, student_id: int, component: str, value: 
     if status == "cells":
         return "invalid", value_[0]["reason"]                # type: ignore[index]
     return status, value_
+
+
+def put_exam_score(c, by: int, course_id: int, student_id: int, score: float, exam_id: int, attempt_no: int, reason: str,
+                   source: str = "exam") -> None:
+    """An exam's score into the journal's exam component (Task 30): published at once with its exam and attempt number;
+    a different published score before it (an earlier exam, an appeal) goes to the grade journal with ``reason``."""
+    co = repo.course(c, course_id)
+    col = next(x for x in columns(c, co) if x["kind"] == "exam")
+    cur = repo.grade_rows(c, course_id, student_id).get((student_id, col["key"]))
+    at = iso(now())
+    repo.put_exam_grade(c, student_id, course_id, col["key"], score, col["max"], by, at, exam_id, attempt_no, source)
+    if cur and cur["status"] == "published" and cur["score"] != score:
+        repo.add_change(c, student_id, course_id, col["key"], cur["score"], score, by, reason, at)
+    refresh_finals(c, course_id, [student_id])
+
+
+def exam_column(c, course_id: int) -> dict:
+    """The course's exam component (key, max) by its grading scheme."""
+    return next(x for x in columns(c, repo.course(c, course_id)) if x["kind"] == "exam")

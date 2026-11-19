@@ -8,8 +8,8 @@ import secrets
 from datetime import datetime, timedelta
 
 from ...core import clock, jobs
-from ...core.i18n import E
-from ...legacy.store import audit
+from ...core.i18n import E, T3
+from ...legacy.store import J, audit
 from . import domain, repo
 
 STAFF = ("admin", "academic_office", "office", "dept_head", "leader")
@@ -79,7 +79,8 @@ def manage(c, user, eid: int) -> dict | None:
     from ...legacy.common import serves
     roster = [r for r in repo.roster(c, eid) if serves(c, user, r["student_id"])]
     shown = {r["student_id"] for r in roster}
-    return {"exam": {**_public_exam(e), "plan": json.loads(e["plan"]), "allowed_cidrs": json.loads(e["allowed_cidrs"] or "[]")},
+    return {"exam": {**_public_exam(e), "plan": json.loads(e["plan"]), "allowed_cidrs": json.loads(e["allowed_cidrs"] or "[]"),
+                     "protocol_id": e["protocol_id"]},
             "proctors": repo.proctors(c, eid), "roster": roster,
             "attempts": [{k: a[k] for k in ("student_id", "full_name", "status", "started_at", "deadline_at", "submitted_at", "auto", "score", "max_score")}
                          for a in repo.attempts(c, eid) if a["student_id"] in shown], "pool": len(repo.pool(c, e["course_id"]))}
@@ -290,6 +291,7 @@ def close(c, user, eid: int) -> tuple[str, object]:
                                                                               "max_score": float(len(items))}, t)
     repo.set_exam(c, eid, status="closed", closed_at=t)
     repo.add_event(c, eid, "exam.closed", user["id"], None, {"attempts": len(repo.attempts(c, eid))}, t)
+    _protocol(c, user, repo.exam(c, eid))
     audit(c, user["id"], "exam_closed", "exam", f"#{eid}")
     return "ok", manage(c, user, eid)
 
@@ -332,9 +334,28 @@ def verify(c, eid: int, root: str | None = None) -> dict | None:
                 problems.append({"what": "attempt", "attempt_id": a["id"], "student_id": a["student_id"],
                                  "problem": "score_changed" if g else "no_grading_event"})
     head = events[-1]["hash"] if events else domain.GENESIS
-    if root is not None and root.strip().lower() != head:
-        problems.append({"what": "root", "problem": "head_differs", "head": head})
+    by_seq = {ev["seq"]: ev["hash"] for ev in events}
+    for name, data in _anchors(c, eid):
+        if by_seq.get(data.get("seq")) != data.get("root"):
+            problems.append({"what": "anchor", "document": name, "seq": data.get("seq"), "problem": "root_differs"})
+    if root is not None and root.strip().lower() not in by_seq.values():
+        problems.append({"what": "root", "problem": "not_in_chain", "head": head})
     return {"exam_id": eid, "events": len(events), "head": head, "problems": problems}
+
+
+def _anchors(c, eid: int) -> list[tuple[str, dict]]:
+    """The documents that printed a link of the chain: the closing protocol and each group's statement."""
+    e = repo.exam(c, eid)
+    out = []
+    if e and e["protocol_id"]:
+        d = repo.document(c, e["protocol_id"])
+        if d:
+            out.append(("protocol", json.loads(d["data"] or "{}")))
+    for st in repo.statements(c, eid).values():
+        d = repo.document(c, st["document_id"])
+        if d:
+            out.append((f"statement {st['group_id']}", json.loads(d["data"] or "{}")))
+    return out
 
 
 # ---------------------------------------------------------------- the proctor panel (Task 29)
@@ -468,6 +489,247 @@ def signal(c, user, eid: int, body) -> tuple[str, object]:
         return "ok", {"ok": True, "kept": False}
     repo.add_event(c, eid, f"client.{kind}", user["id"], user["id"], {}, _iso(_now()))
     return "ok", {"ok": True, "kept": True}
+
+
+# ---------------------------------------------------------------- protocol, release, statements, analysis (Task 30)
+PROTOCOL_FLAGS = ("client.blur", "client.fullscreen_exit", "client.reconnect", "net.changed", "net.refused", "login.during_exam",
+                  "session.refused", "session.takeover")
+EXAM_DOCS = ("exam_protocol", "exam_statement")
+
+
+def _protocol(c, user, e: dict) -> dict:
+    """The closing protocol (a QR document through the stored-payload path of Task 45): the facts, the counts, the
+    incidents and the chain's root at closing, which also goes by e-mail to the course's teacher and the dean's offices."""
+    from ...legacy.common import BASE_URL
+    from ...legacy.store import issue_document
+    from ..comms import service as comms
+    eid = e["id"]
+    h = repo.head(c, eid)
+    co = repo.course(c, e["course_id"])
+    roster = repo.roster_groups(c, eid)
+    attempts = repo.attempts(c, eid)
+    counts: dict[str, int] = {}
+    for per in repo.event_counts(c, eid).values():
+        for k, n in per.items():
+            counts[k] = counts.get(k, 0) + n
+    seated = sum(1 for r in roster if r["status"] != "excluded")
+    groups = sorted({r["group_id"] for r in roster if r["group_id"]})
+    data = {"type": "exam_protocol", "exam_id": eid, "course_id": co["id"], "course": f"{co['code']} · {co['name']}", "title": e["title"],
+            "kind": e["kind"], "attempt_no": e["attempt_no"], "opens_at": e["opens_at"], "closes_at": e["closes_at"], "duration_min": e["duration_min"],
+            "roster": {k: sum(1 for r in roster if r["status"] == k) for k in ("eligible", "exception", "excluded")},
+            "attempts": {"started": len(attempts), "auto": sum(1 for a in attempts if a["auto"]), "absent": max(0, seated - len(attempts))},
+            "incidents": {k: counts[k] for k in PROTOCOL_FLAGS if counts.get(k)},
+            "actions": {k: n for k, n in sorted(counts.items()) if k.startswith("proctor.")},
+            "group_ids": groups, "seq": h["seq"], "root": h["hash"]}
+    doc = issue_document(c, "exam_protocol", co["teacher_id"], "İmtahan protokolu", data, user["id"], "IMP")
+    repo.set_exam(c, eid, protocol_id=doc["id"])
+    params = {"title": e["title"], "root": h["hash"], "exam_id": eid, "verify_url": f"{BASE_URL['value']}/verify/{doc['verify_code']}"}
+    people = [repo.person(c, co["teacher_id"])] + repo.offices_of_groups(c, groups)
+    for p in {x["id"]: x for x in people if x}.values():
+        lang = (J(p["prefs"], {}) or {}).get("lang") or "az"
+        comms.queue_to(c, p["email"] or "", "exam.root", "exam.root", params, lang, p["id"])
+    return doc
+
+
+def may_read_doc(c, user, doc: dict) -> bool:
+    """Who opens an exam's protocol or statement: the course's teachers, the academic office, the administrator and
+    leadership, and a dean's office whose faculty covers the group (the statement) or one of the groups (the protocol)."""
+    data = json.loads(doc["data"] or "{}")
+    if user["role"] in ("academic_office", "admin", "leader") or doc["holder_id"] == user["id"]:
+        return True
+    if user["role"] == "office":
+        gids = [data["group_id"]] if data.get("group_id") else data.get("group_ids") or []
+        return any(repo.office_serves_group(c, user["id"], g) for g in gids)
+    return bool(data.get("course_id")) and may_manage(c, user, data["course_id"])
+
+
+def release(c, user, eid: int) -> tuple[str, object]:
+    """The teacher releases a closed exam: each graded attempt's raw score, scaled to the exam component, is published
+    in the journal with the exam and its attempt number; an earlier result (a first attempt before a retake) stays in its
+    exam and in the grade journal."""
+    e = repo.exam(c, eid)
+    if not e or not may_manage(c, user, e["course_id"]):
+        return "missing", None
+    if e["status"] != "closed":
+        return "invalid", E("Yalnız bağlanmış imtahanın nəticəsi açıqlanır")
+    from ...legacy.store import notify
+    from ..journal import service as journal
+    col = journal.exam_column(c, e["course_id"])
+    shown = []
+    for a in repo.attempts(c, eid):
+        if a["status"] == "graded":
+            pts = domain.scale(a["score"], a["max_score"], col["max"])
+            journal.put_exam_score(c, user["id"], e["course_id"], a["student_id"], pts, eid, e["attempt_no"], f"imtahan #{eid}: {e['title']}")
+            shown.append(a["student_id"])
+    t = _iso(_now())
+    repo.set_exam(c, eid, status="released")
+    repo.add_event(c, eid, "exam.released", user["id"], None, {"scores": len(shown), "component": col["key"], "max": col["max"]}, t)
+    if shown:
+        notify(c, shown, "exam", T3("İmtahan nəticəsi açıqlandı: {title}", title=e["title"]), "", "/student/grades")
+    audit(c, user["id"], "exam_released", "exam", f"#{eid} · {len(shown)}")
+    return "ok", results(c, user, eid)
+
+
+def _rows(c, e: dict, students: list[dict]) -> list[dict]:
+    """Each student's line of a released exam: raw score, points, the course's semester points, total, letter, status."""
+    from ..journal import service as journal
+    co = repo.course(c, e["course_id"])
+    col = journal.exam_column(c, e["course_id"])
+    attempts = {a["student_id"]: a for a in repo.attempts(c, e["id"])}
+    out = []
+    for r in students:
+        a = attempts.get(r["student_id"])
+        res = journal.student_grades(c, r["student_id"], co)["result"] if a and a["status"] == "graded" else None
+        out.append({"student_id": r["student_id"], "full_name": r["full_name"], "student_no": r["student_no"], "group_id": r.get("group_id"),
+                    "group_name": r.get("group_name"), "raw": a["score"] if a and a["status"] == "graded" else None,
+                    "raw_max": a["max_score"] if a else None,
+                    "points": domain.scale(a["score"], a["max_score"], col["max"]) if a and a["status"] == "graded" else None,
+                    "semester": res["semester"] if res else None, "total": res["total"] if res else None, "letter": res["letter"] if res else None,
+                    "status": domain.result_status(r["status"], a["status"] if a else None, res)})
+    return out
+
+
+def _may_see_results(c, user, e: dict) -> bool:
+    return user["role"] in STAFF or may_manage(c, user, e["course_id"])
+
+
+def results(c, user, eid: int) -> dict | None:
+    """A released (or closed) exam's results: the course's teachers, the academic office, leadership; a dean's office
+    sees its own faculties' students."""
+    e = repo.exam(c, eid)
+    if not e or e["status"] not in ("closed", "released") or not _may_see_results(c, user, e):
+        return None
+    from ...legacy.common import serves
+    from ..journal import service as journal
+    students = [r for r in repo.roster_groups(c, eid) if serves(c, user, r["student_id"])]
+    return {"exam": _public_exam(e), "released": e["status"] == "released", "rows": _rows(c, e, students),
+            "exam_max": journal.exam_column(c, e["course_id"])["max"]}
+
+
+def course_results(c, user, cid: int) -> list[dict] | None:
+    """Every released exam of a course with its results, a retake next to the first attempt: neither replaces the other."""
+    if not repo.course(c, cid) or not (user["role"] in STAFF or may_manage(c, user, cid)):
+        return None
+    return [r for r in (results(c, user, e["id"]) for e in repo.exams_of(c, cid, ("released",))) if r]
+
+
+def statements(c, user, eid: int) -> dict | None:
+    """The groups of a released exam and whether the dean's office has closed each one's statement."""
+    e = repo.exam(c, eid)
+    if not e or e["status"] != "released" or not _may_see_results(c, user, e):
+        return None
+    closed = repo.statements(c, eid)
+    groups: dict[int, dict] = {}
+    for r in repo.roster_groups(c, eid):
+        if r["group_id"] and (user["role"] != "office" or repo.office_serves_group(c, user["id"], r["group_id"])):
+            g = groups.setdefault(r["group_id"], {"group_id": r["group_id"], "group_name": r["group_name"], "students": 0})
+            g["students"] += 1
+    for g in groups.values():
+        st = closed.get(g["group_id"])
+        g.update(closed=bool(st), document_id=st["document_id"] if st else None, reg_no=st["reg_no"] if st else None,
+                 verify_code=st["verify_code"] if st else None, closed_at=st["closed_at"] if st else None)
+    return {"exam": _public_exam(e), "groups": sorted(groups.values(), key=lambda g: g["group_name"] or "")}
+
+
+def statement_list(c, user) -> list[dict]:
+    """The dean's office's page: the released exams with a group it serves, and how many of their statements are closed."""
+    out = []
+    for e in repo.released_exams(c):
+        st = statements(c, user, e["id"])
+        if st and st["groups"]:
+            out.append({**e, "groups": len(st["groups"]), "closed": sum(1 for g in st["groups"] if g["closed"])})
+    return out
+
+
+def close_statement(c, user, eid: int, gid: int) -> tuple[str, object]:
+    """The dean's office closes a group's statement: a QR document of the group's results with the chain's head; from
+    then on an exam score of the group changes only through the office (``change_score``)."""
+    e = repo.exam(c, eid)
+    if not e or e["status"] != "released" or (user["role"] == "office" and not repo.office_serves_group(c, user["id"], gid)):
+        return "missing", None
+    students = [r for r in repo.roster_groups(c, eid) if r["group_id"] == gid]
+    if not students:
+        return "missing", None
+    if gid in repo.statements(c, eid):
+        return "closed", E("Bu qrupun cədvəli artıq bağlanıb")
+    from ...legacy.store import issue_document
+    co = repo.course(c, e["course_id"])
+    h = repo.head(c, eid)
+    data = {"type": "exam_statement", "exam_id": eid, "course_id": co["id"], "course": f"{co['code']} · {co['name']}", "title": e["title"],
+            "kind": e["kind"], "attempt_no": e["attempt_no"], "group_id": gid, "group_name": students[0]["group_name"],
+            "rows": [{k: r[k] for k in ("full_name", "student_no", "points", "semester", "total", "letter", "status")} for r in _rows(c, e, students)],
+            "seq": h["seq"], "root": h["hash"]}
+    doc = issue_document(c, "exam_statement", co["teacher_id"], "İmtahan-qiymət cədvəli", data, user["id"], "IQC")
+    t = _iso(_now())
+    repo.add_statement(c, eid, gid, doc["id"], user["id"], t)
+    repo.add_event(c, eid, "statement.closed", user["id"], None, {"group_id": gid, "document_id": doc["id"], "reg_no": doc["reg_no"]}, t)
+    audit(c, user["id"], "exam_statement_closed", "exam", f"#{eid} · {students[0]['group_name']} · {doc['reg_no']}")
+    return "ok", statements(c, user, eid)
+
+
+def change_score(c, user, eid: int, sid: int, body) -> tuple[str, object]:
+    """After the statement is closed, the dean's office changes an exam score with a reason and a grade appeal of the
+    student or an order number; the change is in the grade journal and the exam log; the attempt itself is not touched."""
+    e = repo.exam(c, eid)
+    from ...legacy.common import serves
+    if not e or e["status"] != "released" or not serves(c, user, sid):
+        return "missing", None
+    r = next((x for x in repo.roster_groups(c, eid) if x["student_id"] == sid), None)
+    if not r or r["group_id"] not in repo.statements(c, eid):
+        return "closed", E("Cədvəl hələ bağlanmayıb: balı müəllim jurnalda dəyişir")
+    from ..journal import service as journal
+    col = journal.exam_column(c, e["course_id"])
+    score = body.get("score")
+    if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= score <= col["max"]:
+        return "invalid", E("Bal 0 ilə {max} arasında olmalıdır", max=col["max"])
+    reason = " ".join(str(body.get("reason") or "").split())[:300]
+    appeal, order = body.get("appeal_id"), " ".join(str(body.get("order_no") or "").split())[:40]
+    if len(reason) < 3:
+        return "invalid", E("Dəyişikliyin səbəbini yazın")
+    if appeal is not None and (not isinstance(appeal, int) or isinstance(appeal, bool) or not repo.appeal_of(c, appeal, sid)):
+        return "invalid", E("Bu tələbənin belə apellyasiya müraciəti yoxdur")
+    if appeal is None and not order:
+        return "invalid", E("Apellyasiya müraciətini və ya əmrin nömrəsini göstərin")
+    basis = f"apellyasiya #{appeal}" if appeal is not None else f"əmr № {order}"
+    journal.put_exam_score(c, user["id"], e["course_id"], sid, float(score), eid, e["attempt_no"], f"{reason} · {basis}", source="appeal")
+    t = _iso(_now())
+    repo.add_event(c, eid, "score.changed", user["id"], sid, {"score": float(score), "reason": reason, "appeal_id": appeal, "order_no": order or None}, t)
+    audit(c, user["id"], "exam_score_changed", "exam", f"#{eid} · #{sid} · {score} · {reason} · {basis}")
+    return "ok", results(c, user, eid)
+
+
+def analysis(c, user, eid: int) -> dict | None:
+    """For the course's teachers only: each question's share of correct answers and its commonest wrong answers, and
+    pairs of students with the same wrong answers to several questions (a signal to look at, not a verdict)."""
+    e = repo.exam(c, eid)
+    if not e or e["status"] not in ("closed", "released") or not may_manage(c, user, e["course_id"]):
+        return None
+    forms = repo.forms(c, eid)
+    order = {(sid, x["qid"]): x["order"] for sid, items in forms.items() for x in items}
+    qs = repo.questions(c, sorted({x["qid"] for items in forms.values() for x in items}))
+    answered = {q: 0 for q in qs}
+    correct = {q: 0 for q in qs}
+    wrong_values: dict[int, dict[str, int]] = {q: {} for q in qs}
+    wrong: dict[int, dict[int, str]] = {}
+    for r in repo.all_answers(c, eid):
+        q = qs.get(r["qid"])
+        if not q or r["value"] in (None, "null", '""'):
+            continue
+        answered[r["qid"]] += 1
+        seen = order.get((r["student_id"], r["qid"]), [])
+        if _grade(q, seen, r["value"]):
+            correct[r["qid"]] += 1
+        else:
+            shown = json.dumps(domain.original_value(q, seen, json.loads(r["value"])), ensure_ascii=False)
+            wrong_values[r["qid"]][shown] = wrong_values[r["qid"]].get(shown, 0) + 1
+            wrong.setdefault(r["student_id"], {})[r["qid"]] = shown
+    names = {x["student_id"]: x["full_name"] for x in repo.roster_groups(c, eid)}
+    rate = {q: round(correct[q] / answered[q], 2) if answered[q] else None for q in qs}
+    return {"exam": _public_exam(e),
+            "questions": [{"id": q, "text": qs[q]["text"], "answered": answered[q], "correct": correct[q], "rate": rate[q],
+                           "wrong": [{"value": v, "n": n} for v, n in sorted(wrong_values[q].items(), key=lambda w: -w[1])[:3]]}
+                          for q in sorted(qs, key=lambda q: 2.0 if rate[q] is None else float(rate[q] or 0))],   # hardest first
+            "pairs": [{**p, "a_name": names.get(p["a"]), "b_name": names.get(p["b"])} for p in domain.similar_pairs(wrong)[:50]]}
 
 
 jobs.periodic("exam.autosubmit", timedelta(minutes=1), autosubmit)

@@ -242,6 +242,20 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/courses/{id:int}/exam-results": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/courses/{id:int}/exams": {
   "access": "any",
   "audit_read": null,
@@ -337,6 +351,17 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/exam-statements": {
+  "access": [
+   "academic_office",
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/exams/{id:int}": {
   "access": [
    "student"
@@ -345,6 +370,16 @@
   "demo": false,
   "perm": null,
   "scope": "exam",
+  "slow": false
+ },
+ "GET /api/exams/{id:int}/analysis": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "GET /api/exams/{id:int}/board": {
@@ -361,6 +396,34 @@
   "slow": false
  },
  "GET /api/exams/{id:int}/manage": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/exams/{id:int}/results": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/exams/{id:int}/statements": {
   "access": [
    "academic_office",
    "admin",
@@ -1377,6 +1440,16 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/exams/{id:int}/release": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/exams/{id:int}/roster/{sid:int}/exception": {
   "access": [
    "academic_office",
@@ -1406,6 +1479,17 @@
   "demo": false,
   "perm": null,
   "scope": "exam",
+  "slow": false
+ },
+ "POST /api/exams/{id:int}/statements/{gid:int}/close": {
+  "access": [
+   "academic_office",
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
   "slow": false
  },
  "POST /api/exams/{id:int}/students/{sid:int}/{action}": {
@@ -1929,6 +2013,15 @@
    "admin",
    "dept_head",
    "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "PUT /api/exams/{id:int}/scores/{sid:int}": {
+  "access": [
+   "office"
   ],
   "audit_read": null,
   "demo": false,

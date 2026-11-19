@@ -35,7 +35,7 @@ python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset facu
 python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty [--burst]      # Task 27: lost answers must be 0
 python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes (must be none)
 
-python tools/i18n.py lint                 # user-visible strings not wrapped for translation (56 known findings)
+python tools/i18n.py lint                 # user-visible strings not wrapped for translation (70 known: official documents are Azerbaijani)
 python tools/i18n.py extract              # refresh i18n/source/*, write untranslated keys to i18n/todo/*.json
 python tools/i18n.py build                # i18n/{en,ru}/*.json -> frontend/locales/*.json + backend/zeka/core/locales/*.json
 python tools/i18n.py stats                # coverage per language (must stay 100%)

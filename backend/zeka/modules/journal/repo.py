@@ -185,3 +185,19 @@ def student(c, uid: int):
 
 def set_reconciled(c, uid: int, at: str):
     c.execute("UPDATE users SET history_reconciled_at=? WHERE id=?", (at, uid))
+
+
+# ---------------------------------------------------------------- exam scores (Task 30)
+def put_exam_grade(c, uid: int, course_id: int, component: str, score: float, maximum: float, by: int, at: str, exam_id: int, attempt_no: int,
+                   source: str = "exam"):
+    """The exam component's score as released (published at once), naming the exam and its attempt number."""
+    c.execute("INSERT INTO grades(user_id,course_id,component,score,max,updated_at,status,source,entered_by,exam_id,attempt_no) "
+              "VALUES(?,?,?,?,?,?,'published',?,?,?,?) ON CONFLICT(user_id,course_id,component) DO UPDATE SET score=excluded.score, "
+              "max=excluded.max, updated_at=excluded.updated_at, status='published', source=excluded.source, entered_by=excluded.entered_by, "
+              "exam_id=excluded.exam_id, attempt_no=excluded.attempt_no", (uid, course_id, component, score, maximum, at, source, by, exam_id, attempt_no))
+
+
+def exam_locked(c, course_id: int, uid: int) -> bool:
+    """Whether the student's exam score sits on a statement the dean's office has closed."""
+    return row(c, "SELECT 1 FROM grades g JOIN users u ON u.id=g.user_id JOIN exam_statements s ON s.exam_id=g.exam_id AND s.group_id=u.group_id "
+                  "WHERE g.user_id=? AND g.course_id=? AND g.exam_id IS NOT NULL LIMIT 1", (uid, course_id)) is not None

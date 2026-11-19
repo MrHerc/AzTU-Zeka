@@ -15,6 +15,7 @@ import random
 import re
 from collections.abc import Mapping
 from datetime import date, datetime, time, timedelta, timezone, tzinfo
+from decimal import ROUND_HALF_UP, Decimal
 
 from ...core.i18n import E
 
@@ -224,3 +225,38 @@ def chain_break(events: list[dict]) -> dict | None:
             return {"seq": i, "problem": "hash"}
         prev = ev["hash"]
     return None
+
+
+# ---------------------------------------------------------------- release to the journal (Task 30)
+RESULTS = ("passed", "exam_min", "pass_mark", "not_admitted", "absent")    # keçdi | imtahan < minimum | cəm < keçid | buraxılmayıb | gəlməyib
+
+
+def scale(raw: float, raw_max: float, component_max: float) -> float:
+    """A raw exam score as points of the journal's exam component: raw / raw_max x component_max, rounded half up to one
+    decimal. This is the only rounding rule of an exam score (so 16.95 is 17.0 and 16.94 is 16.9)."""
+    if not raw_max or raw_max <= 0:
+        return 0.0
+    points = Decimal(str(raw)) * Decimal(str(component_max)) / Decimal(str(raw_max))
+    return float(points.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def result_status(roster: str | None, attempt: str | None, outcome: dict | None) -> str:
+    """One student's result of a released exam: not admitted, absent, or what the journal's outcome says."""
+    if roster == "excluded":
+        return "not_admitted"
+    if attempt not in ("graded",) or not outcome or outcome.get("passed") is None:
+        return "absent"
+    return "passed" if outcome["passed"] else (outcome.get("reason") or "pass_mark")
+
+
+def similar_pairs(wrong: dict[int, dict[int, str]], at_least: int = 2) -> list[dict]:
+    """Pairs of students who gave the same wrong answer to at least ``at_least`` of the same questions, most first. A
+    signal for the teacher to look at, never a verdict: it is shown to the course's teachers only."""
+    out = []
+    ids = sorted(wrong)
+    for i, a in enumerate(ids):
+        for b in ids[i + 1:]:
+            same = sorted(q for q, v in wrong[a].items() if wrong[b].get(q) == v)
+            if len(same) >= at_least:
+                out.append({"a": a, "b": b, "same": len(same), "questions": same})
+    return sorted(out, key=lambda p: (-p["same"], p["a"], p["b"]))

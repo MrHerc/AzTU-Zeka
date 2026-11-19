@@ -134,3 +134,59 @@ def act(req):
 @R("POST", "/api/exams/{id:int}/signals", roles=("student",), scope="exam")
 def signal(req):
     return _answer(*service.signal(req.db, req.user, req.params["id"], req.json()))
+
+
+# ---------------------------------------------------------------- release, results, statements (Task 30)
+STAFF_READ = ("teacher", "dept_head", "office", "academic_office", "admin", "leader")
+
+
+@R("POST", "/api/exams/{id:int}/release", roles=MANAGERS)
+def release(req):
+    return _answer(*service.release(req.db, req.user, req.params["id"]))
+
+
+@R("GET", "/api/exams/{id:int}/results", roles=STAFF_READ)
+def results(req):
+    out = service.results(req.db, req.user, req.params["id"])
+    if out is None:
+        raise HTTPError(404, "İmtahan tapılmadı")
+    return out
+
+
+@R("GET", "/api/courses/{id:int}/exam-results", roles=STAFF_READ)
+def course_results(req):
+    out = service.course_results(req.db, req.user, req.params["id"])
+    if out is None:
+        raise HTTPError(404, "Fənn tapılmadı")
+    return out
+
+
+@R("GET", "/api/exams/{id:int}/statements", roles=STAFF_READ)
+def statements(req):
+    out = service.statements(req.db, req.user, req.params["id"])
+    if out is None:
+        raise HTTPError(404, "İmtahan tapılmadı")
+    return out
+
+
+@R("GET", "/api/exam-statements", roles=("office", "academic_office", "admin"))
+def statement_list(req):
+    return service.statement_list(req.db, req.user)
+
+
+@R("POST", "/api/exams/{id:int}/statements/{gid:int}/close", roles=("office", "academic_office", "admin"))
+def close_statement(req):
+    return _answer(*service.close_statement(req.db, req.user, req.params["id"], req.params["gid"]), missing="Qrup tapılmadı")
+
+
+@R("PUT", "/api/exams/{id:int}/scores/{sid:int}", roles=("office",))
+def change_score(req):
+    return _answer(*service.change_score(req.db, req.user, req.params["id"], req.params["sid"], req.json()), missing="Tələbə tapılmadı")
+
+
+@R("GET", "/api/exams/{id:int}/analysis", roles=MANAGERS)
+def analysis(req):
+    out = service.analysis(req.db, req.user, req.params["id"])
+    if out is None:
+        raise HTTPError(404, "İmtahan tapılmadı")
+    return out

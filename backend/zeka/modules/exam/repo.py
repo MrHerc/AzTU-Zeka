@@ -210,3 +210,69 @@ def events_after(c, eid: int, seq: int, limit: int = 100) -> list[dict]:
 
 def set_session_ip(c, session_id: int, ip: str):
     c.execute("UPDATE sessions SET ip=? WHERE id=?", (ip, session_id))
+
+
+# ---------------------------------------------------------------- protocol, release, statements (Task 30)
+def event_at(c, eid: int, seq: int):
+    return row(c, "SELECT seq, hash FROM exam_events WHERE exam_id=? AND seq=?", (eid, seq))
+
+
+def head(c, eid: int):
+    return row(c, "SELECT seq, hash FROM exam_events WHERE exam_id=? ORDER BY seq DESC LIMIT 1", (eid,))
+
+
+def document(c, did: int):
+    return row(c, "SELECT * FROM documents WHERE id=?", (did,))
+
+
+def roster_groups(c, eid: int) -> list[dict]:
+    """Each student of the roster with their group and faculty."""
+    return rows(c, "SELECT r.student_id, r.status, u.full_name, u.student_no, u.group_id, sg.name AS group_name, sg.faculty_id "
+                   "FROM exam_roster r JOIN users u ON u.id=r.student_id LEFT JOIN study_groups sg ON sg.id=u.group_id "
+                   "WHERE r.exam_id=? ORDER BY sg.name, u.full_name", (eid,))
+
+
+def office_serves_group(c, uid: int, gid: int) -> bool:
+    return row(c, "SELECT 1 FROM study_groups sg JOIN role_grants g ON g.scope_id=sg.faculty_id WHERE sg.id=? AND g.user_id=? "
+                  "AND g.role='office' AND g.scope_type='faculty' LIMIT 1", (gid, uid)) is not None
+
+
+def offices_of_groups(c, gids: list[int]) -> list[dict]:
+    """The active dean's office users whose faculty covers any of these groups, with their addresses and settings."""
+    if not gids:
+        return []
+    return rows(c, "SELECT DISTINCT u.id, u.email, u.prefs FROM role_grants g JOIN users u ON u.id=g.user_id JOIN study_groups sg "
+                   f"ON sg.faculty_id=g.scope_id WHERE g.role='office' AND g.scope_type='faculty' AND u.status='active' AND sg.id IN ({','.join('?' * len(gids))})",  # nosec B608
+                tuple(gids))
+
+
+def person(c, uid: int):
+    return row(c, "SELECT id, full_name, email, prefs FROM users WHERE id=?", (uid,))
+
+
+def statements(c, eid: int) -> dict[int, dict]:
+    return {r["group_id"]: r for r in rows(c, "SELECT s.*, d.reg_no, d.verify_code FROM exam_statements s JOIN documents d ON d.id=s.document_id "
+                                              "WHERE s.exam_id=?", (eid,))}
+
+
+def add_statement(c, eid: int, gid: int, did: int, by: int, at: str):
+    c.execute("INSERT INTO exam_statements(exam_id,group_id,document_id,closed_by,closed_at) VALUES(?,?,?,?,?)", (eid, gid, did, by, at))
+
+
+def released_exams(c) -> list[dict]:
+    return rows(c, f"SELECT {', '.join('e.' + k.strip() for k in EXAM_PUBLIC.split(','))}, co.code AS course_code, co.name AS course_name "  # nosec B608
+                   "FROM exams e JOIN courses co ON co.id=e.course_id WHERE e.status='released' ORDER BY e.closes_at DESC LIMIT 200")
+
+
+def appeal_of(c, rid: int, sid: int):
+    """A grade appeal request of this student (the reason an exam score changes after the statement is closed)."""
+    return row(c, "SELECT id, status FROM requests WHERE id=? AND student_id=? AND type_code='grade_appeal'", (rid, sid))
+
+
+def all_answers(c, eid: int) -> list[dict]:
+    return rows(c, "SELECT a.student_id, a.id AS attempt_id, x.qid, x.value FROM exam_attempts a JOIN exam_answers x ON x.attempt_id=a.id "
+                   "WHERE a.exam_id=?", (eid,))
+
+
+def forms(c, eid: int) -> dict[int, list[dict]]:
+    return {r["student_id"]: json.loads(r["items"]) for r in rows(c, "SELECT student_id, items FROM exam_forms WHERE exam_id=?", (eid,))}
