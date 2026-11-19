@@ -5,6 +5,7 @@ import { stat, lessonRow, schedulePage } from "./student.js";
 import { achievementsTeaser } from "./achievements.js";
 import { refreshBadges } from "./shell.js";
 import { radarTeacherAlert } from "./radar.js";
+import { teacherAssignments } from "./assignments.js";
 
 const LET = "ABCD";
 const crumbsT = (...c) => [[t("Əsas"), "/teacher"], ...c];
@@ -120,7 +121,7 @@ route("/teacher/course/:id", async (el, p, q) => {
   catch (e) { return mount(el, html`${pageHead(t("Fənn"), "", "", crumbsT([t("Fənlərim"), "/teacher/courses"]))}
     ${e.status === 404 ? empty("alert", t("Fənn tapılmadı"), t("Bu fənn mövcud deyil və ya ünvan dəyişib."), { label: t("Fənlərim"), go: "/teacher/courses", icon: "book" }) : failed(e.message)}`); }
   const tab = q.tab || "materials";
-  const TABS = [["materials", t("Materiallar"), "file"], ["tutor", t("Tutor rejimləri"), "sliders"], ["attendance", t("Davamiyyət"), "calcheck"],
+  const TABS = [["materials", t("Materiallar"), "file"], ["assignments", t("Tapşırıqlar"), "list"], ["tutor", t("Tutor rejimləri"), "sliders"], ["attendance", t("Davamiyyət"), "calcheck"],
     ["insights", t("Analitika"), "chart"], ["tools", t("Texnoloji həllər"), "cpu"], ["test", t("Tutoru sına"), "sparkles"]];
   mount(el, html`${pageHead(c.name, t("{code} · {n} tələbə · {k} kredit", { code: c.code, n: c.students, k: c.credits }),
       html`<label class="sr-only" for="cs">${t("Fənn")}</label><select class="select" id="cs" style="width:auto" aria-label="${t("Fənn")}">${all.map((x) => html`<option value="${x.id}" ${x.id === c.id ? "selected" : ""}>${x.name}</option>`)}</select>`,
@@ -130,6 +131,7 @@ route("/teacher/course/:id", async (el, p, q) => {
   $("#cs", el).addEventListener("change", (e) => go(`/teacher/course/${e.target.value}?tab=${tab}`));
   const tgt = $("#tab", el);
   if (tab === "materials") materialsTab(tgt, c);
+  else if (tab === "assignments") teacherAssignments(tgt, c);
   else if (tab === "tutor") tutorTab(tgt, c);
   else if (tab === "attendance") attendanceTab(tgt, c);
   else if (tab === "insights") insightsTab(tgt, c);
@@ -142,9 +144,11 @@ function materialsTab(tgt, c) {
     <div class="card" data-tour="mat-list"><div class="card-h"><h3>${ic("layers", 17)} ${t("Fənn materialları")}</h3><span class="small muted">${t("{n} material", { n: c.materials_list.length })}</span></div>
       ${c.materials_list.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Material")}</th><th>${t("Bölmə")}</th><th>${t("Anlayış")}</th><th>${t("Yüklənib")}</th><th></th></tr></thead><tbody>
       ${c.materials_list.map((m) => html`<tr class="click" data-view="${m.id}"><td><div class="row"><span class="stat-ic ic-blue" style="width:34px;height:34px">${ic("file", 16)}</span>
-        <div><b class="small">${m.title}</b><div class="tiny muted">${m.filename} · ${t("{n}K simvol", { n: num(Math.round(m.chars / 100) / 10, 1) })}${m.refs ? html` · ${t("{n} əlavə mənbə", { n: m.refs })}` : ""}</div></div></div></td>
+        <div><b class="small">${m.title}</b>${m.replaced ? html` <span class="badge b-gray">${t("köhnə versiya")}</span>` : m.replaces_id ? html` <span class="badge b-blue">${t("yeni versiya")}</span>` : ""}<div class="tiny muted">${m.filename} · ${t("{n}K simvol", { n: num(Math.round(m.chars / 100) / 10, 1) })}${m.refs ? html` · ${t("{n} əlavə mənbə", { n: m.refs })}` : ""}</div></div></div></td>
         <td>${num(m.chunk_count)}</td><td>${num(m.term_count)}</td><td class="small">${fmtDate(m.created_at)}</td>
-        <td class="right nowrap"><button class="btn btn-sm" data-view="${m.id}">${ic("eye", 14)} ${t("Oxu")}</button>
+        <td class="right nowrap">${m.file_id ? html`<a class="btn btn-sm btn-icon" href="/api/materials/${m.id}/file" aria-label="${t("Orijinal faylı endir")}" title="${t("Orijinal faylı endir")}">${ic("download", 14)}</a>` : ""}
+          ${m.replaced ? "" : html`<button class="btn btn-sm" data-version="${m.id}">${t("Yeni versiya")}</button>`}
+          <button class="btn btn-sm" data-view="${m.id}">${ic("eye", 14)} ${t("Oxu")}</button>
           <button class="btn btn-sm btn-danger btn-icon" data-del="${m.id}" aria-label="${t("Sil")}">${ic("trash", 14)}</button></td></tr>`)}</tbody></table></div>`
         : html`<div class="card-b">${empty("file", t("Hələ material yoxdur"), t("Mühazirə və ya təqdimat faylı yükləyin — tutor və test studiyası məhz bu materiallara əsaslanır."))}</div>`}</div>
 
@@ -159,6 +163,7 @@ function materialsTab(tgt, c) {
 
   const proc = $("#proc", tgt), file = $("#file", tgt), dz = $("#dz", tgt);
   const STEPS = [t("Fayl yüklənir"), t("Mətn çıxarılır"), t("Bölmələrə ayrılır"), t("Anlayışlar çıxarılır"), t("Axtarış indeksi qurulur")];
+  let replaces = null;                                  // a new version of this material (Task 22)
   async function upload(f) {
     const ext = "." + (f.name.split(".").pop() || "").toLowerCase();
     if (!FORMATS.split(",").includes(ext)) return toast(t("Format dəstəklənmir. DOCX, PPTX, TXT və ya MD faylı seçin."), "err");
@@ -166,7 +171,8 @@ function materialsTab(tgt, c) {
     const draw = (k, extra = "") => mount(proc, html`<div class="steps">${STEPS.map((s, i) => html`<div class="step ${i < k ? "ok" : i === k ? "run" : ""}"><span class="si">${i < k ? raw(ic("check", 12).__html) : ""}</span>${s}</div>`)}</div>${raw(extra)}`);
     draw(0);
     try {
-      const request = api.post(`/api/courses/${c.id}/materials`, { filename: f.name, content_b64: await fileToB64(f) });
+      const request = api.post(`/api/courses/${c.id}/materials`, { filename: f.name, content_b64: await fileToB64(f), replaces });
+      replaces = null;
       for (let k = 1; k < STEPS.length; k++) { await sleep(420); draw(k); }
       const r = await request;
       draw(STEPS.length, html`<div class="notice ok mt">${ic("check", 16)}<div><b>${r.title}</b> ${t("hazırdır: {c} bölmə, {g} anlayış.", { c: r.chunks, g: r.terms })}
@@ -179,6 +185,7 @@ function materialsTab(tgt, c) {
     } catch (e) { mount(proc, html`<div class="notice warn">${ic("alert", 16)}<div>${e.message}</div></div>`); }
   }
   file.addEventListener("change", () => file.files[0] && upload(file.files[0]));
+  on(tgt, "click", "[data-version]", (e, b) => { e.stopPropagation(); replaces = Number(b.dataset.version); file.click(); });
   dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
   dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
   dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); e.dataTransfer.files[0] && upload(e.dataTransfer.files[0]); });

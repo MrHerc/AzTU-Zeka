@@ -1,0 +1,13 @@
+{
+ "Bu materialın orijinal faylı yoxdur": "This material has no original file",
+ "Material faylı DOCX, PPTX, PDF, MD və ya TXT olmalıdır": "A material file must be DOCX, PPTX, PDF, MD or TXT",
+ "Tapşırığın mətnini yazın": "Enter the assignment's text",
+ "Son tarix İİİİ-AA-GGTSS:DD formatında olmalıdır": "The due time must be YYYY-MM-DDTHH:MM",
+ "Maksimum bal 0-dan böyük və komponentin maksimumundan ({n}) çox olmamalıdır": "The maximum score must be above 0 and at most the component's maximum ({n})",
+ "Gecikmə qaydası: qeyd et və ya qəbul etmə": "Late rule: mark it or refuse it",
+ "Tapşırıq tapılmadı": "Assignment not found",
+ "Göndəriş tapılmadı": "Submission not found",
+ "Mətn yazın və ya fayl əlavə edin": "Write a text or attach a file",
+ "Göndəriş artıq qiymətləndirilib": "The submission is already graded",
+ "Son tarix keçib: bu tapşırıq gecikmiş göndərişi qəbul etmir": "The due time has passed: this assignment does not accept late submissions"
+}

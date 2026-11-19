@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import urllib.parse
 import json
 import math
 import random
@@ -18,7 +19,7 @@ from ..modules.journal import domain as journal_rules
 from ..modules.journal import service as journal
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows, setting
-from ..core.web import HTTPError
+from ..core.web import HTTPError, Response
 
 QUIZ_GRACE = timedelta(minutes=2)       # network / clock slack after a quiz time limit
 
@@ -96,7 +97,7 @@ def course_card(c, co, user=None):
     out["teacher"], out["teacher_title"] = (t["full_name"], t["title"]) if t else ("", "")
     out["suggestions"] = J(co["suggestions"], [])
     out["modes"] = J(co["tutor_modes"], ["socratic"])
-    out["materials"] = row(c, "SELECT COUNT(*) n FROM materials WHERE course_id=?", (co["id"],))["n"]
+    out["materials"] = row(c, f"SELECT COUNT(*) n FROM materials m WHERE course_id=? AND {CURRENT}", (co["id"],))["n"]  # nosec B608
     out["students"] = row(c, "SELECT COUNT(*) n FROM enrollments WHERE course_id=?", (co["id"],))["n"]
     out["next"] = next_lesson(c, co["id"])
     if user and user["role"] == "student":
@@ -120,7 +121,10 @@ def course_detail(req):
     out = course_card(c, co, u)
     out["tutor_rules"] = co["tutor_rules"] or ""
     out["materials_list"] = rows(c, "SELECT m.id, m.title, m.filename, m.chunk_count, m.term_count, m.created_at, LENGTH(m.text) chars, "
-                                    "u.full_name uploaded_by FROM materials m LEFT JOIN users u ON u.id=m.uploaded_by WHERE course_id=? ORDER BY m.id", (co["id"],))
+                                    "m.file_id, m.replaces_id, NOT " + CURRENT + " replaced, u.full_name uploaded_by FROM materials m "
+                                    "LEFT JOIN users u ON u.id=m.uploaded_by WHERE course_id=? ORDER BY m.id", (co["id"],))
+    if u["role"] == "student":                         # Task 22: a student sees the current version of each material
+        out["materials_list"] = [m for m in out["materials_list"] if not m["replaced"]]
     out["schedule"] = [{**x, "weekday_name": WEEKDAYS[x["weekday"]]} for x in rows(c, "SELECT * FROM timetable WHERE course_id=? ORDER BY weekday, start", (co["id"],))]
     out["tools"] = [{**t, "areas": J(t["areas"], [])} for t in rows(c, "SELECT t.key, t.name, t.type, t.pricing, t.url, t.summary, t.areas FROM course_tools ct "
                                                                          "JOIN tools t ON t.key=ct.tool_key WHERE ct.course_id=? ORDER BY t.seq", (co["id"],))]
@@ -134,16 +138,44 @@ def course_detail(req):
     return out
 
 
-@R("GET", "/api/materials/{id:int}")
-def material_get(req):
-    m = row(req.db, "SELECT * FROM materials WHERE id=?", (req.params["id"],))
+CURRENT = "NOT EXISTS (SELECT 1 FROM materials n WHERE n.replaces_id=m.id)"     # not replaced by a newer version (Task 22)
+
+
+def _material(req, mid: int):
+    """The material if the user reaches its course; a replaced version only for staff."""
+    m = row(req.db, f"SELECT m.*, NOT {CURRENT} replaced FROM materials m WHERE m.id=?", (mid,))  # nosec B608 (constant SQL)
     if not m:
         raise HTTPError(404, "Material tapılmadı")
-    course_access(req, m["course_id"])
+    try:
+        course_access(req, m["course_id"])
+    except HTTPError as ex:
+        if ex.status != 403:
+            raise
+        raise HTTPError(404, "Material tapılmadı") from None       # another course's material: as if it were not there
+    if m["replaced"] and req.user["role"] == "student":
+        raise HTTPError(404, "Material tapılmadı")
+    return m
+
+
+@R("GET", "/api/materials/{id:int}")
+def material_get(req):
+    m = _material(req, req.params["id"])
     m["chunks"] = rows(req.db, "SELECT id, seq, heading, text FROM chunks WHERE material_id=? ORDER BY seq", (m["id"],))
     m["glossary"] = [{"term": t, "definition": d} for t, d in engine.glossary(m["text"])]
     m["references"], m["references_checked"] = refs.for_material(m["filename"]), refs.checked()
     return m
+
+
+@R("GET", "/api/materials/{id:int}/file")
+def material_file(req):
+    """The material's original file, as the teacher uploaded it (Task 22)."""
+    m = _material(req, req.params["id"])
+    f = row(req.db, "SELECT * FROM files WHERE id=?", (m["file_id"],)) if m["file_id"] else None
+    if not f:
+        raise HTTPError(404, "Bu materialın orijinal faylı yoxdur")
+    fname = urllib.parse.quote(f["filename"])
+    return Response((store.UPLOADS / f["path"]).read_bytes(), 200, f["mime"],
+                    [("Content-Disposition", f"attachment; filename*=UTF-8''{fname}"), ("Cache-Control", "private, no-store")])
 
 
 @R("GET", "/api/source/chunk/{id:int}")
@@ -600,7 +632,15 @@ def upload_material(req):
     title = (b.text("title") or re.sub(r"\.[^.]+$", "", name)).strip()[:200]
     if not text.lstrip().startswith("#"):
         text = f"# {title}\n\n" + text
-    info = store.add_material(c, co["id"], title, name, text, req.user["id"])
+    replaces = b.integer("replaces", None, lo=1)
+    if replaces is not None and not row(c, f"SELECT 1 FROM materials m WHERE m.id=? AND m.course_id=? AND {CURRENT}",  # nosec B608
+                                        (replaces, co["id"])):
+        raise HTTPError(404, "Material tapılmadı")
+    try:
+        original = store.save_file(c, req.user["id"], name, data, accept="material")      # Task 22: the file itself is kept
+    except ValueError as ex:
+        raise HTTPError(400, str(ex)) from None
+    info = store.add_material(c, co["id"], title, name, text, req.user["id"], file_id=original["id"], replaces_id=replaces)
     audit(c, req.user["id"], "material_upload", "course", f"{co['code']}: {title}")
     return {"ok": True, **info, "title": title}
 

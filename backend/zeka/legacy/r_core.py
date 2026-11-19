@@ -14,6 +14,7 @@ from ..core.security import CFG, LIMITS, access_code_ok, safe_next
 from .store import J, audit, iso, now, row, rows, setting
 from ..core.web import HTTPError, Response, json_resp, redirect
 from ..modules.identity import sso
+from ..modules.learning import service as learning
 
 
 def _login(req, role, code, user=None):
@@ -279,6 +280,9 @@ def file_access(req, fid):
     f = row(c, "SELECT * FROM files WHERE id=?", (fid,))
     if not f:
         raise HTTPError(404, "Fayl tapılmadı")
+    if f["owner_id"] != u["id"] and learning.may_read_file(c, u, f["id"]):      # a submission to the user's course (Task 22)
+        req.read_owner, req.read_object = f["owner_id"], f["id"]
+        return f
     if f["owner_id"] != u["id"] and u["role"] not in ("office", "admin"):
         raise HTTPError(403, "Bu fayla baxmaq icazəniz yoxdur")
     if f["owner_id"] != u["id"] and not serves(c, u, f["owner_id"]):     # another faculty's student: not even its existence

@@ -390,3 +390,13 @@ def debts(c) -> list[dict]:
     """The final grades that did not pass: the academic debts."""
     return [{k: r[k] for k in ("user_id", "full_name", "student_no", "grp", "term_name", "course_code", "course_name", "credits", "score",
                                "letter")} for r in repo.failed_finals(c)]
+
+
+def write_cell(c, user, course_id: int, student_id: int, component: str, value: float | None, reason: str) -> tuple[str, object]:
+    """One score from another module (an assignment, Task 22), by the table's rules: the student must be on the user's
+    units, a new score is a draft, a change of a published one is logged with ``reason``."""
+    status, value_ = save_grades(c, user, course_id, {"cells": [{"student_id": student_id, "component": component, "score": value}],
+                                                      "reason": reason})
+    if status == "cells":
+        return "invalid", value_[0]["reason"]                # type: ignore[index]
+    return status, value_

@@ -1,0 +1,13 @@
+{
+ "Bu materialın orijinal faylı yoxdur": "У этого материала нет исходного файла",
+ "Material faylı DOCX, PPTX, PDF, MD və ya TXT olmalıdır": "Файл материала должен быть DOCX, PPTX, PDF, MD или TXT",
+ "Tapşırığın mətnini yazın": "Введите текст задания",
+ "Son tarix İİİİ-AA-GGTSS:DD formatında olmalıdır": "Срок должен быть в формате ГГГГ-ММ-ДДTЧЧ:ММ",
+ "Maksimum bal 0-dan böyük və komponentin maksimumundan ({n}) çox olmamalıdır": "Максимальный балл должен быть больше 0 и не выше максимума компонента ({n})",
+ "Gecikmə qaydası: qeyd et və ya qəbul etmə": "Правило опоздания: отметить или не принимать",
+ "Tapşırıq tapılmadı": "Задание не найдено",
+ "Göndəriş tapılmadı": "Работа не найдена",
+ "Mətn yazın və ya fayl əlavə edin": "Напишите текст или приложите файл",
+ "Göndəriş artıq qiymətləndirilib": "Работа уже оценена",
+ "Son tarix keçib: bu tapşırıq gecikmiş göndərişi qəbul etmir": "Срок прошёл: это задание не принимает работы с опозданием"
+}

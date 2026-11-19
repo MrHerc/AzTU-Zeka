@@ -140,6 +140,16 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/assignments/{id:int}/submissions": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/attempts/{id:int}": {
   "access": [
    "student"
@@ -208,6 +218,13 @@
   "slow": false
  },
  "GET /api/courses/{id:int}": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/courses/{id:int}/assignments": {
   "access": "any",
   "audit_read": null,
   "demo": false,
@@ -481,6 +498,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/materials/{id:int}/file": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/me": {
   "access": "any",
   "audit_read": null,
@@ -708,6 +732,13 @@
    "student"
   ],
   "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/submissions/{id:int}": {
+  "access": "any",
+  "audit_read": "submission",
   "demo": false,
   "perm": null,
   "slow": false
@@ -963,6 +994,15 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/assignments/{id:int}/submit": {
+  "access": [
+   "student"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/attempts/{id:int}/submit": {
   "access": [
    "student"
@@ -1058,6 +1098,16 @@
  },
  "POST /api/consent": {
   "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/courses/{id:int}/assignments": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
   "audit_read": null,
   "demo": false,
   "perm": null,
@@ -1399,6 +1449,16 @@
  },
  "POST /api/studio/generate": {
   "access": [
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/submissions/{id:int}/grade": {
+  "access": [
+   "dept_head",
    "teacher"
   ],
   "audit_read": null,

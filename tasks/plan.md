@@ -99,7 +99,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T19 Cədvəl idarəsi və iCal
 - [x] T20 Davamiyyət jurnalı
 - [x] T21 Qiymət jurnalı
-- [ ] T22 Tapşırıqlar və material faylı
+- [x] T22 Tapşırıqlar və material faylı
 - [ ] T45 Sənədin bütövlüyü
 
 ### Checkpoint C · saat 36

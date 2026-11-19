@@ -176,6 +176,13 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `GET` | `/api/journal/courses/{id}/grades/log` | as above | Changes of published scores: who, old, new, reason |
 | `GET` | `/api/journal/debts?format=csv` | office (its faculty), academic office, admin, leadership | Final grades that did not pass (academic debts); CSV with formula-safe cells |
 | `POST` | `/api/journal/students/{id}/reconcile` | office (its faculty), academic office, admin | Mark the student's history before Zəka as checked (audited) |
+| `GET` | `/api/courses/{id}/assignments` | the course's teachers, its enrolled students | Assignments (a student's with their own submission) (Task 22) |
+| `POST` | `/api/courses/{id}/assignments` | the course's teachers | `{"title", "body", "due_at": "YYYY-MM-DDTHH:MM", "max_score", "component", "late_rule": "mark" \| "refuse"}` |
+| `POST` | `/api/assignments/{id}/submit` | enrolled student | `{"text"?, "file_id"?}` (the student's own file); `409` when late and the rule refuses; again until graded |
+| `GET` | `/api/assignments/{id}/submissions` | the course's teachers | Every submission with its file |
+| `GET` | `/api/submissions/{id}` | its student, the course's teachers | One submission (an audited read for the teacher) |
+| `POST` | `/api/submissions/{id}/grade` | the course's teachers | `{"score", "feedback"?}`; the component's total goes to the grade journal as a draft |
+| `GET` | `/api/materials/{id}/file` | the course's students (current version), its teachers (any) | A material's original file as uploaded |
 | `POST` | `/api/consent` | any | Record consent to AI processing |
 
 ### Bulk import (Task 16)
@@ -275,6 +282,19 @@ outside the scheme is a refused row; the same file again changes nothing.
 A transcript is built only from final grades: the average is sum(score x credits) / sum(credits) over all of them, the
 total credits count only passed courses. A `transcript` request is refused until the student's history is reconciled
 (`history_reconciled_at`), unless the student was admitted in or after Zəka's first term.
+
+### Assignments and material files (Task 22)
+
+An assignment counts toward one grade component (not attendance, not the exam) with a maximum not above the
+component's. A late submission is marked late or refused by the assignment's rule; a student replaces their submission
+until it is graded. Only the student and the course's teachers read a submission, and a teacher of the course reads a
+file attached to it. Grading writes the sum of the student's graded assignments of that component, capped at its
+maximum, into the grade journal through the journal's own rules (a draft until published; a published score's change is
+logged with the assignment's title as the reason).
+
+`POST /api/courses/{id}/materials` keeps the uploaded file (`materials.file_id`; DOCX, PPTX, PDF, MD or TXT) besides
+the extracted text; with `{"replaces": <material id>}` it is a new version (`replaces_id`): students and the tutor's
+index see only the current version, the earlier one's file and text stay for the teacher.
 
 ### University settings (Task 17)
 

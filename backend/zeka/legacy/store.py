@@ -102,6 +102,9 @@ def notify(c, user_ids, kind, title, body="", link="", when=None, read=False):
 # ---------------------------------------------------------------- files
 ALLOWED = {"pdf": "application/pdf", "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+# Task 22: a lecture material's original file (also a presentation or a text file)
+MATERIAL = {**{k: ALLOWED[k] for k in ("pdf", "docx")}, "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "md": "text/markdown; charset=utf-8", "txt": "text/plain; charset=utf-8"}
 MAX_FILE = 10 * 1024 * 1024
 
 
@@ -125,7 +128,20 @@ def save_file(c, owner_id, filename, data: bytes, accept="doc", when=None) -> di
         raise ValueError("Fayl 10 MB-dan böyükdür")
     kind = sniff(data)
     ext = Path(filename).suffix.lower().lstrip(".")
-    if kind is None or (ext and ALLOWED.get(ext) != ALLOWED[kind]):
+    if accept == "material":
+        if ext in ("md", "txt") and b"\x00" not in data:
+            try:
+                data.decode("utf-8")
+                kind = ext
+            except UnicodeDecodeError:
+                kind = None
+        elif kind == "docx" and ext in ("docx", "pptx"):
+            kind = ext                                      # both are ZIP packages: the name says which
+        elif kind != "pdf" or ext != "pdf":
+            kind = None
+        if kind is None:
+            raise ValueError("Material faylı DOCX, PPTX, PDF, MD və ya TXT olmalıdır")
+    elif kind is None or (ext and ALLOWED.get(ext) != ALLOWED[kind]):
         raise ValueError("Yalnız PDF, JPG, PNG və DOCX fayllar qəbul olunur")
     if accept == "image" and kind not in ("png", "jpg"):
         raise ValueError("Bu sahə üçün yalnız şəkil (JPG, PNG) qəbul olunur")
@@ -136,7 +152,8 @@ def save_file(c, owner_id, filename, data: bytes, accept="doc", when=None) -> di
         path.write_bytes(data)
     safe = re.sub(r"[^\wəıöüşçğƏİÖÜŞÇĞ .()-]", "_", Path(filename).name)[:120] or f"fayl.{kind}"
     fid = c.execute("INSERT INTO files(owner_id,request_id,filename,mime,size,sha256,path,created_at) VALUES(?,?,?,?,?,?,?,?)",
-                    (owner_id, None, safe, ALLOWED[kind], len(data), digest, path.name, iso(when or now()))).lastrowid
+                    (owner_id, None, safe, (MATERIAL if accept == "material" else ALLOWED)[kind], len(data), digest, path.name,
+                     iso(when or now()))).lastrowid
     return row(c, "SELECT * FROM files WHERE id=?", (fid,))
 
 
@@ -160,14 +177,16 @@ def demo_pdf(lines: list[str]) -> bytes:
 
 
 # ---------------------------------------------------------------- materials
-def add_material(c, course_id, title, filename, text, user_id, created_at=None) -> dict:
+def add_material(c, course_id, title, filename, text, user_id, created_at=None, file_id=None, replaces_id=None) -> dict:
     parts = engine.chunk_markdown(text)
     if not parts:
         raise ValueError("Materialda mətn tapılmadı")
     terms = engine.glossary(text)
-    cur = c.execute("INSERT INTO materials(course_id,title,filename,text,chunk_count,term_count,uploaded_by,created_at)"
-                    " VALUES(?,?,?,?,?,?,?,?)",
-                    (course_id, title, filename, text, len(parts), len(terms), user_id, created_at or iso(now())))
+    cur = c.execute("INSERT INTO materials(course_id,title,filename,text,chunk_count,term_count,uploaded_by,created_at,file_id,replaces_id)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    (course_id, title, filename, text, len(parts), len(terms), user_id, created_at or iso(now()), file_id, replaces_id))
+    if replaces_id:
+        drop_chunks(c, replaces_id)                     # the tutor and search see the current version only (Task 22)
     mid = cur.lastrowid
     for seq, (heading, body) in enumerate(parts):
         cid = c.execute("INSERT INTO chunks(material_id,course_id,seq,heading,text) VALUES(?,?,?,?,?)",
@@ -179,12 +198,17 @@ def add_material(c, course_id, title, filename, text, user_id, created_at=None) 
             "headings": [h for h, _ in parts], "glossary": [t for t, _ in terms][:12]}
 
 
-def delete_material(c, material_id):
+def drop_chunks(c, material_id):
+    """Take a material's sections out of the search index (its text stays)."""
     ids = [r["id"] for r in rows(c, "SELECT id FROM chunks WHERE material_id=?", (material_id,))]
     for i in ids:
         engine.INDEX["chunks"].remove(i)
     log_index(c, "chunks", ids, "delete")
     c.execute("DELETE FROM chunks WHERE material_id=?", (material_id,))
+
+
+def delete_material(c, material_id):
+    drop_chunks(c, material_id)
     c.execute("DELETE FROM materials WHERE id=?", (material_id,))
 
 
@@ -491,7 +515,9 @@ def seed(c):
         mats[co["code"]] = []
         for i, (fname, title) in enumerate(co["materials"]):
             text = (CONTENT / "materials" / fname).read_text(encoding="utf-8")
-            info = add_material(c, cid, title, fname, text, uid[co["teacher"]], iso(t0 - timedelta(days=16 - min(i * 5, 15))))
+            when = t0 - timedelta(days=16 - min(i * 5, 15))
+            original = save_file(c, uid[co["teacher"]], fname, text.encode("utf-8"), accept="material", when=when)   # Task 22
+            info = add_material(c, cid, title, fname, text, uid[co["teacher"]], iso(when), file_id=original["id"])
             mats[co["code"]].append(info["id"])
             for ch in rows(c, "SELECT id, heading FROM chunks WHERE material_id=?", (info["id"],)):
                 chunk_by.setdefault((info["id"], re.sub(r"\s*\(\d+\)$", "", ch["heading"])), ch["id"])

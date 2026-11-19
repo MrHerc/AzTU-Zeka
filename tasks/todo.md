@@ -537,14 +537,16 @@ Qeyd: `grades` yükləyicisi Task 16 reyestrindədir (`grades` idxal növü); ye
 Mühazirə materialının orijinal faylı (dilim 2). Bu gün yüklənən fayldan yalnız çıxarılan mətn saxlanır, orijinal atılır və tələbə onu endirə bilmir (`docs/CODEMAP.md` L53). Yükləmədə orijinal fayl mövcud məzmun ünvanlı fayl anbarına yazılır (`store.save_file`: `data/uploads/<sha256>.bin`, `files` cədvəli) və `materials.file_id` ilə bağlanır; `save_file` `.docx`, `.pptx`, `.md` və `.txt` növlərini qəbul edir. Çıxarılan mətn və hissələr əvvəlki kimi saxlanır. Orijinalı fənnə yazılmış tələbə və fənnin müəllimi endirir: `GET /api/materials/{id}/file`; `file_access` bu oxucunu tanıyır. Materialın əvəzlənməsi yeni versiya yaradır (`materials.replaces_id`): əvvəlki versiyanın faylı və mətni silinmir və müəllimə görünür; tələbə və axtarış indeksi yalnız cari versiyanı görür.
 
 **Acceptance criteria:**
-- [ ] Son tarixdən sonrakı göndəriş qaydaya görə "gecikib" işarələnir və ya rədd olunur
-- [ ] Yalnız fənnə yazılan tələbə göndərə bilir; göndərişi yalnız sahibi və fənnin müəllimi oxuyur
-- [ ] Qiymətləndirilən bal jurnalda uyğun komponentdə görünür
-- [ ] Müəllimin yüklədiyi `.docx` faylını fənnə yazılmış tələbə endirir və SHA-256-sı yüklənən faylla eynidir; fənnə yazılmayan tələbə 404 alır
-- [ ] Material əvəzlənəndən sonra tələbə yeni faylı alır; əvvəlki versiyanın faylı müəllim üçün endirilir; tutor axtarışı yalnız cari versiyanın hissələrini qaytarır
+- [x] Son tarixdən sonrakı göndəriş qaydaya görə "gecikib" işarələnir və ya rədd olunur
+- [x] Yalnız fənnə yazılan tələbə göndərə bilir; göndərişi yalnız sahibi və fənnin müəllimi oxuyur
+- [x] Qiymətləndirilən bal jurnalda uyğun komponentdə görünür
+- [x] Müəllimin yüklədiyi `.docx` faylını fənnə yazılmış tələbə endirir və SHA-256-sı yüklənən faylla eynidir; fənnə yazılmayan tələbə 404 alır
+- [x] Material əvəzlənəndən sonra tələbə yeni faylı alır; əvvəlki versiyanın faylı müəllim üçün endirilir; tutor axtarışı yalnız cari versiyanın hissələrini qaytarır
+
+Qeyd: modul `backend/zeka/modules/learning/{domain,repo,service,routes}.py`-dir (bir `assignments.py` deyil); bir komponentə bir neçə tapşırıq düşə bilər, onların cəmi komponentin maksimumunu keçmir.
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_assignments.py tests/integration/test_material_files.py -q`
+- [x] `python -m pytest tests/integration/test_assignments.py tests/integration/test_material_files.py -q`
 
 **Dependencies:** dilim 1: Task 21; dilim 2: yalnız Task 13
 **Files likely touched:** `backend/zeka/modules/learning/assignments.py`, `backend/zeka/modules/learning/routes.py`, `backend/migrations/0220_assignments.sql`, `backend/migrations/0221_material_files.sql` (`materials.file_id`, `materials.replaces_id`), `backend/zeka/legacy/{r_learning,r_core,store}.py`, `frontend/js/assignments.js`, `frontend/js/student.js`, `frontend/js/teacher.js`, `tests/integration/test_material_files.py`

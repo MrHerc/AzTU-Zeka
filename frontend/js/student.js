@@ -3,6 +3,7 @@ import { api, html, raw, mount, on, md, ic, toast, modal, route, go, S, pageHead
 import { chatView } from "./chat.js";
 import { achievementsTeaser } from "./achievements.js";
 import { studentPlanCard } from "./radar.js";
+import { studentAssignments } from "./assignments.js";
 
 const LET = "ABCD";
 // Lesson kind codes map to a tone; labels come localized from the server.
@@ -142,6 +143,7 @@ route("/student/course/:id", async (el, p) => {
         <div class="card" data-tour="materials"><div class="card-h"><h3>${ic("layers", 17)} ${t("Mühazirə materialları")}</h3><span class="small muted">${t("{n} material", { n: c.materials_list.length })}</span></div>
           <div class="card-b list">${c.materials_list.length ? c.materials_list.map((m) => html`<div class="list-item click" data-mat="${m.id}"><span class="stat-ic ic-blue" style="width:36px;height:36px">${ic("file", 17)}</span>
             <div class="grow"><b class="small">${m.title}</b><div class="tiny muted">${t("{n} bölmə", { n: m.chunk_count })} · ${t("{n} anlayış", { n: m.term_count })} · ${fmtDate(m.created_at)}${m.refs ? html` · ${t("{n} əlavə mənbə", { n: m.refs })}` : ""}</div></div>
+            ${m.file_id ? html`<a class="btn btn-sm btn-icon" href="/api/materials/${m.id}/file" data-nomat aria-label="${t("Orijinal faylı endir")}" title="${t("Orijinal faylı endir")}">${ic("download", 14)}</a>` : ""}
             <button class="btn btn-sm">${ic("eye", 14)} ${t("Oxu")}</button></div>`)
             : empty("file", t("Hələ material yoxdur"), t("Müəllim material yüklədikcə burada görünəcək."))}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("quiz", 17)} ${t("Testlər")}</h3></div><div class="card-b list">
@@ -151,13 +153,14 @@ route("/student/course/:id", async (el, p) => {
             ${q.can_start ? html`<button class="btn btn-sm btn-primary" data-go="/student/quiz/${q.id}">${t("Başla")}</button>`
               : q.last_attempt ? html`<button class="btn btn-sm" data-go="/student/attempt/${q.last_attempt}">${t("Nəticə")}</button>` : html`<span class="badge b-gray">${t("Cəhd limiti bitib")}</span>`}</div>`)
             : empty("quiz", t("Hələ test yoxdur"), t("Müəllim test təyin etdikdə burada görünəcək."))}</div></div>
+        <div id="assignments"></div>
         ${refCard(c.references, c.references_checked)}
       </div>
       <div class="stack">
         <div class="card" data-tour="attendance-card"><div class="card-h"><h3>${ic("calcheck", 17)} ${t("Davamiyyət")}</h3><a class="small" href="#/student/attendance">${t("Ətraflı")} ${ic("arrow", 13)}</a></div><div class="card-b">
           <div class="row">${ring(a.rate, 74, a.rate < 80 ? "var(--red)" : "var(--green)")}<div class="grow small"><div>${t("Keçirilib")}: <b>${num(a.total)}</b> ${t("dərs")}</div>
             <div>${t("Qayıb")}: <b style="color:var(--red)">${num(a.absent)}</b> · ${t("Üzrlü")}: <b>${num(a.excused)}</b> · ${t("Gecikmə")}: <b>${num(a.late)}</b></div>
-            <div class="muted">${t("İcazə verilən hədd: {n} dərs ({p}%)", { n: a.limit ?? "—", p: a.limit_percent })}</div></div></div></div></div>
+            <div class="muted">${t("Hədd: {p}% ({n} saat)", { p: a.limit_percent, n: a.allowed_hours })}</div></div></div></div></div>
         <div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Dərs cədvəli")}</h3></div><div class="card-b list">${c.schedule.length ? c.schedule.map((x) => html`<div class="list-item">
           <div class="grow"><b class="small">${x.weekday_name}</b> <span class="small muted">${x.start}–${x.end}</span><div class="tiny muted">${x.room}</div></div><span class="badge ${kindTone(x.kind)}">${x.kind}</span></div>`)
           : empty("calendar", t("Cədvəl məlumatı yoxdur"))}</div></div>
@@ -165,8 +168,10 @@ route("/student/course/:id", async (el, p) => {
           <span class="tool"><span class="tl">${tool.name.slice(0, 2)}</span></span><div class="grow"><b class="small">${tool.name}</b><div class="tiny muted">${tool.type} · ${tool.pricing}</div></div>
           ${tool.url ? html`<a class="btn btn-sm" href="${tool.url}" target="_blank" rel="noopener noreferrer">${ic("external", 13)} ${t("Aç")}</a>` : ""}</div>`)}</div></div>` : ""}
       </div></div>`);
+  studentAssignments($("#assignments", el), c);
   on(el, "click", "[data-syl]", (e, b) => openSyllabus(+b.dataset.syl, c.name));
   on(el, "click", "[data-mat]", async (e, b) => {
+    if (e.target.closest("[data-nomat]")) return;                    // the download link inside the row (Task 22)
     let m;
     try { m = await api.get(`/api/materials/${b.dataset.mat}`); } catch (err) { return toast(err.message, "err"); }
     modal({ title: m.title, size: "lg", body: html`${m.glossary.length ? html`<div class="label mb-sm">${t("Əsas anlayışlar")}</div><div class="chips mb">${m.glossary.map((g) => html`<span class="badge b-navy" title="${g.definition}">${g.term}</span>`)}</div>` : ""}
