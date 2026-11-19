@@ -166,7 +166,24 @@ is latent (it bites only if the test anchor moves to a Saturday).
 
 ## Security review (security-review skill, `afbfeae..4c63b4a`)
 
-<!-- SECREVIEW -->
+The security-review skill ran over `afbfeae..4c63b4a` (Tasks 31–35, 37 and the Checkpoint E fixes; Task 46 got a
+lighter pass because its own security review ran in parallel). Bar: confidence ≥ 0.8, High or Medium, new in this range.
+
+**Result: no finding reaches the bar.** What held, among others:
+- **Key routes.** A key route reads only the Bearer token and returns before the cookie path. An admin cookie on
+  `/api/v1/grades` gets 401.
+- **Admin-only routes.** Webhooks, exports, apps and keys are admin only. The webhook URL is admin-controlled and has
+  a public-address check and no redirects.
+- **Forum.** Every forum handler that takes an id has an object check. Anonymity and private topics hold in
+  `/api/qa*`.
+- **Clubs.** Membership is checked on every channel route.
+- **Office hours.** Bookings stay with the two parties.
+- **Escaping.** `/r/{code}` escapes everything it prints. The new frontend uses the escaping template and `md()`.
+- **Exports.** CSV cells are protected against formula injection.
+
+One **older** leak (unchanged since `afbfeae`) undercuts SEC-E3: `GET /api/teacher/questions` (and `/api/teacher/home`,
+which uses it) returns `tq.*` with `student_id` for anonymous topics, private forwards included. The teacher sees
+"Anonim tələbə" and the real id. It went to the Task 46 refuter as OLD-1 (below).
 
 ## Checkpoint E criteria
 
