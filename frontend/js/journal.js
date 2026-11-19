@@ -16,7 +16,7 @@ route("/journal", async (el, p, q) => {
   let view = ["standing", "grades", "debts"].includes(q.view) ? q.view : ["office", "academic_office", "leader"].includes(role) ? "standing" : "lessons";
   let course = q.course || "", courses = [];
   try {
-    courses = role === "teacher" ? await api.get("/api/courses") : (await api.get("/api/directory/courses?active=1")).items;
+    courses = role === "teacher" ? await api.get("/api/courses") : await api.all("/api/directory/courses?active=1");
   } catch (err) { mount(el, failed(err.message)); return; }
   const head = () => html`${pageHead(t("Elektron jurnal"), t("Dərsin davamiyyəti, buraxılmış saatlar və imtahana buraxılış."), "", crumbs())}
     <div class="seg mb" role="tablist">
@@ -31,7 +31,7 @@ route("/journal", async (el, p, q) => {
   const drawGrades = async () => {
     grid = null;
     edits.clear();
-    if (course) { try { grid = await api.get(`/api/journal/courses/${course}/grades`); } catch (err) { toast(err.message, "err"); } }
+    if (course) { try { grid = await api.get(`/api/journal/courses/${course}/grades`); } catch (err) { mount(el, html`${head()}${failed(err.message)}`); return; } }
     const cols = grid ? grid.columns : [];
     const cell = (s, c) => {
       if (c.kind === "attendance") return html`<td class="center muted" title="${t("Jurnaldan hesablanır")}">${s.attendance ?? "—"}</td>`;
@@ -66,14 +66,16 @@ route("/journal", async (el, p, q) => {
     }
   };
   const drawDebts = async () => {
-    let list = [];
-    try { list = await api.get("/api/journal/debts"); } catch (err) { toast(err.message, "err"); }
+    let res;
+    try { res = await api.get("/api/journal/debts"); } catch (err) { mount(el, html`${head()}${failed(err.message)}`); return; }
+    const list = res.items;
     mount(el, html`${head()}<div class="card"><div class="card-h wrap"><h3>${ic("alert", 17)} ${t("Keçid balını toplamayan fənlər")}</h3>
         <a class="btn btn-sm" href="/api/journal/debts?format=csv" download>${t("CSV yüklə")}</a></div>
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Tələbə")}</th><th>${t("Qrup")}</th><th>${t("Semestr")}</th><th>${t("Fənn")}</th><th>${t("Kredit")}</th><th>${t("Bal")}</th><th>${t("Qiymət")}</th></tr></thead><tbody>
       ${list.map((x) => html`<tr><td>${x.full_name} <span class="tiny muted">${x.student_no || ""}</span></td><td>${x.grp || "—"}</td><td>${x.term_name}</td><td>${x.course_name}</td>
         <td>${x.credits}</td><td>${x.score}</td><td>${x.letter}</td></tr>`)}</tbody></table></div>
-      ${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Akademik borc yoxdur")}</p></div>`}</div>`);
+      ${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Akademik borc yoxdur")}</p></div>`}
+      ${res.total > list.length ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("İlk {n} borc göstərilir, cəmi {total}: hamısı CSV-dədir.", { n: list.length, total: res.total })}</p></div>` : ""}</div>`);
   };
 
   const drawLessons = async () => {
@@ -89,8 +91,13 @@ route("/journal", async (el, p, q) => {
   };
 
   const drawStanding = async () => {
-    let list = [];
-    if (course) { try { list = await api.get(`/api/journal/courses/${course}/standing`); } catch (err) { toast(err.message, "err"); } }
+    let list = [], lessons = [];
+    if (course) {
+      try {
+        [list, lessons] = await Promise.all([api.get(`/api/journal/courses/${course}/standing`),
+          CORRECTORS.includes(role) ? api.get(`/api/journal/courses/${course}/lessons`) : []]);
+      } catch (err) { mount(el, html`${head()}${failed(err.message)}`); return; }
+    }
     mount(el, html`${head()}<div class="card"><div class="card-h wrap">${coursePick()}</div>
       ${course ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Tələbə")}</th><th>${t("Qrup")}</th><th>${t("Plan saatı")}</th>
           <th>${t("Buraxılmış saat")}</th><th>${t("Faiz")}</th><th>${t("Vəziyyət")}</th><th></th></tr></thead><tbody>
@@ -100,7 +107,14 @@ route("/journal", async (el, p, q) => {
           <td>${standBadge(x.status)}${x.as_of ? html`<div class="tiny muted">${t("{d} tarixinədək idxal", { d: x.as_of })}</div>` : ""}</td>
           <td>${x.opening_id && CORRECTORS.includes(S.user.role) ? html`<button class="btn btn-ghost btn-sm" data-open="${x.opening_id}" data-u="${x.unexcused_hours}" data-e="${x.excused_hours}">${t("Qalığı düzəlt")}</button>` : ""}</td></tr>`)}
         </tbody></table></div>${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Bu fənndə tələbə yoxdur")}</p></div>`}`
-        : html`<div class="card-b"><p class="muted" style="margin:0">${t("Tələbələrin buraxılmış saatlarını görmək üçün fənni seçin.")}</p></div>`}</div>`);
+        : html`<div class="card-b"><p class="muted" style="margin:0">${t("Tələbələrin buraxılmış saatlarını görmək üçün fənni seçin.")}</p></div>`}</div>
+      ${lessons.length ? html`<div class="card mt"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Fənnin dərsləri")}</h3>
+        <span class="small muted">${t("Düzəliş və əvəzedici müəllim üçün dərsi açın")}</span></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Tarix")}</th><th>${t("Vaxt")}</th><th>${t("Növ")}</th><th>${t("Müəllim")}</th><th>${t("Vəziyyət")}</th><th></th></tr></thead><tbody>
+        ${lessons.map((x) => html`<tr><td class="nowrap">${x.day}</td><td class="nowrap">${x.start}–${x.end}</td><td>${x.kind || "—"}</td><td>${x.teacher || "—"}</td>
+          <td>${x.status === "cancelled" ? html`<span class="badge b-red">${t("Ləğv edilib")}</span>` : x.marked ? html`<span class="badge b-green">${t("Qeyd olunub")}</span>`
+            : html`<span class="badge b-amber">${t("Qeyd olunmayıb")}</span>`}</td>
+          <td>${x.status !== "cancelled" ? html`<button class="btn btn-sm" data-go="/journal/lesson/${x.id}">${t("Aç")}</button>` : ""}</td></tr>`)}</tbody></table></div></div>` : ""}`);
   };
   const draw = () => ({ lessons: drawLessons, standing: drawStanding, grades: drawGrades, debts: drawDebts })[view]();
   on(el, "input", ".grade-in", (e, i) => { edits.set(`${i.dataset.s}:${i.dataset.c}`, i.value.trim()); i.classList.remove("bad"); });
@@ -190,7 +204,9 @@ route("/journal/lesson/:id", async (el, p) => {
   });
   on(el, "click", "#substitute", async () => {
     let teachers = [];
-    try { teachers = (await api.get("/api/directory/users?role=teacher&active=1")).items; } catch (err) { toast(err.message, "err"); return; }
+    try {
+      teachers = (await Promise.all(["teacher", "dept_head"].map((r) => api.all(`/api/directory/users?role=${r}&active=1`)))).flat();
+    } catch (err) { toast(err.message, "err"); return; }
     modal({ title: t("Əvəzedici müəllim"), size: "sm", body: html`<div class="stack">
         <div class="field"><label class="label" for="sub-t">${t("Müəllim")}</label><select class="input" id="sub-t">${teachers.map((x) => html`<option value="${x.id}">${x.full_name}</option>`)}</select></div>
         <div class="field"><label class="label" for="sub-why">${t("Səbəb")}</label><input class="input" id="sub-why" maxlength="300"></div></div>`,

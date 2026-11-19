@@ -157,3 +157,24 @@ def test_init_refuses_a_database_newer_than_the_code(db):
     db.commit()
     with pytest.raises(migrate.MigrationError, match="newer than the code"):
         store.init()
+
+
+def test_0450_starts_each_registry_sequence_after_the_largest_issued_number(tmp_path, mdir):
+    """Checkpoint C, D4: the back-fill of doc_sequences from the registry numbers issued before Task 45."""
+    for v, _, path in migrate.discover():
+        if v < 450:
+            put(mdir, path.name, path.read_text(encoding="utf-8"))
+    c = sqlite3.connect(tmp_path / "seq.db")
+    try:
+        migrate.apply(c, mdir)
+        for reg in ("AzTU-ARY-2026-000007", "AzTU-ARY-2026-000003", "AzTU-ARY-2025-000003", "AzTU-TRN-2026-000012", "zibil", "AzTU-ARY-2026-12"):
+            c.execute("INSERT INTO documents(kind,title,reg_no,verify_code,data,hash,issued_at,status) VALUES('request','x',?,?,'{}','',"
+                      "'2026-01-01','valid')", (reg, reg))
+        c.commit()
+        src = next(p for v, _, p in migrate.discover() if v == 450)
+        put(mdir, src.name, src.read_text(encoding="utf-8"))
+        migrate.apply(c, mdir)
+        got = {(p, y): n for p, y, n in c.execute("SELECT prefix, year, last_no FROM doc_sequences")}
+        assert got == {("AzTU-ARY", 2026): 7, ("AzTU-ARY", 2025): 3, ("AzTU-TRN", 2026): 12}, got   # the key issue_document uses
+    finally:
+        c.close()

@@ -162,7 +162,7 @@ def test_the_final_grade_follows_the_scheme_and_the_exam_minimum(app_db, world):
         assert put(teacher, world, [(sid, "İmtahan", 39)], reason="Apellyasiya").status == 200
         f = q("SELECT * FROM final_grades WHERE user_id=? AND course_id=?", (sid, world["course"]))[0]
         assert f["letter"] == "F" and f["passed"] == 0, "below the exam minimum"
-        debts = app_db.client("office").get("/api/journal/debts").json
+        debts = app_db.client("office").get("/api/journal/debts").json["items"]
         assert any(x["user_id"] == sid and x["course_name"] == "Qiymət sınağı" for x in debts)
         csv_text = app_db.client("office").get("/api/journal/debts?format=csv").text
         assert "GJ.A" in csv_text and "Qiymət sınağı" in csv_text

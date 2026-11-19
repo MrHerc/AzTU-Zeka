@@ -1,6 +1,7 @@
 """Assignments: set by a course's teacher, submitted by its students, graded into the journal (tasks/todo.md, Task 22)."""
 from __future__ import annotations
 
+from ...core.web import an_id
 from ...core.i18n import E
 from ...legacy.store import audit, iso, now
 from ..journal import service as journal
@@ -53,7 +54,7 @@ def submit(c, user, aid: int, body) -> tuple[str, object]:
     text = str(body.get("text") or "").strip()[:20000] or None
     fid = body.get("file_id")
     if fid is not None:
-        f = repo.file_owner(c, fid) if isinstance(fid, int) and not isinstance(fid, bool) else None
+        f = repo.file_owner(c, fid) if an_id(fid) else None
         if not f or f["owner_id"] != user["id"]:
             return "invalid", E("Fayl tapılmadı")
     if not text and fid is None:
@@ -64,7 +65,8 @@ def submit(c, user, aid: int, body) -> tuple[str, object]:
     late = domain.is_late(at, a["due_at"])
     if late and a["late_rule"] == "refuse":
         return "late", E("Son tarix keçib: bu tapşırıq gecikmiş göndərişi qəbul etmir")
-    repo.save_submission(c, aid, user["id"], text, fid, at, late)
+    if not repo.save_submission(c, aid, user["id"], text, fid, at, late):
+        return "invalid", E("Göndəriş artıq qiymətləndirilib")        # graded between the check above and this write
     return "ok", repo.submission_of(c, aid, user["id"])
 
 
@@ -90,11 +92,13 @@ def grade(c, user, sid: int, body) -> tuple[str, object]:
     if isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= s["max_score"]:
         return "invalid", E("Bal 0 ilə {max} arasında olmalıdır", max=s["max_score"])
     feedback = str(body.get("feedback") or "").strip()[:5000] or None
+    co = repo.course(c, s["course_id"])
+    comps = _components(c, co)
+    if s["component"] not in comps:                     # the grading scheme changed after the assignment was set
+        return "invalid", E("Komponent fənnin sxemində yoxdur: {x}", x=s["component"])
     at = iso(now())
     repo.grade(c, sid, round(float(v), 2), feedback, user["id"], at)
-    co = repo.course(c, s["course_id"])
-    total = domain.component_total(repo.graded_scores(c, s["course_id"], s["student_id"], s["component"]),
-                                   _components(c, co)[s["component"]])
+    total = domain.component_total(repo.graded_scores(c, s["course_id"], s["student_id"], s["component"]), comps[s["component"]])
     status, problem = journal.write_cell(c, user, s["course_id"], s["student_id"], s["component"], total, f"Tapşırıq: {s['title']}")
     if status != "ok":
         return status, problem

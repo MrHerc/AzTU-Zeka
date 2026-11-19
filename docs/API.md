@@ -257,8 +257,9 @@ opening balance's `as_of`, else `journal.cutover_date`) the imported hours (an o
 `attendance.excused_counts_toward_limit` is on. The limit is the lower of the university's and the published syllabus's
 (`courses.attendance_limit`). Status: `normal`, `warning` (past 80% of the limit), `not_admitted` (past the limit) or
 `incomplete` (lessons before the cut-over date with nothing imported for them; never `not_admitted`).
-`/api/attendance` and the course cards carry `planned_hours`, `missed_hours`, `allowed_hours`, `percent`,
-`limit_percent`, `status` and `as_of`.
+`/api/attendance` and a course's page (`GET /api/courses/{id}`) carry `planned_hours`, `missed_hours`, `allowed_hours`,
+`percent`, `limit_percent`, `status` and `as_of`. The course list (`GET /api/courses`) carries only the lesson counts and
+`rate`: reading the journal for every course of the list made the busiest route twice as slow.
 
 Opening balances are the import kind `attendance-opening` (`termSourcedId`, `courseSourcedId`, `userSourcedId`,
 `heldHours`, `unexcusedHours`, `excusedHours`, `asOf`), resolved through the source system's links of those kinds. Their

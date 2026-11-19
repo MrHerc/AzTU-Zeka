@@ -25,6 +25,13 @@ def groups_of_units(c, unit_ids: list[int]) -> dict[int, list[int]]:
     return out
 
 
+def group_names(c, ids: set[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    return {g["id"]: g["name"] for g in rows(c, f"SELECT id, name FROM study_groups WHERE id IN ({','.join('?' * len(ids))})",  # nosec B608
+                                             tuple(ids))}
+
+
 def row_by_id(c, rid: int):
     return row(c, f"SELECT {ROW_COLS} FROM {ROW_FROM} WHERE t.id=?", (rid,))  # nosec B608 (constant SQL)
 
@@ -68,6 +75,16 @@ def update_row(c, rid: int, v: dict, stamp: str):
 
 def deactivate_row(c, rid: int, stamp: str):
     c.execute("UPDATE timetable SET active=0, updated_at=? WHERE id=?", (stamp, rid))
+
+
+def future_lessons(c, rid: int, after_day: str) -> list[dict]:
+    """Scheduled lessons of a row after ``after_day`` that nobody recorded."""
+    return rows(c, "SELECT id, day, start, slot_day, slot_start, teacher_id FROM lessons WHERE timetable_id=? AND day>? "
+                   "AND status='scheduled' AND NOT EXISTS (SELECT 1 FROM attendance a WHERE a.lesson_id=lessons.id)", (rid, after_day))
+
+
+def drop_lessons(c, ids: list[int]):
+    c.executemany("DELETE FROM lessons WHERE id=?", [(i,) for i in ids])
 
 
 def drop_future_lessons(c, rid: int, after_day: str) -> int:

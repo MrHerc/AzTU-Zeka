@@ -36,6 +36,14 @@ def test_domain_files_have_no_io():
     assert not bad, bad
 
 
+def test_sql_lives_only_in_repo_files():
+    """SPEC.md: a module's SQL is in its repo.py (Checkpoint C, R10)."""
+    sql = ("SELECT ", "INSERT ", "UPDATE ", "DELETE ")
+    bad = [str(f.relative_to(ZEKA)) for f in ZEKA.glob("modules/*/*.py")
+           if f.name in ("service.py", "routes.py", "domain.py") and any(k in f.read_text(encoding="utf-8") for k in sql)]
+    assert bad == []
+
+
 def test_resolver_sees_relative_imports():
     # guards the check itself: legacy/common.py imports the web layer relatively
     assert "zeka.core.web" in _imports(ZEKA / "legacy" / "common.py")

@@ -348,6 +348,9 @@ def _apply_outcome(c, r, rt, data, actor):
             # bandit B608: placeholders only
             c.execute(f"UPDATE attendance SET status='excused', request_id=? WHERE user_id=? AND status='absent' AND lesson_id IN ({','.join('?' * len(ids))})",  # nosec B608
                       (r["id"], r["student_id"], *ids))
+            from ..modules.journal import service as journal     # an excuse can move the attendance points of a final grade
+            for x in rows(c, f"SELECT DISTINCT course_id FROM lessons WHERE id IN ({','.join('?' * len(ids))})", tuple(ids)):  # nosec B608
+                journal.refresh_finals(c, x["course_id"], [r["student_id"]])
             by_teacher = {}
             for x in rows(c, f"SELECT l.day, co.teacher_id, co.name FROM lessons l JOIN courses co ON co.id=l.course_id WHERE l.id IN ({','.join('?' * len(ids))})", tuple(ids)):
                 by_teacher.setdefault(x["teacher_id"], []).append(f"{fmt_day(x['day'])} ({x['name']})")
@@ -399,6 +402,8 @@ def request_action(req):
     elif action == "issue":
         if r["status"] == "returned":
             raise HTTPError(409, "Müraciət tələbəyə qaytarılıb")
+        if rt["code"] == "transcript" and not journal.transcript_ready(c, r["student_id"]):   # readiness can change after the request
+            raise HTTPError(400, "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.")
         order = None
         if rt["code"] == "academic_leave":         # Task 15: the leave is an order; the certificate prints its number and date
             order, problem = directory_rules.status_event({"kind": "academic_leave", "order_no": b.get("order_no"),
@@ -531,8 +536,10 @@ def verify_page(req):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     d = row(c, "SELECT * FROM documents WHERE verify_code=?", (str(req.params["code"]).upper(),))
     state = store.payload_state(d) if d else "ok"
-    shown = _stored(d)[0] if d and state == "ok" else d
-    return html_resp(docs.render_verify(shown, _stored(d)[1]["holder"] if d and state == "ok" else None, ctx(c), req.lang, state))
+    if d and state == "ok":
+        shown, p = _stored(d)
+        return html_resp(docs.render_verify(shown, p["holder"], _stored_ctx(p), req.lang, state))
+    return html_resp(docs.render_verify(d, None, ctx(c), req.lang, state))
 
 
 def _stored(d: dict) -> tuple[dict, dict]:

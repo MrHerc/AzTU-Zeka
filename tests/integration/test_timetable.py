@@ -3,6 +3,7 @@ them, a cancelled or moved lesson, and each person's calendar feed.
 
 New rows go on Saturdays, a day the demo timetable leaves free; the demo's own lessons serve the feed tests."""
 from datetime import date, timedelta
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -241,8 +242,10 @@ def test_a_teacher_s_feed_holds_the_lessons_they_teach(app_db):
 
 
 def test_unknown_feeds_and_the_rate_limit(app_db, rate_limits):
+    """The limit is per feed (Checkpoint C, R8): calendar services and a campus fetch many feeds from one address."""
     anon = app_db.client()
     assert anon.get("/ical/" + "x" * 32).status == 404
-    for _ in range(29):
-        anon.get("/ical/yox")
-    assert anon.get("/ical/yox").status == 429
+    mine = urlsplit(app_db.client("student").post("/api/me/calendar").json["url"]).path
+    other = urlsplit(app_db.client("teacher").post("/api/me/calendar").json["url"]).path
+    assert [anon.get(mine).status for _ in range(31)].count(429) == 1
+    assert anon.get(other).status == 200, "another feed from the same address still answers"

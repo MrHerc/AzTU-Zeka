@@ -8,7 +8,7 @@ export async function teacherAssignments(tgt, c) {
   let list, cols = [];
   try {
     [list, cols] = await Promise.all([api.get(`/api/courses/${c.id}/assignments`),
-      api.get(`/api/journal/courses/${c.id}/grades`).then((g) => g.columns.filter((x) => x.kind === "component")).catch(() => [])]);
+      api.get(`/api/journal/courses/${c.id}/grades`).then((g) => g.columns.filter((x) => x.kind === "component"))]);
   } catch (err) { mount(tgt, html`<div class="card pad">${err.message}</div>`); return; }
   mount(tgt, html`<div class="card"><div class="card-h wrap"><h3>${ic("file", 17)} ${t("Tapşırıqlar")}</h3>
       <button class="btn btn-primary btn-sm" id="as-new">${ic("plus", 15)} ${t("Yeni tapşırıq")}</button></div>
@@ -58,7 +58,8 @@ export async function teacherAssignments(tgt, c) {
 
 export async function studentAssignments(box, c) {
   let list;
-  try { list = await api.get(`/api/courses/${c.id}/assignments`); } catch { return; }
+  try { list = await api.get(`/api/courses/${c.id}/assignments`); }
+  catch (err) { mount(box, html`<div class="card pad small muted">${t("Tapşırıqlar yüklənmədi")}: ${err.message}</div>`); return; }
   mount(box, html`<div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Tapşırıqlar")}</h3></div><div class="card-b list">
     ${list.length ? list.map((a) => { const s = a.submission; return html`<div class="list-item"><div class="grow"><b class="small">${a.title}</b>
         <div class="tiny muted">${t("Son tarix")}: ${a.due_at.replace("T", " ")} · ${t("maks. {n}", { n: a.max_score })}</div>

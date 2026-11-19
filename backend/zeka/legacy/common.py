@@ -24,7 +24,9 @@ STAFF = ("office", "admin", "leader")
 
 # Tests (ZEKA_TX_GUARD=1): a request may hold SQLite's single write lock for at most 200 ms (Task 7).
 _TX_GUARD = os.environ.get("ZEKA_TX_GUARD") == "1"
-TX_GUARD_EXEMPT = ("/api/admin/reset", "/api/admin/import")     # the import reports its own lock time (Task 16)
+TX_GUARD_EXEMPT = ("/api/admin/reset", "/api/admin/import",     # the import reports its own lock time (Task 16)
+                   "/api/timetable/generate",                   # a term's lessons at once, a few times a term
+                   "/api/admin/settings/")                      # new grading rules recompute every final grade
 
 
 def _sid(req):
@@ -247,7 +249,8 @@ def course_access(req, cid):
         raise HTTPError(404, "Fənn tapılmadı")
     if u["role"] == "student" and not row(c, "SELECT 1 FROM enrollments WHERE user_id=? AND course_id=?", (u["id"], cid)):
         raise HTTPError(403, "Bu fənnə qeydiyyatınız yoxdur")
-    if u["role"] == "teacher" and course["teacher_id"] != u["id"]:
+    if u["role"] == "teacher" and course["teacher_id"] != u["id"] and not row(
+            c, "SELECT 1 FROM teaching_units WHERE course_id=? AND teacher_id=? AND active=1", (cid, u["id"])):
         raise HTTPError(403, "Bu fənn sizə aid deyil")
     return course
 

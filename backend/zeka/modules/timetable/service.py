@@ -6,8 +6,9 @@ import secrets
 from datetime import date, timedelta
 
 from ...core import tenant
+from ...core.web import an_id
 from ...core.i18n import E, T3
-from ...legacy.store import audit, iso, notify, now, rows
+from ...legacy.store import audit, iso, notify, now
 from ..directory import domain as directory_rules
 from ..directory import service as directory
 from ..facilities import service as facilities
@@ -30,15 +31,8 @@ def _slot(r: dict, groups: dict[int, list[int]], idx: dict) -> dict:
             "groups": [(g, r.get("subgroup")) for g in groups.get(r["unit_id"], [])] if r.get("unit_id") else []}
 
 
-def _group_names(c, ids: set[int]) -> dict[int, str]:
-    if not ids:
-        return {}
-    return {g["id"]: g["name"] for g in rows(c, f"SELECT id, name FROM study_groups WHERE id IN ({','.join('?' * len(ids))})",  # nosec B608
-                                             tuple(ids))}
-
-
 def _explain(c, found: list[dict], others: dict[int, dict]) -> list[dict]:
-    names = _group_names(c, {g for x in found for g in x["groups"]})
+    names = repo.group_names(c, {g for x in found for g in x["groups"]})
     return [{"what": x["what"], "groups": [names.get(g, str(g)) for g in x["groups"]],
              **{k: others[x["id"]].get(k) for k in ("id", "course", "kind", "day", "start", "end", "room", "teacher")}} for x in found]
 
@@ -46,15 +40,18 @@ def _explain(c, found: list[dict], others: dict[int, dict]) -> list[dict]:
 def row_clashes(c, cand: dict, term_id: int | None) -> list[dict]:
     """What a candidate row (weekday, start, end, weeks, room, unit_id, teacher_id, subgroup, id) clashes with in its term."""
     others = repo.term_rows(c, term_id, cand["weekday"])
-    groups = repo.groups_of_units(c, sorted({r["unit_id"] for r in others if r["unit_id"]} | {cand["unit_id"]}))
+    groups = repo.groups_of_units(c, sorted({r["unit_id"] for r in others if r["unit_id"]} | ({cand["unit_id"]} if cand["unit_id"] else set())))
     idx = facilities.room_index(c)
     found = domain.conflicts(_slot(cand, groups, idx), [_slot(o, groups, idx) for o in others])
     return _explain(c, found, {o["id"]: o for o in others})
 
 
+def _week(day: str) -> tuple[int, int]:
+    return date.fromisoformat(day).isocalendar()[:2]
+
+
 def _unit_id(body) -> int | None:
-    v = body.get("unit_id")
-    return v if isinstance(v, int) and not isinstance(v, bool) and v > 0 else None
+    return an_id(body.get("unit_id"))
 
 
 def create_row(c, user, body):
@@ -80,7 +77,8 @@ def create_row(c, user, body):
 
 def update_row(c, user, rid: int, body):
     """('ok', None) | ('missing', None) | ('invalid', reason) | ('conflict', clashes). Future lessons nobody recorded
-    follow the row; the students on them are told once."""
+    follow the row, except a moved one, which keeps its own day and time; a substitute stays on the lesson of its week.
+    The students are told once, unless only the academic hours changed."""
     cur = repo.row_by_id(c, rid)
     if not cur or not cur["active"]:
         return "missing", None
@@ -96,12 +94,27 @@ def update_row(c, user, rid: int, body):
     changed = [k for k in ("weekday", "start", "end", "room", "weeks", "academic_hours") if merged[k] != cur[k]]
     if not changed:
         return "ok", None
-    repo.update_row(c, rid, merged, iso(now()))
-    dropped = repo.drop_future_lessons(c, rid, _today())
-    t = term(c, cur["term_id"])
-    if t and cur["unit_id"]:
-        make_lessons(c, [repo.row_by_id(c, rid)], t, date.fromisoformat(_today()) + timedelta(days=1))
-    if dropped:
+    stamp = iso(now())
+    repo.update_row(c, rid, merged, stamp)
+    new = repo.row_by_id(c, rid)
+    future = repo.future_lessons(c, rid, _today())
+    moved = {x["id"] for x in future if (x["day"], x["start"]) != (x["slot_day"], x["slot_start"])}
+    if {"weekday", "start", "weeks"} & set(changed):
+        subs = {_week(x["slot_day"]): x["teacher_id"] for x in future if x["id"] not in moved and x["teacher_id"] != cur["teacher_id"]}
+        repo.drop_lessons(c, [x["id"] for x in future if x["id"] not in moved])
+        t = term(c, cur["term_id"])
+        if t and cur["unit_id"]:
+            make_lessons(c, [new], t, date.fromisoformat(_today()) + timedelta(days=1))
+            for x in repo.future_lessons(c, rid, _today()):
+                if x["id"] not in moved and _week(x["slot_day"]) in subs:
+                    repo.set_lesson(c, x["id"], {"teacher_id": subs[_week(x["slot_day"])]}, stamp)
+    else:
+        for x in future:
+            fields = {"academic_hours": new["academic_hours"]}
+            if x["id"] not in moved:
+                fields.update(end=new["end"], room=new["room"], room_id=new["room_id"])
+            repo.set_lesson(c, x["id"], fields, stamp)
+    if future and set(changed) - {"academic_hours"}:
         _tell(c, cur, _today(), T3("Dərs cədvəli dəyişdi: {course}", course=cur["course"]), "")
     audit(c, user["id"], "timetable_update", "timetable", f"{rid} · " + ", ".join(f"{k}: {cur[k]} → {merged[k]}" for k in changed))
     return "ok", None
@@ -116,6 +129,10 @@ def deactivate_row(c, user, rid: int) -> str:
         _tell(c, cur, _today(), T3("Dərs cədvəldən çıxarıldı: {course}", course=cur["course"]), "")
     audit(c, user["id"], "timetable_deactivate", "timetable", f"{rid} · {cur['course']}")
     return "ok"
+
+
+def term_rows(c, term_id: int | None) -> list[dict]:
+    return repo.term_rows(c, term_id)
 
 
 def make_lessons(c, rows_: list[dict], t: dict, start_from: date | None = None) -> int:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from ...core import perms, tenant
+from ...core.web import an_id
 from ...core.i18n import E
 from ...legacy.store import audit, iso, now
 from ..timetable import domain as timetable_rules
@@ -19,12 +20,13 @@ def _today() -> str:
 
 
 def may_correct(c, user, course: dict) -> bool:
-    """A department head (of the course's department when the role is scoped to departments) or an administrator."""
+    """An administrator, or a department head whose grant covers the course (Checkpoint C, J1): a grant of its department,
+    of its faculty, of the course itself or one with no scope; a department head with no grant, of the department the
+    person belongs to. ``course`` is a course row or a row of one (a lesson, an opening) with ``course_id``."""
     if not perms.has(user["role"], "journal.correct"):
         return False
     if user["role"] == "dept_head":
-        scopes = repo.dept_scopes(c, user["id"])
-        return not scopes or course.get("department_id") in scopes
+        return repo.dept_head_covers(c, user["id"], course.get("course_id") or course["id"], course.get("department_id"))
     return True
 
 
@@ -84,12 +86,22 @@ def save_marks(c, user, lid: int, body) -> tuple[str, object]:
     if problem:
         return "invalid", problem
     current = {s["id"]: s for s in view["students"]}
+    if any(m == "excused" and current[uid]["status"] != "excused" for uid, m in marks.items()):
+        return "invalid", E("Qeyd iştirak, qayıb və ya gecikmə olmalıdır")          # 'excused' comes from an approved request
     changes = [(uid, current[uid]["status"], m) for uid, m in marks.items()
                if current[uid]["status"] != m and not (current[uid]["status"] == "excused" and current[uid]["request_id"])]
     if not view["corrector"] and any(current[uid]["source"] == "legacy" for uid, _, _ in changes):
         return "forbidden", E("İdxal olunmuş davamiyyəti yalnız kafedra müdiri səbəblə dəyişir")
+    if view["before_cutover"]:
+        # before the cut-over only imported rows count (Checkpoint C, J7): a new row there would change nothing, so a mark
+        # sent for a student with no imported row is refused and the "present" every other student defaults to is not written
+        named = {int(k) for k in (body.get("marks") or {}) if str(k).isdigit()}
+        if any(current[uid]["source"] != "legacy" and uid in named for uid, _, _ in changes):
+            return "forbidden", E("Kəsid tarixinə qədərki dərsin davamiyyəti köhnə sistemdən idxal olunur; onu kafedra müdiri düzəldir")
+        changes = [x for x in changes if current[x[0]]["source"] == "legacy"]
     if changes:
         repo.write_marks(c, lid, [(uid, new) for uid, _, new in changes], user["id"], iso(now()))
+        refresh_finals(c, view["lesson"]["course_id"], [uid for uid, _, _ in changes])
         if view["needs_reason"] or any(old is not None for _, old, _ in changes):
             audit(c, user["id"], "attendance_corrected" if view["needs_reason"] else "attendance_changed", "lesson",
                   f"#{lid} · " + ", ".join(f"#{uid}: {old or '-'} → {new}" for uid, old, new in changes if old is not None or view["needs_reason"])
@@ -102,8 +114,8 @@ def substitute(c, user, lid: int, body) -> tuple[str, object]:
     les = repo.lesson(c, lid)
     if not les or not may_correct(c, user, les):
         return "missing", None
-    tid = body.get("teacher_id")
-    new = repo.teacher(c, tid) if isinstance(tid, int) and not isinstance(tid, bool) else None
+    tid = an_id(body.get("teacher_id"))
+    new = repo.teacher(c, tid) if tid else None
     reason = " ".join(str(body.get("reason") or "").split())[:300]
     if not new:
         return "invalid", E("Müəllimi seçin")
@@ -180,6 +192,7 @@ def correct_opening(c, user, oid: int, body) -> tuple[str, object]:
     if len(reason) < 3:
         return "invalid", E("Düzəlişin səbəbini yazın")
     repo.update_opening(c, oid, values, iso(now()))
+    refresh_finals(c, o["course_id"], [o["student_id"]])
     audit(c, user["id"], "opening_corrected", "attendance_opening",
           f"#{oid} · " + ", ".join(f"{k}: {o[k]} → {values[k]}" for k in values if o[k] != values[k]) + f" · {reason}")
     return "ok", {**o, **values}
@@ -209,15 +222,15 @@ def _writable(c, user, co: dict, students: list[dict]) -> set[int]:
     return {s["id"] for s in students if any(timetable_rules.attends(s, *aud[u["id"]]) for u in mine)}
 
 
-def _attendance_cell(c, co: dict, cols: list[dict], standing: dict | None) -> float | None:
+def _attendance_cell(c, co: dict, cols: list[dict], standing: dict | None, rules: dict | None = None) -> float | None:
     col = next((x for x in cols if x["kind"] == "attendance"), None)
     if not col or not standing:
         return None
-    return domain.attendance_score(standing, col["max"], tenant.load(c)["attendance"]["points_rule"])
+    return domain.attendance_score(standing, col["max"], (rules or tenant.load(c))["attendance"]["points_rule"])
 
 
-def _result(c, cols: list[dict], cells: dict, attendance: float | None) -> dict:
-    grading = tenant.load(c)["grading"]
+def _result(c, cols: list[dict], cells: dict, attendance: float | None, rules: dict | None = None) -> dict:
+    grading = (rules or tenant.load(c))["grading"]
     scores = {x["key"]: (attendance if x["kind"] == "attendance" else cells.get(x["key"])) for x in cols if x["kind"] != "exam"}
     exam = next((cells.get(x["key"]) for x in cols if x["kind"] == "exam"), None)
     return tenant.outcome(scores, exam, grading)
@@ -233,19 +246,20 @@ def grade_table(c, user, course_id: int) -> dict | None:
     rows_ = repo.grade_rows(c, course_id)
     stand = {x["student_id"]: x for x in course_standing(c, course_id)}
     writable = _writable(c, user, co, students)
+    rules = tenant.load(c)
     out = []
     for s in students:
         cells = {x["key"]: rows_.get((s["id"], x["key"])) for x in cols if x["kind"] != "attendance"}
-        att = _attendance_cell(c, co, cols, stand.get(s["id"]))
+        att = _attendance_cell(c, co, cols, stand.get(s["id"]), rules)
         out.append({"id": s["id"], "full_name": s["full_name"], "student_no": s["student_no"], "group": s["grp"], "writable": s["id"] in writable,
                     "cells": {k: ({"score": v["score"], "status": v["status"], "source": v["source"]} if v else None) for k, v in cells.items()},
-                    "attendance": att, "result": _result(c, cols, {k: v["score"] if v else None for k, v in cells.items()}, att)})
+                    "attendance": att, "result": _result(c, cols, {k: v["score"] if v else None for k, v in cells.items()}, att, rules)})
     drafts = sum(1 for r in rows_.values() if r["status"] == "draft")
     return {"course": {k: co[k] for k in ("id", "code", "name", "credits")}, "columns": cols, "students": out, "drafts": drafts,
             "corrector": may_correct(c, user, co)}
 
 
-def save_grades(c, user, course_id: int, body) -> tuple[str, object]:
+def save_grades(c, user, course_id: int, body, answer: bool = True) -> tuple[str, object]:
     """('ok', table) | ('missing', None) | ('forbidden', reason) | ('invalid', reason) | ('cells', errors). A new score is a
     draft; a change of a published one needs a reason and goes to the grade journal."""
     table = grade_table(c, user, course_id)
@@ -286,7 +300,7 @@ def save_grades(c, user, course_id: int, body) -> tuple[str, object]:
     if published_changes and len(reason) < 3:
         return "invalid", E("Dərc olunmuş balın dəyişməsinin səbəbini yazın")
     touched = set()
-    for sid, col, v in todo:
+    for sid, col, v in dict(((sid, col["key"]), (sid, col, v)) for sid, col, v in todo).values():   # one cell twice: the last wins
         cur = rows_.get((sid, col["key"]))
         if cur and cur["score"] == v:
             continue
@@ -295,11 +309,10 @@ def save_grades(c, user, course_id: int, body) -> tuple[str, object]:
         if status == "published":
             repo.add_change(c, sid, course_id, col["key"], cur["score"] if cur else None, v, user["id"], reason, at)
             touched.add(sid)
-    for sid in touched:
-        refresh_final(c, sid, course_id)
+    refresh_finals(c, course_id, touched)
     if published_changes:
         audit(c, user["id"], "grades_changed", "course", f"#{course_id} · {len(published_changes)} · {reason}")
-    return "ok", grade_table(c, user, course_id)
+    return "ok", grade_table(c, user, course_id) if answer else None
 
 
 def publish_grades(c, user, course_id: int) -> tuple[str, object]:
@@ -310,29 +323,53 @@ def publish_grades(c, user, course_id: int) -> tuple[str, object]:
     if not mine:
         return "forbidden", E("Bu fənndə sizin tədris vahidinizin tələbəsi yoxdur")
     changed = repo.publish(c, course_id, mine, iso(now()))
-    for sid in changed:
-        refresh_final(c, sid, course_id)
+    refresh_finals(c, course_id, changed)
     audit(c, user["id"], "grades_published", "course", f"#{course_id} · {len(changed)}")
     return "ok", grade_table(c, user, course_id)
 
 
+def log_change(c, uid: int, course_id: int, component: str, old, new, by: int | None, reason: str, at: str):
+    """A change of a published score made outside the table (an import), in the grade journal like the table's own."""
+    repo.add_change(c, uid, course_id, component, old, new, by, reason, at)
+
+
 def refresh_final(c, uid: int, course_id: int):
-    """The student's final grade in the course from the published scores: written once the exam is in, removed when not."""
-    co = repo.course(c, course_id)
+    refresh_finals(c, course_id, [uid])
+
+
+def refresh_finals(c, course_id: int, uids) -> None:
+    """The students' final grades in the course from the published scores and the journal's attendance: written once the
+    exam is in, removed when not. A scheme with an attendance component and no attendance to count it from (no lesson
+    held, no opening balance) gives no final grade: missing is not zero (Checkpoint C, J2). Called after every change
+    that moves a total: a score, a mark, an opening balance, an excuse, the university's rules (J3)."""
+    uids = set(uids)
+    co = repo.course(c, course_id) if uids else None
     if not co:
         return
-    cols = columns(c, co)
-    cells = {k[1]: r["score"] for k, r in repo.grade_rows(c, course_id, uid).items() if r["status"] == "published"}
-    st = next(iter(course_standing(c, course_id, uid)), None)
-    res = _result(c, cols, cells, _attendance_cell(c, co, cols, st))
-    if res["total"] is None:
-        repo.drop_final(c, uid, course_id)
-        return
+    cols, rules = columns(c, co), tenant.load(c)
+    has_attendance = any(x["kind"] == "attendance" for x in cols)
+    published: dict[int, dict] = {}
+    for (uid, key), r in repo.grade_rows(c, course_id, next(iter(uids)) if len(uids) == 1 else None).items():
+        if uid in uids and r["status"] == "published":
+            published.setdefault(uid, {})[key] = r["score"]
+    stand = {x["student_id"]: x for x in course_standing(c, course_id, next(iter(uids)) if len(uids) == 1 else None)}
     t = repo.term(c, co["term_id"])
-    repo.upsert_final(c, {"user_id": uid, "course_id": course_id, "term_id": co["term_id"], "term_name": t["name"] if t else "—",
-                          "term_name_en": t["name"] if t else None, "term_start": t["teaching_start"] if t else None,
-                          "course_code": co["code"], "course_name": co["name"], "course_name_en": None, "credits": co["credits"] or 0,
-                          "score": res["total"], "letter": res["letter"], "passed": int(bool(res["passed"])), "published_at": iso(now())})
+    for uid in uids:
+        att = _attendance_cell(c, co, cols, stand.get(uid), rules)
+        res = _result(c, cols, published.get(uid, {}), att, rules)
+        if res["total"] is None or (has_attendance and att is None):
+            repo.drop_final(c, uid, course_id)
+            continue
+        repo.upsert_final(c, {"user_id": uid, "course_id": course_id, "term_id": co["term_id"], "term_name": t["name"] if t else "—",
+                              "term_name_en": t["name"] if t else None, "term_start": t["teaching_start"] if t else None,
+                              "course_code": co["code"], "course_name": co["name"], "course_name_en": None, "credits": co["credits"] or 0,
+                              "score": res["total"], "letter": res["letter"], "passed": int(bool(res["passed"])), "published_at": iso(now())})
+
+
+def refresh_all_finals(c) -> None:
+    """Every course's final grades again, after the university's grading or attendance rules changed."""
+    for cid in repo.courses_with_published(c):
+        refresh_finals(c, cid, [s["id"] for s in repo.enrolments(c, cid)])
 
 
 def student_grades(c, uid: int, course: dict) -> dict:
@@ -386,17 +423,23 @@ def reconcile(c, user, sid: int) -> bool:
     return True
 
 
-def debts(c) -> list[dict]:
-    """The final grades that did not pass: the academic debts."""
-    return [{k: r[k] for k in ("user_id", "full_name", "student_no", "grp", "term_name", "course_code", "course_name", "credits", "score",
-                               "letter")} for r in repo.failed_finals(c)]
+DEBT_PAGE = 200
+
+
+def debts(c, scope: str = "1=1", args: tuple = (), page: int | None = None) -> dict:
+    """The final grades that did not pass: the academic debts, a page of them (``page``) or all (for the CSV)."""
+    limit, offset = (DEBT_PAGE, (page - 1) * DEBT_PAGE) if page else (-1, 0)
+    items = [{k: r[k] for k in ("user_id", "full_name", "student_no", "grp", "term_name", "course_code", "course_name", "credits", "score",
+                                "letter")} for r in repo.failed_finals(c, scope, args, limit, offset)]
+    total = repo.count_failed(c, scope, args) if page else len(items)
+    return {"items": items, "total": total, "page": page or 1, "pages": max(1, -(-total // DEBT_PAGE)) if page else 1}
 
 
 def write_cell(c, user, course_id: int, student_id: int, component: str, value: float | None, reason: str) -> tuple[str, object]:
     """One score from another module (an assignment, Task 22), by the table's rules: the student must be on the user's
     units, a new score is a draft, a change of a published one is logged with ``reason``."""
     status, value_ = save_grades(c, user, course_id, {"cells": [{"student_id": student_id, "component": component, "score": value}],
-                                                      "reason": reason})
+                                                      "reason": reason}, answer=False)
     if status == "cells":
         return "invalid", value_[0]["reason"]                # type: ignore[index]
     return status, value_

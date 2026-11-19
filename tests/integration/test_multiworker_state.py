@@ -157,3 +157,38 @@ def test_a_restarted_worker_applies_what_changed_since_the_supervisor_built_the_
     status, found = c.call("GET", "/api/search?q=kriotermosifon")
     c.close()
     assert status == 200 and "Kriogen texnika" in json.dumps(found, ensure_ascii=False), found
+
+
+def test_fifty_documents_issued_in_parallel_through_two_workers_get_gapless_numbers(port):
+    """Task 45 over HTTP (Checkpoint C, D4): parallel issues on two workers give distinct, gapless registry numbers, no 5xx."""
+    import threading
+    student, office = login(port, "student"), login(port, "office")
+    s = Conn(port, student)
+    o = Conn(port, office)
+    order = {"purpose": "Bank", "lang": "Azərbaycan dili", "copies": "1", "delivery": "Elektron (QR kodlu PDF)"}
+    ids = []
+    for _ in range(50):
+        status, body = s.call("POST", "/api/requests", {"type_code": "enrollment_certificate", "data": order})
+        assert status == 200, body
+        ids.append(body["id"])
+        assert o.call("POST", f"/api/requests/{body['id']}/action", {"action": "approve"})[0] == 200
+    s.close()
+    o.close()
+    results, pids = [], set()
+
+    def issue(batch):
+        c, pid = on_worker(port, office)
+        pids.add(pid)
+        for rid in batch:
+            status, body = c.call("POST", f"/api/requests/{rid}/action", {"action": "issue"})
+            results.append((status, body["document"]["reg_no"] if status == 200 else body))
+        c.close()
+
+    threads = [threading.Thread(target=issue, args=(ids[i::10],)) for i in range(10)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(120)
+    assert [st for st, _ in results].count(200) == 50, results
+    numbers = sorted(int(reg[-6:]) for _, reg in results)
+    assert numbers == list(range(numbers[0], numbers[0] + 50)), numbers

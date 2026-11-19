@@ -230,6 +230,11 @@ def drain(timeout: float = QUEUE_WAIT) -> bool:
 MAX_ID = 2 ** 63 - 1                     # the largest SQLite integer
 
 
+def an_id(v) -> int | None:
+    """``v`` when it is a row id a JSON body may carry (a positive integer SQLite can hold), else None."""
+    return v if isinstance(v, int) and not isinstance(v, bool) and 0 < v <= MAX_ID else None
+
+
 class Router:
     def __init__(self):
         self.routes = []
@@ -360,7 +365,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                 resp = self._error(path, e.status, e.message, req.lang)
                 if e.status == 503:
                     resp.headers.append(("Retry-After", "5"))
-            except (ValueError, TypeError) as ex:      # malformed input that a handler did not validate explicitly
+            except (ValueError, TypeError, OverflowError) as ex:      # malformed input a handler did not validate (an id > 2**63 too)
                 if _TRACE_LIMIT.hit("trace"):
                     log(f"400 {method} {path}: {type(ex).__name__}: {str(ex)[:200]}")
                 resp = self._error(path, 400, "Sorğu məlumatı düzgün deyil", req.lang)
@@ -373,7 +378,8 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
             self._send(resp, close or _STOPPING[0])
             if CFG.access_log:      # one JSON object per line, written at once: a path cannot forge or split an entry
                 sys.stdout.write(json.dumps({"time": clock.now().isoformat(timespec="milliseconds"), "ip": req.ip,
-                                             "method": method, "path": path, "status": resp.status,
+                                             "method": method, "path": "/ical/…" if path.startswith("/ical/") else path,   # the feed's secret
+                                             "status": resp.status,
                                              "ms": round((time.monotonic() - started) * 1000), "worker": os.getpid()},
                                             ensure_ascii=False) + "\n")
                 sys.stdout.flush()

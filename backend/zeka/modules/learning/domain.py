@@ -7,11 +7,12 @@ component: the sum of the student's graded assignments of the component, never a
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from ...core.i18n import E
 
 LATE_RULES = ("mark", "refuse")
-DUE = re.compile(r"^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$")        # local university time, minutes
+DUE = re.compile(r"^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$", re.ASCII)        # local university time, minutes
 
 
 def assignment_input(body, components: dict[str, float]) -> tuple[dict, dict | None]:
@@ -23,7 +24,7 @@ def assignment_input(body, components: dict[str, float]) -> tuple[dict, dict | N
     if not 1 <= len(text) <= 20000:
         return {}, E("Tapşırığın mətnini yazın")
     due = body.get("due_at")
-    if not (isinstance(due, str) and DUE.fullmatch(due)):
+    if not (isinstance(due, str) and DUE.fullmatch(due) and _real_date(due)):
         return {}, E("Son tarix İİİİ-AA-GGTSS:DD formatında olmalıdır")
     comp = body.get("component")
     if comp not in components:
@@ -35,6 +36,14 @@ def assignment_input(body, components: dict[str, float]) -> tuple[dict, dict | N
     if rule not in LATE_RULES:
         return {}, E("Gecikmə qaydası: qeyd et və ya qəbul etmə")
     return {"title": title, "body": text, "due_at": due, "max_score": float(mx), "component": comp, "late_rule": rule}, None
+
+
+def _real_date(due: str) -> bool:
+    try:
+        datetime.strptime(due, "%Y-%m-%dT%H:%M")
+        return True
+    except ValueError:                                  # 2026-02-31
+        return False
 
 
 def is_late(submitted_at: str, due_at: str) -> bool:

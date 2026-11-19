@@ -60,14 +60,20 @@ def write_marks(c, lid: int, values: list[tuple[int, str]], by: int, at: str):
                   "marked_at=excluded.marked_at", [(lid, uid, st, by, at) for uid, st in values])
 
 
-def dept_scopes(c, uid: int) -> set[int]:
-    return {r["scope_id"] for r in rows(c, "SELECT scope_id FROM role_grants WHERE user_id=? AND role='dept_head' "
-                                           "AND scope_type='department'", (uid,))}
+def dept_head_covers(c, uid: int, course_id: int, department_id: int | None) -> bool:
+    grants = rows(c, "SELECT scope_type, scope_id FROM role_grants WHERE user_id=? AND role='dept_head'", (uid,))
+    if not grants:
+        own = row(c, "SELECT department_id FROM users WHERE id=?", (uid,))
+        return bool(own and department_id and own["department_id"] == department_id)
+    dep = row(c, "SELECT faculty_id FROM departments WHERE id=?", (department_id,)) if department_id else None
+    return any(g["scope_type"] is None or (g["scope_type"], g["scope_id"]) in
+               {("department", department_id), ("faculty", dep and dep["faculty_id"]), ("course", course_id)} for g in grants)
 
 
 def teaches(c, uid: int, course_id: int) -> bool:
-    return row(c, "SELECT 1 FROM courses WHERE id=? AND teacher_id=? UNION ALL SELECT 1 FROM lessons WHERE course_id=? AND teacher_id=? "
-                  "LIMIT 1", (course_id, uid, course_id, uid)) is not None
+    """The course's head or the teacher of one of its teaching units (Task 13); a substitute reads only the lesson."""
+    return row(c, "SELECT 1 FROM courses WHERE id=? AND teacher_id=? UNION ALL SELECT 1 FROM teaching_units WHERE course_id=? "
+                  "AND teacher_id=? AND active=1 LIMIT 1", (course_id, uid, course_id, uid)) is not None
 
 
 def teacher(c, uid: int):
@@ -115,7 +121,7 @@ def publish(c, course_id: int, user_ids: list[int], at: str) -> list[int]:
     return sorted(out)
 
 
-def add_change(c, uid: int, course_id: int, component: str, old, new, by: int, reason: str, at: str):
+def add_change(c, uid: int, course_id: int, component: str, old, new, by: int | None, reason: str, at: str):
     c.execute("INSERT INTO grade_changes(user_id,course_id,component,old_score,new_score,changed_by,reason,changed_at) VALUES(?,?,?,?,?,?,?,?)",
               (uid, course_id, component, old, new, by, reason, at))
 
@@ -143,6 +149,10 @@ def upsert_final(c, v: dict):
               "passed=excluded.passed, credits=excluded.credits, published_at=excluded.published_at", v)
 
 
+def courses_with_published(c) -> list[int]:
+    return [r["course_id"] for r in rows(c, "SELECT DISTINCT course_id FROM grades WHERE status='published' AND course_id IS NOT NULL")]
+
+
 def drop_final(c, uid: int, course_id: int):
     c.execute("DELETE FROM final_grades WHERE user_id=? AND course_id=? AND source='zeka'", (uid, course_id))
 
@@ -151,9 +161,17 @@ def finals_of(c, uid: int) -> list[dict]:
     return rows(c, "SELECT * FROM final_grades WHERE user_id=? ORDER BY COALESCE(term_start, ''), id", (uid,))
 
 
-def failed_finals(c) -> list[dict]:
-    return rows(c, "SELECT f.*, u.full_name, u.student_no, g.name grp FROM final_grades f JOIN users u ON u.id=f.user_id "
-                   "LEFT JOIN study_groups g ON g.id=u.group_id WHERE f.passed=0 AND u.status='active' ORDER BY u.full_name, f.term_start, f.id")
+FAILED = "FROM final_grades f JOIN users u ON u.id=f.user_id LEFT JOIN study_groups g ON g.id=u.group_id WHERE f.passed=0 AND u.status='active'"
+
+
+def failed_finals(c, scope: str = "1=1", args: tuple = (), limit: int = -1, offset: int = 0) -> list[dict]:
+    """``scope``: a condition on ``f.user_id`` (a dean's office's faculties, ``common.scope_sql``), applied before the limit."""
+    return rows(c, f"SELECT f.*, u.full_name, u.student_no, g.name grp {FAILED} AND {scope} ORDER BY u.full_name, f.term_start, f.id "  # nosec B608
+                   "LIMIT ? OFFSET ?", (*args, limit, offset))
+
+
+def count_failed(c, scope: str = "1=1", args: tuple = ()) -> int:
+    return row(c, f"SELECT COUNT(*) n {FAILED} AND {scope}", args)["n"]  # nosec B608
 
 
 def first_term_start(c) -> str | None:

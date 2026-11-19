@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import csv
 import io
+from datetime import timedelta
 
 from ...core.i18n import S, localize
 from ...core.perms import STAFF_ROLES
 from ...core.web import HTTPError, Response, json_resp
-from ...legacy.common import R, serves
+from ...legacy.common import R, scope_sql, serves
 from ...legacy.store import now
 from ..directory import domain as directory_rules
 from ..integration.domain import csv_cell
@@ -36,7 +37,7 @@ def my_lessons(req):
 def course_lessons(req):
     if not service.can_read_course(req.db, req.user, req.params["id"]):
         raise HTTPError(404, "Fənn tapılmadı")
-    return repo.lessons_of_course(req.db, req.params["id"], now().date().isoformat())
+    return repo.lessons_of_course(req.db, req.params["id"], (now().date() + timedelta(days=14)).isoformat())   # upcoming: to substitute
 
 
 @R("GET", "/api/journal/lessons/{id:int}", roles=STAFF_ROLES)
@@ -118,9 +119,10 @@ def grade_log(req):
 def debts(req):
     """The academic debts (final grades that did not pass); ``?format=csv`` for a spreadsheet."""
     c, u = req.db, req.user
-    out = [x for x in service.debts(c) if u["role"] != "office" or serves(c, u, x["user_id"])]
+    scope, args = scope_sql(u, "f.user_id")             # a dean's office: its faculties, in SQL before the page
     if req.query.get("format") != "csv":
-        return out
+        return service.debts(c, scope, args, req.qint("page", 1, lo=1, hi=100000))
+    out = service.debts(c, scope, args)["items"]
     buf = io.StringIO()
     w = csv.writer(buf)
     cols = ("student_no", "full_name", "grp", "term_name", "course_code", "course_name", "credits", "score", "letter")

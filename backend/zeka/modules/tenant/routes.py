@@ -21,4 +21,7 @@ def save_section(req):
     if problem:
         raise HTTPError(400, problem)
     service.save(req.db, req.user, section, value)
+    if section in ("grading", "attendance", "journal"):  # the final grades follow the rules they are computed by
+        from ..journal import service as journal
+        journal.refresh_all_finals(req.db)
     return service.read(req.db)

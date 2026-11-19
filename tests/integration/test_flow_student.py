@@ -46,8 +46,11 @@ def test_courses(student):
     assert [c["code"] for c in cs] == ["ELM-2105", "KOMP-1102", "RİY-1101", "FİZ-1103", "QRF-1104", "İNG-1105"]
     elm = cs[0]
     assert elm["teacher"] == "Rauf Əliyev" and elm["materials"] == 4 and elm["students"] == 120
-    assert 0 <= elm["progress"] <= 100 and elm["attendance"]["planned"] == 45 and elm["attendance"]["limit"] == 11
+    assert 0 <= elm["progress"] <= 100 and 0 <= elm["attendance"]["rate"] <= 100
+    assert "status" not in elm["attendance"], "the list shows the counts; the journal's standing is on the course's page (Checkpoint C, P1)"
     assert elm["next"]["weekday"] and elm["modes"] == ["socratic", "explain", "practice"]
+    one = student.get(f"/api/courses/{elm['id']}").json["attendance"]
+    assert one["planned"] == 45 and one["limit"] == 11 and one["status"]
 
 
 def test_course_detail_and_material_viewer(student):

@@ -49,7 +49,8 @@ def my_courses(c, u):
     if u["role"] == "student":
         return rows(c, "SELECT co.* FROM courses co JOIN enrollments e ON e.course_id=co.id WHERE e.user_id=? ORDER BY co.id", (u["id"],))
     if u["role"] == "teacher":
-        return rows(c, "SELECT * FROM courses WHERE teacher_id=? ORDER BY id", (u["id"],))
+        return rows(c, "SELECT * FROM courses WHERE teacher_id=? OR id IN (SELECT course_id FROM teaching_units WHERE teacher_id=? AND active=1) "
+                       "ORDER BY id", (u["id"], u["id"]))            # the head of the course or a teacher of one of its units (Task 13)
     return rows(c, "SELECT * FROM courses ORDER BY id")
 
 
@@ -70,28 +71,32 @@ def week_timetable(c, course_ids):
     return sorted(tt, key=lambda x: (x["weekday"], x["start"], x["id"]))
 
 
-def att_summary(c, uid, course_id):
+def att_summary(c, uid, course_id, standing: bool = True):
     """Lesson counts of the student's records, and the journal's standing (Task 20): planned and missed academic hours,
-    the share, the effective limit and the status; the lessons-based ``limit`` and ``counted`` stay for older screens."""
+    the share, the effective limit and the status; the lessons-based ``limit`` and ``counted`` stay for older screens.
+    Without ``standing`` (the course list and the home page show only the counts) the journal is not read: it costs a
+    handful of queries per course on the busiest routes (Checkpoint C, P1)."""
     r = row(c, "SELECT COUNT(*) total, SUM(a.status='present') present, SUM(a.status='late') late, SUM(a.status='absent') absent, "
                "SUM(a.status='excused') excused FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE a.user_id=? AND l.course_id=?",
             (uid, course_id))
     rules = tenant.load(c)["attendance"]
     out = {k: r[k] or 0 for k in ("total", "present", "late", "absent", "excused")}
+    out["counted"] = out["absent"] + (out["excused"] if rules["excused_counts_toward_limit"] else 0)
+    out["rate"] = round(100 * (out["present"] + out["late"]) / out["total"]) if out["total"] else 100
+    if not standing:                                    # counts only: no standing is claimed that was not read
+        return out
     st = next(iter(journal.course_standing(c, course_id, uid)), None)
     planned = st["planned_lessons"] if st else 0
     out.update(st or {"planned_hours": 0, "missed_hours": 0, "allowed_hours": 0, "percent": 0.0, "status": "normal", "as_of": None,
                       "limit_percent": rules["limit_percent"], "unexcused_hours": 0, "excused_hours": 0})
     out["planned"] = planned
     out["limit"] = int(planned * out["limit_percent"] / 100) if planned else None     # no term yet: unknown, not 0
-    out["counted"] = out["absent"] + (out["excused"] if rules["excused_counts_toward_limit"] else 0)
-    out["rate"] = round(100 * (out["present"] + out["late"]) / out["total"]) if out["total"] else 100
     for k in ("student_id", "full_name", "student_no", "group", "planned_lessons", "opening_id", "held_hours"):
         out.pop(k, None)
     return out
 
 
-def course_card(c, co, user=None):
+def course_card(c, co, user=None, standing: bool = False):
     out = {k: co[k] for k in ("id", "code", "name", "credits", "color", "description", "tutor_locked")}
     t = row(c, "SELECT full_name, title FROM users WHERE id=?", (co["teacher_id"],))
     out["teacher"], out["teacher_title"] = (t["full_name"], t["title"]) if t else ("", "")
@@ -105,7 +110,7 @@ def course_card(c, co, user=None):
                        "WHERE q.course_id=? AND a.user_id=? AND a.finished_at IS NOT NULL GROUP BY a.quiz_id", (co["id"], user["id"]))
         nq = row(c, "SELECT COUNT(*) n FROM quizzes WHERE course_id=? AND published=1", (co["id"],))["n"]
         out["progress"] = round(100 * sum(b["p"] or 0 for b in best) / nq) if nq else 0
-        out["attendance"] = att_summary(c, user["id"], co["id"])
+        out["attendance"] = att_summary(c, user["id"], co["id"], standing)
     return out
 
 
@@ -118,7 +123,7 @@ def courses(req):
 def course_detail(req):
     c, u = req.db, req.user
     co = course_access(req, req.params["id"])
-    out = course_card(c, co, u)
+    out = course_card(c, co, u, standing=True)
     out["tutor_rules"] = co["tutor_rules"] or ""
     out["materials_list"] = rows(c, "SELECT m.id, m.title, m.filename, m.chunk_count, m.term_count, m.created_at, LENGTH(m.text) chars, "
                                     "m.file_id, m.replaces_id, NOT " + CURRENT + " replaced, u.full_name uploaded_by FROM materials m "
@@ -174,7 +179,11 @@ def material_file(req):
     if not f:
         raise HTTPError(404, "Bu materialın orijinal faylı yoxdur")
     fname = urllib.parse.quote(f["filename"])
-    return Response((store.UPLOADS / f["path"]).read_bytes(), 200, f["mime"],
+    try:
+        data = (store.UPLOADS / f["path"]).read_bytes()
+    except OSError:                                     # a restore without the uploads folder
+        raise HTTPError(404, "Bu materialın orijinal faylı yoxdur") from None
+    return Response(data, 200, f["mime"],
                     [("Content-Disposition", f"attachment; filename*=UTF-8''{fname}"), ("Cache-Control", "private, no-store")])
 
 
@@ -633,9 +642,11 @@ def upload_material(req):
     if not text.lstrip().startswith("#"):
         text = f"# {title}\n\n" + text
     replaces = b.integer("replaces", None, lo=1)
-    if replaces is not None and not row(c, f"SELECT 1 FROM materials m WHERE m.id=? AND m.course_id=? AND {CURRENT}",  # nosec B608
-                                        (replaces, co["id"])):
-        raise HTTPError(404, "Material tapılmadı")
+    if replaces is not None:
+        if not c.in_transaction:
+            c.execute("BEGIN IMMEDIATE")                # two uploads replacing one version: the second sees the first
+        if not row(c, f"SELECT 1 FROM materials m WHERE m.id=? AND m.course_id=? AND {CURRENT}", (replaces, co["id"])):  # nosec B608
+            raise HTTPError(404, "Material tapılmadı")
     try:
         original = store.save_file(c, req.user["id"], name, data, accept="material")      # Task 22: the file itself is kept
     except ValueError as ex:
@@ -718,7 +729,8 @@ def studio_generate(req):
         chunks = rows(c, "SELECT id, heading, text FROM chunks WHERE course_id=? ORDER BY material_id, seq", (co["id"],))
     if not chunks:
         raise HTTPError(400, "Əvvəlcə material yükləyin")
-    course_gl = [g for m in rows(c, "SELECT text FROM materials WHERE course_id=?", (co["id"],)) for g in engine.glossary(m["text"])]
+    course_gl = [g for m in rows(c, f"SELECT text FROM materials m WHERE course_id=? AND {CURRENT}", (co["id"],))  # nosec B608
+                 for g in engine.glossary(m["text"])]
     gen = engine.generate_questions(chunks, course_gl, count, types, seed=random.randint(1, 10 ** 6))
     if not gen:
         raise HTTPError(422, "Materialdan sual yaratmaq mümkün olmadı. Materialda “Termin — tərif” formatında anlayışlar olmalıdır.")

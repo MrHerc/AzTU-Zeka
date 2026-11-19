@@ -98,6 +98,12 @@ class Context:
                                        self.table("enrollments", ("user_id", "course_id"), "rowid").items()}
         return self._cache["enrolled"]
 
+    def keyed(self, name: str, cols: tuple[str, ...], key: str = "id") -> dict[tuple, int]:
+        """{(values of ``cols``): row key} of a table, built once per import (Checkpoint C, P4: not once per file row)."""
+        if ("keyed", name, cols) not in self._cache:
+            self._cache[("keyed", name, cols)] = {tuple(r[x] for x in cols): k for k, r in self.table(name, cols, key).items()}
+        return self._cache[("keyed", name, cols)]
+
     def role(self, uid: int) -> str | None:
         hit = self.table("users", ("role",)).get(uid)
         return hit["role"] if hit else None
@@ -234,8 +240,9 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
                 return None, _missing(what, refs[ref])
         if student_id is None or ctx.role(student_id) != "student":
             return None, E("Yalnız aktiv tələbə qeydiyyata alınır")
-        keys = {(r["student_id"], r["course_id"], r["term_id"]): k for k, r in
-                ctx.table("attendance_opening", ("student_id", "course_id", "term_id")).items()}
+        if str(v.get("as_of") or "") > now().date().isoformat():
+            return None, E("Açılış qalığının tarixi gələcəkdə ola bilməz")      # it would hide the journal's records up to that day
+        keys = ctx.keyed("attendance_opening", ("student_id", "course_id", "term_id"))
         values = {"student_id": student_id, "course_id": course_id, "term_id": term_id, **v}
         return Item(n, "attendance_opening", sid, values, natural=keys.get((student_id, course_id, term_id))), None
     if kind == "grades":
@@ -244,6 +251,8 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
             return None, _missing("Fənn", v["_course"])
         if not user_id or ctx.role(user_id) != "student":
             return None, _missing("Tələbə", v["_user"])
+        if (user_id, course_id) not in ctx.enrolled():
+            return None, E("Tələbə bu fənnə yazılmayıb")                         # no score, and no final grade, of a course not taken
         grading = tenant.load(ctx.c)["grading"]
         cols = {x["name"]: x for x in grading["components"] if not x.get("attendance")} | {grading["exam"]["name"]: grading["exam"]}
         comp = cols.get(v["component"])
@@ -251,10 +260,9 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
             return None, E("Komponent fənnin sxemində yoxdur: {x}", x=v["component"])
         if (v["_max"] is not None and v["_max"] != comp["max"]) or v["score"] > comp["max"]:
             return None, E("Bal 0 ilə {max} arasında olmalıdır", max=comp["max"])
-        keys = {(r["user_id"], r["course_id"], r["component"]): k for k, r in
-                ctx.table("grades", ("user_id", "course_id", "component"), "rowid").items()}
+        keys = ctx.keyed("grades", ("user_id", "course_id", "component"), "rowid")
         item = Item(n, "grades", sid, {"user_id": user_id, "course_id": course_id, "component": v["component"], "score": v["score"],
-                                       "max": comp["max"]}, natural=keys.get((user_id, course_id, v["component"])))
+                                       "max": float(comp["max"])}, natural=keys.get((user_id, course_id, v["component"])))
         item.extra["as_of"] = v["_as_of"]
         return item, None
     raise ValueError(kind)
@@ -436,7 +444,13 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
                 if before and (before["role"], before["status"]) != (values["role"], values["status"]):
                     identity.end_all_sessions(c, rid)             # a new role or status starts from a new sign-in
             if it.action in ("update", "overwrite"):
+                prior = repo.one(c, "grades", ("score", "status"), rid, "rowid") if table == "grades" else None
+                if prior and prior["status"] != "published":
+                    legacy["status"] = prior["status"]           # a teacher's draft stays a draft until the teacher publishes it
                 repo.update(c, table, rid, {**values, **({"updated_at": t} if table in STAMPED else {}), **legacy}, key)
+                if prior and prior["status"] == "published" and prior["score"] != values["score"]:
+                    journal.log_change(c, values["user_id"], values["course_id"], str(values["component"]), prior["score"], values["score"],
+                                       user_id, ctx.reason, t)        # every change of a published score is in the grade journal
             if it.action == "overwrite":
                 audit(c, user_id, "import_overwrite", it.link, f"#{rid} · {ctx.source}:{it.source_id} · {', '.join(it.extra['fields'])}")
         it.row_id = rid
@@ -487,9 +501,14 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     c.execute("BEGIN IMMEDIATE")
     try:
         _write(c, ctx, items, user_id, conflicts)
-        if kind == "grades":                            # the final grades follow the imported scores
-            for uid, cid in sorted({(it.values["user_id"], it.values["course_id"]) for it in items if it.action in ("insert", "update", "overwrite")}):
-                journal.refresh_final(c, uid, cid)
+        if kind in ("grades", "attendance-opening"):    # the final grades follow the imported scores and hours
+            by_course: dict[int, set[int]] = {}
+            for it in items:
+                if it.action in ("insert", "update", "overwrite"):
+                    v = it.values
+                    by_course.setdefault(v["course_id"], set()).add(v["user_id"] if kind == "grades" else v["student_id"])
+            for cid, uids in sorted(by_course.items()):
+                journal.refresh_finals(c, cid, uids)
         counts = _counts(items)
         audit(c, user_id, "import", kind, f"{source} · {filename} · +{counts['inserted']} ~{counts['updated']} "
                                           f"={counts['unchanged']} !{len(conflicts)}")

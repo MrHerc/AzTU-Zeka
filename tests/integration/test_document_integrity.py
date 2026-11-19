@@ -80,7 +80,8 @@ def test_a_transcript_is_shown_as_issued_after_a_published_grade_changes(app_db)
 @pytest.mark.parametrize("column", ["payload", "hash"])
 def test_a_tampered_document_is_reported_changed(app_db, issued, column):
     original = q(f"SELECT {column} FROM documents WHERE id=?", (issued["id"],))[0][column]
-    changed = original.replace(issued["reg_no"], issued["reg_no"][:-1] + "9") if column == "payload" else "0" * 64
+    changed = original.replace(issued["reg_no"], issued["reg_no"] + "0") if column == "payload" else "0" * 64
+    assert changed != original
     run(f"UPDATE documents SET {column}=? WHERE id=?", (changed, issued["id"]))
     try:
         page = app_db.client().get(f"/verify/{issued['verify_code']}").text

@@ -6,7 +6,7 @@ import { HOME } from "./shell.js";
 
 const KINDS = () => [["users", t("İstifadəçilər")], ["orgs", t("Fakültə və kafedralar")], ["terms", t("Semestrlər")],
   ["courses", t("Fənlər")], ["classes", t("Tədris vahidləri")], ["enrollments", t("Qeydiyyat")], ["timetable", t("Dərs cədvəli")],
-  ["rooms", t("Otaqlar")], ["attendance-opening", t("Davamiyyətin açılış qalığı")], ["teaching-load", t("Forma №3: kafedranın akademik yükü")]];
+  ["rooms", t("Otaqlar")], ["attendance-opening", t("Davamiyyətin açılış qalığı")], ["grades", t("Ballar")], ["teaching-load", t("Forma №3: kafedranın akademik yükü")]];
 
 const readFile = (f) => new Promise((ok, bad) => {
   const r = new FileReader();
@@ -28,6 +28,9 @@ function report(r) {
       ${r.conflicts.length ? html`<div class="notice info">${ic("info", 16)}<div>${t("Bu sətirlər Zəka-da dəyişdirilib və mənbənin dəyəri yazılmayıb. Mənbəni üstün tutmaq üçün işarəni qoyub yenidən idxal edin.")}</div></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Sahələr")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.conflicts.slice(0, 500).map((x) => html`<tr><td>${x.row}</td><td>${(x.fields || []).join(", ") || "—"}</td><td>${x.reason}</td></tr>`)}</tbody></table></div>` : ""}
+      ${(r.warnings || []).length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bu sətirlər yazılır, amma yoxlanmalıdır.")}</div></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
+          ${r.warnings.slice(0, 500).map((x) => html`<tr><td>${x.row}</td><td>${x.reason}</td></tr>`)}</tbody></table></div>` : ""}
     </div></div>`;
 }
 

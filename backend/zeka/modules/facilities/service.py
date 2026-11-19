@@ -1,9 +1,9 @@
 """The room page, the QR sheet of a building and the link from timetable rows to rooms (tasks/todo.md, Task 18)."""
 from __future__ import annotations
 
-from ...core import tenant
+from datetime import date, timedelta
+
 from ...legacy.store import audit, now
-from ..directory import service as directory
 from . import domain, repo
 
 
@@ -12,10 +12,12 @@ def room_page(c, code: str) -> dict | None:
     room = repo.room_by_code(c, code.upper())
     if not room:
         return None
-    open_day = domain.teaching_day(directory.current_term(c), tenant.load(c)["calendar"]["holidays"])
     t = now()
-    current, upcoming = domain.now_and_next(repo.room_lessons(c, room["id"]), t.date(), t.strftime("%H:%M"), open_day)
-    return {"room": room, "now": current, "next": {"date": upcoming[0].isoformat(), **upcoming[1]} if upcoming else None}
+    today = t.date()
+    held = repo.room_lessons(c, room["id"], today.isoformat(), (today + timedelta(days=domain.LOOKAHEAD_DAYS)).isoformat())
+    current, upcoming = domain.now_and_next(held, today, t.strftime("%H:%M"))
+    nxt = {**upcoming, "date": upcoming["day"], "weekday": date.fromisoformat(upcoming["day"]).isoweekday()} if upcoming else None
+    return {"room": room, "now": current, "next": nxt}
 
 
 def link_timetable(c, user) -> dict:

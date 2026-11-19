@@ -2,6 +2,7 @@
 moving one lesson, and each person's calendar feed."""
 from __future__ import annotations
 
+import hashlib
 from urllib.parse import urlsplit
 
 from ...core import clock
@@ -17,6 +18,9 @@ def _conflict(req, clashes):
     return json_resp({"error": S("Cədvəldə toqquşma var", req.lang), "conflicts": clashes}, 409)
 
 
+LIST_LIMIT = 1000                   # rows in one answer; a longer term is read by group or teacher
+
+
 def _int(req, name):
     v = req.query.get(name)
     return req.qint(name, 0, lo=1) if v not in (None, "") else None
@@ -24,15 +28,15 @@ def _int(req, name):
 
 def _with_groups(c, rs: list[dict]) -> list[dict]:
     groups = repo.groups_of_units(c, sorted({r["unit_id"] for r in rs if r["unit_id"]}))
-    names = service._group_names(c, {g for v in groups.values() for g in v})
+    names = repo.group_names(c, {g for v in groups.values() for g in v})
     return [{**r, "groups": [names[g] for g in groups.get(r["unit_id"], []) if g in names]} for r in rs]
 
 
 @R("GET", "/api/timetable", perm="directory.read")
 def list_rows(req):
     t = service.term(req.db, _int(req, "term_id"))
-    rs = repo.listed(req.db, t["id"] if t else None, _int(req, "group_id"), _int(req, "teacher_id"))
-    return {"term": t, "rows": _with_groups(req.db, rs)}
+    rs = repo.listed(req.db, t["id"] if t else None, _int(req, "group_id"), _int(req, "teacher_id"), LIST_LIMIT + 1)
+    return {"term": t, "rows": _with_groups(req.db, rs[:LIST_LIMIT]), "more": len(rs) > LIST_LIMIT}
 
 
 @R("POST", "/api/timetable", perm="timetable.manage")
@@ -131,11 +135,14 @@ def drop_feed(req):
 
 @R("GET", "/ical/{token}", auth=False)
 def feed(req):
-    if not LIMITS["ical"].hit(req.ip):
+    token = str(req.params["token"])
+    if not LIMITS["ical_client"].hit(req.ip):         # calendar services and a campus share addresses: a wide cap per client
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
-    found = service.feed_events(req.db, str(req.params["token"]))
+    found = service.feed_events(req.db, token)
     if not found:
         raise HTTPError(404, "Tapılmadı")
+    if not LIMITS["ical"].hit("f" + hashlib.sha256(token.encode()).hexdigest()[:32]):      # and a narrow one per feed
+        raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     u, lessons = found
     lang = "az"                                         # a calendar app sends no language; the catalogue keys are Azerbaijani
     events = [{**x, "summary": f"{x['course']} · {x['kind']}" if x["kind"] else x["course"], "location": x["room"]} for x in lessons]

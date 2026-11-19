@@ -26,7 +26,7 @@ route("/admin/timetable", async (el, p, q) => {
   let view = q.view === "lessons" ? "lessons" : "rows", group = q.group || "", day = new Date().toLocaleDateString("sv-SE");      // YYYY-MM-DD of the local day
   let groups = [], courses = [], terms = [], rowsNow = [], lessonsNow = [], term = "";
   try {
-    [groups, courses, terms] = await Promise.all(["groups", "courses", "terms"].map(async (n) => (await api.get(`/api/directory/${n}?active=1`)).items));
+    [groups, courses, terms] = await Promise.all(["groups", "courses", "terms"].map((n) => api.all(`/api/directory/${n}?active=1`)));
   } catch (err) { mount(el, failed(err.message)); return; }
 
   const head = () => html`${pageHead(t("Dərs cədvəli"), t("Tədris vahidlərinin həftəlik cədvəli. Saxlananda otaq, müəllim və qrup toqquşması yoxlanır."), "",
@@ -55,7 +55,8 @@ route("/admin/timetable", async (el, p, q) => {
           <td class="nowrap">${can && x.unit_id ? html`<button class="btn btn-ghost btn-sm" data-edit="${x.id}">${t("Düzəlt")}</button>
             <button class="btn btn-ghost btn-sm" data-off="${x.id}">${t("Çıxar")}</button>` : ""}</td></tr>`)}
       </tbody></table></div>
-      ${r.rows.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Bu seçimdə cədvəl sətri yoxdur")}</p></div>`}</div>`);
+      ${r.rows.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Bu seçimdə cədvəl sətri yoxdur")}</p></div>`}
+      ${r.more ? html`<div class="card-b"><p class="muted" style="margin:0">${t("Siyahı ilk {n} sətirlə qısaldılıb: qrup seçin.", { n: r.rows.length })}</p></div>` : ""}</div>`);
   };
 
   const rowForm = (x) => {

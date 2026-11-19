@@ -84,7 +84,8 @@ def test_marks_default_to_present_and_refuse_strangers():
     marks, problem = domain.marks_input({"marks": {"2": "absent", "3": "late"}}, {1, 2, 3})
     assert problem is None and marks == {1: "present", 2: "absent", 3: "late"}
     assert domain.marks_input({"marks": {"9": "absent"}}, {1})[1] is not None
-    assert domain.marks_input({"marks": {"1": "excused"}}, {1})[1] is not None, "excused comes from a request"
+    assert domain.marks_input({"marks": {"1": "excused"}}, {1})[1] is None, "an excused row is sent back as it is; the service refuses a new one"
+    assert domain.marks_input({"marks": {"1": "ill"}}, {1})[1] is not None
     assert domain.marks_input({"marks": ["1"]}, {1})[1] is not None
 
 

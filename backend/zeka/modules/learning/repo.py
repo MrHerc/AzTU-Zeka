@@ -48,10 +48,12 @@ def submissions_of(c, aid: int) -> list[dict]:
                    "LEFT JOIN files f ON f.id=s.file_id WHERE s.assignment_id=? ORDER BY u.full_name", (aid,))
 
 
-def save_submission(c, aid: int, uid: int, text: str | None, file_id: int | None, at: str, late: bool):
-    c.execute("INSERT INTO submissions(assignment_id,student_id,text,file_id,submitted_at,late) VALUES(?,?,?,?,?,?) "
+def save_submission(c, aid: int, uid: int, text: str | None, file_id: int | None, at: str, late: bool) -> bool:
+    """False when the submission was graded meanwhile: a graded one is not replaced."""
+    return c.execute("INSERT INTO submissions(assignment_id,student_id,text,file_id,submitted_at,late) VALUES(?,?,?,?,?,?) "
               "ON CONFLICT(assignment_id,student_id) DO UPDATE SET text=excluded.text, file_id=excluded.file_id, "
-              "submitted_at=excluded.submitted_at, late=excluded.late", (aid, uid, text, file_id, at, int(late)))
+              "submitted_at=excluded.submitted_at, late=excluded.late WHERE submissions.score IS NULL",
+              (aid, uid, text, file_id, at, int(late))).rowcount > 0
 
 
 def grade(c, sid: int, score: float, feedback: str | None, by: int, at: str):

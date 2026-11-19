@@ -33,7 +33,7 @@ def marks_input(body, roster: set[int]) -> tuple[dict[int, str], dict | None]:
         uid = int(k) if isinstance(k, str) and k.isascii() and k.isdigit() else None
         if uid not in roster:
             return {}, E("Tələbə bu dərsin siyahısında deyil")
-        if v not in MARKS:
+        if v not in STATUSES:                       # 'excused' passes only for a row that is excused already (the service checks)
             return {}, E("Qeyd iştirak, qayıb və ya gecikmə olmalıdır")
         out[uid] = v
     return out, None

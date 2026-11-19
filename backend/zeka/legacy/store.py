@@ -189,14 +189,18 @@ def add_material(c, course_id, title, filename, text, user_id, created_at=None, 
     if replaces_id:
         drop_chunks(c, replaces_id)                     # the tutor and search see the current version only (Task 22)
     mid = cur.lastrowid
+    _add_chunks(c, mid, course_id, title, parts)
+    return {"id": mid, "chunks": len(parts), "terms": len(terms), "chars": len(text),
+            "headings": [h for h, _ in parts], "glossary": [t for t, _ in terms][:12]}
+
+
+def _add_chunks(c, mid, course_id, title, parts):
     for seq, (heading, body) in enumerate(parts):
         cid = c.execute("INSERT INTO chunks(material_id,course_id,seq,heading,text) VALUES(?,?,?,?,?)",
                         (mid, course_id, seq, heading, body)).lastrowid
         engine.INDEX["chunks"].add(*_chunk_entry({"id": cid, "text": body, "course_id": course_id, "material_id": mid,
                                                   "heading": heading, "material": title}))
         log_index(c, "chunks", [cid])
-    return {"id": mid, "chunks": len(parts), "terms": len(terms), "chars": len(text),
-            "headings": [h for h, _ in parts], "glossary": [t for t, _ in terms][:12]}
 
 
 def drop_chunks(c, material_id):
@@ -209,8 +213,12 @@ def drop_chunks(c, material_id):
 
 
 def delete_material(c, material_id):
+    m = row(c, "SELECT replaces_id FROM materials WHERE id=?", (material_id,))
     drop_chunks(c, material_id)
     c.execute("DELETE FROM materials WHERE id=?", (material_id,))
+    prev = row(c, "SELECT * FROM materials WHERE id=?", (m["replaces_id"],)) if m and m["replaces_id"] else None
+    if prev and not row(c, "SELECT 1 FROM materials WHERE replaces_id=?", (prev["id"],)):
+        _add_chunks(c, prev["id"], prev["course_id"], prev["title"], engine.chunk_markdown(prev["text"]))   # current again (Checkpoint C, L1)
 
 
 def _chunk_entry(ch) -> tuple:
@@ -332,7 +340,8 @@ def payload_state(doc: dict) -> str:
     """'ok' (the stored payload hashes to the stored hash), 'changed', or 'none' (issued before Task 45)."""
     if not doc.get("payload"):
         return "none"
-    return "ok" if hmac.compare_digest(hashlib.sha256(doc["payload"].encode()).hexdigest(), doc["hash"] or "") else "changed"
+    stored = str(doc["hash"] or "").encode()          # bytes: compare_digest refuses a non-ASCII str, and a tampered hash may be one
+    return "ok" if hmac.compare_digest(hashlib.sha256(doc["payload"].encode()).hexdigest().encode(), stored) else "changed"
 
 
 # ---------------------------------------------------------------- seeding
@@ -461,8 +470,8 @@ UNIT_OF_LABEL = {"Mühazirə": "lecture", "Məşğələ": "seminar", "Laboratori
 
 def _seed_future_lessons(c, term_id: int):
     """The rest of the demo term's lessons, made as Task 19 makes them (the past ones above carry topics and attendance)."""
-    from ..modules.timetable import repo as timetable_repo, service as timetable     # here: those modules import this one
-    timetable.make_lessons(c, timetable_repo.term_rows(c, term_id), row(c, "SELECT * FROM academic_terms WHERE id=?", (term_id,)))
+    from ..modules.timetable import service as timetable     # here: that module imports this one
+    timetable.make_lessons(c, timetable.term_rows(c, term_id), row(c, "SELECT * FROM academic_terms WHERE id=?", (term_id,)))
 
 
 def _seed_rooms(c, f: dict, stamp: str):

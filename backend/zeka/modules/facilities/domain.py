@@ -6,8 +6,8 @@ that two rooms answer to is linked to neither and reported.
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
-from datetime import date, timedelta
+from collections.abc import Iterable
+from datetime import date
 
 AZ_LOWER = str.maketrans({"I": "ı", "İ": "i"})         # Python lowers İ to i + a combining dot
 LOOKAHEAD_DAYS = 14                                    # how far the page looks for the next lesson
@@ -36,29 +36,11 @@ def index(rooms: Iterable[tuple[dict, dict]]) -> dict[str, int | None]:
     return out
 
 
-def now_and_next(rows: list[dict], day: date, hhmm: str, open_day: Callable[[date], bool]):
-    """(the row in progress at ``day`` ``hhmm`` or None, (date, row) of the next row to start or None).
-    ``rows`` are weekly timetable rows (weekday 1-7, start and end as HH:MM); ``open_day`` says whether lessons are held."""
-    ordered = sorted(rows, key=lambda r: (r["weekday"], r["start"]))
-    current = None
-    if open_day(day):
-        current = next((r for r in ordered if r["weekday"] == day.isoweekday() and r["start"] <= hhmm < r["end"]), None)
-    for add in range(LOOKAHEAD_DAYS + 1):
-        d = day + timedelta(days=add)
-        if not open_day(d):
-            continue
-        hit = next((r for r in ordered if r["weekday"] == d.isoweekday() and (add > 0 or r["start"] > hhmm)), None)
-        if hit:
-            return current, (d, hit)
-    return current, None
-
-
-def teaching_day(term: dict | None, holidays: Iterable[str]) -> Callable[[date], bool]:
-    """Whether lessons are held on a day: inside the term's teaching dates and not a holiday."""
-    off = set(holidays)
-
-    def open_day(d: date) -> bool:
-        iso = d.isoformat()
-        return term is not None and term["teaching_start"] <= iso <= term["teaching_end"] and iso not in off
-
-    return open_day
+def now_and_next(lessons: list[dict], day: date, hhmm: str) -> tuple[dict | None, dict | None]:
+    """(the lesson in progress at ``day`` ``hhmm`` or None, the next lesson to start or None). ``lessons`` are a room's
+    lessons that are held (cancelled ones left out), each with ``day`` (ISO) and ``start``/``end`` (HH:MM)."""
+    today = day.isoformat()
+    ordered = sorted(lessons, key=lambda x: (x["day"], x["start"]))
+    current = next((x for x in ordered if x["day"] == today and x["start"] <= hhmm < x["end"]), None)
+    upcoming = next((x for x in ordered if (x["day"], x["start"]) > (today, hhmm)), None)
+    return current, upcoming

@@ -11,10 +11,11 @@ def room_by_code(c, code: str):
                   "WHERE r.code=? AND r.active=1 AND b.active=1", (code,))
 
 
-def room_lessons(c, room_id: int) -> list[dict]:
-    """The weekly rows held in the room, with the course name only: no teacher and no student is shown on the door."""
-    return rows(c, "SELECT t.weekday, t.start, t.end, t.kind, co.name AS course FROM timetable t JOIN courses co ON co.id=t.course_id "
-                   "WHERE t.room_id=? ORDER BY t.weekday, t.start", (room_id,))
+def room_lessons(c, room_id: int, first: str, last: str) -> list[dict]:
+    """The room's lessons from ``first`` to ``last`` that are held, with the course name only: no teacher and no student
+    is shown on the door."""
+    return rows(c, "SELECT l.day, l.start, l.end, l.kind, co.name AS course FROM lessons l JOIN courses co ON co.id=l.course_id "
+                   "WHERE l.room_id=? AND l.day BETWEEN ? AND ? AND l.status<>'cancelled' ORDER BY l.day, l.start", (room_id, first, last))
 
 
 def building(c, building_id: int):
@@ -32,7 +33,7 @@ def active_rooms(c) -> list[tuple[dict, dict]]:
 
 
 def timetable_rooms(c) -> list[dict]:
-    return rows(c, "SELECT id, room, room_id FROM timetable")
+    return rows(c, "SELECT id, room, room_id FROM timetable WHERE active=1")
 
 
 def set_rooms(c, pairs: list[tuple[int | None, int]]):

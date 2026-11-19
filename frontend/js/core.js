@@ -45,6 +45,14 @@ async function req(method, url, body) {
 }
 export const api = {
   get: (u) => req("GET", u), post: (u, b = {}) => req("POST", u, b), put: (u, b = {}) => req("PUT", u, b), del: (u) => req("DELETE", u),
+  // every item of a paged directory list (pages of 50): a picker must offer them all, not the first page
+  all: async (u) => {
+    const sep = u.includes("?") ? "&" : "?";
+    const first = await req("GET", `${u}${sep}page=1`);
+    let items = first.items;
+    for (let p = 2; p <= (first.pages || 1); p++) items = items.concat((await req("GET", `${u}${sep}page=${p}`)).items);
+    return items;
+  },
 };
 
 // ---------------------------------------------------------------- router

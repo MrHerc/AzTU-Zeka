@@ -169,6 +169,8 @@ def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source:
           f"{report['seconds']} s{tail}")
     for e in report["errors"]:
         print(f"  row {e['row']}: {_az(e['reason'])}")
+    for w in report.get("warnings", []):
+        print(f"  warning, row {w['row']}: {_az(w['reason'])}")
     for x in report["conflicts"][:200]:
         print(f"  conflict, row {x['row']}: {_az(x['reason'])}" + (f" ({', '.join(x['fields'])})" if x.get("fields") else ""))
     return 1 if report["error_count"] else 0

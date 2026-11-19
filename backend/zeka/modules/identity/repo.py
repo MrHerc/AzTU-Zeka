@@ -164,6 +164,10 @@ def grant(c, uid: int, grant_id: int):
     return row(c, "SELECT * FROM role_grants WHERE id=? AND user_id=?", (grant_id, uid))
 
 
+def drop_grant(c, grant_id: int):
+    c.execute("DELETE FROM role_grants WHERE id=?", (grant_id,))
+
+
 # ---------------------------------------------------------------- single sign-on (Task 14)
 def add_pending(c, state: str, browser_hash: str, nonce: str, verifier: str, link_user_id: int | None, t: float):
     c.execute("DELETE FROM sso_pending WHERE created_at<?", (t - domain.SSO_PENDING,))

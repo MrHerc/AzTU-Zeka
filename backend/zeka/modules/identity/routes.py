@@ -219,7 +219,7 @@ def revoke_role(req):
     g = repo.grant(req.db, u["id"], req.params["gid"])
     if not g:
         raise HTTPError(404, "Rol tapılmadı")
-    req.db.execute("DELETE FROM role_grants WHERE id=?", (g["id"],))    # sessions acting in it fall back at once
+    repo.drop_grant(req.db, g["id"])    # sessions acting in it fall back at once
     audit(req.db, req.user["id"], "role_revoked", "user", f"{u['username']} · {g['role']}")
     return {"ok": True}
 

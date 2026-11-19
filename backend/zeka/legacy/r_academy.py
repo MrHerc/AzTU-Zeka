@@ -167,7 +167,8 @@ def build_syllabus(c, co, weeks=15):
     pairs = sum(w["n"] for w in weekly)
     contact = pairs * 2 * weeks
     total = co["credits"] * 30
-    mats = rows(c, "SELECT id, title, text FROM materials WHERE course_id=? ORDER BY id", (co["id"],))
+    mats = rows(c, "SELECT id, title, text FROM materials m WHERE course_id=? AND NOT EXISTS (SELECT 1 FROM materials n "
+                   "WHERE n.replaces_id=m.id) ORDER BY id", (co["id"],))      # the current versions (Task 22)
     outcomes, topics = [], []
     for m in mats:
         gl = [t for t, _ in engine.glossary(m["text"])][:3]
@@ -206,7 +207,7 @@ def build_syllabus(c, co, weeks=15):
         "course": {"name": co["name"], "code": co["code"], "credits": co["credits"], "teacher": teacher["full_name"] if teacher else "",
                    "teacher_title": teacher["title"] if teacher else "", "semester": setting(c, "university")["semester"],
                    "prereq": co.get("prereq") or "—", "language": "İngilis dili" if co["code"].startswith("İNG") else "Azərbaycan dili"},
-        "description": co["description"] + " Fənn nəzəri biliklərin mühəndislik məsələlərinin həllində tətbiqinə yönəlib.",
+        "description": (co["description"] or "") + " Fənn nəzəri biliklərin mühəndislik məsələlərinin həllində tətbiqinə yönəlib.",
         "workload": {"total": total, "contact": contact, "independent": max(total - contact, 0), "weeks": weeks, "pairs": pairs},
         "outcomes": outcomes[:6],
         "plan": plan,

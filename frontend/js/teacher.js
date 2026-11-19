@@ -190,6 +190,7 @@ function materialsTab(tgt, c) {
   dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
   dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); e.dataTransfer.files[0] && upload(e.dataTransfer.files[0]); });
   on(tgt, "click", "[data-view]", async (e, b) => {
+    if (e.target.closest("[data-version],[data-del],a")) return;     // the row's own buttons and links do their own thing
     let m;
     try { m = await api.get(`/api/materials/${b.dataset.view}`); } catch (err) { return toast(err.message, "err"); }
     modal({ title: m.title, size: "lg", body: html`${m.glossary.length ? html`<div class="label mb-sm">${t("Çıxarılmış anlayışlar ({n})", { n: m.glossary.length })}</div>
@@ -307,7 +308,7 @@ route("/teacher/studio", async (el, p, q) => {
 function genTab(tgt, course, detail, q) {
   mount(tgt, html`<div class="grid g-21"><div class="card brand-border" data-tour="gen-form" style="align-self:start"><div class="card-b stack">
       <div class="field"><label class="label" for="mat">${t("Material")}</label><select class="select" id="mat"><option value="">${t("Bütün materiallar")}</option>
-        ${detail.materials_list.map((m) => html`<option value="${m.id}" ${+q.material === m.id ? "selected" : ""}>${m.title}</option>`)}</select></div>
+        ${detail.materials_list.filter((m) => !m.replaced).map((m) => html`<option value="${m.id}" ${+q.material === m.id ? "selected" : ""}>${m.title}</option>`)}</select></div>
       <div class="field"><span class="label">${t("Sual növləri")}</span><div class="chips">${[["mcq", t("Çoxseçimli")], ["tf", t("Doğru / Yanlış")], ["numeric", t("Hesablama")]].map(([k, l]) => html`<button class="chip on" data-type="${k}" aria-pressed="true">${l}</button>`)}</div></div>
       <div class="field"><label class="label" for="cnt">${t("Sual sayı")}</label><select class="select" id="cnt">${[3, 5, 6, 8, 10].map((n) => html`<option ${n === 6 ? "selected" : ""}>${n}</option>`)}</select></div>
       <button class="btn btn-ai btn-block" id="gen">${ic("sparkles", 16)} ${t("AI ilə sual yarat")}</button>
