@@ -47,9 +47,11 @@ def campus_message(c, mid: int, uid: int):
 
 
 def campus_before(c, uid: int, mid: int, limit: int = 6) -> list[dict]:
-    """The user's campus conversation up to and including message ``mid``, oldest first."""
-    out = rows(c, "SELECT id, role, content FROM messages WHERE user_id=? AND channel='campus' AND id<=? ORDER BY id DESC LIMIT ?",
-               (uid, mid, limit))
+    """The user's campus conversation up to and including message ``mid`` on that message's day, oldest first: an
+    earlier day's question (a phone number, a FIN) does not go into a ticket (Checkpoint E, TM-E16)."""
+    out = rows(c, "SELECT id, role, content FROM messages WHERE user_id=? AND channel='campus' AND id<=? "
+                  "AND created_at>=(SELECT substr(created_at, 1, 10) FROM messages WHERE id=?) ORDER BY id DESC LIMIT ?",
+               (uid, mid, mid, limit))
     return out[::-1]
 
 

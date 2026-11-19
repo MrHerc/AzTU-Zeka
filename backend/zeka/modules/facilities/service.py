@@ -67,6 +67,16 @@ MISSING = {"no_node": S_("Bu otaq hələ marşrut xəritəsində yoxdur"),
            "no_path": S_("Bu otaqlar arasında marşrut yoxdur (pilləsiz seçimdə lift olmaya bilər)")}
 
 
+def rooms_for_search(c) -> list[dict]:
+    """Every active room with its building, for the assistant's lookup (Task 31)."""
+    return repo.rooms_for_search(c)
+
+
+def room_code(c, room_id: int):
+    """{code} of a room, or None."""
+    return repo.room_code(c, room_id)
+
+
 def import_graph(c, building_code: str, node_rows: list[dict], edge_rows: list[dict]) -> dict:
     """Replace a building's route graph from its CSV rows, all or nothing: {ok, problems} or {ok, nodes, edges, coverage}."""
     b = repo.building_by_code(c, building_code.strip().upper())

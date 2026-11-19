@@ -1,6 +1,7 @@
 """The rules of a knowledge base article (tasks/todo.md, Task 32). No I/O."""
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from ...core.i18n import E
@@ -28,7 +29,9 @@ def kb_input(body, request_codes: set[str]) -> tuple[dict, dict | None]:
     if v["action_label"] and (not v["request"] or len(v["action_label"]) > 60):
         return v, E("Düymənin adı yalnız e-xidmətlə və ən çox 60 simvol olur")
     if v["review_at"]:
-        try:
+        try:                                                    # exactly YYYY-MM-DD: 3.11+ also reads 20261118 (PY-E3)
+            if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", v["review_at"]):
+                raise ValueError(v["review_at"])
             date.fromisoformat(v["review_at"])
         except ValueError:
             return v, E("Yenidən baxış tarixi YYYY-MM-DD formatında olmalıdır")

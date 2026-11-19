@@ -15,6 +15,7 @@ from ...legacy.store import audit, iso, now, row, rows
 
 SCOPES = ("grades.read", "attendance.read", "registry.read", "status.read")
 PREFIX = "zk_"
+_LIMITERS: dict[int, RateLimiter] = {}      # one per limit value, not one per call (AR-E9); the key is the token's id
 
 
 def _hash(token: str) -> str:
@@ -65,12 +66,17 @@ def authenticate(c, header: str | None, scope: str, path: str) -> dict:
     token = raw[7:].strip() if raw[:7].lower() == "bearer " else ""
     t = row(c, "SELECT * FROM api_tokens WHERE token_hash=? AND revoked_at IS NULL", (_hash(token),)) if token.startswith(PREFIX) else None
     if not t or not hmac.compare_digest(t["token_hash"], _hash(token)):
+        old = row(c, "SELECT id FROM api_tokens WHERE token_hash=? AND revoked_at IS NOT NULL", (_hash(token),)) if token.startswith(PREFIX) else None
+        if old:                                                 # a revoked key still in use is worth knowing (SF-E11); other 401s are not
+            audit(c, None, "api_call_revoked", "api_token", f"#{old['id']} {path}")
+            c.commit()
         raise HTTPError(401, T3("API açarı yoxdur və ya etibarsızdır"))
     if scope not in json.loads(t["scopes"]):
         audit(c, None, "api_call_refused", "api_token", f"#{t['id']} {path} · scope {scope}")
         c.commit()                                              # the refusal stays in the audit log
         raise HTTPError(403, T3("Bu açarın əhatəsi bu marşrutu daxil etmir"))
-    if not RateLimiter(t["per_minute"], 60, name="api_key").hit(f"t{t['id']}"):
+    lim = _LIMITERS.get(t["per_minute"]) or _LIMITERS.setdefault(t["per_minute"], RateLimiter(t["per_minute"], 60, name="api_key"))
+    if not lim.hit(f"t{t['id']}"):
         raise HTTPError(429, T3("Açarın dəqiqəlik limiti bitib"))
     c.execute("UPDATE api_tokens SET last_used_at=? WHERE id=?", (iso(now()), t["id"]))
     audit(c, None, "api_call", "api_token", f"#{t['id']} {path}")

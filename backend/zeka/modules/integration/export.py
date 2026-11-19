@@ -24,6 +24,7 @@ from ..timetable import domain as timetable_rules
 from . import domain
 
 KINDS = ("grades", "attendance", "oneroster", "registry", "status-changes")
+HTTP_CAP = 300_000         # rows of grades or attendance in one HTTP export; more: since, or manage.py export (AR-E1)
 FILES = ("orgs", "terms", "users", "courses", "classes", "enrollments")      # also the order they are imported in
 # Assumption (SPEC Open Questions 17): the 10 days to report a status order to "Tələbə-məzun" are counted from the
 # order's date (order_date), not from its effective date or from when it was entered; to be checked against Decree No. 225.
@@ -73,15 +74,16 @@ def _csv(columns: tuple[str, ...], data: list[dict]) -> str:
 
 
 def _sids(c, table: str, ids) -> dict[int, str]:
-    """{row id: sourcedId}: the source id of the row's first import link, else ``zeka:<table>:<id>``; an id two rows would
-    share (linked from two source systems) falls back to the Zəka form."""
+    """{row id: sourcedId}: the source id of the row's first import link, else ``zeka:<table>:<id>``; an id two rows
+    share (linked from two source systems) falls back to the Zəka form for both, in every export alike (Checkpoint E)."""
+    if not ids:                                     # nothing to name: no read of the link table (AR-E13)
+        return {}
     kinds = LINKS[table]
     linked: dict[int, str] = {}
     for r in rows(c, f"SELECT row_id, source_id FROM import_links WHERE kind IN ({','.join('?' * len(kinds))}) ORDER BY id", kinds):  # nosec B608
         linked.setdefault(r["row_id"], r["source_id"])
-    out = {i: linked.get(i) or f"zeka:{table}:{i}" for i in ids}
-    twice = {s for s, n in Counter(out.values()).items() if n > 1}
-    return {i: f"zeka:{table}:{i}" if s in twice else s for i, s in out.items()}
+    twice = {s for s, n in Counter(linked.values()).items() if n > 1}
+    return {i: linked[i] if linked.get(i) and linked[i] not in twice else f"zeka:{table}:{i}" for i in ids}
 
 
 def _enrolment_sid(class_sid: str, user_sid: str, role: str) -> str:
@@ -90,7 +92,7 @@ def _enrolment_sid(class_sid: str, user_sid: str, role: str) -> str:
 
 
 # ---------------------------------------------------------------- OneRoster
-def oneroster_files(c) -> dict[str, str]:
+def oneroster_files(c, report: dict | None = None) -> dict[str, str]:
     """{file name: CSV text} in the columns of the import kinds. Every row is exported, deactivated ones too (the
     importer has no active flag). Students and teachers only; a reference to anything not exported is left empty.
 
@@ -143,13 +145,16 @@ def oneroster_files(c) -> dict[str, str]:
     by_course: dict[int, list[dict]] = {}
     for u in units:
         by_course.setdefault(u["course_id"], []).append(u)
-    listed = []
+    listed: list[tuple] = []
     for e in enrolled:
+        before = len(listed)
         for u in by_course.get(e["course_id"], []):
             ids = [g for g, _ in groups.get(u["id"], [])]
             if timetable_rules.attends(e, ids, u["subgroup"]):
                 listed.append((len(ids) != 1, u["id"], e["user_id"], {"classSourcedId": ks[u["id"]], "userSourcedId": us[e["user_id"]],
                                                                       "role": "student", "beginDate": e["begin_date"], "endDate": e["end_date"]}))
+        if report is not None and len(listed) == before:      # no class of the course the student attends (SF-E5)
+            report["dropped"] = report.get("dropped", 0) + 1
     listed.sort(key=lambda x: x[:3])
     rows_ = [x[3] for x in listed] + [{"classSourcedId": ks[u["id"]], "userSourcedId": us[u["teacher_id"]], "role": "teacher"}
                                       for u in units if u["teacher_id"] in teachers]
@@ -157,18 +162,26 @@ def oneroster_files(c) -> dict[str, str]:
     return {f"{k}.csv": _csv(tuple(domain.COLUMNS[k]), out[k]) for k in FILES}
 
 
-def oneroster_zip(c) -> bytes:
+def oneroster_zip(c, report: dict | None = None) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        for name, text in oneroster_files(c).items():
+        for name, text in oneroster_files(c, report).items():
             z.writestr(name, text)
     return buf.getvalue()
 
 
 # ---------------------------------------------------------------- grades and attendance
-def grades_csv(c, since: datetime | None = None) -> str:
+def _cap(c, count_sql: str, args: tuple, cap: int | None):
+    """Over HTTP an export holds a worker and its memory: past ``cap`` rows it is refused with the way round (AR-E1)."""
+    if cap is not None and (n := row(c, count_sql, args)["n"]) > cap:
+        raise ValueError(E("Fayl çox böyükdür ({n} sətir, ən çox {cap}). since ilə yalnız dəyişənləri alın və ya serverdə "
+                           "manage.py export işlədin.", n=n, cap=cap))
+
+
+def grades_csv(c, since: datetime | None = None, cap: int | None = None) -> str:
     """Every score (drafts too: ``status`` says which), or only those written or changed after ``since``."""
-    where, args = ("WHERE g.updated_at>?", (_wall(since),)) if since else ("", ())
+    where, args = ("WHERE g.updated_at>=?", (_wall(since),)) if since else ("", ())     # >=: a row of the same second (CR-E3)
+    _cap(c, f"SELECT COUNT(*) n FROM grades g {where}", args, cap)  # nosec B608 - constants
     data = rows(c, "SELECT g.user_id, g.course_id, g.component, g.score, g.max, g.status, g.source, g.updated_at, co.code, u.student_no "
                    f"FROM grades g JOIN courses co ON co.id=g.course_id JOIN users u ON u.id=g.user_id {where} "  # nosec B608 - constants
                    "ORDER BY g.updated_at, g.course_id, g.user_id, g.component", args)
@@ -178,10 +191,11 @@ def grades_csv(c, since: datetime | None = None) -> str:
                                  "status": x["status"], "source": x["source"], "updatedAt": x["updated_at"]} for x in data])
 
 
-def attendance_csv(c, since: datetime | None = None) -> str:
+def attendance_csv(c, since: datetime | None = None, cap: int | None = None) -> str:
     """Every lesson mark, or only those written or changed after ``since`` (a row without ``marked_at``, from the demo
     seed or before Task 20, is never "after")."""
-    where, args = ("WHERE a.marked_at>?", (_wall(since),)) if since else ("", ())
+    where, args = ("WHERE a.marked_at>=?", (_wall(since),)) if since else ("", ())
+    _cap(c, f"SELECT COUNT(*) n FROM attendance a {where}", args, cap)  # nosec B608 - constants
     data = rows(c, "SELECT a.lesson_id, a.user_id, a.status, a.source, a.marked_at, l.course_id, l.day, l.start, co.code, u.student_no "
                    "FROM attendance a JOIN lessons l ON l.id=a.lesson_id JOIN courses co ON co.id=l.course_id JOIN users u ON u.id=a.user_id "
                    f"{where} ORDER BY a.marked_at, l.day, l.start, a.lesson_id, a.user_id", args)  # nosec B608 - constants
@@ -221,7 +235,7 @@ def _events(c, where: str, args: tuple) -> list[dict]:
 def status_changes(c, since: datetime | None = None) -> list[dict]:
     """Every status order entered (``created_at``) after ``since``: an order entered late, with an earlier effective
     date, is new to the operator all the same. ``days_left`` to ``order_date`` + 10 days, ``reported_at`` once marked."""
-    return _events(c, "WHERE e.created_at>?", (_wall(since),)) if since else _events(c, "", ())
+    return _events(c, "WHERE e.created_at>=?", (_wall(since),)) if since else _events(c, "", ())
 
 
 def mark_reported(c, user: dict | None, event_id: int) -> dict | None:
@@ -236,16 +250,18 @@ def mark_reported(c, user: dict | None, event_id: int) -> dict | None:
 
 # ---------------------------------------------------------------- the one path
 def run(c, kind: str, *, since: datetime | None = None, registry: str = "students", columns: list[str] | None = None,
-        user_id: int | None = None) -> tuple[str, str, bytes]:
-    """(file name, media type, body) of an export; ``since`` counts for grades, attendance and status changes. Raises
-    ValueError (a translatable message) for a register or column not on the lists. Audited, after the reading."""
+        user_id: int | None = None, cap: int | None = None) -> tuple[str, str, bytes]:
+    """(file name, media type, body) of an export; ``since`` counts for grades, attendance and status changes; ``cap``:
+    the most rows of grades or attendance (HTTP_CAP over HTTP, none on the command line). Raises ValueError (a
+    translatable message) for a register or column not on the lists or a file over the cap. Audited, after the reading."""
+    report: dict = {}
     if kind == "oneroster":
-        name, ctype, body = "oneroster.zip", "application/zip", oneroster_zip(c)
+        name, ctype, body = "oneroster.zip", "application/zip", oneroster_zip(c, report)
     else:
         if kind == "grades":
-            text = grades_csv(c, since)
+            text = grades_csv(c, since, cap)
         elif kind == "attendance":
-            text = attendance_csv(c, since)
+            text = attendance_csv(c, since, cap)
         elif kind == "registry":
             text = registry_csv(c, registry, columns)
         elif kind == "status-changes":
@@ -253,5 +269,6 @@ def run(c, kind: str, *, since: datetime | None = None, registry: str = "student
         else:
             raise ValueError(kind)
         name, ctype, body = f"registry-{registry}.csv" if kind == "registry" else f"{kind}.csv", "text/csv; charset=utf-8", text.encode("utf-8")
-    audit(c, user_id, "export", kind, " · ".join(x for x in (registry if kind == "registry" else "", _wall(since) if since else "") if x))
+    audit(c, user_id, "export", kind, " · ".join(x for x in (registry if kind == "registry" else "", _wall(since) if since else "",
+                                                             f"enrolments left out {report['dropped']}" if report.get("dropped") else "") if x))
     return name, ctype, body

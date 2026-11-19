@@ -125,11 +125,12 @@ def exam_verify(eid: int, root: str | None) -> int:
 
 def import_routes(building: str, nodes: Path, edges: Path) -> int:
     import csv
+    import io
     from zeka.modules.facilities import service as facilities
     store.init()
-    try:
-        node_rows = list(csv.DictReader(nodes.read_text(encoding="utf-8-sig").splitlines()))
-        edge_rows = list(csv.DictReader(edges.read_text(encoding="utf-8-sig").splitlines()))
+    try:                                # newline="": a quoted line break stays in its cell (Checkpoint E, PY-E11)
+        node_rows = list(csv.DictReader(io.StringIO(nodes.read_text(encoding="utf-8-sig"), newline="")))
+        edge_rows = list(csv.DictReader(io.StringIO(edges.read_text(encoding="utf-8-sig"), newline="")))
     except (OSError, UnicodeDecodeError) as ex:
         print(f"error: {ex}", file=sys.stderr)
         return 2
@@ -290,21 +291,29 @@ def run_export(kind: str, since: str | None, registry: str, columns: str, out: s
     if not store.DB_PATH.exists():
         print(f"error: no database at {store.DB_PATH}", file=sys.stderr)
         return 2
+    fd = None
+    if out:                                            # opened first: a bad path writes no audit row; private (0600), like codes
+        try:
+            fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            os.chmod(out, 0o600)                       # an existing file keeps its mode on open
+        except OSError as ex:
+            print(f"error: {out}: {ex.strerror}", file=sys.stderr)
+            return 2
     c = store.connect()
     try:
         name, _, body = export.run(c, kind, since=moment, registry=registry,
                                    columns=[x.strip() for x in columns.split(",") if x.strip()] or None)
         c.commit()                                     # the audit row of the export
-    except ValueError as ex:
-        print(f"error: {_az(ex.args[0])}", file=sys.stderr)
-        return 2
-    except sqlite3.Error as ex:
-        print(f"error: {ex}", file=sys.stderr)
+    except (ValueError, sqlite3.Error) as ex:
+        print(f"error: {_az(ex.args[0]) if isinstance(ex, ValueError) else ex}", file=sys.stderr)
+        if fd is not None:
+            os.close(fd)
         return 2
     finally:
         c.close()
-    if out:
-        Path(out).write_bytes(body)
+    if fd is not None:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(body)
         print(f"{name}: {len(body)} bytes written to {out}", file=sys.stderr)
     else:
         sys.stdout.flush()

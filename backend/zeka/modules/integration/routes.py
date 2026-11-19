@@ -72,7 +72,7 @@ def _since(req):
                                field="since")) from None
 
 
-@R("GET", "/api/integration/export/{kind}", perm="integration.manage")
+@R("GET", "/api/integration/export/{kind}", perm="integration.manage", slow=True)     # a long export: the slow slots (AR-E1)
 def export_file(req):
     """A file: ``grades`` and ``attendance`` (``?since=``), ``oneroster`` (zip), ``registry`` (``?registry=students|users``,
     ``?columns=a,b``), ``status-changes`` (``?since=``). The same service as ``manage.py export``."""
@@ -82,7 +82,7 @@ def export_file(req):
     columns = [x.strip() for x in (req.query.get("columns") or "").split(",") if x.strip()]
     try:
         name, ctype, body = export.run(req.db, kind, since=_since(req), registry=req.query.get("registry") or "students",
-                                       columns=columns or None, user_id=req.user["id"])
+                                       columns=columns or None, user_id=req.user["id"], cap=export.HTTP_CAP)
     except ValueError as ex:
         raise HTTPError(400, ex.args[0]) from None
     return Response(body, 200, ctype, [("Content-Disposition", f'attachment; filename="{name}"'), ("Cache-Control", "private, no-store")])

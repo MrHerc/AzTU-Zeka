@@ -17,6 +17,7 @@ def test_each_role_sees_only_its_tiles_and_only_the_administrator_sets_them(app_
     assert [a["title"] for a in admin.get("/api/apps").json["all"]] == ["Kitabxana", "Kadrlar"]
     c = store.connect()
     try:
-        assert store.row(c, "SELECT 1 FROM audit WHERE action='apps_saved' AND detail='2 tiles'")
+        assert store.row(c, "SELECT 1 FROM audit WHERE action='apps_saved' AND detail=?",   # TM-E14: what was saved, not just how many
+                         ("2 tiles: https://lib.aztu.edu.az https://hr.aztu.edu.az",))
     finally:
         c.close()

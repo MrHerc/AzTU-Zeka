@@ -203,7 +203,8 @@ def source_chunk(req):
 
 @R("GET", "/api/source/kb/{id:int}")
 def source_kb(req):
-    kb = row(req.db, "SELECT id, heading, text, source material FROM campus_kb WHERE id=?", (req.params["id"],))
+    # a draft or archived article is the editors' (Checkpoint E, SEC-E4); they read it through /api/kb
+    kb = row(req.db, "SELECT id, heading, text, source material FROM campus_kb WHERE id=? AND status='published'", (req.params["id"],))
     if not kb:
         raise HTTPError(404, "Mənbə tapılmadı")
     return kb

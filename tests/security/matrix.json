@@ -558,7 +558,7 @@
   "audit_read": null,
   "demo": false,
   "perm": "integration.manage",
-  "slow": false
+  "slow": true
  },
  "GET /api/integration/keys": {
   "access": [
@@ -1229,7 +1229,7 @@
   "demo": false,
   "perm": null,
   "scope": "token:attendance.read",
-  "slow": false
+  "slow": true
  },
  "GET /api/v1/grades": {
   "access": "any",
@@ -1237,7 +1237,7 @@
   "demo": false,
   "perm": null,
   "scope": "token:grades.read",
-  "slow": false
+  "slow": true
  },
  "GET /api/v1/oneroster.zip": {
   "access": "any",
@@ -1245,7 +1245,7 @@
   "demo": false,
   "perm": null,
   "scope": "token:registry.read",
-  "slow": false
+  "slow": true
  },
  "GET /api/v1/status-changes": {
   "access": "any",

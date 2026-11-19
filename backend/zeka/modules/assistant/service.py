@@ -13,9 +13,8 @@ from ...legacy.store import audit, iso, log_index, now
 from . import domain as kb_domain
 from . import repo as kb_repo
 from ..facilities import domain as rooms_domain
-from ..facilities import repo as rooms_repo
 from ..facilities import service as facilities
-from ..timetable import repo as timetable_repo
+from ..timetable import service as timetable
 
 NEXT_LESSON = re.compile(r"(növbəti|sonrakı|gələn|ilk)\s+dərs|next\s+(lesson|class)|следующ\w*\s+(занят|пар|урок)", re.I)
 WHERE = re.compile(r"hara|harda|necə gedim|necə gedə|otaq|auditoriya|where|how do i get|room|где|как пройти|аудитори|кабинет", re.I)
@@ -66,8 +65,15 @@ def answer(c, user, question: str, lang: str) -> dict | None:
 def find_rooms(c, question: str) -> list[dict]:
     """The rooms a question names: by code, then by name; a bare number counts only in a question about a place."""
     key = rooms_domain.room_key(question)
-    rooms = rooms_repo.rooms_for_search(c)
-    hits = [r for r in rooms if rooms_domain.room_key(r["code"]) in key]
+    rooms = facilities.rooms_for_search(c)
+    found = set()
+    for r in sorted(rooms, key=lambda r: -len(rooms_domain.room_key(r["code"]))):   # EK-121 before EK-12 (PY-E8)
+        k = rooms_domain.room_key(r["code"])
+        if k and k in key:
+            found.add(r["id"])
+            key = key.replace(k, "|")
+    hits = [r for r in rooms if r["id"] in found]
+    key = rooms_domain.room_key(question)
     if not hits:
         hits = [r for r in rooms if r["name"] and len(r["name"]) > 3 and rooms_domain.room_key(r["name"]) in key]
     if not hits and WHERE.search(question):
@@ -107,12 +113,7 @@ def next_lesson(c, user) -> dict | None:
     t = now()
     today, hhmm = t.date().isoformat(), t.strftime("%H:%M")
     last = (t.date() + timedelta(days=LOOKAHEAD_DAYS)).isoformat()
-    if user["role"] == "student":
-        lessons = timetable_repo.student_lessons(c, user["id"], today, last)
-    elif user["role"] in ("teacher", "dept_head"):
-        lessons = timetable_repo.teacher_lessons(c, user["id"], today, last)
-    else:
-        return None
+    lessons = timetable.lessons_of(c, user, today, last)
     return next((x for x in lessons if x["status"] != "cancelled" and (x["day"], x["end"]) > (today, hhmm)), None)
 
 
@@ -127,7 +128,7 @@ def _next_lesson(c, user, step_free: bool, lang: str) -> dict:
     else:
         when = f"{S(WEEKDAYS[day.isoweekday()], lang)}, {x['day']}"
     lines = [f"**{x['course']}** · {S(x['kind'] or '', lang)}", f"{when}, {x['start']}–{x['end']}"]
-    room = rooms_repo.room_code(c, x["room_id"]) if x.get("room_id") else None
+    room = facilities.room_code(c, x["room_id"]) if x.get("room_id") else None
     if room:
         lines += [S("Otaq: {room}", lang, room=room["code"]), "", *_way(c, room["code"], step_free, lang)]
     elif x["room"]:
@@ -191,13 +192,13 @@ def handoff(c, user, message_id: int) -> tuple[str, object]:
 
 def _office_hours(c, user, question: str, lang: str) -> dict:
     """The office hours of the student's teachers (Task 34), only the teacher named in the question when one is."""
-    from ..qa import office_hours, repo as qa_repo
+    from ..qa import office_hours
     people = office_hours.teachers(c, user) if user["role"] == "student" else [{"id": user["id"], "full_name": user["full_name"]}]
     low = question.lower()
     named = [p for p in people if any(len(w) > 2 and w.lower() in low for w in p["full_name"].split())]
     lines = []
     for p in named or people:
-        ranges = qa_repo.hours_of(c, p["id"])
+        ranges = office_hours.hours_of(c, p["id"])
         if not ranges:
             lines.append(f"**{p['full_name']}**: " + S("qəbul saatı təyin olunmayıb", lang))
             continue

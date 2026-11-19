@@ -44,6 +44,11 @@ def drop_hours(c, user, hid: int) -> tuple[str, object]:
     return "ok", repo.hours_of(c, user["id"])
 
 
+def hours_of(c, teacher_id: int) -> list[dict]:
+    """A teacher's active weekly ranges."""
+    return repo.hours_of(c, teacher_id)
+
+
 def teachers(c, user) -> list[dict]:
     return repo.teachers_of_student(c, user["id"], _today().isoformat()) if user["role"] == "student" else []
 

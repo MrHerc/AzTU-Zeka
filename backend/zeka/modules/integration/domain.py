@@ -359,7 +359,10 @@ def moment(text: str | None) -> datetime | None:
         return None
     if "T" in v:
         v = re.sub(r" (\d\d:?\d\d)$", r"+\1", v)
-    return datetime.fromisoformat(v[:-1] + "+00:00" if v[-1:] in "Zz" else v)       # Python 3.10 does not read Z
+    t = datetime.fromisoformat(v[:-1] + "+00:00" if v[-1:] in "Zz" else v)          # Python 3.10 does not read Z
+    if not 1900 <= t.year <= 2999:                  # 0001-01-01T00:00+04:00 overflowed later, in the export (PY-E2)
+        raise ValueError(text)
+    return t
 
 
 def code_hash(code: str) -> str:

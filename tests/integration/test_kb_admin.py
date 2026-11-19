@@ -3,6 +3,7 @@ saved article used on the next question, drafts out of search, every answer with
 evaluation set."""
 import subprocess
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 from zeka.legacy import store
@@ -104,3 +105,39 @@ def test_campus_answer_hands_over_when_the_composer_gives_neither_source_nor_han
     finally:
         c.close()
     assert [a["type"] for a in out["actions"]] == ["handoff"]
+
+
+# ---------------------------------------------------------------- Checkpoint E (area F)
+def test_a_draft_article_is_not_readable_as_a_source(app_db):
+    """SEC-E4: /api/source/kb/{id} served a draft or archived article to any signed-in user."""
+    admin = app_db.client("admin")
+    draft = admin.post("/api/kb", {**ARTICLE, "heading": "Qaralama: yeni yataqxana qaydası", "status": "draft"}).json
+    live = admin.post("/api/kb", {**ARTICLE, "heading": "Dərc olunmuş: kitabxana saatları"}).json
+    s = app_db.client("student")
+    assert s.get(f"/api/source/kb/{draft['id']}").status == 404
+    assert s.get(f"/api/source/kb/{live['id']}").status == 200
+
+
+def test_the_review_date_is_exactly_year_month_day(app_db):
+    """PY-E3: Python 3.11+ reads 20261118 and 2026-W47-3, which were stored raw and never flagged as overdue."""
+    admin = app_db.client("admin")
+    for bad in ("20261118", "2026-W47-3", "2026-11-18T00:00", "２０２６-11-18"):
+        assert admin.post("/api/kb", {**ARTICLE, "heading": f"Tarix {bad}", "review_at": bad}).status == 400, bad
+
+
+def test_a_handoff_carries_only_the_same_day_s_conversation(app_db):
+    """TM-E16: a phone number asked about days ago went into the ticket with the new question."""
+    s = app_db.client("student")
+    s.post("/api/campus/clear")
+    old = (store.now() - timedelta(days=3)).isoformat(timespec="seconds")
+    c = store.connect()
+    try:
+        c.execute("INSERT INTO messages(user_id,channel,role,content,created_at) VALUES(?,?,?,?,?)",
+                  (s.user["id"], "campus", "user", "Mənim nömrəm +994501234567, FİN 5ABC123", old))
+        c.commit()
+    finally:
+        c.close()
+    ans = s.post("/api/campus/ask", {"message": "Universitetin hovuzu neçədə açılır?"}).json["answer"]
+    tid = s.post("/api/campus/handoff", {"message_id": ans["id"]}).json["ticket_id"]
+    body = one("SELECT body FROM support_tickets WHERE id=?", (tid,))["body"]
+    assert "hovuzu" in body and "+994501234567" not in body and "5ABC123" not in body

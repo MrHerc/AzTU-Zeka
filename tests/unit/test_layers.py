@@ -47,3 +47,16 @@ def test_sql_lives_only_in_repo_files():
 def test_resolver_sees_relative_imports():
     # guards the check itself: legacy/common.py imports the web layer relatively
     assert "zeka.core.web" in _imports(ZEKA / "legacy" / "common.py")
+
+
+def test_no_module_imports_another_module_s_repo():
+    """SPEC.md: modules call each other's service, never their repo (Checkpoint E, AR-E8)."""
+    bad = {}
+    for f in ZEKA.rglob("*.py"):
+        rel = f.relative_to(ZEKA).parts
+        own = rel[1] if rel[0] == "modules" else None
+        for m in _imports(f):
+            p = m.split(".")
+            if len(p) >= 4 and p[:2] == ["zeka", "modules"] and p[3] == "repo" and p[2] != own:
+                bad.setdefault(str(f.relative_to(ZEKA)), set()).add(m)
+    assert not bad, bad

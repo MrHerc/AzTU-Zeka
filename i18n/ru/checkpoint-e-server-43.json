@@ -1,0 +1,3 @@
+{
+ "Fayl çox böyükdür ({n} sətir, ən çox {cap}). since ilə yalnız dəyişənləri alın və ya serverdə manage.py export işlədin.": "Файл слишком большой ({n} строк, не более {cap}). Используйте since, чтобы получить только изменения, или запустите manage.py export на сервере."
+}

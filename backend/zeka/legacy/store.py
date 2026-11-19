@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import hmac
+import io
 import json
 import os
 import random
@@ -502,9 +503,10 @@ def _seed_rooms(c, f: dict, stamp: str):
     for b in f["buildings"]:                                     # the synthetic route graphs (Task 31): content/routes/
         nodes, edges = CONTENT / "routes" / f"{b['code']}.nodes.csv", CONTENT / "routes" / f"{b['code']}.edges.csv"
         if nodes.exists() and edges.exists():
-            r = facilities.import_graph(c, b["code"], list(csv.DictReader(nodes.read_text(encoding="utf-8").splitlines())),
-                                        list(csv.DictReader(edges.read_text(encoding="utf-8").splitlines())))
-            assert r["ok"], r
+            r = facilities.import_graph(c, b["code"], list(csv.DictReader(io.StringIO(nodes.read_text(encoding="utf-8"), newline=""))),
+                                        list(csv.DictReader(io.StringIO(edges.read_text(encoding="utf-8"), newline=""))))
+            if not r["ok"]:
+                raise RuntimeError(f"content/routes/{b['code']}: {r['problems']}")
 
 
 def seed(c):

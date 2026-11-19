@@ -131,6 +131,14 @@ def deactivate_row(c, user, rid: int) -> str:
     return "ok"
 
 
+def lessons_of(c, user, first: str, last: str) -> list[dict]:
+    """A person's lessons between two days: a student's groups' and units', anyone else's own teaching (Checkpoint E,
+    SF-E10: a teacher acting in another role still has their lessons)."""
+    if user["role"] == "student":
+        return repo.student_lessons(c, user["id"], first, last)
+    return repo.teacher_lessons(c, user["id"], first, last)
+
+
 def term_rows(c, term_id: int | None) -> list[dict]:
     return repo.term_rows(c, term_id)
 

@@ -94,7 +94,8 @@ def apps_save(req):
     if problem:
         raise HTTPError(400, problem)
     set_setting(req.db, "apps", items)
-    audit(req.db, req.user["id"], "apps_saved", "settings", f"{len(items)} tiles")
+    # the setting is overwritten, so the audit keeps what was saved (Checkpoint E, TM-E14)
+    audit(req.db, req.user["id"], "apps_saved", "settings", (f"{len(items)} tiles: " + " ".join(i["url"] for i in items))[:1500])
     return {"apps": items, "all": items}
 
 
@@ -109,21 +110,24 @@ def _since(req) -> datetime | None:
 def _v1(req, kind: str) -> Response:
     """The key routes go through the same export as the screen and manage.py (export.run, audited)."""
     from . import export
-    name, ctype, body = export.run(req.db, kind, since=_since(req))
+    try:
+        name, ctype, body = export.run(req.db, kind, since=_since(req), cap=export.HTTP_CAP)
+    except ValueError as ex:
+        raise HTTPError(400, ex.args[0]) from None
     return Response(body, 200, ctype, [("Content-Disposition", f'attachment; filename="{name}"')])
 
 
-@R("GET", "/api/v1/grades", scope="token:grades.read")
+@R("GET", "/api/v1/grades", scope="token:grades.read", slow=True)       # a long export: the slow slots (AR-E1)
 def v1_grades(req):
     return _v1(req, "grades")
 
 
-@R("GET", "/api/v1/attendance", scope="token:attendance.read")
+@R("GET", "/api/v1/attendance", scope="token:attendance.read", slow=True)
 def v1_attendance(req):
     return _v1(req, "attendance")
 
 
-@R("GET", "/api/v1/oneroster.zip", scope="token:registry.read")
+@R("GET", "/api/v1/oneroster.zip", scope="token:registry.read", slow=True)
 def v1_oneroster(req):
     return _v1(req, "oneroster")
 

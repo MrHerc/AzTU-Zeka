@@ -134,3 +134,55 @@ def test_import_routes_is_all_or_nothing_and_reports_coverage(app_db, tmp_path):
         assert r["ok"] and r["coverage"]["no_step_free_route"] == []
     finally:
         c.close()
+
+
+# ---------------------------------------------------------------- Checkpoint E (area F)
+def test_a_longer_room_code_is_not_taken_for_a_shorter_one(monkeypatch):
+    """PY-E8: with EK-12 and EK-121, "EK-121 haradadır?" answered with both, so EK-121 could never be picked."""
+    from zeka.modules.assistant import service as assistant
+    rooms = [{"id": 1, "code": "EK-12", "number": "12", "name": None}, {"id": 2, "code": "EK-121", "number": "121", "name": None}]
+    monkeypatch.setattr(service, "rooms_for_search", lambda c: rooms)
+    assert [r["code"] for r in assistant.find_rooms(None, "EK-121 haradadır?")] == ["EK-121"]
+    assert [r["code"] for r in assistant.find_rooms(None, "EK-12 haradadır?")] == ["EK-12"]
+    assert [r["code"] for r in assistant.find_rooms(None, "EK-12 və EK-121 harda yerləşir?")] == ["EK-12", "EK-121"]
+
+
+def test_a_teacher_acting_in_another_role_still_finds_their_next_lesson(app_db):
+    """SF-E10: any role but student read None, so "no lessons" was claimed without a lookup."""
+    from zeka.modules.assistant import service as assistant
+    teacher = app_db.client("teacher").user
+    c = db()
+    try:
+        as_teacher = assistant.next_lesson(c, {"id": teacher["id"], "role": "teacher"})
+        as_office = assistant.next_lesson(c, {"id": teacher["id"], "role": "office"})
+    finally:
+        c.close()
+    assert as_teacher and as_office == as_teacher
+
+
+def test_a_room_link_takes_any_room_code_and_a_link_without_one_is_not_drawn():
+    """SF-E15: İT-214, ƏK-101 and EK.101 failed chat.js's pattern and fell through to a request button with no service."""
+    import re
+    import shutil
+    node = shutil.which("node")
+    if not node:
+        import pytest
+        pytest.skip("node is not installed")
+    src = (ROOT / "frontend" / "js" / "chat.js").read_text(encoding="utf-8")
+    pattern = re.search(r'\? \((/\^.+?\$/u)\.test\(a\.href', src).group(1)
+    probe = f"const re = {pattern}; console.log(JSON.stringify(['/r/İT-214', '/r/ƏK-101', '/r/EK.101', '/office-hours', '/r/', '/x', '/r/a b'].map((h) => re.test(h))))"
+    got = subprocess.run([node, "-e", probe], capture_output=True, text=True, timeout=30).stdout.strip()
+    assert got == "[true,true,true,true,false,false,false]", got
+    assert ': a.code ? html`<button class="btn btn-primary btn-sm" data-request=' in src, "no request button without a service"
+
+
+def test_import_routes_keeps_a_label_with_a_line_separator(app_db, tmp_path):
+    """PY-E11: splitlines() split a U+2028 inside a label and refused the file with misleading errors."""
+    nodes, edges = tmp_path / "n.csv", tmp_path / "e.csv"
+    demo = (ROOT / "content" / "routes" / "IT.nodes.csv").read_text(encoding="utf-8").replace("İT korpusunun girişi", "İT korpusunun\u2028girişi", 1)
+    assert "\u2028" in demo
+    nodes.write_text(demo, encoding="utf-8")
+    edges.write_text((ROOT / "content" / "routes" / "IT.edges.csv").read_text(encoding="utf-8"), encoding="utf-8")
+    cmd = [sys.executable, str(ROOT / "backend" / "manage.py"), "import-routes", "--building", "IT", "--nodes", str(nodes), "--edges", str(edges)]
+    r = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, "ZEKA_DATA": str(store.DATA)}, timeout=60)
+    assert r.returncode == 0, r.stderr
