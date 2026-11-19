@@ -1,0 +1,17 @@
+{
+ "Fənnin FAQ-ı": "FAQ дисциплины",
+ "Başlıq 5–140 simvol olmalıdır": "Заголовок должен содержать 5–140 символов",
+ "Sualı 10–4000 simvolla yazın": "Напишите вопрос объёмом 10–4000 символов",
+ "Etiket ən çox 40 simvoldur": "Метка — не более 40 символов",
+ "Cavabı 2–4000 simvolla yazın": "Напишите ответ объёмом 2–4000 символов",
+ "Şikayətin səbəbini 3–300 simvolla yazın": "Укажите причину жалобы (3–300 символов)",
+ "Mövzu tapılmadı": "Тема не найдена",
+ "Sorğu düzgün deyil": "Некорректный запрос",
+ "Şikayət tapılmadı": "Жалоба не найдена",
+ "Fənn forumunda yeni sual": "Новый вопрос на форуме дисциплины",
+ "Müəllim sualınıza cavab yazdı": "Преподаватель ответил на ваш вопрос",
+ "Gizlədilmiş cavab qəbul olunmur": "Скрытый ответ нельзя принять",
+ "Sualınıza cavab təsdiqləndi": "Ответ на ваш вопрос подтверждён",
+ "Əməliyyat: gizlət və ya saxla": "Действие: скрыть или оставить",
+ "FAQ-a yalnız təsdiqlənmiş cavabı olan mövzu keçir": "В FAQ переносится только тема с подтверждённым ответом"
+}

@@ -12,4 +12,5 @@ from ..modules.syllabus import routes as _syllabus  # noqa: F401  (Task 23)
 from ..modules.exam import routes as _exam  # noqa: F401  (Task 26)
 from ..modules.comms import routes as _comms  # noqa: F401  (Task 36, slice 2)
 from ..modules.assistant import routes as _assistant  # noqa: F401  (Task 32)
+from ..modules.qa import routes as _qa  # noqa: F401  (Task 33)
 from .common import BASE_URL, R, after, before  # noqa: F401

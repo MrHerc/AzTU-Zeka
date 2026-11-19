@@ -263,6 +263,17 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/courses/{id:int}/qa": {
+  "access": [
+   "dept_head",
+   "student",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/courses/{id:int}/roster": {
   "access": [
    "academic_office",
@@ -746,6 +757,27 @@
    "admin",
    "dept_head",
    "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/qa/reports": {
+  "access": [
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "qa.moderate",
+  "slow": false
+ },
+ "GET /api/qa/topics/{id:int}": {
+  "access": [
+   "dept_head",
+   "student",
    "teacher"
   ],
   "audit_read": null,
@@ -1350,6 +1382,17 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/courses/{id:int}/qa": {
+  "access": [
+   "dept_head",
+   "student",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/courses/{id:int}/tools": {
   "access": [
    "teacher"
@@ -1722,6 +1765,68 @@
  },
  "POST /api/notifications/read": {
   "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/qa/replies/{id:int}/accept": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/qa/reports": {
+  "access": [
+   "dept_head",
+   "student",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/qa/reports/{id:int}/resolve": {
+  "access": [
+   "admin",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "qa.moderate",
+  "slow": false
+ },
+ "POST /api/qa/topics/{id:int}/draft": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/qa/topics/{id:int}/faq": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/qa/topics/{id:int}/replies": {
+  "access": [
+   "dept_head",
+   "student",
+   "teacher"
+  ],
   "audit_read": null,
   "demo": false,
   "perm": null,

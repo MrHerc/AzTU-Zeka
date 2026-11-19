@@ -17,6 +17,7 @@ import "./achievements.js";
 import "./radar.js";
 import "./admin-directory.js";
 import "./admin-kb.js";
+import "./qa.js";
 import "./admin-import.js";
 import "./admin-settings.js";
 import "./timetable-admin.js";

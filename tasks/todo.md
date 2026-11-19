@@ -792,12 +792,12 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** Mövcud `teacher_questions` mövzulara çevrilir: fənn, müəllif, həmyaşıdlara anonimlik, başlıq, mətn, həftə və ya mövzu etiketi, status. Cavablar, müəllimin "təsdiqlənmiş cavab" işarəsi. Materiallardan AI qaralaması yalnız müəllimə görünür, təsdiqdən sonra dərc olunur. Cavablanmış sual fənn FAQ-ına keçə bilir və tutor indeksinə düşür. Şikayət və gizlətmə.
 
 **Acceptance criteria:**
-- [ ] Fənnin mövzularını yalnız ora yazılanlar və fənnin müəllimi oxuyur
-- [ ] Anonim müəllifi tələbələr görmür; fənnin müəllimi və `qa.moderate` icazəsi olan görür
-- [ ] AI qaralaması təsdiqdən əvvəl tələbəyə göstərilmir; FAQ-a keçən cavaba tutor istinad edə bilir
+- [x] Fənnin mövzularını yalnız ora yazılanlar və fənnin müəllimi oxuyur (`test_qa`; moderator yalnız şikayət növbəsində görür)
+- [x] Anonim müəllifi tələbələr görmür; fənnin müəllimi və `qa.moderate` icazəsi olan görür
+- [x] AI qaralaması təsdiqdən əvvəl tələbəyə göstərilmir; FAQ-a keçən cavaba tutor istinad edə bilir
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_qa.py -q`
+- [x] `python -m pytest tests/integration/test_qa.py -q`
 
 **Dependencies:** Task 13
 **Files likely touched:** `backend/zeka/modules/qa/{domain,service,repo,routes}.py`, `backend/migrations/0330_qa.sql`, `frontend/js/qa.js`, `frontend/js/teacher.js`

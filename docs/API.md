@@ -615,6 +615,24 @@ is answered with the handoff instead of that article. `python tools/eval_assista
 asks 50 questions (rules, services, rooms, the next lesson, out of scope) on a fresh demo database: 48 right, no
 answer without a source or a handoff.
 
+### Course forum (Task 33)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` | `/api/courses/{id}/qa` | the course's enrolled students and teachers (others `404`; other roles `403`) | Topics: title, tag, status, replies, FAQ, author (an anonymous one as "Anonim tələbə" to students; real to the course's teachers), `mine` |
+| `POST` | `/api/courses/{id}/qa` | as above | A topic: `title` (5–140), `text` (10–4000), `tag` (≤ 40), `anonymous`; the course's teacher is told |
+| `GET` | `/api/qa/topics/{id}` | as above | The topic and its replies; for the course's teachers also hidden replies and the `ai_draft` |
+| `POST` | `/api/qa/topics/{id}/replies` | as above | A reply (2–4000); the teacher's reply tells the author |
+| `POST` | `/api/qa/replies/{id}/accept` | the course's teachers | The accepted answer (one per topic): the topic is `answered`, the author is told; a FAQ entry follows it |
+| `POST` | `/api/qa/topics/{id}/draft` | the course's teachers | An answer the offline tutor writes from the course's materials, cited; stored for the teacher only |
+| `POST` | `/api/qa/topics/{id}/faq` | the course's teachers | `{"on": true}`: the question and the accepted answer become a section of the material "Fənnin FAQ-ı" that the tutor searches and cites (every worker); `false` takes it out |
+| `POST` | `/api/qa/reports` | readers of the topic | `{"topic_id", "reply_id"?, "reason"}`; audited |
+| `GET` | `/api/qa/reports` | `qa.moderate` (`office`, `admin`) | Open reports with the reported text and its real author |
+| `POST` | `/api/qa/reports/{id}/resolve` | as above | `{"action": "hide" | "keep"}`: hiding takes it from the students (and out of the FAQ); every open report on it is closed; audited |
+
+`POST /api/tutor/{cid}/forward` (a question sent from the tutor) creates a topic, and the teacher's answer through
+`/api/teacher/questions/{id}/answer` is its accepted reply.
+
 ## Tests and Test Studio
 
 | Method | Path | Access | Purpose |

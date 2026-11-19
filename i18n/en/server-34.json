@@ -1,0 +1,17 @@
+{
+ "Fənnin FAQ-ı": "Course FAQ",
+ "Başlıq 5–140 simvol olmalıdır": "The title must be 5–140 characters",
+ "Sualı 10–4000 simvolla yazın": "Write the question in 10–4000 characters",
+ "Etiket ən çox 40 simvoldur": "The tag is at most 40 characters",
+ "Cavabı 2–4000 simvolla yazın": "Write the reply in 2–4000 characters",
+ "Şikayətin səbəbini 3–300 simvolla yazın": "Give the reason for the report in 3–300 characters",
+ "Mövzu tapılmadı": "Topic not found",
+ "Sorğu düzgün deyil": "The request is not valid",
+ "Şikayət tapılmadı": "Report not found",
+ "Fənn forumunda yeni sual": "New question in the course forum",
+ "Müəllim sualınıza cavab yazdı": "The teacher replied to your question",
+ "Gizlədilmiş cavab qəbul olunmur": "A hidden reply cannot be accepted",
+ "Sualınıza cavab təsdiqləndi": "An answer to your question was accepted",
+ "Əməliyyat: gizlət və ya saxla": "Action: hide or keep",
+ "FAQ-a yalnız təsdiqlənmiş cavabı olan mövzu keçir": "Only a topic with an accepted answer can go to the FAQ"
+}

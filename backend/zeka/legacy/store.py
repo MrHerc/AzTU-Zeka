@@ -10,6 +10,7 @@ import random
 import re
 import secrets
 import sqlite3
+import textwrap
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
@@ -700,8 +701,8 @@ def seed(c):
     for st, q, anon, hrs in [(students[7], "Kirxhofun ikinci qanununda EHQ-nin işarəsini necə seçməliyəm? Laboratoriya işində nəticəm mənfi çıxdı.", 0, 5),
                              (students[23], "Ev tapşırığının 3-cü məsələsində paralel hissəni düzgün tapmışam, amma ümumi cərəyan uyğun gəlmir. Yoxlaya bilərsinizmi?", 1, 20),
                              (students[41], "RC dövrəsində kondensator boşalanda gərginlik hansı düsturla dəyişir? Materialda yalnız dolma var.", 0, 30)]:
-        c.execute("INSERT INTO teacher_questions(course_id,student_id,anonymous,question,context,status,created_at) VALUES(?,?,?,?,?,'open',?)",
-                  (elm, st, anon, q, "AI tutor söhbətindən göndərilib", iso(t0 - timedelta(hours=hrs))))
+        c.execute("INSERT INTO teacher_questions(course_id,student_id,anonymous,title,question,context,status,created_at) VALUES(?,?,?,?,?,?,'open',?)",
+                  (elm, st, anon, textwrap.shorten(q.split("?")[0] + "?", 80, placeholder="…"), q, "AI tutor söhbətindən göndərilib", iso(t0 - timedelta(hours=hrs))))
 
     # ---- e-services
     rtypes = {rt["code"]: rt for rt in s["request_types"]}

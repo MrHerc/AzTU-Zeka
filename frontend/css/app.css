@@ -949,3 +949,5 @@ table { max-width: 100%; }
 /* Task 21: grade table cells: a draft is dashed until published, a refused cell is red */
 .grade-in.draft { border-style: dashed; }
 .grade-in.bad { border-color: var(--red); background: var(--red-50); }
+/* Task 33: the course forum's accepted answer */
+.card.accepted { border-color: color-mix(in srgb, var(--green, #16a34a) 45%, var(--border)); }
