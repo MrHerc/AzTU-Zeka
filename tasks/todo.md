@@ -871,15 +871,15 @@ Dövri işlər (dilim 1). Bu gün heç nə öz-özünə işləmir: vaxta bağlı
 **Description:** Əhatəli API açarları (hash ilə saxlanır, açar üzrə limit, audit). İmzalı webhook-lar (HMAC-SHA256, təkrar cəhd, `urlopen(timeout=10)`): `grade.published`, `attendance.barred`, `exam.released`. İxraclar: OneRoster CSV arxivi, qiymətlər CSV, davamiyyət CSV, sütunları tənzimlənən reyestr ixracı, "Tələbə-məzun" operatoru üçün dəyişiklik siyahısı: verilən tarixdən bəri `student_status_events`, 10 günlük müddətə qalan gün, "daxil edildi" işarəsi (`reported_at`). Fərziyyə: 10 gün əmr tarixindən (`order_date`) sayılır; 225 nömrəli Fərmanla yoxlanmalıdır (SPEC Open Questions 17). `manage.py export --kind grades|attendance|oneroster [--since <ISO vaxt>]`: `--since` qiymət və davamiyyətdə yalnız həmin andan sonra yazılan və ya dəyişən sətirləri verir (kəsiddən sonrakı geri qayıtma üçün, `tasks/plan.md`). Ekran və əmr eyni ixrac servisini çağırır; ikinci ixrac yolu yoxdur. "Tətbiqlər" səhifəsi: adminin rola görə qurduğu, qalan xarici sistemlərə aparan kafellər. `docs/API.md` yenilənir.
 
 **Acceptance criteria:**
-- [ ] Açar yalnız öz əhatəsindəki marşrutları çağıra bilir
-- [ ] Webhook çatdırılması imzalanır, təkrar cəhd olunur və jurnala yazılır
-- [ ] OneRoster ixracı boş nüsxəyə idxal olunanda eyni reyestri verir, qeydiyyatın `beginDate`/`endDate` sahələri daxil (dövrə testi)
-- [ ] Dəyişiklik siyahısı verilən tarixdən sonrakı hər status hadisəsini 10 günlük müddətə qalan günlə göstərir; operator "daxil edildi" işarələyəndə `reported_at` yazılır və hadisə növbəti siyahıda işarəli çıxır
-- [ ] `manage.py export --kind attendance --since T` və `--kind grades --since T` yalnız T-dən sonra yazılan və ya dəyişən sətirləri verir; ekrandakı ixrac eyni sətirləri verir
+- [x] Açar yalnız öz əhatəsindəki marşrutları çağıra bilir (cookie heç bir açar marşrutuna, açar heç bir cookie marşrutuna çatmır)
+- [x] Webhook çatdırılması imzalanır, təkrar cəhd olunur və jurnala yazılır
+- [x] OneRoster ixracı boş nüsxəyə idxal olunanda eyni reyestri verir, qeydiyyatın `beginDate`/`endDate` sahələri daxil (dövrə testi; qruplar OneRoster növü olmadığı üçün nüsxədə əvvəlcə yaradılır)
+- [x] Dəyişiklik siyahısı verilən tarixdən sonrakı hər status hadisəsini 10 günlük müddətə qalan günlə göstərir; operator "daxil edildi" işarələyəndə `reported_at` yazılır və hadisə növbəti siyahıda işarəli çıxır (10 gün `order_date`-dən: 225 nömrəli Fərmanla yoxlanmalıdır)
+- [x] `manage.py export --kind attendance --since T` və `--kind grades --since T` yalnız T-dən sonra yazılan və ya dəyişən sətirləri verir; ekrandakı ixrac eyni sətirləri verir
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_api_tokens.py tests/integration/test_webhooks.py tests/integration/test_oneroster_roundtrip.py tests/integration/test_status_change_list.py tests/integration/test_export_since.py -q`
-- [ ] `python backend/manage.py export --kind attendance --since 2026-12-01T00:00:00+04:00`
+- [x] `python -m pytest tests/integration/test_api_tokens.py tests/integration/test_webhooks.py tests/integration/test_oneroster_roundtrip.py tests/integration/test_status_change_list.py tests/integration/test_export_since.py -q`
+- [x] `python backend/manage.py export --kind attendance --since 2026-12-01T00:00:00+04:00`
 
 **Dependencies:** Task 16, Task 36
 **Files likely touched:** `backend/zeka/modules/integration/{tokens,webhooks,export,routes}.py`, `backend/manage.py`, `backend/migrations/0370_integration.sql`, `frontend/js/apps.js`, `docs/API.md`

@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from ...core.i18n import E
 from ..directory import domain as directory
@@ -348,6 +348,18 @@ def csv_cell(v) -> str:
     """A cell of an exported CSV: text that a spreadsheet would run as a formula starts with a quote instead."""
     s = "" if v is None else str(v)
     return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
+
+
+def moment(text: str | None) -> datetime | None:
+    """``--since`` / ``?since=`` (Task 37): an ISO 8601 date-time, best with an offset; without one it is the university's
+    wall clock. None when empty; ValueError when it is not a date-time. A query string turns the ``+`` of ``+04:00`` into
+    a space, which is put back."""
+    v = (text or "").strip()
+    if not v:
+        return None
+    if "T" in v:
+        v = re.sub(r" (\d\d:?\d\d)$", r"+\1", v)
+    return datetime.fromisoformat(v[:-1] + "+00:00" if v[-1:] in "Zz" else v)       # Python 3.10 does not read Z
 
 
 def code_hash(code: str) -> str:

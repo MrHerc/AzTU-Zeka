@@ -346,8 +346,9 @@ def _apply_outcome(c, r, rt, data, actor):
         ids = data.get("absences") or []
         if ids:
             # bandit B608: placeholders only
-            c.execute(f"UPDATE attendance SET status='excused', request_id=? WHERE user_id=? AND status='absent' AND lesson_id IN ({','.join('?' * len(ids))})",  # nosec B608
-                      (r["id"], r["student_id"], *ids))
+            # who and when: an export --since (Task 37) gives the rows changed after a moment by marked_at
+            c.execute("UPDATE attendance SET status='excused', request_id=?, marked_by=?, marked_at=? WHERE user_id=? AND status='absent' "
+                      f"AND lesson_id IN ({','.join('?' * len(ids))})", (r["id"], actor["id"], iso(now()), r["student_id"], *ids))  # nosec B608
             from ..modules.journal import service as journal     # an excuse can move the attendance points of a final grade
             for x in rows(c, f"SELECT DISTINCT course_id FROM lessons WHERE id IN ({','.join('?' * len(ids))})", tuple(ids)):  # nosec B608
                 journal.refresh_finals(c, x["course_id"], [r["student_id"]])

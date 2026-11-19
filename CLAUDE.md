@@ -22,13 +22,14 @@ ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-u
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 python backend/manage.py import --kind users --source old-sis --file F.csv [--dry-run] [--prefer source]   # Task 16
 python backend/manage.py activation-codes --faculty CODE --out codes.csv   # one-time student codes for a dean's office
+python backend/manage.py export --kind grades|attendance|oneroster|registry|status-changes [--since ISO] [--out F]   # Task 37
 python backend/manage.py jobs status | run          # periodic jobs (Task 36): each job's last run; run what is due now
 python backend/manage.py exam-verify ID [--root HEX]  # an exam's hash chain, frozen answers and scores (Task 30)
 python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv   # a building's route graph (Task 31)
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1475 tests, about 4.5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1496 tests, about 4.5 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done

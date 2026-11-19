@@ -143,6 +143,12 @@ def test_absence_excuse_with_attachment_excuses_attendance(student, office, teac
     office.post(f"/api/requests/{ex['id']}/action", {"action": "approve"})
     done = office.post(f"/api/requests/{ex['id']}/action", {"action": "issue"}).json
     assert done["status"] == "ready" and done["answer"]
+    c = store.connect()
+    try:                                                   # who excused them and when: an export --since sees the change (Task 37)
+        marked = store.rows(c, "SELECT marked_by, marked_at FROM attendance WHERE request_id=?", (ex["id"],))
+    finally:
+        c.close()
+    assert len(marked) == 6 and all(m["marked_by"] == office.user["id"] and m["marked_at"] for m in marked)
     att = student.get("/api/attendance").json
     assert sum(c["excused"] for c in att["courses"]) == 6 and sum(c["absent"] for c in att["courses"]) == 0
     assert any("üzrlü" in n["title"] for n in teacher.get("/api/notifications").json["items"])

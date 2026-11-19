@@ -1,5 +1,5 @@
 """Administration commands:  python backend/manage.py status | migrate | create-admin | backup | restore | import |
-activation-codes  (--help for each)"""
+activation-codes | export  (--help for each)"""
 import argparse
 import os
 import re
@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from zeka.core import backup, config, migrate  # noqa: E402
 from zeka.legacy import store  # noqa: E402
 from zeka.modules.identity import domain as identity  # noqa: E402
-from zeka.modules.integration import domain as integration_rules, importer, tables  # noqa: E402
+from zeka.modules.integration import domain as integration_rules, export, importer, tables  # noqa: E402
 
 
 def main(argv=None) -> int:
@@ -42,6 +42,13 @@ def main(argv=None) -> int:
     ac = sub.add_parser("activation-codes", help="one-time activation codes for a faculty's students, as CSV (Task 16)")
     ac.add_argument("--faculty", required=True, help="faculty code")
     ac.add_argument("--out", required=True, help="CSV file to write (handed to the dean's office)")
+    xp = sub.add_parser("export", help="grades, attendance, OneRoster files, a register or the status change list (Task 37)")
+    xp.add_argument("--kind", required=True, choices=export.KINDS)
+    xp.add_argument("--since", help="grades, attendance, status-changes: only what was written or changed after this ISO "
+                                    "date-time, e.g. 2026-12-01T00:00:00+04:00 (without an offset: the university's clock)")
+    xp.add_argument("--registry", choices=tuple(export.REGISTRY), default="students", help="registry: which register")
+    xp.add_argument("--columns", default="", help="registry: comma-separated columns (default: all)")
+    xp.add_argument("--out", help="file to write; without it a CSV goes to standard output (oneroster needs it: a zip)")
     jb = sub.add_parser("jobs", help="periodic jobs (Task 36)")
     jb.add_argument("action", choices=("status", "run"), help="status: each job's last run; run: run what is due now, once")
     ev = sub.add_parser("exam-verify", help="check an exam's hash chain, its frozen answers and scores (Task 30)")
@@ -58,6 +65,8 @@ def main(argv=None) -> int:
         return exam_verify(args.exam_id, args.root)
     if args.cmd == "jobs":
         return run_jobs(args.action)
+    if args.cmd == "export":
+        return run_export(args.kind, args.since, args.registry, args.columns, args.out)
     if args.cmd == "import":
         return run_import(args.kind, args.source, Path(args.file), args.dry_run, args.prefer == "source")
     if args.cmd == "activation-codes":
@@ -266,6 +275,42 @@ def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source:
     for x in report["conflicts"][:200]:
         print(f"  conflict, row {x['row']}: {_az(x['reason'])}" + (f" ({', '.join(x['fields'])})" if x.get("fields") else ""))
     return 1 if report["error_count"] else 0
+
+
+def run_export(kind: str, since: str | None, registry: str, columns: str, out: str | None) -> int:
+    """The same export service as the screen. Exit 0: written; 2: a wrong argument or a database that cannot be read."""
+    try:
+        moment = integration_rules.moment(since)
+    except ValueError:
+        print("error: --since must be an ISO date-time, e.g. 2026-12-01T00:00:00+04:00", file=sys.stderr)
+        return 2
+    if kind == "oneroster" and not out:
+        print("error: the OneRoster export is a zip: give --out FILE", file=sys.stderr)
+        return 2
+    if not store.DB_PATH.exists():
+        print(f"error: no database at {store.DB_PATH}", file=sys.stderr)
+        return 2
+    c = store.connect()
+    try:
+        name, _, body = export.run(c, kind, since=moment, registry=registry,
+                                   columns=[x.strip() for x in columns.split(",") if x.strip()] or None)
+        c.commit()                                     # the audit row of the export
+    except ValueError as ex:
+        print(f"error: {_az(ex.args[0])}", file=sys.stderr)
+        return 2
+    except sqlite3.Error as ex:
+        print(f"error: {ex}", file=sys.stderr)
+        return 2
+    finally:
+        c.close()
+    if out:
+        Path(out).write_bytes(body)
+        print(f"{name}: {len(body)} bytes written to {out}", file=sys.stderr)
+    else:
+        sys.stdout.flush()
+        sys.stdout.buffer.write(body)                  # UTF-8 whatever the console's encoding
+        sys.stdout.buffer.flush()
+    return 0
 
 
 def run_activation_codes(faculty_code: str, out: Path) -> int:

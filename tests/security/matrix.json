@@ -551,6 +551,15 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/integration/export/{kind}": {
+  "access": [
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "integration.manage",
+  "slow": false
+ },
  "GET /api/integration/keys": {
   "access": [
    "admin"
@@ -558,6 +567,18 @@
   "audit_read": null,
   "demo": false,
   "perm": "integration.manage",
+  "slow": false
+ },
+ "GET /api/integration/status-changes": {
+  "access": [
+   "academic_office",
+   "admin",
+   "leader",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "students.status.read",
   "slow": false
  },
  "GET /api/integration/webhooks": {
@@ -1872,6 +1893,15 @@
   "audit_read": null,
   "demo": false,
   "perm": "integration.manage",
+  "slow": false
+ },
+ "POST /api/integration/status-changes/{id:int}/reported": {
+  "access": [
+   "academic_office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "students.status",
   "slow": false
  },
  "POST /api/integration/webhooks": {

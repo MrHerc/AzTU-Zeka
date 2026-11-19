@@ -5,12 +5,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from ...core import clock
 from ...core.i18n import E, S_
 from ...core.web import HTTPError, Response
 from ...legacy.common import R
 from ...legacy.store import audit, setting, set_setting
-from . import tokens, webhooks
+from . import domain, tokens, webhooks
 
 APP_ROLES = ("student", "teacher", "dept_head", "office", "academic_office", "leader", "admin")
 APP_ICONS = ("external", "book", "globe", "mail", "calendar", "wallet", "building", "cap", "grid", "link")
@@ -101,39 +100,34 @@ def apps_save(req):
 
 # ---------------------------------------------------------------- key routes (external systems)
 def _since(req) -> datetime | None:
-    raw = (req.query.get("since") or "").strip()
-    if not raw:
-        return None
     try:
-        t = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return domain.moment(req.query.get("since"))                # the same reading as the screen and manage.py
     except ValueError:
         raise HTTPError(400, E("«since» ISO 8601 vaxtı olmalıdır, məsələn 2026-12-01T00:00:00+04:00")) from None
-    return t if t.tzinfo else t.replace(tzinfo=clock.ZONE)
 
 
-def _csv(text: str, name: str) -> Response:
-    return Response(text, 200, "text/csv; charset=utf-8", [("Content-Disposition", f'attachment; filename="{name}"')])
+def _v1(req, kind: str) -> Response:
+    """The key routes go through the same export as the screen and manage.py (export.run, audited)."""
+    from . import export
+    name, ctype, body = export.run(req.db, kind, since=_since(req))
+    return Response(body, 200, ctype, [("Content-Disposition", f'attachment; filename="{name}"')])
 
 
 @R("GET", "/api/v1/grades", scope="token:grades.read")
 def v1_grades(req):
-    from . import export
-    return _csv(export.grades_csv(req.db, _since(req)), "grades.csv")
+    return _v1(req, "grades")
 
 
 @R("GET", "/api/v1/attendance", scope="token:attendance.read")
 def v1_attendance(req):
-    from . import export
-    return _csv(export.attendance_csv(req.db, _since(req)), "attendance.csv")
+    return _v1(req, "attendance")
 
 
 @R("GET", "/api/v1/oneroster.zip", scope="token:registry.read")
 def v1_oneroster(req):
-    from . import export
-    return Response(export.oneroster_zip(req.db), 200, "application/zip", [("Content-Disposition", 'attachment; filename="oneroster.zip"')])
+    return _v1(req, "oneroster")
 
 
 @R("GET", "/api/v1/status-changes", scope="token:status.read")
 def v1_status_changes(req):
-    from . import export
-    return export.status_changes(req.db, _since(req))
+    return _v1(req, "status-changes")

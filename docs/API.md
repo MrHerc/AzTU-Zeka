@@ -148,6 +148,9 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/admin/import` | admin | Bulk import of one file (below); `dry_run` is true unless it is sent as `false` |
 | `POST` | `/api/admin/activation-codes` | admin | One-time activation codes for a faculty's students without a password, as CSV, shown once |
 | `POST` | `/api/auth/activate` | public | `{"student_no", "code", "password"}`: a student chooses a password with the code and is signed in |
+| `GET` | `/api/integration/export/{kind}` | `integration.manage` | A file: `grades`, `attendance`, `oneroster` (zip), `registry`, `status-changes` (Task 37, below) |
+| `GET` | `/api/integration/status-changes?since=` | `students.status.read` | The "Tələbə-məzun" change list: status orders entered after `since` (below) |
+| `POST` | `/api/integration/status-changes/{id}/reported` | `students.status` | Mark an order as entered into "Tələbə-məzun": `reported_at` is set once |
 | `GET` | `/api/admin/settings` | admin | The university settings by section (Task 17) |
 | `PUT` | `/api/admin/settings/{section}` | admin | `{"value": {...}}`: check and save one section (audited `settings_change`) |
 | `GET` | `/r/{code}` | public | The page behind a room's QR code (Task 18): the room, the lesson in progress and the next one; 60 per minute per client address |
@@ -202,6 +205,63 @@ since the import and the file says otherwise is a conflict: it is listed with it
 `prefer_source` overwrites it and writes `import_overwrite` to the audit log. The write is one `BEGIN IMMEDIATE`
 transaction and the report gives `lock_ms`. An import never changes an account whose role is not student or teacher,
 and never creates an account from Forma №3 (an unknown teacher, course or group is a conflict).
+
+### API keys, webhooks and the apps page (Task 37)
+
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| `GET` / `POST` | `/api/integration/keys` | `integration.manage` (`admin`) | Keys / a new key `{"name", "scopes": [...], "per_minute"}` (scopes `grades.read`, `attendance.read`, `registry.read`, `status.read`; 1–600 calls a minute); the key (`zk_…`) is in the answer once and kept as its SHA-256 |
+| `POST` | `/api/integration/keys/{id}/revoke` | as above | Revoke (audited) |
+| `GET` / `POST` | `/api/integration/webhooks` | as above | Webhooks / a new one `{"url", "events"}` (https, or http to this machine; events `grade.published`, `attendance.barred`, `exam.released`); the signing secret is in the answer once |
+| `POST` | `/api/integration/webhooks/{id}/deactivate`, `GET …/deliveries` | as above | Switch off; the last 100 deliveries with status, attempts, last HTTP status and error |
+| `GET` / `PUT` | `/api/apps` | any / `integration.manage` | The tiles of one's role (the administrator also gets every tile) / save the tiles `{"apps": [{"title", "url" (https), "roles", "icon"?, "note"?}]}` (at most 30) |
+| `GET` | `/api/v1/grades`, `/api/v1/attendance`, `/api/v1/status-changes` (`?since=`), `/api/v1/oneroster.zip` | an API key with the route's scope | The exports below, through the same audited `export.run` |
+
+A `/api/v1/` route reads only `Authorization: Bearer <key>` and never a cookie (`401` without a valid key, also to a
+signed-in browser); a key reaches no other route. Outside the key's scopes `403` (an `api_call_refused` audit row);
+over the key's own limit `429`; every call is an `api_call` audit row and sets `last_used_at`. A webhook delivery is a
+`POST` of `{"event", "at", "data"}` with `X-Zeka-Event`, `X-Zeka-Delivery` and `X-Zeka-Signature: t=<unix time>,v1=<hex
+HMAC-SHA256(secret, "<t>.<body>")>`; a failure (not 2xx, refused, timed out) waits 1, 2, 4 … minutes (at most 6 h) and is
+tried up to 12 times by the periodic job `webhooks.send`; no write transaction is open during the request.
+`grade.published` comes with publishing and with a change of a published score, `exam.released` with a release, and
+`attendance.barred` from the job `attendance.barred` (every 15 minutes: courses with marks since its last run; once per
+student and course).
+
+### Exports (Task 37)
+
+One export service (`backend/zeka/modules/integration/export.py`) behind the screen and the command:
+`GET /api/integration/export/{kind}` (`integration.manage`, a file with `Content-Disposition: attachment`) and
+`python backend/manage.py export --kind grades|attendance|oneroster|registry|status-changes [--since ISO] [--out FILE]`
+(a CSV goes to standard output without `--out`; `oneroster` needs `--out`). Every export writes `export` to the audit log.
+
+- `oneroster`: a zip of `orgs.csv`, `terms.csv`, `users.csv`, `courses.csv`, `classes.csv`, `enrollments.csv` in the
+  columns of the import kinds, so the importer reads them back (import them in that order; study groups must exist
+  first). A row's `sourcedId` is the id its first import linked it to, else `zeka:<table>:<id>`; an enrolment's is
+  derived from its class and person. `enrollments.csv` lists each student for every teaching unit of the course they
+  attend (group and subgroup), with `beginDate`/`endDate`, and each unit's teacher as `role=teacher`. Every row is
+  exported, deactivated ones too; users are students and teachers. Limits: an enrolment in a course with no unit the
+  student attends is not listed, and a student taking a course with another group only through units of several
+  groups comes back with their own group.
+- `grades` (`courseSourcedId`, `courseCode`, `userSourcedId`, `identifier`, `component`, `score`, `max`, `status`,
+  `source`, `updatedAt`) and `attendance` (`courseSourcedId`, `courseCode`, `userSourcedId`, `identifier`, `lessonId`,
+  `lessonDate`, `lessonStart`, `status`, `source`, `markedAt`). With `since` (`?since=` / `--since`, ISO 8601, e.g.
+  `2026-12-01T00:00:00+04:00`; without an offset it is Baku time) only the rows written or changed after that moment:
+  `updated_at` / `marked_at`, compared in the university's wall clock. Drafts are included (`status`). A mark without
+  `marked_at` (the demo seed, rows from before Task 20) is never "after". An approved absence excuse stamps the rows it
+  excuses.
+- `registry`: `?registry=students|users&columns=a,b` (`--registry`, `--columns`), columns from a fixed list
+  (students: `student_no`, `full_name`, `patronymic`, `username`, `email`, `group`, `faculty`, `specialty`,
+  `admission_year`, `funding`, `form`, `status`; users: `username`, `full_name`, `patronymic`, `role`, `email`,
+  `department`, `status`); all of them when none is given; an unknown one is `400` naming the allowed columns.
+- `status-changes`: the change list below as CSV.
+
+**"Tələbə-məzun" change list.** `GET /api/integration/status-changes?since=` gives every status order entered
+(`created_at`) after `since`: an order entered late with an earlier effective date is still new to the operator. Each
+item has `id`, `student_id`, `student_no`, `full_name`, `grp`, `kind`, `order_no`, `order_date`, `effective_date`,
+`created_at`, `deadline` (`order_date` + 10 days), `days_left` (negative when overdue) and `reported_at`; a dean's office
+sees its own faculty. `POST /api/integration/status-changes/{id}/reported` sets `reported_at` once (audited
+`status_reported`); a second mark changes nothing. Assumption: the 10 days are counted from `order_date`; to be checked
+against Decree No. 225 (SPEC Open Questions 17).
 
 ### Buildings and rooms (Task 18)
 
@@ -1346,6 +1406,9 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | POST | `/api/admin/import` | admin |
 | POST | `/api/admin/activation-codes` | admin |
 | POST | `/api/auth/activate` | public |
+| GET | `/api/integration/export/{kind}` | admin |
+| GET | `/api/integration/status-changes` | academic_office, admin, office, leader |
+| POST | `/api/integration/status-changes/{id}/reported` | academic_office |
 | GET | `/api/admin/settings` | admin |
 | PUT | `/api/admin/settings/{section}` | admin |
 | GET | `/healthz` | public |
