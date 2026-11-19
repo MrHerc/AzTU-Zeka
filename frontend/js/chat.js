@@ -100,7 +100,9 @@ export async function chatView(el, cfg) {
       <div class="grow" style="min-width:0">
         <div class="bubble"><div class="body">${md(m.content)}</div>
           ${m.cites && m.cites.length ? html`<div class="src-list">${m.cites.map((c) => html`<button class="src" data-src="${c.n}" aria-label="${t("Mənbə {n}: {title}", { n: c.n, title: `${c.material} · ${c.heading}` })}">${raw(`<b>${c.n}</b>`)}<span class="ellipsis" style="max-width:260px">${c.material} · ${c.heading}</span></button>`)}</div>` : ""}
-          ${(meta.actions || []).length ? html`<div class="action-btns">${meta.actions.map((a) => html`<button class="btn btn-primary btn-sm" data-request="${a.code}">${ic("file", 14)} ${a.label}</button>`)}</div>` : ""}
+          ${(meta.actions || []).length ? html`<div class="action-btns">${meta.actions.map((a) => a.type === "link" && /^\/r\/[\w-]+$/.test(a.href || "")
+            ? html`<a class="btn btn-ghost btn-sm" href="${a.href}" target="_blank" rel="noopener">${ic("pin", 14)} ${a.label}</a>`
+            : html`<button class="btn btn-primary btn-sm" data-request="${a.code}">${ic("file", 14)} ${a.label}</button>`)}</div>` : ""}
         </div>
         <div class="msg-meta">
           ${meta.mode ? html`<span class="badge b-gray">${MODE_LABEL[meta.mode] || meta.mode}</span>` : ""}

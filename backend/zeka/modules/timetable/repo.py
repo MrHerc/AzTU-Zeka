@@ -163,14 +163,14 @@ def drop_feed(c, uid: int) -> bool:
 
 
 def teacher_lessons(c, uid: int, first: str, last: str) -> list[dict]:
-    return rows(c, "SELECT l.id, l.day, l.start, l.end, l.kind, l.room, l.status, l.note, co.name course FROM lessons l "
+    return rows(c, "SELECT l.id, l.day, l.start, l.end, l.kind, l.room, l.room_id, l.status, l.note, co.name course FROM lessons l "
                    "JOIN courses co ON co.id=l.course_id WHERE l.teacher_id=? AND l.day BETWEEN ? AND ? ORDER BY l.day, l.start",
                 (uid, first, last))
 
 
 def student_lessons(c, uid: int, first: str, last: str) -> list[dict]:
     """The lessons of the units a student attends: an enrolment in force on the day, the unit's group and subgroup."""
-    return rows(c, "SELECT l.id, l.day, l.start, l.end, l.kind, l.room, l.status, l.note, co.name course FROM enrollments e "
+    return rows(c, "SELECT l.id, l.day, l.start, l.end, l.kind, l.room, l.room_id, l.status, l.note, co.name course FROM enrollments e "
                    "JOIN users s ON s.id=e.user_id JOIN lessons l ON l.course_id=e.course_id JOIN courses co ON co.id=l.course_id "
                    "LEFT JOIN teaching_units u ON u.id=l.unit_id WHERE e.user_id=? AND l.day BETWEEN ? AND ? "
                    "AND (e.begin_date IS NULL OR e.begin_date<=l.day) AND (e.end_date IS NULL OR e.end_date>l.day) "

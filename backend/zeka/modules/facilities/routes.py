@@ -25,7 +25,32 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;ma
 .sheet{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px}.card{border:1px solid #cbd5e1;border-radius:10px;
 padding:12px;text-align:center;break-inside:avoid;background:#fff}.card svg{width:100%;height:auto}.code{font-size:22px;font-weight:700}
 .bar{padding:16px;display:flex;gap:12px;align-items:center}@media print{.bar{display:none}body{background:#fff}}
-@media (max-width:640px){.sheet{grid-template-columns:repeat(2,1fr)}}</style>"""
+@media (max-width:640px){.sheet{grid-template-columns:repeat(2,1fr)}}
+form{display:flex;gap:8px;flex-wrap:wrap}input[type=text]{flex:1;min-width:140px;padding:8px 10px;border:1px solid #cbd5e1;
+border-radius:8px;font:inherit}button{padding:8px 14px;border:0;border-radius:8px;background:#1e3a8a;color:#fff;font:inherit}
+ol{padding-left:22px;margin:6px 0 0}label{display:flex;gap:6px;align-items:center;width:100%}</style>"""
+
+
+def _route_html(req, here: str, lang: str) -> str:
+    """The way from this room to ``?to=`` (Task 31), with the step-free choice; the form asks where to go."""
+    to = str(req.query.get("to") or "").strip()[:40]
+    step_free = req.query.get("sf") == "1"
+    form = (f'<form method="get" action="/r/{e(here)}"><input type="text" name="to" value="{e(to)}" '
+            f'placeholder="{e(S("Otaq kodu, məsələn EK-305", lang))}" aria-label="{e(S("Hara getmək istəyirsiniz?", lang))}">'
+            f'<label><input type="checkbox" name="sf" value="1"{" checked" if step_free else ""}> {e(S("Pilləsiz marşrut (lift)", lang))}</label>'
+            f'<button type="submit">{e(S("Yol göstər", lang))}</button></form>')
+    body = ""
+    if to:
+        r = service.route(req.db, to, here, step_free)
+        if r is None:
+            body = f'<p class="muted">{e(S("Otaq tapılmadı", lang))}</p>'
+        elif r["missing"]:
+            body = f'<p class="muted">{e(S(service.MISSING[r["missing"]], lang))}</p>'
+        else:
+            items = "".join(f"<li>{e(S(t, lang, **p))}</li>" for t, p in r["steps"])
+            body = f'<p class="big">{e(r["room"]["code"])} · {e(S("təxminən {m} m", lang, m=r["length_m"]))}</p><ol>{items}</ol>'
+    return f'<section><h2>{e(S("Hara getmək istəyirsiniz?", lang))}</h2>{form}{body}</section>'
+
 
 
 def _page(lang: str, title: str, body: str, refresh: bool = False) -> str:
@@ -65,8 +90,9 @@ def room_page(req):
             f'<section><h2>{e(S("İndi", lang))}</h2>'
             f'{_lesson(cur, lang) if cur else e(S("İndi bu otaqda dərs yoxdur", lang))}</section>'
             f'<section><h2>{e(S("Növbəti dərs", lang))}</h2>{nxt_html}</section>'
-            f'<section><ul>{"".join(f"<li>{e(x)}</li>" for x in facts)}</ul></section></main>')
-    return html_resp(_page(lang, f'{r["code"]} · {where}', body, refresh=True))
+            f'<section><ul>{"".join(f"<li>{e(x)}</li>" for x in facts)}</ul></section>'
+            f'{_route_html(req, r["code"], lang)}</main>')
+    return html_resp(_page(lang, f'{r["code"]} · {where}', body, refresh=not req.query.get("to")))
 
 
 @R("GET", "/api/facilities/buildings/{id:int}/qr", perm="directory.manage")

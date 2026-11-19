@@ -1,0 +1,7 @@
+from,to,length_m,step_free
+E1,F1,6,1
+F1,S1,15,1
+S1,S2,12,0
+S2,F2,4,1
+D101,F1,9,1
+D214,F2,11,1

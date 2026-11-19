@@ -1,0 +1,8 @@
+code,kind,floor,room,label
+E1,entrance,1,,İT korpusunun girişi
+F1,corridor,1,,"1-ci mərtəbə, dəhliz"
+F2,corridor,2,,"2-ci mərtəbə, dəhliz"
+S1,stairs,1,,Pilləkən
+S2,stairs,2,,Pilləkən
+D101,door,1,IT-101,
+D214,door,2,IT-214,

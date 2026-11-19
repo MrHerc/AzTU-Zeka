@@ -759,12 +759,12 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** Marşrut qrafı: düyünlər (giriş, pilləkən, lift, dəhliz kəsişməsi, otaq qapısı), tillər (uzunluq, pilləsiz keçid). CSV idxalı. `facilities/domain.py`-də Dijkstra. Mətn addımları; mərtəbə planı şəkli verilibsə nişanla. Köməkçi niyyətləri: otaq kodu və ya adı, "növbəti dərsim hardadır", müəllimin otağı və qəbul saatı. QR-dən başlanğıc nöqtəsi (`/r/{kod}?to=`). Pilləsiz seçim. Pilot korpus: dalğa 0 cədvəlində ən azı bir dərsi olan korpus; siyahı Task 18-in otaq bağlama hesabatından çıxır. Düyün və til CSV-sini Task 31 sahibin verdiyi mərtəbə planlarından qaralayır; sahibin təyin etdiyi şəxs 5 marşrutu yerində yoxlayır (SPEC Open Questions 25).
 
 **Acceptance criteria:**
-- [ ] Pilot korpuslarda Task 18-də idxal olunmuş hər otaq qrafda düyündür; istənilən iki otaq arasında marşrut qayıdır və ya çatışmayan bağlantı yazılır
-- [ ] Pilləsiz marşrut heç vaxt pilləkəndən keçmir
-- [ ] "Növbəti dərsim" cavabı cədvəllə eynidir; cavab 2 saniyədən tez gəlir
+- [x] Pilot korpuslarda Task 18-də idxal olunmuş hər otaq qrafda düyündür; istənilən iki otaq arasında marşrut qayıdır və ya çatışmayan bağlantı yazılır — demo-nun sintetik qrafında (`content/routes/`); real CSV sahibin mərtəbə planlarından gəlir (açıq), idxal hesabatı düyünü olmayan otaqları və yolsuz qapıları sadalayır
+- [x] Pilləsiz marşrut heç vaxt pilləkəndən keçmir (200 təsadüfi qraf + demo-da bütün qapı cütləri)
+- [x] "Növbəti dərsim" cavabı cədvəllə eynidir; cavab 2 saniyədən tez gəlir (tələbə və müəllimin öz iCal lenti ilə müqayisə). Müəllimin otağı və qəbul saatı niyyəti Task 34-lə gəlir; mərtəbə planı şəklində nişan plan verilənə qədər yoxdur
 
 **Verification:**
-- [ ] `python -m pytest tests/unit/test_routing.py tests/integration/test_assistant_rooms.py -q`
+- [x] `python -m pytest tests/unit/test_routing.py tests/integration/test_assistant_rooms.py -q` (12 keçdi)
 
 **Dependencies:** Task 18, Task 19
 **Files likely touched:** `backend/zeka/modules/facilities/{domain,repo}.py`, `backend/migrations/0310_routes.sql` (marşrut qrafının düyün və til cədvəlləri), `backend/zeka/modules/assistant/{service,routes}.py`, `frontend/js/chat.js`, `frontend/js/facilities.js`

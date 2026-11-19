@@ -47,7 +47,13 @@ def main(argv=None) -> int:
     ev = sub.add_parser("exam-verify", help="check an exam's hash chain, its frozen answers and scores (Task 30)")
     ev.add_argument("exam_id", type=int)
     ev.add_argument("--root", help="the 64-character root from the closing protocol or e-mail")
+    rt = sub.add_parser("import-routes", help="replace a building's route graph from two CSV files, all or nothing (Task 31)")
+    rt.add_argument("--building", required=True, help="building code")
+    rt.add_argument("--nodes", required=True, help="CSV: code,kind,floor,room,label (kind: entrance, corridor, stairs, lift, door)")
+    rt.add_argument("--edges", required=True, help="CSV: from,to,length_m,step_free")
     args = ap.parse_args(argv)
+    if args.cmd == "import-routes":
+        return import_routes(args.building, Path(args.nodes), Path(args.edges))
     if args.cmd == "exam-verify":
         return exam_verify(args.exam_id, args.root)
     if args.cmd == "jobs":
@@ -106,6 +112,35 @@ def exam_verify(eid: int, root: str | None) -> int:
             print(f"  ROOT not in the chain (the head is {p['head']})")
     print("FAILED" if r["problems"] else "OK" + (" (root matches)" if root else ""))
     return 1 if r["problems"] else 0
+
+
+def import_routes(building: str, nodes: Path, edges: Path) -> int:
+    import csv
+    from zeka.modules.facilities import service as facilities
+    store.init()
+    try:
+        node_rows = list(csv.DictReader(nodes.read_text(encoding="utf-8-sig").splitlines()))
+        edge_rows = list(csv.DictReader(edges.read_text(encoding="utf-8-sig").splitlines()))
+    except (OSError, UnicodeDecodeError) as ex:
+        print(f"error: {ex}", file=sys.stderr)
+        return 2
+    c = store.connect()
+    try:
+        r = facilities.import_graph(c, building, node_rows, edge_rows)
+        if not r["ok"]:
+            for p in r["problems"]:
+                print(f"  {p}", file=sys.stderr)
+            print("nothing imported", file=sys.stderr)
+            return 1
+        c.commit()
+    finally:
+        c.close()
+    cov = r["coverage"]
+    print(f"{r['building']}: {r['nodes']} nodes, {r['edges']} edges")
+    for key, what in (("rooms_without_node", "rooms without a door node"), ("unreachable", "doors no entrance reaches"),
+                      ("no_step_free_route", "accessible rooms without a step-free route")):
+        print(f"  {what}: {', '.join(cov[key]) or 'none'}")
+    return 0
 
 
 def run_jobs(action: str) -> int:

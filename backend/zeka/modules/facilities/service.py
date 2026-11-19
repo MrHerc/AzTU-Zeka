@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+from ...core.i18n import S_
 from ...legacy.store import audit, now
 from . import domain, repo
 
@@ -59,3 +60,54 @@ def slot_room(index: dict[str, int | None], text: str | None) -> str | None:
     """The key two timetable entries share when they are in the same room: the room's id once known, else the text."""
     rid = room_of(index, text)
     return f"#{rid}" if rid else (domain.room_key(text) or None)
+
+
+# ---------------------------------------------------------------- routes (Task 31)
+MISSING = {"no_node": S_("Bu otaq hələ marşrut xəritəsində yoxdur"),
+           "no_path": S_("Bu otaqlar arasında marşrut yoxdur (pilləsiz seçimdə lift olmaya bilər)")}
+
+
+def import_graph(c, building_code: str, node_rows: list[dict], edge_rows: list[dict]) -> dict:
+    """Replace a building's route graph from its CSV rows, all or nothing: {ok, problems} or {ok, nodes, edges, coverage}."""
+    b = repo.building_by_code(c, building_code.strip().upper())
+    if not b:
+        return {"ok": False, "problems": [f"no active building with the code {building_code!r}"]}
+    rooms = {r["id"]: r for r in repo.rooms_of(c, b["id"])}
+    nodes, edges, problems = domain.graph_input(node_rows, edge_rows, {r["code"]: rid for rid, r in rooms.items()})
+    if problems:
+        return {"ok": False, "problems": problems}
+    repo.replace_graph(c, b["id"], nodes, edges)
+    stored, stored_edges = repo.graph(c, b["id"])
+    return {"ok": True, "building": b["code"], "nodes": len(nodes), "edges": len(edges),
+            "coverage": domain.coverage(stored, stored_edges, rooms)}
+
+
+def route(c, to_code: str, from_code: str | None = None, step_free: bool = False) -> dict | None:
+    """The way to a room: from another room's door in the same building, else from the building's nearest entrance (a
+    room in another building first sends the person to this building). None: no such room. ``steps`` holds
+    (template, parameters) pairs; ``missing`` says why there is no way: the room has no node, or no node joins them."""
+    target = repo.room_full(c, (to_code or "").strip().upper())
+    if not target:
+        return None
+    origin = repo.room_full(c, from_code.strip().upper()) if from_code else None
+    nodes, edges = repo.graph(c, target["building_id"])
+    door = {n["room_id"]: k for k, n in nodes.items() if n["kind"] == "door"}
+    out = {"room": target, "from": origin, "step_free": step_free, "steps": [], "length_m": None, "missing": None}
+    if target["id"] not in door:
+        out["missing"] = "no_node"
+        return out
+    lead: list[tuple[str, dict]] = []
+    if origin and origin["building_id"] == target["building_id"] and origin["id"] in door:
+        starts = [door[origin["id"]]]
+    else:
+        starts = [k for k, n in nodes.items() if n["kind"] == "entrance"]
+        if origin and origin["building_id"] != target["building_id"]:
+            lead = [(S_("Bu otaq başqa korpusdadır: {building} ({address})"),
+                     {"building": target["building"], "address": target["address"] or ""})]
+    found = domain.shortest(nodes, edges, starts, door[target["id"]], step_free) if starts else None
+    if not found:
+        out["missing"] = "no_path"
+        return out
+    path, metres = found
+    out.update(steps=lead + domain.steps(path, nodes, edges), length_m=round(metres))
+    return out

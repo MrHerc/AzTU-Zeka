@@ -218,6 +218,16 @@ code, `<building name>, <number>` or `<room name>, <number>`. A text that two ro
 lesson in progress and the next one within 14 days (course, kind, time), on teaching days of the current term that are
 not holidays. It refreshes itself every 5 minutes, so a tablet on the door stays current.
 
+Routes (Task 31). `/r/{code}?to={room}` adds the way from this room's door to another room (`&sf=1`: step-free, by
+lift; a step-free way never passes a stairs node or a step edge), as numbered steps with the length in metres; a room
+in another building first names that building. Without a way the page says why: the room has no node in the route map,
+or no node joins the two. A building's graph is imported from two CSV files, all or nothing, with
+`python backend/manage.py import-routes --building EK --nodes nodes.csv --edges edges.csv` (nodes:
+`code,kind,floor,room,label`, kind one of entrance, corridor, stairs, lift, door, a door naming its room; edges:
+`from,to,length_m,step_free`, a floor change joining two stairs or two lifts); it prints the rooms without a door node,
+the doors no entrance reaches and the accessible rooms without a step-free way. The demo's graphs are synthetic
+(`content/routes/`); the real ones are drawn from the university's floor plans.
+
 ### Timetable and lessons (Task 19)
 
 A timetable row belongs to a teaching unit; its kind and teacher come from the unit, its term from the unit's course.
@@ -573,7 +583,7 @@ Body: `{"rating": 1}` or `{"rating": -1}`; any other number clears the rating. O
 
 ### `POST /api/campus/ask`
 
-Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily limit and per-minute limit apply. English and Russian keywords are expanded to the Azerbaijani terms used in the knowledge base. `answer.meta.actions` lists request forms the user can open from the answer:
+Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily limit and per-minute limit apply. English and Russian keywords are expanded to the Azerbaijani terms used in the knowledge base. Before the knowledge base the assistant answers two questions from the university's own records (Task 31): where a room is (by its code, its name, or a number in a question about a place) with the way from the building's entrance, step-free when the question mentions a lift or a wheelchair; and the person's next lesson ("növbəti dərsim hardadır") from their timetable, with its room and the way. Such an answer has `meta.source` `rooms` or `timetable` and a link action (`{"type": "link", "href": "/r/{code}"}`). `answer.meta.actions` lists request forms the user can open from the answer:
 
 ```json
 {

@@ -464,7 +464,9 @@ def campus_ask(req):
     used, lim = check_limit(c, u)
     _ai_quota(u)
     masked, pii = engine.mask_pii(msg)
-    result = tutor.compose_campus(masked, engine.INDEX["campus"].search(tutor.expand_query(masked), k=3), req.lang)
+    from ..modules.assistant import service as assistant      # here: that module imports this one
+    result = (assistant.answer(c, u, masked, req.lang)          # rooms, routes, the next lesson (Task 31)
+              or tutor.compose_campus(masked, engine.INDEX["campus"].search(tutor.expand_query(masked), k=3), req.lang))
     um = save_msg(c, u["id"], None, "campus", "user", msg, meta={"pii": pii})
     meta = {**result["meta"], "actions": result["actions"]}
     am = save_msg(c, u["id"], None, "campus", "assistant", result["text"], result["cites"], meta)

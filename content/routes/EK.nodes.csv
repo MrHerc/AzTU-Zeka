@@ -1,0 +1,38 @@
+code,kind,floor,room,label
+E1,entrance,1,,Əsas giriş
+E2,entrance,1,,Yan giriş (pilləkənli)
+F1W,corridor,1,,"1-ci mərtəbə, qərb dəhlizi"
+F1C,corridor,1,,"1-ci mərtəbə, mərkəzi hol"
+F1E,corridor,1,,"1-ci mərtəbə, şərq dəhlizi"
+S1,stairs,1,,Mərkəzi pilləkən
+L1,lift,1,,Lift
+F2W,corridor,2,,"2-ci mərtəbə, qərb dəhlizi"
+F2C,corridor,2,,"2-ci mərtəbə, mərkəzi hol"
+F2E,corridor,2,,"2-ci mərtəbə, şərq dəhlizi"
+S2,stairs,2,,Mərkəzi pilləkən
+L2,lift,2,,Lift
+F3W,corridor,3,,"3-cü mərtəbə, qərb dəhlizi"
+F3C,corridor,3,,"3-cü mərtəbə, mərkəzi hol"
+F3E,corridor,3,,"3-cü mərtəbə, şərq dəhlizi"
+S3,stairs,3,,Mərkəzi pilləkən
+L3,lift,3,,Lift
+F4W,corridor,4,,"4-cü mərtəbə, qərb dəhlizi"
+F4C,corridor,4,,"4-cü mərtəbə, mərkəzi hol"
+F4E,corridor,4,,"4-cü mərtəbə, şərq dəhlizi"
+S4,stairs,4,,Mərkəzi pilləkən
+L4,lift,4,,Lift
+F5W,corridor,5,,"5-ci mərtəbə, qərb dəhlizi"
+F5C,corridor,5,,"5-ci mərtəbə, mərkəzi hol"
+F5E,corridor,5,,"5-ci mərtəbə, şərq dəhlizi"
+S5,stairs,5,,Mərkəzi pilləkən
+L5,lift,5,,Lift
+D118,door,1,EK-118,
+D121,door,1,EK-121,
+D220,door,2,EK-220,
+D224,door,2,EK-224,
+D301,door,3,EK-301,
+D305,door,3,EK-305,
+D316,door,3,EK-316,
+D402,door,4,EK-402,
+D405,door,4,EK-405,
+D512,door,5,EK-512,

@@ -1,6 +1,7 @@
 """SQLite storage, seeding and index building for the Zəka demo."""
 from __future__ import annotations
 
+import csv
 import hashlib
 import hmac
 import json
@@ -495,6 +496,12 @@ def _seed_rooms(c, f: dict, stamp: str):
                   "VALUES(?,?,?,?,?,?,?,?,?,?)", [(ids[r["building"]], r["code"], r["number"], r["name"], r["floor"], r["kind"],
                                                    r["capacity"], r["accessible"], stamp, stamp) for r in f["rooms"]])
     facilities.link_timetable(c, None)
+    for b in f["buildings"]:                                     # the synthetic route graphs (Task 31): content/routes/
+        nodes, edges = CONTENT / "routes" / f"{b['code']}.nodes.csv", CONTENT / "routes" / f"{b['code']}.edges.csv"
+        if nodes.exists() and edges.exists():
+            r = facilities.import_graph(c, b["code"], list(csv.DictReader(nodes.read_text(encoding="utf-8").splitlines())),
+                                        list(csv.DictReader(edges.read_text(encoding="utf-8").splitlines())))
+            assert r["ok"], r
 
 
 def seed(c):

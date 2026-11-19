@@ -63,6 +63,10 @@ def connect(cfg: dict) -> smtplib.SMTP:
     return s
 
 
+class AddressRefused(ValueError):
+    """The relay cannot take this message's address (no SMTPUTF8 for a non-ASCII one): the message fails alone."""
+
+
 def send(s: smtplib.SMTP, cfg: dict, to: str, subject: str, body: str, lang: str = "az") -> None:
     m = EmailMessage()
     m["From"], m["To"], m["Subject"] = cfg["sender"], to, " ".join(subject.split())   # a line break in a title is no header (SEC-2)
@@ -72,7 +76,7 @@ def send(s: smtplib.SMTP, cfg: dict, to: str, subject: str, body: str, lang: str
     try:
         s.send_message(m)
     except smtplib.SMTPNotSupportedError as ex:       # a non-ASCII address and a relay without SMTPUTF8: this message alone (PY-3)
-        raise ValueError(f"the relay does not accept this address: {ex}") from ex
+        raise AddressRefused(str(ex)) from ex
 
 
 def permanent(ex: Exception) -> bool:
