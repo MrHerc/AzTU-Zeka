@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import random
@@ -283,24 +284,55 @@ def build_indexes(c):
 _CODE_ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
+HOLDER_FIELDS = ("full_name", "patronymic", "student_no", "admission_year", "funding", "form", "title", "group", "year")
+
+
+def canonical(obj) -> str:
+    """The one text a payload is stored and hashed as."""
+    return json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _snapshot(c, holder_id, issued_by, data) -> dict:
+    """Everything a document is shown with, gathered once at issue (Task 45): /doc and /verify read only this."""
+    h = row(c, "SELECT u.*, g.name grp, g.year FROM users u LEFT JOIN study_groups g ON g.id=u.group_id WHERE u.id=?", (holder_id,)) or {}
+    h["group"] = h.get("grp")
+    issuer = row(c, "SELECT full_name FROM users WHERE id=?", (issued_by,)) if issued_by else None
+    transcript = None
+    if (data or {}).get("type") == "transcript":
+        from ..modules.journal import service as journal        # here: the journal imports this module
+        transcript = journal.transcript(c, holder_id)
+    return {"holder": {k: h.get(k) for k in HOLDER_FIELDS}, "issuer": {"full_name": issuer["full_name"] if issuer else "—"},
+            "ctx": {"university": setting(c, "university"), "faculty": setting(c, "faculty"), "specialty": setting(c, "specialty"),
+                    "grading": tenant.load(c)["grading"]}, "transcript": transcript}
+
+
 def issue_document(c, kind, holder_id, title, data, issued_by, prefix, request_id=None, issued_at=None) -> dict:
     when = issued_at or now()
     year = when.year
-    register = tenant.load(c)["registry"]["prefix"]
-    seq = (row(c, "SELECT COUNT(*) AS n FROM documents WHERE reg_no LIKE ?", (f"{register}-{prefix}-{year}-%",))["n"]) + 1
-    reg_no = f"{register}-{prefix}-{year}-{seq:06d}"
+    key = f"{tenant.load(c)['registry']['prefix']}-{prefix}"
+    seq = c.execute("INSERT INTO doc_sequences(prefix, year, last_no) VALUES(?,?,1) ON CONFLICT(prefix, year) "
+                    "DO UPDATE SET last_no=last_no+1 RETURNING last_no", (key, year)).fetchone()[0]     # in the issuing transaction
+    reg_no = f"{key}-{year}-{seq:06d}"
     while True:
         code = "".join(secrets.choice(_CODE_ALPHA) for _ in range(8))
         code = f"{code[:4]}-{code[4:]}"
         if not row(c, "SELECT 1 FROM documents WHERE verify_code=?", (code,)):
             break
-    payload = json.dumps({"reg_no": reg_no, "title": title, "holder": holder_id, "data": data}, ensure_ascii=False, sort_keys=True)
+    payload = canonical({"v": 1, "kind": kind, "title": title, "reg_no": reg_no, "verify_code": code, "issued_at": iso(when),
+                         "data": data, **_snapshot(c, holder_id, issued_by, data)})
     digest = hashlib.sha256(payload.encode()).hexdigest()
-    did = c.execute("INSERT INTO documents(kind,request_id,holder_id,title,reg_no,verify_code,data,hash,issued_by,issued_at,status)"
-                    " VALUES(?,?,?,?,?,?,?,?,?,?,'valid')",
+    did = c.execute("INSERT INTO documents(kind,request_id,holder_id,title,reg_no,verify_code,data,hash,issued_by,issued_at,status,payload)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,'valid',?)",
                     (kind, request_id, holder_id, title, reg_no, code, json.dumps(data, ensure_ascii=False), digest,
-                     issued_by, iso(when))).lastrowid
+                     issued_by, iso(when), payload)).lastrowid
     return row(c, "SELECT * FROM documents WHERE id=?", (did,))
+
+
+def payload_state(doc: dict) -> str:
+    """'ok' (the stored payload hashes to the stored hash), 'changed', or 'none' (issued before Task 45)."""
+    if not doc.get("payload"):
+        return "none"
+    return "ok" if hmac.compare_digest(hashlib.sha256(doc["payload"].encode()).hexdigest(), doc["hash"] or "") else "changed"
 
 
 # ---------------------------------------------------------------- seeding

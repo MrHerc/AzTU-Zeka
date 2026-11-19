@@ -565,15 +565,15 @@ Reyestr nömrəsi. `doc_sequences(prefix, year, last_no)` cədvəli; nömrə ver
 Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 
 **Acceptance criteria:**
-- [ ] Sənəd veriləndən sonra sahibin adı və qrupu dəyişdirilir: `/doc/{id}` verilmə anındakı mətni göstərir, `/verify` "etibarlıdır" qaytarır. Transkriptdə dərc olunmuş balın dəyişdirilməsi eyni nəticəni verir; bu hal testə Task 21 birləşdiriləndən sonra əlavə olunur
-- [ ] Saxtalaşdırma testi: bazada `documents.payload` birbaşa dəyişdirilir; `/verify` "sənəd dəyişdirilib" qaytarır və "SHA-256 ✓" çap etmir. Yalnız `documents.hash` dəyişdiriləndə nəticə eynidir
-- [ ] Paralel verilmə testi: iki prosesdən eyni prefikslə 50 paralel verilmə 50 fərqli, boşluqsuz ardıcıl nömrə verir; 5xx 0
-- [ ] Sənəd bazadan silinəndən sonra növbəti verilmə uğurludur və nömrə təkrarlanmır
-- [ ] Yükü olmayan sənəd `/verify`-da "doğrulanmır" göstərir; `/doc/{id}` onu canlı sətirlərdən qurmur
+- [x] Sənəd veriləndən sonra sahibin adı və qrupu dəyişdirilir: `/doc/{id}` verilmə anındakı mətni göstərir, `/verify` "etibarlıdır" qaytarır. Transkriptdə dərc olunmuş balın dəyişdirilməsi eyni nəticəni verir (`test_a_transcript_is_shown_as_issued_after_a_published_grade_changes`)
+- [x] Saxtalaşdırma testi: bazada `documents.payload` birbaşa dəyişdirilir; `/verify` "sənəd dəyişdirilib" qaytarır və "SHA-256 ✓" çap etmir. Yalnız `documents.hash` dəyişdiriləndə nəticə eynidir
+- [x] Paralel verilmə testi: iki prosesdən eyni prefikslə 50 paralel verilmə 50 fərqli, boşluqsuz ardıcıl nömrə verir; 5xx 0
+- [x] Sənəd bazadan silinəndən sonra növbəti verilmə uğurludur və nömrə təkrarlanmır
+- [x] Yükü olmayan sənəd `/verify`-da "doğrulanmır" göstərir; `/doc/{id}` onu canlı sətirlərdən qurmur
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_document_integrity.py -q`
-- [ ] `grep -n "COUNT(\*)" backend/zeka/legacy/store.py` reyestr nömrəsi hesabını göstərmir
+- [x] `python -m pytest tests/integration/test_document_integrity.py -q`
+- [x] `grep -n "COUNT(\*)" backend/zeka/legacy/store.py` reyestr nömrəsi hesabını göstərmir
 
 **Dependencies:** Task 7, Task 17; transkriptin bal halı Task 21 birləşdiriləndən sonra
 **Files likely touched:** `backend/zeka/legacy/{store,docs,r_services}.py`, `backend/migrations/0450_document_integrity.sql` (`documents.payload`, `doc_sequences` cədvəli), `tests/integration/test_document_integrity.py`

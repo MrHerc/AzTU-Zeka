@@ -212,12 +212,33 @@ def _initials(name: str) -> str:
     return " ".join(p[0] + "." for p in name.split()[:2] if p)
 
 
-def render_verify(doc: dict | None, holder: dict | None, ctx: dict, lang: str = "az") -> str:
+def unverified_card(doc: dict, lang: str, state: str) -> str:
+    """A document whose stored content is missing ('none', issued before Task 45) or no longer matches its hash ('changed')."""
+    s = lambda text, **k: S(text, lang, **k)  # noqa: E731
+    if state == "changed":
+        head = (f'<div class="v-icon">!</div><h1>{e(s("Sənəd dəyişdirilib"))}</h1>'
+                f'<p>{e(s("Reyestrdəki məzmun sənəd veriləndə saxlanmış məzmunla uyğun gəlmir. Bu sənədə etibar etməyin və universitetlə əlaqə saxlayın."))}</p>')
+    else:
+        head = (f'<div class="v-icon">?</div><h1>{e(s("Bu sənəd doğrulanmır"))}</h1>'
+                f'<p>{e(s("Sənəd verilmə anındakı məzmunu saxlanmadan əvvəl verilib. Həqiqiliyini universitetdən soruşun."))}</p>')
+    return f'<div class="v-card bad">{head}<table><tr><th>{e(s("Reyestr nömrəsi"))}</th><td>{e(doc["reg_no"])}</td></tr></table></div>'
+
+
+def render_unverified(doc: dict, ctx: dict, lang: str, state: str) -> str:
+    """/doc of a document that cannot be shown from its stored content: it is never rebuilt from live rows."""
+    uni = ctx["university"]
+    body = f'<div class="verify"><div class="v-brand"><b>{e(uni["name"])}</b></div>{unverified_card(doc, lang, state)}</div>'
+    return _page(f"{doc['title']} · {doc['reg_no']}", body)
+
+
+def render_verify(doc: dict | None, holder: dict | None, ctx: dict, lang: str = "az", state: str = "ok") -> str:
     uni = ctx["university"]
     s = lambda text, **k: S(text, lang, **k)  # noqa: E731
     if not doc:
         card = (f'<div class="v-card bad"><div class="v-icon">?</div><h1>{e(s("Sənəd tapılmadı"))}</h1>'
                 f'<p>{e(s("Bu doğrulama koduna uyğun sənəd reyestrdə yoxdur. Kodu yenidən yoxlayın."))}</p></div>')
+    elif state != "ok":
+        card = unverified_card(doc, lang, state)
     else:
         ok = doc["status"] == "valid"
         issuer_unit = s("AI Akademiya") if doc["kind"] == "certificate" else s("Tədris hissəsi")

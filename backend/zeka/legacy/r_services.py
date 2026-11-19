@@ -6,7 +6,7 @@ import math
 from datetime import date, datetime, timedelta
 
 from . import docs, store
-from .common import R, STAFF, ctx, holder, make_key, office_for, scope_sql, serves
+from .common import BASE_URL, R, STAFF, ctx, holder, make_key, office_for, scope_sql, serves
 from ..core.i18n import E, T3, canon
 from ..core.security import LIMITS
 from .store import J, audit, iso, notify, now, row, rows
@@ -514,10 +514,11 @@ def doc_page(req):
             raise HTTPError(404, "Sənəd tapılmadı")
         raise HTTPError(403, "Bu sənədə baxmaq icazəniz yoxdur")
     req.read_owner, req.read_object = d["holder_id"], d["id"]
-    h = holder(c, d["holder_id"])
-    issuer = row(c, "SELECT * FROM users WHERE id=?", (d["issued_by"],)) or {"full_name": "—"}
-    tr = journal.transcript(c, d["holder_id"]) if (J(d["data"], {}) or {}).get("type") == "transcript" else None
-    page = docs.render_document(d, h, issuer, ctx(c), tr, req.lang)
+    state = store.payload_state(d)
+    if state != "ok":                                  # Task 45: never rebuilt from live rows
+        return html_resp(docs.render_unverified(d, ctx(c), req.lang, state))
+    doc, p = _stored(d)
+    page = docs.render_document(doc, p["holder"], p["issuer"], _stored_ctx(p), p["transcript"], req.lang)
     if req.query.get("embed") == "1":
         page = page.replace('<div class="toolbar no-print">', '<div class="toolbar no-print" hidden>')
     return html_resp(page)
@@ -529,4 +530,17 @@ def verify_page(req):
     if not LIMITS["verify"].hit(req.ip):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     d = row(c, "SELECT * FROM documents WHERE verify_code=?", (str(req.params["code"]).upper(),))
-    return html_resp(docs.render_verify(d, holder(c, d["holder_id"]) if d else None, ctx(c), req.lang))
+    state = store.payload_state(d) if d else "ok"
+    shown = _stored(d)[0] if d and state == "ok" else d
+    return html_resp(docs.render_verify(shown, _stored(d)[1]["holder"] if d and state == "ok" else None, ctx(c), req.lang, state))
+
+
+def _stored(d: dict) -> tuple[dict, dict]:
+    """The document as it was issued: its fields from the stored payload; status and revocation stay the registry's."""
+    p = json.loads(d["payload"])
+    return {**d, **{k: p[k] for k in ("kind", "title", "reg_no", "verify_code", "issued_at")},
+            "data": json.dumps(p["data"], ensure_ascii=False)}, p
+
+
+def _stored_ctx(p: dict) -> dict:
+    return {**p["ctx"], "semester": p["ctx"]["university"]["semester"], "base_url": BASE_URL["value"]}   # the address is the deployment's

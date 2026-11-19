@@ -788,6 +788,17 @@ summary and the `office` badge apply the same faculty scope in SQL, before their
 student and by `office`, `leader` and `admin`; posting a message or an action on someone else's request, and opening a
 document preview, is an audited read.
 
+An issued document is stored as it was at issue (Task 45). `documents.payload` is canonical JSON (sorted keys, no
+spaces) with the title, registry number, verification code, issue time, the request's fields and a snapshot of the
+holder (name, group, course, faculty, specialty), the issuer, the university and, for a transcript, its final grades;
+`documents.hash` is its SHA-256. `/doc/{id}` and `/verify/{code}` render only from the payload, never from live rows, so
+a later change of name, group or grade does not change an issued document. `/verify` recomputes the hash and compares it
+in constant time: a mismatch shows "Sənəd dəyişdirilib" and no "SHA-256 ✓"; a document issued before payloads were
+stored shows "Bu sənəd doğrulanmır" and `/doc` does not rebuild it. Limit: the hash has no key and lives in the same
+database as the payload, so someone who can write to the database can change both. Registry numbers come from
+`doc_sequences(prefix, year, last_no)`, incremented in the issuing transaction; a deleted or revoked document does not
+give its number back.
+
 `POST /api/documents/{id}/link` returns a one-time URL, valid for five minutes; `404` when the document does not exist or belongs to someone else:
 
 ```json

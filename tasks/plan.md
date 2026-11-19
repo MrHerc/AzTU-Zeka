@@ -100,7 +100,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [x] T20 Davamiyyət jurnalı
 - [x] T21 Qiymət jurnalı
 - [x] T22 Tapşırıqlar və material faylı
-- [ ] T45 Sənədin bütövlüyü
+- [x] T45 Sənədin bütövlüyü
 
 ### Checkpoint C · saat 36
 - [ ] Müəllim dərsdə davamiyyət və bal yazır; tələbə dərhal görür
