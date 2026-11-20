@@ -150,7 +150,7 @@ def sessions(port: int, data: Path) -> tuple[list[str], list[int]]:
 
 
 def client(args) -> list[tuple[float, int]]:
-    port, threads, seconds, scenario, tokens, news, seed = args
+    port, threads, seconds, scenario, tokens, news, seed, think = args
     import threading
     out: list[tuple[float, int]] = []
     lock = threading.Lock()
@@ -176,6 +176,8 @@ def client(args) -> list[tuple[float, int]]:
                 conn.close()
                 conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
             mine.append((time.perf_counter() - t, status))
+            if think:                                  # a person reads the page before the next click (exponential pause)
+                time.sleep(min(rng.expovariate(1 / think), stop_at - time.time()) if stop_at > time.time() else 0)
         conn.close()
         with lock:
             out.extend(mine)
@@ -257,7 +259,7 @@ def board_poll(port: int, eid: int, cookie: str, stop, out: list):
 def exam_client(args) -> tuple[list[tuple[float, int]], int]:
     """One process of exam users: each enters, starts, answers every question and submits, once; spread over
     ``seconds`` unless ``burst``."""
-    port, eid, cookies, seconds, burst, seed = args
+    port, eid, cookies, seconds, burst, seed, ramp = args
     import threading
     out: list[tuple[float, int]] = []
     saved = [0]
@@ -266,7 +268,7 @@ def exam_client(args) -> tuple[list[tuple[float, int]], int]:
     def user(n, cookie):
         rng = random.Random(seed * 1000 + n)
         pause = (lambda s: None) if burst else time.sleep
-        pause(rng.uniform(0, seconds * 0.1))                   # the students come in during the first tenth
+        pause(rng.uniform(0, seconds * 0.1 if ramp is None else ramp))   # the students come in (first tenth, or --ramp)
         conn = [http.client.HTTPConnection("127.0.0.1", port, timeout=60)]
         headers = {"Cookie": cookie, "X-Lang": "az", "Origin": f"http://127.0.0.1:{port}", "Content-Type": "application/json"}
         mine, ok = [], 0
@@ -312,6 +314,14 @@ def exam_client(args) -> tuple[list[tuple[float, int]], int]:
     return out, saved[0]
 
 
+def _memory_gb() -> float | None:
+    try:
+        with open("/proc/meminfo", encoding="ascii") as f:
+            return round(int(f.readline().split()[1]) / 1024 / 1024, 1)
+    except (OSError, ValueError, IndexError):
+        return None
+
+
 def report(results, seconds) -> dict:
     lat = sorted(r[0] for r in results)
     n = len(lat)
@@ -335,6 +345,8 @@ def main(argv=None) -> int:
     ap.add_argument("--fail-on-errors", action="store_true", help="exit 1 on any 5xx or connection error")
     ap.add_argument("--burst", action="store_true", help="exam: no pauses, every student at once (the worst case)")
     ap.add_argument("--proctors", type=int, default=3, help="exam: boards polled every 5 s during the sitting (Task 29)")
+    ap.add_argument("--ramp", type=float, help="exam: every student enters within this many seconds (default: the first tenth)")
+    ap.add_argument("--think", type=float, default=0, help="read/write/mixed: mean seconds a user waits between requests (0: none)")
     args = ap.parse_args(argv)
     with tempfile.TemporaryDirectory(prefix="zeka-load-") as tmp:
         data = Path(tmp)
@@ -363,7 +375,7 @@ def main(argv=None) -> int:
                 started = time.time()
                 try:
                     with multiprocessing.get_context("spawn").Pool(k) as pool:
-                        parts = pool.map(exam_client, [(port, eid, cookies[i::k], args.seconds, args.burst, i) for i in range(k)])
+                        parts = pool.map(exam_client, [(port, eid, cookies[i::k], args.seconds, args.burst, i, args.ramp) for i in range(k)])
                 finally:
                     stop.set()
                     for w in watchers:
@@ -376,16 +388,21 @@ def main(argv=None) -> int:
                     held = db.execute("SELECT COUNT(*) FROM exam_answers a JOIN exam_attempts t ON t.id=a.attempt_id WHERE t.exam_id=?", (eid,)).fetchone()[0]
                 finally:
                     db.close()
+                verify = subprocess.run([sys.executable, str(ROOT / "backend" / "manage.py"), "exam-verify", str(eid)],
+                                        env={**os.environ, "ZEKA_DATA": str(data), "PYTHONIOENCODING": "utf-8"},
+                                        capture_output=True, text=True, timeout=600)
                 client_saved = sum(n for _, n in parts)
                 polls = sorted(t for b in boards for t, _ in b)
                 extra = {"answers_saved_client": client_saved, "answers_on_server": held, "lost": client_saved - held,
                          "expected": args.users * EXAM_QUESTIONS, "board_polls": len(polls),
                          "board_errors": sum(1 for b in boards for _, st in b if st != 200),
-                         "board_p95_ms": round(1000 * polls[min(len(polls) - 1, int(0.95 * len(polls)))]) if polls else None}
+                         "board_p95_ms": round(1000 * polls[min(len(polls) - 1, int(0.95 * len(polls)))]) if polls else None,
+                         "exam_verify": verify.returncode, "exam_verify_out": verify.stdout.strip().splitlines()[-1:] or verify.stderr[-300:]}
             else:
                 tokens, news = sessions(port, data)
                 k = max(1, min(args.clients, args.users))
-                jobs = [(port, args.users // k + (1 if i < args.users % k else 0), args.seconds, args.scenario, tokens, news, i) for i in range(k)]
+                jobs = [(port, args.users // k + (1 if i < args.users % k else 0), args.seconds, args.scenario, tokens, news, i, args.think)
+                        for i in range(k)]
                 with multiprocessing.get_context("spawn").Pool(k) as pool:
                     results = [r for part in pool.map(client, jobs) for r in part]
         finally:
@@ -396,8 +413,10 @@ def main(argv=None) -> int:
                 proc.kill()
                 proc.communicate()
     rep = report(results, args.seconds)
-    print(json.dumps({"scenario": args.scenario, "dataset": args.dataset, "users": args.users, "workers": args.workers, **rep, **extra}))
-    return 1 if args.fail_on_errors and (rep["5xx"] or rep["conn_errors"] or extra.get("lost")) else 0
+    machine = {"cores": os.cpu_count(), "memory_gb": _memory_gb(), "python": sys.version.split()[0]}
+    print(json.dumps({"scenario": args.scenario, "dataset": args.dataset, "users": args.users, "workers": args.workers,
+                      "think_s": args.think, "ramp_s": args.ramp, **machine, **rep, **extra}))
+    return 1 if args.fail_on_errors and (rep["5xx"] or rep["conn_errors"] or extra.get("lost") or extra.get("exam_verify")) else 0
 
 
 if __name__ == "__main__":
