@@ -7,7 +7,6 @@ DEFAULT_CHANNELS = ((S_("Ümumi"), "chat"), (S_("Elanlar"), "announce"))
 MAX_MESSAGE = 2000
 PAGE = 100                       # messages per poll
 MAX_MUTE_MIN = 30 * 24 * 60
-RETENTION_DAYS = 180
 
 
 def club_input(body) -> tuple[dict, dict | None]:

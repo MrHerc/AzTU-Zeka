@@ -115,6 +115,14 @@ def test_every_tile_counts_the_rows_written_for_it(copy):
         "request_sla": 50.0, "cited": 75.0, "exams": 2, "academy": pct(1, len(teachers))}
     assert got["wau_student"]["series"][-2] == pct(1, len(students)), "the student of 10 days ago is in the week before"
     assert got["request_hours"]["ok"] is True and got["cited"]["ok"] is False      # target 24 h (lower is better); 95 %
+    # Checkpoint F (CR-F1): lessons up to the journal's cut-over date cannot be marked in Zəka and leave the fill share
+    for _ in range(4):
+        copy.execute("INSERT INTO lessons(course_id,day,start,\"end\",status) VALUES(?,?,?,?,?)",
+                     (course, (t - timedelta(days=9)).date().isoformat(), "09:00", "10:20", "scheduled"))
+    assert {k["key"]: k["value"] for k in service.tiles(copy)}["journal"] == pct(3, 8), "unmarked lessons count until a cut-over"
+    copy.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('tenant',?)",
+                 (json.dumps({"journal": {"cutover_date": (t - timedelta(days=5)).date().isoformat()}}),))
+    assert {k["key"]: k["value"] for k in service.tiles(copy)}["journal"] == 75.0
 
 
 # ---------------------------------------------------------------- the event log
@@ -179,3 +187,14 @@ def test_the_evidence_page_counts_live_and_exports(leader, admin, student):
     assert student.get("/api/insight/evidence").status == 403
     assert student.get("/api/insight/evidence?format=csv").status == 403
     json.dumps(ev)          # the page's data is plain JSON
+
+
+def test_an_event_that_cannot_be_written_never_fails_the_request(app_db, monkeypatch):
+    """Checkpoint F (SF-F3): the event is bookkeeping; a locked database at that moment keeps the request's own write."""
+    s = app_db.client("student")
+
+    def locked(*_a, **_k):
+        raise sqlite3.OperationalError("database is locked")
+    monkeypatch.setattr(events, "record", locked)
+    assert s.put("/api/me/prefs", {"theme": "dark"}).status == 200
+    assert s.get("/api/me").json["prefs"]["theme"] == "dark"

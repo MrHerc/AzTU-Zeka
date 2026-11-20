@@ -283,12 +283,12 @@ def test_security_txt_names_the_operator_s_contact_or_is_not_there(app_db, anon,
 def test_the_audit_log_is_append_only_and_keeps_a_row_at_least_a_year(app_db):
     """Task 41 (AU-9, R3): no audit row changes; only a row older than the shortest retention period can be deleted."""
     import sqlite3
-    from datetime import timedelta
     c = store.connect()
     try:
-        store.audit(c, 1, "au9_probe", "x", "fresh")
-        old = store.iso(store.now() - timedelta(days=400))
-        c.execute("INSERT INTO audit(ts,user_id,action,entity,detail) VALUES(?,1,'au9_probe','x','old')", (old,))
+        # the trigger reads SQLite's own clock, not the suite's pinned one: the rows are dated by it too (TE-F14)
+        for days, detail in ((1, "fresh"), (400, "old")):
+            c.execute("INSERT INTO audit(ts,user_id,action,entity,detail) "
+                      "VALUES(strftime('%Y-%m-%dT%H:%M:%S','now',?),1,'au9_probe','x',?)", (f"-{days} days", detail))
         c.commit()
         with pytest.raises(sqlite3.IntegrityError, match="append-only"):
             c.execute("UPDATE audit SET detail='changed' WHERE action='au9_probe'")

@@ -1,0 +1,7 @@
+{
+ "Məlumatların silinməsi üçün yeni sorğu: №{id}": "New data deletion request: No. {id}",
+ "Son aktiv administratorun hesabı silinmir: əvvəl başqa administrator təyin edin": "The last active administrator's account is not deleted: appoint another administrator first",
+ "Özünüzə rol verə bilməzsiniz: bunu başqa administrator edir": "You cannot grant yourself a role: another administrator does it",
+ "Hesab məxfilik sorğusu ilə silinib: idxal onu bərpa etmir": "The account was erased by a privacy request: an import does not restore it",
+ "Bu növ ekrandan yox, manage.py import ilə idxal olunur": "This kind is imported with manage.py import, not from the screen"
+}

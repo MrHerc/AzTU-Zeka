@@ -54,9 +54,10 @@ def _serve(data: Path, port: int, workers: int = 1) -> subprocess.Popen:
             if _call(port, "GET", "/healthz", "")[0] == 200:
                 return proc
         except OSError:
-            time.sleep(0.2)
+            pass
+        time.sleep(0.2)                                           # not started yet, or answering but not healthy (SF-F13)
     proc.kill()
-    raise AssertionError("the server did not start")
+    raise AssertionError("the server did not start: " + proc.communicate(timeout=10)[1].decode("utf-8", "replace")[-2000:])
 
 
 def _call(port: int, method: str, path: str, cookie: str, body=None):
@@ -178,7 +179,7 @@ def test_the_whole_server_killed_and_started_again_keeps_every_attempt(tmp_path)
         acked: dict = {}
         statuses: list[int] = []
         _answer_all(port, eid, sessions, acked, statuses, upto=5)
-        proc.send_signal(signal.SIGKILL)                          # mid-exam, without a drain
+        proc.kill()                                               # mid-exam, without a drain (SIGKILL; TerminateProcess on Windows)
         proc.communicate(timeout=10)
         proc = _serve(tmp_path, port)
         assert {k: _stored(tmp_path, eid).get(k) for k in acked} == acked

@@ -409,9 +409,14 @@ def privacy_requests_of(c, uid: int) -> list:
 
 
 def privacy_request_list(c, status: str | None) -> list:
-    """The newest requests (of one status, or all), with who asked."""
+    """The requests (of one status, or all), pending first and then the newest, with who asked. No limit here: the
+    caller filters by the decider's scope first (one row per request, a small table)."""
     return rows(c, "SELECT r.*, u.full_name, u.username, u.role, u.student_no FROM privacy_requests r JOIN users u ON u.id=r.user_id "
-                   "WHERE (? IS NULL OR r.status=?) ORDER BY r.id DESC LIMIT 200", (status, status))
+                   "WHERE (? IS NULL OR r.status=?) ORDER BY r.status='pending' DESC, r.id DESC", (status, status))
+
+
+def other_active_admins(c, uid: int) -> int:
+    return row(c, "SELECT COUNT(*) n FROM users WHERE role='admin' AND status='active' AND id<>?", (uid,))["n"]
 
 
 def decide_privacy_request(c, rid: int, status: str, by: int, at: str, note: str) -> bool:

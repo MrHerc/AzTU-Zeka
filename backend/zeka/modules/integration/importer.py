@@ -487,6 +487,11 @@ def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, er
         if it.link == "users" and it.row_id and ctx.rows["users"][it.row_id]["role"] not in IMPORTED_ROLES:
             errors.append({"row": it.row, "reason": E("Bu hesab idxalla dəyişdirilmir")})
             continue
+        if it.link == "users" and it.row_id and ctx.rows["users"][it.row_id]["status"] == "erased":
+            it.action = "conflict"                     # Checkpoint F (SEC-F2): an import never undoes an approved erasure
+            conflicts.append({"row": it.row, "id": it.row_id, "fields": [],
+                              "reason": E("Hesab məxfilik sorğusu ilə silinib: idxal onu bərpa etmir")})
+            continue
         cur = _current(ctx, it) if it.row_id else None
         if cur is None:
             it.action = "insert" if it.link != "unit_teachers" else "missing"

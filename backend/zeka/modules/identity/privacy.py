@@ -26,7 +26,8 @@ PURPOSES = {      # the Azerbaijani source is the legal text; its translations f
 REQUIRED = ("ai",)            # the portal's AI features ask for it first; the external AI is optional
 FIELDS = {"ai": "ai", "external": "external_ai"}     # the body of POST /api/consent -> purpose
 SECRET = re.compile(r"password|secret|nonce|verifier|_hash$|^totp_")      # never in an export, whatever the table
-OMIT = {"audit": ("detail",), "files": ("path",), "exam_events": ("actor_id",)}   # details that name other people or the disk
+OMIT = {"audit": ("detail",), "files": ("path",), "exam_events": ("actor_id",),      # details that name other people or the disk
+        "teacher_questions": ("ai_draft",)}    # the teacher's unsent AI draft is their work, not the student's data (SA-F7)
 # tenant setting (in ``limits``, edited on the university settings screen) -> (default days, lowest, highest)
 RETENTION = {"chats_days": ("retention_days", 180, 30, 3650), "community_days": ("community_retention_days", 180, 1, 3650),
              "logs_days": ("log_retention_days", 90, 7, 3650), "notifications_days": ("notification_retention_days", 365, 30, 3650),
@@ -67,6 +68,8 @@ def record(c, u: dict, body, lang: str) -> tuple[str, object]:
         return "invalid", E("Razılıq seçimi düzgün deyil")
     if any(p in shown and shown[p] != version(p) for p in choices):
         return "stale", E("Razılıq mətni yenilənib: səhifəni yeniləyib mətni yenidən oxuyun")
+    if choices.get("external_ai") and "external_ai" not in shown:     # Checkpoint F (SF-F9): the record proves the text shown
+        return "stale", E("Razılıq mətni yenilənib: səhifəni yeniləyib mətni yenidən oxuyun")
     at = iso(now())
     for p, granted in choices.items():
         repo.add_consent(c, u["id"], p, version(p), granted, "portal", lang, at, PURPOSES[p])
@@ -95,7 +98,8 @@ def request_erase(c, u: dict, reason: str) -> tuple[str, object]:
     audit(c, u["id"], "privacy_erase_request", "privacy_request", f"#{rid}")
     deciders = sorted({x for role in perms.PERMS["privacy.decide"] for x in step_actors(c, role, u["id"], {})} - {u["id"]})
     if deciders:
-        notify(c, deciders, "request", T3("Məlumatların silinməsi sorğusu: {name}", name=u["full_name"]), reason[:120], "/staff/privacy")
+        # Checkpoint F (SA-F6): no name and no reason: the notice and its e-mail outlive an approved erasure
+        notify(c, deciders, "request", T3("Məlumatların silinməsi üçün yeni sorğu: №{id}", id=rid), "", "/staff/privacy")
     return "ok", {"ok": True, "id": rid}
 
 
@@ -104,7 +108,7 @@ def _covers(c, user: dict, uid: int) -> bool:
 
 
 def requests(c, user: dict, status: str | None) -> list[dict]:
-    return [r for r in repo.privacy_request_list(c, status) if _covers(c, user, r["user_id"])]
+    return [r for r in repo.privacy_request_list(c, status) if _covers(c, user, r["user_id"])][:200]   # scope before the limit (PY-F2)
 
 
 def decide(c, user: dict, rid: int, approve: bool, note: str) -> tuple[str, object]:
@@ -117,6 +121,8 @@ def decide(c, user: dict, rid: int, approve: bool, note: str) -> tuple[str, obje
     target = repo.user(c, r["user_id"])
     if approve and target["username"] in (setting(c, "demo_logins", {}) or {}).values():
         return "invalid", E("Demo girişinin hesabı silinmir")
+    if approve and target["role"] == "admin" and not repo.other_active_admins(c, target["id"]):     # Checkpoint F (SEC-F4)
+        return "invalid", E("Son aktiv administratorun hesabı silinmir: əvvəl başqa administrator təyin edin")
     if not repo.decide_privacy_request(c, rid, "done" if approve else "rejected", user["id"], iso(now()), note):
         return "decided", E("Bu sorğu haqqında qərar artıq verilib")
     if not approve:

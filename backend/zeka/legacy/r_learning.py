@@ -401,8 +401,9 @@ def tutor_ask(req):
             if not privacy.allowed(c, u["id"], "external_ai"):     # anyone's questions: only with a consent to the current text (Task 40)
                 note = T3("Xarici AI xidmətinə razılıq verilmədiyi üçün demo mühərrik istifadə edildi.")
             else:
-                try:   # earlier turns are stored as typed; they are masked again before leaving the platform
-                    result = tutor.llm_tutor(mode, masked, hits, _masked_history(hist, masking), course, req.lang)
+                try:   # earlier turns are stored as typed; they are masked again before leaving the platform. The toggle
+                    # only changes the offline engine: nothing leaves unmasked, as the consent text says (Checkpoint F, SA-F5)
+                    result = tutor.llm_tutor(mode, engine.mask_pii(msg)[0], hits, _masked_history(hist, True), course, req.lang)
                 except Exception as ex:  # network/proxy/auth errors -> offline engine
                     note = T3("LLM əlçatan olmadı ({err}); demo mühərrik istifadə edildi.", err=type(ex).__name__)
         if result is None:

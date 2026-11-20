@@ -302,3 +302,13 @@ def test_a_new_batch_revokes_the_old_codes(app_db, codes, proxy):
     assert len(rows) == 2 and rows[0]["revoked_at"] and rows[1]["revoked_at"] is None
     assert activate(app_db.client(), "A-N", old, ip="10.7.7.7").status == 401
     assert activate(app_db.client(), "A-N", new["A-N"], ip="10.7.7.7").status == 200
+
+
+def test_the_screen_import_refuses_the_migration_history_kinds(admin):
+    """Checkpoint F (SEC-F1): status orders, legacy marks and final grades come in through manage.py import with --by;
+    the administrator's screen would bypass the registry office's permission (students.status)."""
+    before = q("SELECT COUNT(*) n FROM student_status_events")[0]["n"]
+    for kind in ("status-events", "results", "attendance"):
+        r = imp(admin, kind, "x.csv", b"userSourcedId,kind,orderNo,orderDate,effectiveDate\nOLD-1,expulsion,X-1,2026-11-18,2026-11-19\n")
+        assert r.status == 400 and "manage.py" in r.json["error"], (kind, r.status, r.json)
+    assert q("SELECT COUNT(*) n FROM student_status_events")[0]["n"] == before

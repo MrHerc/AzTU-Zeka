@@ -170,8 +170,32 @@ def test_a_teacher_also_needs_the_consent(app_db, monkeypatch):
     t = app_db.client("teacher")
     run("DELETE FROM consents WHERE user_id=?", (t.user["id"],))
     assert _ask(t).status == 200 and calls == []
-    assert t.post("/api/consent", {"external": True}).status == 200
+    # Checkpoint F (SF-F9): a consent to the external AI names the version of the text the page showed
+    assert t.post("/api/consent", {"external": True}).status == 409 and _ask(t).status == 200 and calls == []
+    assert t.post("/api/consent", {"external": True, "versions": {"external_ai": privacy.version("external_ai")}}).status == 200
     assert _ask(t).status == 200 and len(calls) == 1
+
+
+def test_nothing_leaves_for_the_external_ai_unmasked_even_with_masking_off(app_db, monkeypatch):
+    """Checkpoint F (SA-F5): the consent text promises masked questions; the masking toggle only changes the offline engine."""
+    calls = []
+    real = r_learning.search_chunks
+    monkeypatch.setattr(engine, "llm_config", lambda: {"enabled": True, "provider": "openai", "model": "fake", "api_key": "x", "base_url": "https://x"})
+    monkeypatch.setattr(r_learning, "search_chunks", lambda cid, text: [{**h, "score": 5.0} for h in real(cid, text)])
+    monkeypatch.setattr(tutor, "llm_tutor", lambda mode, text, hits, hist, *a: calls.append((text, hist)) or
+                        {"text": "ok [1]", "cites": [hits[0]["id"]], "meta": {"mode": mode}})
+    limits = json.loads(q("SELECT value FROM settings WHERE key='limits'")[0]["value"])
+    run("UPDATE settings SET value=? WHERE key='limits'", (json.dumps({**limits, "pii_masking": False}),))
+    try:
+        t = app_db.client("teacher")
+        assert t.post("/api/consent", {"external": True, "versions": {"external_ai": privacy.version("external_ai")}}).status == 200
+        ask = "Paralel birləşmədə ekvivalent müqavimət necə tapılır? Nömrəm +994 50 123 45 67, poçtum ali@example.az"
+        for _ in range(2):                                 # the second call carries the first question in its history
+            assert t.post("/api/tutor/1/ask", {"message": ask, "mode": "explain"}).status == 200
+    finally:
+        run("UPDATE settings SET value=? WHERE key='limits'", (json.dumps(limits),))
+    sent = json.dumps(calls, ensure_ascii=False)
+    assert len(calls) == 2 and "123 45 67" not in sent and "ali@example.az" not in sent, sent
 
 
 # ---------------------------------------------------------------- deletion
@@ -199,7 +223,7 @@ def test_an_approved_deletion_follows_the_inventory_and_is_audited(app_db, regis
     victim = q("SELECT id, username, full_name, student_no FROM users WHERE synthetic=1 AND role='student' ORDER BY id LIMIT 1 OFFSET 11")[0]
     uid = victim["id"]
     s = login_as(app_db, victim["username"])
-    s.post("/api/consent", {"ai": True, "external": True})
+    assert s.post("/api/consent", {"ai": True, "external": True, "versions": {"external_ai": privacy.version("external_ai")}}).status == 200
     ticket, topic = _fill(uid)
     exam_events = q("SELECT COUNT(*) n FROM exam_events")[0]["n"]
     r = s.post("/api/me/erase", {"reason": "Universiteti bitirdim"})
@@ -239,6 +263,10 @@ def test_an_approved_deletion_follows_the_inventory_and_is_audited(app_db, regis
     assert s.get("/api/me").status == 401                                                # the sessions are gone
     assert registrar.post(f"/api/privacy/requests/{rid}/decide", {"approve": False}).status == 409
     assert app_db.client().post("/api/auth/demo", {"role": "student", "user": victim["username"]}).status == 404
+    # Checkpoint F (SA-F6): the deciders' notice and its e-mail copy never named the person, so nothing of them outlives this
+    like = f"%{victim['full_name']}%"
+    assert q("SELECT COUNT(*) n FROM notifications WHERE title LIKE ? OR body LIKE ?", (like, like))[0]["n"] == 0
+    assert q("SELECT COUNT(*) n FROM outbox WHERE params LIKE ?", (like,))[0]["n"] == 0
 
 
 def test_a_refused_deletion_tells_the_person_and_nobody_decides_their_own(app_db, registrar):
@@ -323,3 +351,99 @@ def test_malformed_decisions_are_400(registrar):
     assert registrar.get("/api/privacy/requests?status=bogus").status == 400
     assert registrar.post("/api/privacy/requests/1/decide", {"approve": True, "note": {"x": 1}}).status == 400
     assert registrar.post("/api/privacy/requests/1/decide", {}).status == 400
+
+
+# ---------------------------------------------------------------- Checkpoint F
+def test_the_last_active_administrator_is_not_erased(app_db, registrar):
+    """SEC-F4: the tenant would lose its administration; in prod no demo login protects the account."""
+    admin = app_db.client("admin")
+    logins = q("SELECT value FROM settings WHERE key='demo_logins'")[0]["value"]
+    run("UPDATE settings SET value=? WHERE key='demo_logins'", (json.dumps({k: v for k, v in json.loads(logins).items() if k != "admin"}),))
+    try:
+        assert q("SELECT COUNT(*) n FROM users WHERE role='admin' AND status='active'")[0]["n"] == 1
+        rid = admin.post("/api/me/erase", {"reason": ""}).json["id"]
+        r = registrar.post(f"/api/privacy/requests/{rid}/decide", {"approve": True})
+        assert r.status == 409, r.text
+        assert q("SELECT status FROM users WHERE id=?", (admin.user["id"],))[0]["status"] == "active"
+        assert q("SELECT status FROM privacy_requests WHERE id=?", (rid,))[0]["status"] == "pending"
+        run("UPDATE privacy_requests SET status='rejected' WHERE id=?", (rid,))
+    finally:
+        run("UPDATE settings SET value=? WHERE key='demo_logins'", (logins,))
+
+
+def test_an_administrator_grants_no_role_to_themselves(app_db):
+    """SA-F8: the inventory says the administrator does not decide erasures; a self-grant of academic_office would."""
+    admin = app_db.client("admin")
+    r = admin.post(f"/api/admin/users/{admin.user['id']}/roles", {"role": "academic_office"})
+    assert r.status == 403
+    assert not q("SELECT 1 FROM role_grants WHERE user_id=? AND role='academic_office'", (admin.user["id"],))
+
+
+def test_the_teacher_s_unsent_ai_draft_is_not_in_the_student_s_export(app_db):
+    """SA-F7: the AI draft is the teacher's work product; the student never sees it in the forum either."""
+    s = app_db.client("student")
+    t = store.iso(store.now())
+    run("INSERT INTO teacher_questions(course_id,student_id,anonymous,title,question,status,created_at,updated_at,private,ai_draft) "
+        "VALUES(1,?,0,'s','sual','open',?,?,1,'Müəllimin qaralaması')", (s.user["id"], t, t))
+    out = s.get("/api/me/export").json
+    rows_ = out["tables"]["teacher_questions"]
+    assert rows_ and all("ai_draft" not in r for r in rows_) and "Müəllimin qaralaması" not in json.dumps(out, ensure_ascii=False)
+
+
+def test_an_old_pending_request_stays_in_the_queue_behind_newer_decided_ones(app_db, registrar):
+    """PY-F2: the decider's scope and the limit applied in that order; pending first."""
+    victim = q("SELECT id FROM users WHERE synthetic=1 AND role='student' ORDER BY id LIMIT 1 OFFSET 13")[0]["id"]
+    t = store.iso(store.now())
+    run("INSERT INTO privacy_requests(user_id,kind,reason,status,created_at) VALUES(?,'erase','',?,?)", (victim, "pending", t))
+    pending = q("SELECT MAX(id) id FROM privacy_requests")[0]["id"]
+    for _ in range(201):
+        run("INSERT INTO privacy_requests(user_id,kind,reason,status,created_at) VALUES(?,'erase','',?,?)", (victim, "rejected", t))
+    try:
+        assert pending in [x["id"] for x in registrar.get("/api/privacy/requests").json["items"]]
+    finally:
+        run("DELETE FROM privacy_requests WHERE user_id=?", (victim,))
+
+
+def test_the_chat_purge_keeps_the_period_the_notice_shows(app_db):
+    """SF-F8: a stored value outside the allowed range shows (and now enforces) the default, 180 days."""
+    limits = json.loads(q("SELECT value FROM settings WHERE key='limits'")[0]["value"])
+    run("UPDATE settings SET value=? WHERE key='limits'", (json.dumps({**limits, "retention_days": 5}),))
+    at = store.iso(store.now() - timedelta(days=10))
+    run("INSERT INTO messages(user_id,course_id,channel,role,content,created_at) VALUES(1,1,'tutor','user','sf-f8',?)", (at,))
+    try:
+        assert app_db.client().get("/api/privacy").json["retention"]["chats_days"] == 180
+        c = store.connect()
+        try:
+            periodic.retention_purge(c)
+            c.commit()
+        finally:
+            c.close()
+        assert q("SELECT COUNT(*) n FROM messages WHERE content='sf-f8'")[0]["n"] == 1
+    finally:
+        run("DELETE FROM messages WHERE content='sf-f8'")
+        run("UPDATE settings SET value=? WHERE key='limits'", (json.dumps(limits),))
+
+
+def test_a_users_import_never_brings_an_erased_account_back(app_db):
+    """SEC-F2: the erased row keeps its import link and student number; a re-import, preferred source or not, is a conflict."""
+    import base64
+    admin = app_db.client("admin")
+    head = "sourcedId,username,givenName,familyName,role,identifier,group,email\n"
+    data = (head + "secf2,sec.ftwo,Nərgiz,Əhmədova,student,SECF-2,İT-25-1,secf2@example.az\n").encode()
+
+    def imp(prefer):
+        return admin.post("/api/admin/import", {"kind": "users", "source": "sis", "filename": "u.csv", "dry_run": False,
+                                                "prefer_source": prefer, "content_b64": base64.b64encode(data).decode()}).json
+    assert imp(False)["inserted"] == 1
+    uid = q("SELECT id FROM users WHERE username='sec.ftwo'")[0]["id"]
+    c = store.connect()
+    try:
+        repo.erase(c, uid)
+        c.commit()
+    finally:
+        c.close()
+    for prefer in (False, True):
+        rep = imp(prefer)
+        assert rep.get("overwritten", 0) == 0 and len(rep["conflicts"]) == 1, rep
+    u = q("SELECT username, full_name, status, email FROM users WHERE id=?", (uid,))[0]
+    assert (u["username"], u["full_name"], u["status"], u["email"]) == (f"erased-{uid}", f"#{uid}", "erased", None)

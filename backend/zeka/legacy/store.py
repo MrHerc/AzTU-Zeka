@@ -929,16 +929,16 @@ def init(reset: bool = False):
 
 
 def purge_expired(c) -> int:
-    """Enforce the chat retention period (settings.limits.retention_days): older AI conversations are deleted."""
-    days = (setting(c, "limits", {}) or {}).get("retention_days")
-    if not isinstance(days, int) or days < 1:
-        return 0
+    """Enforce the chat retention period: older AI conversations are deleted. The period is the one the privacy notice
+    shows (identity.privacy.retention, Task 40), a bad stored value included (Checkpoint F, SF-F8)."""
+    from ..modules.identity import privacy             # privacy reads the settings through this module
+    days = privacy.retention(c)["chats_days"]
     return c.execute("DELETE FROM messages WHERE created_at<?", (iso(now() - timedelta(days=days)),)).rowcount
 
 
 def reseed():
     if config.prod():
-        raise RuntimeError("prod mode never deletes its data")
+        raise migrate.MigrationError(f"{DB_PATH}: prod mode never deletes its data")
     c = connect()
     # the append-only tables (exam_events 0301, audit 0410) refuse a DELETE: the demo reset lifts their triggers inside its
     # own transaction and puts them back before it commits

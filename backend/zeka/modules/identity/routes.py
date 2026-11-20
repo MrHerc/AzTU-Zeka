@@ -203,6 +203,8 @@ def grant_role(req):
     if scope_type is not None and scope_type not in perms.SCOPE_TYPES or (scope_type is None) != (scope_id is None):
         raise HTTPError(400, "Əhatənin növü və id-si birlikdə verilir")
     u = _target(req)
+    if u["id"] == req.user["id"]:                      # Checkpoint F (SA-F8): an administrator does not grant themselves a role
+        raise HTTPError(403, "Özünüzə rol verə bilməzsiniz: bunu başqa administrator edir")
     if role == u["role"] and scope_type is None:
         raise HTTPError(409, "Bu, istifadəçinin əsas roludur")
     try:

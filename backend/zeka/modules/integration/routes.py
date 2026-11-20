@@ -22,12 +22,15 @@ from . import domain, export, importer, tables
 @R("POST", "/api/admin/import", roles=("admin",))
 def run_import(req):
     b = req.json()
+    kind = b.text("kind", 40)
+    if kind in domain.CLI_KINDS:                       # Checkpoint F (SEC-F1)
+        raise HTTPError(400, "Bu növ ekrandan yox, manage.py import ilə idxal olunur")
     try:
         data = base64.b64decode(b.text("content_b64"), validate=True)
     except (ValueError, binascii.Error):
         raise HTTPError(400, "Fayl oxunmadı") from None
     try:
-        return importer.run(req.db, b.text("kind", 40), b.text("source", 64), b.text("filename", 160), data,
+        return importer.run(req.db, kind, b.text("source", 64), b.text("filename", 160), data,
                             dry_run=b.get("dry_run") is not False, prefer_source=b.get("prefer_source") is True,
                             user_id=req.user["id"], max_rows=importer.MAX_SCREEN_ROWS, as_of=b.text("as_of", 10) or None)
     except tables.TableError as ex:

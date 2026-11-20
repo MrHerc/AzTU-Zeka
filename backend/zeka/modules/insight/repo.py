@@ -32,13 +32,14 @@ def active_by_role(c, since: str, until: str) -> list[dict]:
                    "GROUP BY role ORDER BY n DESC, role", (since, until))
 
 
-def lessons_weekly(c, since: str, until: str) -> list[dict]:
+def lessons_weekly(c, since: str, until: str, cutover: str | None = None) -> list[dict]:
     """Lessons that ended in the period and were not cancelled (``held``), and of them those with an attendance row
-    (``filled``), per week."""
+    (``filled``), per week. A lesson on or before the journal's cut-over date is closed for marking in Zəka (Task 20) and
+    does not count."""
     return rows(c, f"SELECT {WEEK.format(t=LESSON_END)} AS w, COUNT(*) AS held, "
                    "SUM(EXISTS(SELECT 1 FROM attendance a WHERE a.lesson_id=l.id)) AS filled FROM lessons l "
-                   f"WHERE l.day>=? AND l.day<=? AND {LESSON_END}>=? AND {LESSON_END}<=? AND l.status<>'cancelled' GROUP BY w",
-                (until, since[:10], until[:10], since, until))
+                   f"WHERE l.day>=? AND l.day<=? AND l.day>? AND {LESSON_END}>=? AND {LESSON_END}<=? AND l.status<>'cancelled' GROUP BY w",
+                (until, since[:10], until[:10], cutover or "", since, until))
 
 
 def requests_weekly(c, since: str, until: str) -> list[dict]:

@@ -12,7 +12,7 @@ import io
 from collections import Counter
 from datetime import datetime, timedelta
 
-from ...core import clock, perms
+from ...core import clock, perms, tenant
 from ...core.i18n import S, S_, T3, localize
 from ...legacy.store import iso, now
 from . import repo
@@ -38,7 +38,7 @@ def _active(role: str):
 
 
 def _journal(c, since, until, t):
-    rs = repo.lessons_weekly(c, since, until)
+    rs = repo.lessons_weekly(c, since, until, tenant.load(c)["journal"]["cutover_date"])   # Checkpoint F (CR-F1)
     return _weekly(rs, "filled"), _weekly(rs, "held")
 
 

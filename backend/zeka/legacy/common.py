@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import sqlite3
+import sys
 import time
 from datetime import datetime, timedelta
 
@@ -200,7 +202,12 @@ def after(req, ok):
             raise AssertionError(f"{req.path} held the write lock for {held * 1000:.0f} ms (limit 200)")
         if ok and req.user and req.changes_from is not None and req.db.total_changes > req.changes_from:
             # Task 39: the request changed something; written last, so the write lock is held a moment longer at most
-            events.record(req.db, req.user["id"], req.user["role"], req.endpoint.__name__, events.module_of(req.endpoint.__module__))
+            try:
+                events.record(req.db, req.user["id"], req.user["role"], req.endpoint.__name__, events.module_of(req.endpoint.__module__))
+            except sqlite3.OperationalError as ex:
+                # Checkpoint F (SF-F3): bookkeeping never fails the request it describes. Only a handler that committed its
+                # own work (the screen import) needs a new write transaction here, and another writer may hold the lock
+                print(f"event not recorded: {req.path}: {ex}", file=sys.stderr, flush=True)
         if ok and req.audit_kind and req.read_owner and req.user and req.read_owner != req.user["id"]:
             # Task 13: someone else's document, file, request or risk profile was read; written last, so briefly locked
             store.audit(req.db, req.user["id"], f"read_{req.audit_kind}", req.audit_kind,

@@ -11,7 +11,7 @@ from datetime import timedelta
 from ...core import perms
 from ...core.i18n import S, T3
 from ...core.security import LIMITS
-from ...legacy.store import audit, iso, notify, now, setting
+from ...legacy.store import audit, iso, notify, now
 from . import domain, repo
 
 WRITERS = ("student", "teacher", "dept_head")
@@ -238,7 +238,6 @@ def resolve(c, user, pid: int, body) -> tuple[str, object]:
 
 def purge(c) -> int:
     """The periodic purge: messages older than the retention period (``limits.community_retention_days``, 180)."""
-    days = (setting(c, "limits") or {}).get("community_retention_days")
-    if not isinstance(days, int) or isinstance(days, bool) or days < 1:     # a bad setting keeps the default (SF-E13)
-        days = domain.RETENTION_DAYS
+    from ..identity import privacy                     # the period the privacy notice shows (Checkpoint F, SF-F8)
+    days = privacy.retention(c)["community_days"]
     return repo.purge_messages(c, iso(now() - timedelta(days=days)))

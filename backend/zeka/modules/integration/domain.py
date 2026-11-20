@@ -85,6 +85,9 @@ REQUIRED = {
     "status-events": ("userSourcedId", "kind", "orderNo", "orderDate", "effectiveDate"),
 }
 KINDS = (*COLUMNS, "teaching-load")
+# the old system's history (Task 38): loaded by manage.py import or tools/etl with --by, never from the screen, so status
+# orders stay with the registry office (perm students.status) and the journal's history with a named operator (SEC-F1)
+CLI_KINDS = ("attendance", "results", "status-events")
 JOURNAL_KINDS = ("attendance", "attendance-opening", "grades")      # their rows carry the export's cut-over date (as_of)
 MARKS = {"present": "present", "iştirak": "present", "+": "present", "absent": "absent", "qayıb": "absent", "-": "absent",
          "late": "late", "gecikmə": "late", "excused": "excused", "üzrlü": "excused"}
