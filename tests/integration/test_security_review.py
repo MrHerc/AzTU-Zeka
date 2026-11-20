@@ -278,3 +278,26 @@ def test_security_txt_names_the_operator_s_contact_or_is_not_there(app_db, anon,
     lines = r.body.decode().splitlines()
     assert r.status == 200 and r.headers["Content-Type"].startswith("text/plain")
     assert lines[0] == "Contact: mailto:security@example.az" and lines[1].startswith("Expires: 2027-") and lines[1].endswith("Z")
+
+
+def test_the_audit_log_is_append_only_and_keeps_a_row_at_least_a_year(app_db):
+    """Task 41 (AU-9, R3): no audit row changes; only a row older than the shortest retention period can be deleted."""
+    import sqlite3
+    from datetime import timedelta
+    c = store.connect()
+    try:
+        store.audit(c, 1, "au9_probe", "x", "fresh")
+        old = store.iso(store.now() - timedelta(days=400))
+        c.execute("INSERT INTO audit(ts,user_id,action,entity,detail) VALUES(?,1,'au9_probe','x','old')", (old,))
+        c.commit()
+        with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+            c.execute("UPDATE audit SET detail='changed' WHERE action='au9_probe'")
+        c.rollback()
+        with pytest.raises(sqlite3.IntegrityError, match="at least a year"):
+            c.execute("DELETE FROM audit WHERE action='au9_probe' AND detail='fresh'")
+        c.rollback()
+        assert c.execute("DELETE FROM audit WHERE action='au9_probe' AND detail='old'").rowcount == 1   # what retention does
+        c.commit()
+        assert [r["detail"] for r in store.rows(c, "SELECT detail FROM audit WHERE action='au9_probe'")] == ["fresh"]
+    finally:
+        c.close()

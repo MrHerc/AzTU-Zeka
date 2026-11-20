@@ -22,7 +22,7 @@ Actors:
 | S | Demo login on a reachable host | Prod mode has no demo routes; demo on a non-loopback host needs `ZEKA_ALLOW_OPEN_DEMO=1` (`test_auth_login.py::test_prod_signs_in_with_a_password_and_has_no_demo_login`, `test_modes.py`) | Low |
 | T | A session id fixed or replayed | The id is renewed at sign-in and at every privilege change (`rotate_session`); only its SHA-256 is stored (`test_sessions.py`) | Low |
 | T | A forged cross-site request with the user's cookie | Origin and content-type checks (`test_security_review.py::test_cross_site_requests_with_cookies_are_refused`) | Low |
-| R | A staff member denies an act | Audit rows for role switches, grants, grade changes, exports, e-service steps (`request_events.role`) | Medium: the audit table is not append-only by trigger yet (R3) |
+| R | A staff member denies an act | Audit rows for role switches, grants, grade changes, exports, e-service steps (`request_events.role`); the audit table is append-only by trigger and keeps a row at least a year (`0410`, `test_security_review.py::test_the_audit_log_is_append_only_and_keeps_a_row_at_least_a_year`) | Low (someone holding the database file can drop the triggers) |
 | I | A database copy reveals live sessions | Sessions are hashed (`test_sessions.py::test_a_copy_of_the_database_holds_no_usable_session`); backups encrypted | See R1 for TOTP seeds |
 | E | A user acts in a role they do not hold, or outside its scope | The session's role is checked against `role_grants` on every request; scopes per role (`tests/security/test_roles.py`, `test_staff_scope.py`); every route pinned (`test_authz_matrix.py`) | Low |
 | E | A student holding a staff grant decides their own request | Refused (Checkpoint E, SR46-1 · `test_service_honesty.py::test_a_student_with_a_staff_grant_decides_no_request_of_their_own`) | Low |
@@ -62,5 +62,5 @@ application database.
 |---|---|---|---|---|
 | R1 | TOTP seeds in clear in the database | Accepted | Product owner | A secret store is available on the host |
 | R2 | Document hash without a key | Accepted | Product owner | Third parties verify documents at scale |
-| R3 | No append-only protection on the audit table | To fix (a trigger) | Development | Task 40's deletion rules are merged |
+| R3 | No append-only protection on the audit table | Fixed (`0410_audit_append_only.sql`, Task 41) | Development | — |
 | R4 | SEB 3.x not tested by hand | Open | Owner | Before the first SEB exam |

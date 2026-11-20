@@ -937,11 +937,20 @@ def purge_expired(c) -> int:
 
 
 def reseed():
+    if config.prod():
+        raise RuntimeError("prod mode never deletes its data")
     c = connect()
+    # the append-only tables (exam_events 0301, audit 0410) refuse a DELETE: the demo reset lifts their triggers inside its
+    # own transaction and puts them back before it commits
+    guards = rows(c, "SELECT name, sql FROM sqlite_master WHERE type='trigger' AND tbl_name IN ('audit','exam_events')")
+    for g in guards:
+        c.execute(f'DROP TRIGGER "{g["name"]}"')  # nosec B608 - names from sqlite_master
     # the migration log describes the schema, not the demo data: it survives a reset
     for t in [r["name"] for r in rows(c, "SELECT name FROM sqlite_master WHERE type='table' AND name<>'schema_migrations'")]:
         # bandit B608: table names from sqlite_master
         c.execute(f'DELETE FROM "{t}"')  # nosec B608
+    for g in guards:
+        c.execute(g["sql"])
     seed(c)
     c.commit()
     build_indexes(c)

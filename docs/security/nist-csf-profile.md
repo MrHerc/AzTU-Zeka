@@ -23,7 +23,7 @@ Related: `docs/security/threat-model.md` (STRIDE, accepted risks), `docs/securit
 | # | Control | SP 800-53 | Due | Evidence | Status |
 |---|---|---|---|---|---|
 | 1 | Named security/privacy owner, policies, risk register, security plan | PM-2, PL-2, RA-3, CA-5 | D30 | `SPEC.md` (Boundaries), the risk register in `docs/security/threat-model.md` | Owner: name the owner |
-| 2 | Data inventory, retention schedule, consent records, data-processing agreement | PM-5(1), PT-2, PT-4, SI-12 | D1–3 | Retention: `retention_purge` in `backend/zeka/legacy/periodic.py`, `tests/integration/test_periodic_jobs.py`. Consent: `POST /api/consent` in `backend/zeka/legacy/r_core.py`, `test_security_review.py::test_consent_is_recorded_as_choices`. Inventory: `docs/privacy/data-inventory.md` (Task 40). DPA per university: owner | Partial: Task 40 adds versioned consent and the inventory; the DPA is the owner's |
+| 2 | Data inventory, retention schedule, consent records, data-processing agreement | PM-5(1), PT-2, PT-4, SI-12 | D1–3 | Retention: `retention_purge` in `backend/zeka/legacy/periodic.py`, `tests/integration/test_periodic_jobs.py`. Consent: `POST /api/consent` in `backend/zeka/legacy/r_core.py`, `test_security_review.py::test_consent_is_recorded_as_choices`. Inventory, export, erasure and retention settings: `docs/privacy/data-inventory.md`, `backend/zeka/modules/identity/privacy.py` (Task 40). DPA per university: owner | Partial: versioned consent, the inventory, export and erasure are done (`tests/integration/test_privacy.py`); the DPA is the owner's |
 | 3 | LLM-provider and sub-processor agreements | SA-9, SR-3, SR-6 | D1–3 | The offline engine is the default (`backend/zeka/legacy/engine.py`); an external LLM is called only when `config.json` names one and the user consented to external processing (`external_ai_allowed`) | Owner: the agreement itself |
 | 4 | AI policy: no personal data to an external LLM without agreement; AI output labelled; humans decide grades | PT-3, AC-4, SA-9 | D1–3 | PII masking `engine.mask_pii` (`engine.py:335`), `test_security_review.py::test_history_is_masked_before_an_external_llm_call`; every tutor answer cites a chunk (`tests/unit/test_tutor.py`); grades are entered and published by the teacher (`journal.service.publish_grades`) | Done (code); the written policy is the owner's |
 | 5 | Secure development: reviewed merges, threat model, release checklist | SA-3, SA-8, SA-11, CM-3 | D30 | Checkpoint reviews A–F (`docs/review/`), `docs/security/review-log.md`, `docs/security/threat-model.md` | Done |
@@ -35,7 +35,7 @@ Related: `docs/security/threat-model.md` (STRIDE, accepted risks), `docs/securit
 | 6 | Asset and dependency inventory (SBOM) | CM-8, SR-4 | D30 | No runtime dependency (Python standard library only, `CLAUDE.md`); dev tools in `requirements-dev.txt` | Done for the runtime; an SBOM file: planned |
 | 7 | Dependency, secret and static scanning in CI | RA-5, SA-11, SI-2 | D1–3 | `.github/workflows/security.yml`: gitleaks, pip-audit, bandit | Done |
 | 8 | Patch deadlines; annual external penetration test (ASVS L2) | SI-2, CA-8 | D90 | — | Owner |
-| 9 | Privacy impact assessment for grades, exams, AI tutor | RA-8, RA-3 | D30 | `docs/privacy/data-inventory.md` (Task 40) is its input | Planned |
+| 9 | Privacy impact assessment for grades, exams, AI tutor | RA-8, RA-3 | D30 | `docs/privacy/data-inventory.md` (Task 40) is its input | Owner: the assessment itself |
 
 ## PROTECT
 
@@ -60,7 +60,7 @@ Related: `docs/security/threat-model.md` (STRIDE, accepted risks), `docs/securit
 
 | # | Control | SP 800-53 | Due | Evidence | Status |
 |---|---|---|---|---|---|
-| 24 | Audit log of logins, failures, role and grade changes, exports, admin actions; protected; no secrets | AU-2, AU-3, AU-9, AU-12 | D1–3 | `store.audit` (`backend/zeka/legacy/store.py:80`); reads of personal records audited (`audit_read` in `matrix.json`); grade changes in `grade_changes` (`test_grade_journal.py`); exports (`test_integration_checkpoint_e.py`, `test_export_since.py::test_only_the_administrator_exports`); no code path updates or deletes an audit row | Partial: AU-9 protection of the audit table by trigger is planned (after Task 40 decides what deletion does to audit rows) |
+| 24 | Audit log of logins, failures, role and grade changes, exports, admin actions; protected; no secrets | AU-2, AU-3, AU-9, AU-12 | D1–3 | `store.audit` (`backend/zeka/legacy/store.py:80`); reads of personal records audited (`audit_read` in `matrix.json`); grade changes in `grade_changes` (`test_grade_journal.py`); exports (`test_integration_checkpoint_e.py`, `test_export_since.py::test_only_the_administrator_exports`); append-only by trigger: no update, no delete of a row younger than a year (`0410_audit_append_only.sql`, `test_security_review.py::test_the_audit_log_is_append_only_and_keeps_a_row_at_least_a_year`); kept 1–10 years by the university's setting (Task 40) | Done |
 | 25 | Central log retention and alerts | AU-6, AU-11, SI-4 | D30 | Access log (`ZEKA_ACCESS_LOG`), job runs (`manage.py jobs status`) | Planned: alerts (Task 44) |
 | 26 | Vulnerability-disclosure contact (security.txt) | RA-5(11) | D30 | `GET /.well-known/security.txt` from `ZEKA_SECURITY_CONTACT` (`backend/zeka/legacy/r_core.py`), `test_security_review.py::test_security_txt_names_the_operator_s_contact_or_is_not_there` | Done; the address itself is the owner's |
 
@@ -68,7 +68,7 @@ Related: `docs/security/threat-model.md` (STRIDE, accepted risks), `docs/securit
 
 | # | Control | SP 800-53 | Due | Evidence | Status |
 |---|---|---|---|---|---|
-| 27 | Incident-response plan, contacts, breach-notification deadlines | IR-4, IR-6, IR-8 | D30 | `docs/runbooks/` (Task 43) | Planned |
+| 27 | Incident-response plan, contacts, breach-notification deadlines | IR-4, IR-6, IR-8 | D30 | `docs/runbooks/incident.md` (roles, levels, steps, evidence, notification), `docs/runbooks/exam-day.md` (Task 43) | Partial: names and phone numbers on the target server (Task 44); the notification deadline is the lawyer's |
 | 28 | Tabletop exercise and lessons learned | IR-2, IR-3 | D90 | — | Owner |
 
 ## RECOVER
@@ -76,15 +76,14 @@ Related: `docs/security/threat-model.md` (STRIDE, accepted risks), `docs/securit
 | # | Control | SP 800-53 | Due | Evidence | Status |
 |---|---|---|---|---|---|
 | 29 | Encrypted automated off-site backups with a tested restore | CP-9, CP-9(1), CP-9(8), CP-10 | D1–3 | `infra/backup.sh`, `infra/restore.sh`, `backend/zeka/core/backup.py`; `tests/migration/test_backup_restore.py` (restore into a clean directory, the second host, a damaged copy re-sent); `docs/runbooks/backup.md` | Partial: the restore on the target server's second machine is Task 44 |
-| 30 | Contingency plan; data return and deletion at contract end | CP-2, CP-4, SI-12(3), MP-6 | D90 | Exports for the data return (`manage.py export`, OneRoster round trip `test_oneroster_roundtrip.py`) | Partial: the plan is Task 43; deletion at contract end is the owner's |
+| 30 | Contingency plan; data return and deletion at contract end | CP-2, CP-4, SI-12(3), MP-6 | D90 | Exports for the data return (`manage.py export`, OneRoster round trip `test_oneroster_roundtrip.py`) | Partial: `docs/runbooks/cutover.md` (rollback by export), `docs/runbooks/backup.md`; deletion at contract end is the owner's |
 
 ## Open for D1–3
 
 Each still needs an owner action or a later task before real student data:
-- #2 (DPA, Task 40).
+- #2 (the data-processing agreement per university: owner).
 - #3 (the LLM agreement, if an external LLM is used at all).
 - #11 (passkeys: an option, not a blocker).
 - #13 (disk encryption on the host).
 - #17 (history purge).
-- #24 (AU-9 trigger).
 - #29 (restore on the second machine).

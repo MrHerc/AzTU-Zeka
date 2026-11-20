@@ -58,14 +58,13 @@ operating organisation can give.
 
 | Question | Answer | Evidence |
 |---|---|---|
-| Incident-response plan | `docs/runbooks/incident.md` (Task 43) | Planned |
+| Incident-response plan | Roles, severity levels, containment, evidence, notification | `docs/runbooks/incident.md` |
 | Breach notification | Per the university's contract and Azerbaijani law | Owner |
-| Exam-day continuity | Exam-day runbook with a paper fallback; the exam log survives a restart | Task 43; `test_exam_verify.py` |
+| Exam-day continuity | Exam-day runbook with a paper fallback; answers survive a killed worker or server | `docs/runbooks/exam-day.md`; `tests/integration/test_chaos.py`, `test_exam_verify.py` |
 
 ## Accepted risks disclosed
 
 See `docs/security/threat-model.md`:
 - **R1:** TOTP seeds are stored in the database.
 - **R2:** the document hash has no key.
-- **R3:** the audit table is not yet append-only.
 - **R4:** SEB 3.x has not been tested by hand.

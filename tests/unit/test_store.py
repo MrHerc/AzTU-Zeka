@@ -195,8 +195,13 @@ def test_seed_creates_the_demo_world(db):
 
 def test_seed_is_reproducible(db):
     names = [r["full_name"] for r in store.rows(db, "SELECT full_name FROM users ORDER BY id")]
-    store.reseed()
+    db.execute("INSERT INTO exam_events(exam_id,seq,kind,at) VALUES(999,1,'probe','x')")   # an exam ran in the demo
+    db.commit()
+    store.reseed()                      # the append-only tables (0301, 0410) are emptied too, and stay append-only
     assert [r["full_name"] for r in store.rows(db, "SELECT full_name FROM users ORDER BY id")] == names
+    assert not store.rows(db, "SELECT 1 FROM exam_events WHERE exam_id=999")
+    triggers = {r["name"] for r in store.rows(db, "SELECT name FROM sqlite_master WHERE type='trigger'")}
+    assert {"audit_no_update", "audit_no_early_delete", "exam_events_no_update", "exam_events_no_delete"} <= triggers
 
 
 def test_seeded_office_activity_is_within_office_hours(db):
