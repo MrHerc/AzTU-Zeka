@@ -1,5 +1,5 @@
 """Administration commands:  python backend/manage.py status | migrate | create-admin | backup | restore | import |
-activation-codes | export  (--help for each)"""
+reconcile | activation-codes | export | jobs | exam-verify | import-routes  (--help for each)"""
 import argparse
 import os
 import re
@@ -39,6 +39,17 @@ def main(argv=None) -> int:
     im.add_argument("--dry-run", action="store_true", help="check and compare only: nothing is written")
     im.add_argument("--prefer", choices=("zeka", "source"), default="zeka",
                     help="source: overwrite rows changed in Zəka since the last import (audited)")
+    im.add_argument("--as-of", help="attendance, attendance-opening, grades (required): the export's cut-over date YYYY-MM-DD")
+    im.add_argument("--force", action="store_true", help="import while an exam is going on (audited)")
+    im.add_argument("--wave", type=int, help="log the file as part of this migration wave, for manage.py reconcile (Task 38)")
+    im.add_argument("--exported-at", help="with --wave: when the old system exported the file (ISO date-time)")
+    im.add_argument("--by", help="the account the import is entered by (username); required for status-events")
+    rc = sub.add_parser("reconcile", help="compare a migration wave's files with what Zəka holds (Task 38)")
+    rc.add_argument("--wave", type=int, required=True)
+    rc.add_argument("--source", required=True)
+    rc.add_argument("--dir", required=True, help="the folder holding the wave's loaded files")
+    rc.add_argument("--sample", type=int, default=50, help="random records listed for a person to check")
+    rc.add_argument("--out", help="also write the full report as JSON to this file")
     ac = sub.add_parser("activation-codes", help="one-time activation codes for a faculty's students, as CSV (Task 16)")
     ac.add_argument("--faculty", required=True, help="faculty code")
     ac.add_argument("--out", required=True, help="CSV file to write (handed to the dean's office)")
@@ -68,7 +79,10 @@ def main(argv=None) -> int:
     if args.cmd == "export":
         return run_export(args.kind, args.since, args.registry, args.columns, args.out)
     if args.cmd == "import":
-        return run_import(args.kind, args.source, Path(args.file), args.dry_run, args.prefer == "source")
+        return run_import(args.kind, args.source, Path(args.file), args.dry_run, args.prefer == "source", args.as_of, args.force,
+                          args.wave, args.exported_at, args.by)
+    if args.cmd == "reconcile":
+        return run_reconcile(args.wave, args.source, Path(args.dir), args.sample, args.out)
     if args.cmd == "activation-codes":
         return run_activation_codes(args.faculty, Path(args.out))
     if args.cmd == "create-admin":
@@ -250,8 +264,13 @@ def _az(v) -> str:
     return v.get("az", "") if isinstance(v, dict) else str(v)          # reasons are i18n dicts
 
 
-def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source: bool) -> int:
+def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source: bool, as_of: str | None = None,
+               force: bool = False, wave: int | None = None, exported_at: str | None = None, by: str | None = None) -> int:
     """Exit 0: imported (or checked); 1: refused rows, nothing written; 2: the file or the database cannot be used."""
+    from zeka.modules.migration import service as migration
+    if kind in integration_rules.JOURNAL_KINDS and not as_of:
+        print(f"error: --as-of is required for {kind}: the cut-over date of the export (Task 38)", file=sys.stderr)
+        return 2
     try:
         store.init()
     except migrate.MigrationError as ex:
@@ -259,7 +278,16 @@ def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source:
         return 2
     c = store.connect()
     try:
-        report = importer.run(c, kind, source, path.name, path.read_bytes(), dry_run=dry_run, prefer_source=prefer_source)
+        user_id = staff_id(c, by) if by else None
+        if by and user_id is None:
+            print(f"error: --by {by}: no active staff account with this username", file=sys.stderr)
+            return 2
+        if wave is not None:
+            report = migration.load(c, wave, source, kind, path.name, path.read_bytes(), as_of=as_of, exported_at=exported_at,
+                                    dry_run=dry_run, force=force, prefer_source=prefer_source, user_id=user_id)
+        else:
+            report = importer.run(c, kind, source, path.name, path.read_bytes(), dry_run=dry_run, prefer_source=prefer_source,
+                                  as_of=as_of, force=force, user_id=user_id)
     except (OSError, tables.TableError, sqlite3.Error) as ex:
         print(f"error: {ex}", file=sys.stderr)
         return 2
@@ -276,6 +304,47 @@ def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source:
     for x in report["conflicts"][:200]:
         print(f"  conflict, row {x['row']}: {_az(x['reason'])}" + (f" ({', '.join(x['fields'])})" if x.get("fields") else ""))
     return 1 if report["error_count"] else 0
+
+
+def staff_id(c, username: str) -> int | None:
+    """The id of an active account that is not a student: who an import from the command line is entered by."""
+    u = store.row(c, "SELECT id FROM users WHERE username=? AND status='active' AND role<>'student'", (username,))
+    return u["id"] if u else None
+
+
+def run_reconcile(wave: int, source: str, folder: Path, sample: int, out: str | None) -> int:
+    """Exit 0: the wave reconciles; 1: differences (listed); 2: no database or no file of the wave."""
+    import json
+    from zeka.modules.migration import service as migration
+    if not store.DB_PATH.exists():
+        print(f"error: no database at {store.DB_PATH}", file=sys.stderr)
+        return 2
+    c = store.connect()
+    try:
+        r = migration.reconcile(c, wave, source, folder, sample)
+    finally:
+        c.close()
+    if not r["files"]:
+        print(f"error: wave {wave} has no file from {source}", file=sys.stderr)
+        return 2
+    print(f"wave {wave} · {source} · exported at {', '.join(r['exported_at']) or '-'}")
+    for f in r["files"]:
+        same = f.get("checksums") and f["checksums"]["source"] == f["checksums"]["zeka"]
+        print(f"  {f['filename']} ({f['kind']}, {f['rows']} rows) sha256 {f['sha256']} · from {f['source_file']} sha256 "
+              f"{f['source_sha256']} · checksum {'equal' if same else 'DIFFERENT'}")
+    for kind, v in r["entities"].items():
+        print(f"  {kind}: source {v['source']} · linked {v['linked']}" + ("" if v["source"] == v["linked"] else "  <- DIFFERENT"))
+    print(f"  absence hours: {r['hour_pairs']} student × course pairs, {len(r['hours'])} different")
+    for h in r["hours"][:200]:
+        print(f"    student #{h['student_id']} course #{h['course_id']}: source {h['source']} · zeka {h['zeka']}")
+    print(f"  differences: {len(r['differences'])}")
+    for d in r["differences"][:500]:
+        print(f"    {d.get('file')} row {d.get('row', '-')}: {_az(d.get('reason')) or d.get('action')} {', '.join(d.get('fields') or [])}")
+    print(f"  history reconciled: {r['history_reconciled']} students · sample for a person to check: {len(r['sample'])} records")
+    if out:
+        Path(out).write_text(json.dumps(r, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    print("RECONCILED" if r["ok"] else "NOT RECONCILED")
+    return 0 if r["ok"] else 1
 
 
 def run_export(kind: str, since: str | None, registry: str, columns: str, out: str | None) -> int:

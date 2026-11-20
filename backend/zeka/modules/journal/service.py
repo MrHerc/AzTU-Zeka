@@ -374,6 +374,29 @@ def excuse(c, by: int, request_id: int, student_id: int, lesson_ids: list[int]) 
     return changed
 
 
+# ---------------------------------------------------------------- records of the old system (Task 38)
+def import_mark(c, lesson_id: int, student_id: int, status: str, as_of: str, by: int | None, at: str) -> int:
+    """One lesson record of the old system up to the cut-over: source ``legacy`` with the export's date; the row's key."""
+    return repo.put_legacy_mark(c, lesson_id, student_id, status, as_of, by, at)
+
+
+def legacy_pairs(c) -> set[tuple[int, int]]:
+    """(student, course) that have lesson records of the old system: an opening balance for one would count twice."""
+    return repo.legacy_pairs(c)
+
+
+def imported_hours(c, course_id: int) -> dict[int, tuple[int, int]]:
+    """{student: (unexcused, excused)} hours of the course's imported records, for the reconciliation."""
+    return repo.imported_hours(c, course_id)
+
+
+def put_history(c, rid: int | None, v: dict, at: str) -> int:
+    """A final grade of a term before Zəka; the letter and the pass mark are the university's."""
+    grading = tenant.load(c)["grading"]
+    return repo.put_history(c, rid, {**v, "letter": tenant.letter(v["score"], grading["scale"]),
+                                     "passed": int(v["score"] >= grading["pass_mark"])}, at)
+
+
 def refresh_final(c, uid: int, course_id: int):
     refresh_finals(c, course_id, [uid])
 
@@ -465,6 +488,11 @@ def transcript_ready(c, uid: int) -> bool:
         return False
     first = repo.first_term_start(c)
     return bool(s["history_reconciled_at"]) or bool(first and s["admission_year"] and int(s["admission_year"]) >= int(first[:4]))
+
+
+def history_reconciled(c, uid: int) -> bool:
+    s = repo.student(c, uid)
+    return bool(s and s["history_reconciled_at"])
 
 
 def reconcile(c, user, sid: int) -> bool:

@@ -290,6 +290,10 @@ def set_seb_ok(c, session_id: int):
     c.execute("UPDATE sessions SET seb_ok=1 WHERE id=?", (session_id,))
 
 
+def open_count(c) -> int:
+    return row(c, "SELECT COUNT(*) n FROM exams WHERE status='open'")["n"]
+
+
 def open_exam_of(c, cid: int) -> bool:
     return row(c, "SELECT 1 FROM exams WHERE course_id=? AND status='open' LIMIT 1", (cid,)) is not None
 

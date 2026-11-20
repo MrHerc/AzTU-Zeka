@@ -36,6 +36,11 @@ def _refusal(c, eid: int, kind: str, user_id: int, data: dict):
         repo.add_event(c, eid, kind, user_id, user_id, data, _iso(_now()))
 
 
+def open_count(c) -> int:
+    """The exams going on now: a writing import does not start while there is one (Task 38)."""
+    return repo.open_count(c)
+
+
 def question_locked(c, q: dict) -> bool:
     """An exam question is not edited or deleted while an exam of its course is open (Checkpoint D, CR-3/TM-4): forms
     drawn from it would show or grade something else."""

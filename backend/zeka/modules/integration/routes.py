@@ -29,7 +29,7 @@ def run_import(req):
     try:
         return importer.run(req.db, b.text("kind", 40), b.text("source", 64), b.text("filename", 160), data,
                             dry_run=b.get("dry_run") is not False, prefer_source=b.get("prefer_source") is True,
-                            user_id=req.user["id"], max_rows=importer.MAX_SCREEN_ROWS)
+                            user_id=req.user["id"], max_rows=importer.MAX_SCREEN_ROWS, as_of=b.text("as_of", 10) or None)
     except tables.TableError as ex:
         raise HTTPError(400, str(ex)) from None
 

@@ -53,6 +53,20 @@ COLUMNS: dict[str, dict[str, tuple[str, ...]]] = {
     "grades": {"courseSourcedId": ("coursesourcedid", "fənn"), "userSourcedId": ("usersourcedid", "tələbə"),
                "component": ("component", "komponent"), "score": ("score", "bal"), "max": ("max", "maksimum"),
                "asOf": ("asof", "tarix")},
+    # Task 38: a lesson record of the old system up to the cut-over (the source key: class, student, day and start)
+    "attendance": {"classSourcedId": ("classsourcedid", "tədris vahidi"), "userSourcedId": ("usersourcedid", "tələbə"),
+                   "date": ("date", "tarix"), "start": ("start", "başlanğıc"), "status": ("status", "qeyd"),
+                   "end": ("end", "son"), "hours": ("hours", "saat"), "asOf": ("asof", "kəsid tarixi")},
+    # Task 38: a final grade of a term before Zəka, for the transcript (the source key: student, course code and term)
+    "results": {"userSourcedId": ("usersourcedid", "tələbə"), "courseCode": ("coursecode", "fənnin kodu"),
+                "courseTitle": ("coursetitle", "fənn"), "courseTitleEn": ("coursetitleen", "fənn (en)"),
+                "termTitle": ("termtitle", "semestr"), "termTitleEn": ("termtitleen", "semestr (en)"),
+                "termStart": ("termstart", "semestrin başlanğıcı"), "credits": ("credits", "kredit"), "score": ("score", "bal")},
+    # Task 38: a status order given in the old system (the source key: student, order number and order date)
+    "status-events": {"userSourcedId": ("usersourcedid", "tələbə"), "kind": ("kind", "növ"),
+                      "orderNo": ("orderno", "əmr №", "əmrin nömrəsi"), "orderDate": ("orderdate", "əmrin tarixi"),
+                      "effectiveDate": ("effectivedate", "qüvvəyə minmə tarixi"), "group": ("group", "qrup"),
+                      "note": ("note", "qeyd")},
 }
 REQUIRED = {
     "users": ("sourcedId", "username", "givenName", "familyName", "role"),
@@ -63,10 +77,17 @@ REQUIRED = {
     "enrollments": ("sourcedId", "classSourcedId", "userSourcedId", "role"),
     "timetable": ("sourcedId", "courseSourcedId", "weekday", "start", "end"),
     "rooms": ("sourcedId", "identifier", "number", "building"),
-    "attendance-opening": ("termSourcedId", "courseSourcedId", "userSourcedId", "heldHours", "unexcusedHours", "excusedHours", "asOf"),
+    # asOf: a column, or --as-of for the whole file (Task 38)
+    "attendance-opening": ("termSourcedId", "courseSourcedId", "userSourcedId", "heldHours", "unexcusedHours", "excusedHours"),
     "grades": ("courseSourcedId", "userSourcedId", "component", "score"),
+    "attendance": ("classSourcedId", "userSourcedId", "date", "start", "status"),
+    "results": ("userSourcedId", "courseCode", "courseTitle", "termTitle", "termStart", "credits", "score"),
+    "status-events": ("userSourcedId", "kind", "orderNo", "orderDate", "effectiveDate"),
 }
 KINDS = (*COLUMNS, "teaching-load")
+JOURNAL_KINDS = ("attendance", "attendance-opening", "grades")      # their rows carry the export's cut-over date (as_of)
+MARKS = {"present": "present", "iştirak": "present", "+": "present", "absent": "absent", "qayıb": "absent", "-": "absent",
+         "late": "late", "gecikmə": "late", "excused": "excused", "üzrlü": "excused"}
 IMPORT_ROLES = {"student": "student", "tələbə": "student", "teacher": "teacher", "müəllim": "teacher"}
 UNIT_KIND = {"lecture": "lecture", "mühazirə": "lecture", "seminar": "seminar", "məşğələ": "seminar", "lab": "lab",
              "laboratoriya": "lab", "scheduled": "lecture"}
@@ -150,6 +171,8 @@ def draft(kind: str, cells: dict[str, str]) -> tuple[dict, dict | None]:
         return _opening(cells)
     if kind == "grades":
         return _grade(cells)
+    if kind in ("attendance", "results", "status-events"):
+        return {"attendance": _mark, "results": _result, "status-events": _status_event}[kind](cells)
     sid = cells.get("sourcedId", "")
     if not SOURCE.fullmatch(sid):
         return {}, E("sourcedId 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır")
@@ -287,12 +310,17 @@ def _room(x: dict) -> tuple[dict, dict | None]:
 
 
 COMPOSITE_KEYS = {"attendance-opening": ("termSourcedId", "courseSourcedId", "userSourcedId"),
-                  "grades": ("courseSourcedId", "userSourcedId", "component")}
+                  "grades": ("courseSourcedId", "userSourcedId", "component"),
+                  "attendance": ("classSourcedId", "userSourcedId", "date", "start"),
+                  "results": ("userSourcedId", "courseCode", "termTitle"),
+                  "status-events": ("userSourcedId", "orderNo", "orderDate")}
+DATE_PARTS = ("date", "orderDate")           # written the same in the key however the export writes them
 
 
 def source_key(kind: str, cells: dict) -> str:
     """The source key of a kind without a sourcedId column: its parts together."""
-    return "|".join(cells.get(k, "") for k in COMPOSITE_KEYS[kind])
+    return "|".join((a_date(cells.get(k, "")) if k in DATE_PARTS else None) or " ".join(cells.get(k, "").split())
+                    for k in COMPOSITE_KEYS[kind])
 
 
 def _number(v: str) -> float | None:
@@ -338,6 +366,74 @@ def _opening(x: dict) -> tuple[dict, dict | None]:
     if not out["as_of"]:
         return {}, E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field="asOf")
     return out, None
+
+
+# ---------------------------------------------------------------- the old system's journal and orders (Task 38)
+def _refs(x: dict, *cols: str) -> dict | None:
+    for k in cols:
+        if not SOURCE.fullmatch(x.get(k, "")):
+            return E("«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır", field=k)
+    return None
+
+
+def _day(x: dict, col: str) -> tuple[str | None, dict | None]:
+    day = a_date(x.get(col, ""))
+    return day, (None if day else E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field=col))
+
+
+def _mark(x: dict) -> tuple[dict, dict | None]:
+    problem = _refs(x, "classSourcedId", "userSourcedId")
+    day, bad_day = _day(x, "date")
+    if problem or bad_day:
+        return {}, problem or bad_day
+    start, end = x.get("start", "").strip(), x.get("end", "").strip() or None
+    if not TIME.fullmatch(start) or (end and not (TIME.fullmatch(end) and start < end)):
+        return {}, E("Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır")
+    hours = an_int(x["hours"], 1, 12) if x.get("hours", "").strip() else None
+    if x.get("hours", "").strip() and hours is None:
+        return {}, E("«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır", field="hours", lo=1, hi=12)
+    status = _lookup(MARKS, x.get("status", ""))
+    if not status:
+        return {}, E("Qeyd iştirak, qayıb, gecikmə və ya üzrlü olmalıdır")
+    as_of = a_date(x.get("asOf", ""))
+    if not as_of:
+        return {}, E("Kəsid tarixi yoxdur: onu --as-of ilə və ya «asOf» sütununda verin")
+    if day > as_of:                                    # type: ignore[operator]  # day is a date here
+        return {}, E("Dərsin tarixi kəsid tarixindən sonradır")
+    return {"_class": x["classSourcedId"], "_user": x["userSourcedId"], "day": day, "start": start, "_end": end, "_hours": hours,
+            "status": status, "_as_of": as_of}, None
+
+
+def _result(x: dict) -> tuple[dict, dict | None]:
+    problem = _refs(x, "userSourcedId")
+    start, bad_day = _day(x, "termStart")
+    if problem or bad_day:
+        return {}, problem or bad_day
+    text = {k: " ".join(x.get(col, "").split()) for k, col in (("course_code", "courseCode"), ("course_name", "courseTitle"),
+                                                              ("course_name_en", "courseTitleEn"), ("term_name", "termTitle"),
+                                                              ("term_name_en", "termTitleEn"))}
+    for k, col, most in (("course_code", "courseCode", 40), ("course_name", "courseTitle", 200), ("term_name", "termTitle", 100)):
+        if not 1 <= len(text[k]) <= most:
+            return {}, E("«{field}» sahəsi doldurulmalıdır", field=col)
+    credits = an_int(x.get("credits", ""), 0, 60)
+    if credits is None:
+        return {}, E("«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır", field="credits", lo=0, hi=60)
+    score = _number(x.get("score", ""))
+    if score is None or not 0 <= score <= 100:
+        return {}, E("Bal 0 ilə {max} arasında olmalıdır", max=100)
+    return {"_user": x["userSourcedId"], "course_code": text["course_code"], "course_name": text["course_name"],
+            "course_name_en": text["course_name_en"][:200] or None, "term_name": text["term_name"],
+            "term_name_en": text["term_name_en"][:100] or None, "term_start": start, "credits": credits, "score": round(score, 2)}, None
+
+
+def _status_event(x: dict) -> tuple[dict, dict | None]:
+    problem = _refs(x, "userSourcedId")
+    order_date, bad_order = _day(x, "orderDate")
+    effective, bad_effective = _day(x, "effectiveDate")
+    if problem or bad_order or bad_effective:
+        return {}, problem or bad_order or bad_effective
+    return {"_user": x["userSourcedId"], "kind": key(x.get("kind", "")), "order_no": x.get("orderNo", ""), "order_date": order_date,
+            "effective_date": effective, "_group": " ".join(x.get("group", "").split()) or None, "note": x.get("note", "")}, None
 
 
 # ---------------------------------------------------------------- activation codes

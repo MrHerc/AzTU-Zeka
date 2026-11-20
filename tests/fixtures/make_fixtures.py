@@ -4,6 +4,7 @@ owner gave (staff names, degrees, posts) never enter the repository. Run: python
 forma3_blocks.xlsx   layout A: one sheet of teacher blocks, plus a "saat hesabı" sheet that must be skipped
 forma3_sheets.xlsx   layout B: a sheet per teacher (name in E4), a second teacher, a SAAT HESABI section, an unknown teacher
 users_10k.csv        10 000 students in the OneRoster users format, in the demo groups
+attendance_lessons.csv, attendance_opening.csv, grades.csv, status_events.csv   an old system's exports (Task 38)
 """
 from __future__ import annotations
 
@@ -151,10 +152,57 @@ def users_10k() -> str:
     return out.getvalue()
 
 
+# ---------------------------------------------------------------- an old system's exports (Task 38, content/mappings/sample-sis.json)
+# Students ETL-S1..ETL-S6 of group ETL-1, class ETL-K1 of course ETL-C1, course ETL-C2 (no lesson records), the term
+# T-2026: tests/migration/test_etl.py builds them. The cut-over (--as-of) is 2026-11-10; the lessons are 2–6 November.
+ETL_MARKS = {"ETL-S1": "iiqii", "ETL-S2": "iiiii", "ETL-S3": "qqüii", "ETL-S4": "igiiq", "ETL-S5": "iiiüi", "ETL-S6": "qiiii"}
+
+
+def _csv(rows: list[list]) -> str:
+    out = io.StringIO()
+    csv.writer(out, lineterminator="\n").writerows(rows)
+    return out.getvalue()
+
+
+def attendance_lessons() -> str:
+    """Lesson-level records in the old system's own shape: a class code, a student code, DD.MM.YYYY, one letter a mark,
+    and a teacher column Zəka does not take."""
+    rows: list[list] = [["Vahid", "Tələbə", "Tarix", "Başlama", "Saat", "Qeyd", "Müəllim"]]
+    for sid, marks in ETL_MARKS.items():
+        for day, mark in zip((2, 3, 4, 5, 6), marks, strict=True):
+            rows.append(["ETL-K1", sid, f"{day:02d}.11.2026", "09:00", 2, mark, "Ə. Uydurmaov"])
+    return _csv(rows)
+
+
+def attendance_opening() -> str:
+    """Totals per student and course up to the cut-over: the form of an old system that keeps no lesson records."""
+    rows: list[list] = [["Semestr", "Fənn", "Tələbə", "Keçilmiş saat", "Üzrsüz", "Üzrlü"]]
+    rows += [["T-2026", "ETL-C2", sid, 20, i % 3 * 2, i % 2 * 2] for i, sid in enumerate(ETL_MARKS)]
+    return _csv(rows)
+
+
+def etl_grades() -> str:
+    """Scores on the old system's 100-point scale for a component worth 10 in Zəka."""
+    rows: list[list] = [["Fənn", "Tələbə", "Komponent", "Bal (100)"]]
+    rows += [["ETL-C1", sid, "Kollokvium 1", 50 + 8 * i] for i, sid in enumerate(ETL_MARKS)]
+    return _csv(rows)
+
+
+def status_events() -> str:
+    """Two orders: a leave from 12 November (given on 9 November, before the export), and an admission the dean's office
+    already entered in Zəka."""
+    return _csv([["Tələbə", "Növ", "Əmr №", "Əmr tarixi", "Qüvvəyə minmə tarixi", "Qrup"],
+                 ["ETL-S6", "Akademik məzuniyyət", "ETL-77/AM", "09.11.2026", "12.11.2026", ""],
+                 ["ETL-S5", "Qəbul", "ETL-25/Q", "25.08.2025", "01.09.2025", ""]])
+
+
 def main():
     (HERE / "forma3_blocks.xlsx").write_bytes(forma3_blocks())
     (HERE / "forma3_sheets.xlsx").write_bytes(forma3_sheets())
     (HERE / "users_10k.csv").write_text(users_10k(), encoding="utf-8")
+    for name, text in (("attendance_lessons.csv", attendance_lessons()), ("attendance_opening.csv", attendance_opening()),
+                       ("grades.csv", etl_grades()), ("status_events.csv", status_events())):
+        (HERE / name).write_text(text, encoding="utf-8")
     print("written:", ", ".join(p.name for p in sorted(HERE.glob("*.*")) if p.suffix in (".xlsx", ".csv")))
 
 

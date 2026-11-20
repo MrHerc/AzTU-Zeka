@@ -19,12 +19,18 @@ from datetime import timedelta
 from ...core.i18n import E
 from ...legacy.store import audit, iso, now, setting
 from ...core import tenant
+from ..directory import domain as directory_rules
+from ..exam import service as exam
 from ..identity import domain as identity_rules
 from ..identity import service as identity
 from ..journal import service as journal
+from ..migration import loaders
+from ..timetable import domain as timetable_rules
+from ..timetable import service as timetable
 from . import domain, forma3, repo, tables
 
 MAX_SCREEN_ROWS = 20_000
+MAX_FILE_ROWS = tables.MAX_ROWS - 1                 # one file is one transaction (with its header row): tools/etl splits a larger load
 # link kind -> (table, compared and written columns, key column)
 TARGETS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "users": ("users", ("username", "full_name", "patronymic", "role", "student_no", "email", "group_id", "department_id", "status"), "id"),
@@ -41,7 +47,13 @@ TARGETS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "attendance_opening": ("attendance_opening", ("student_id", "course_id", "term_id", "held_hours", "unexcused_hours",
                                                   "excused_hours", "as_of"), "id"),
     "grades": ("grades", ("user_id", "course_id", "component", "score", "max"), "rowid"),
+    # Task 38: records of the old system; each is written by the module that owns it (WRITERS)
+    "attendance": ("attendance", ("lesson_id", "user_id", "status"), "rowid"),
+    "results": ("final_grades", ("user_id", "course_code", "course_name", "course_name_en", "term_name", "term_name_en", "term_start",
+                                 "credits", "score"), "id"),
+    "status_events": ("student_status_events", ("student_id", "kind", "order_no", "order_date", "effective_date", "to_group_id"), "id"),
 }
+BIG = ("attendance",)                                # too many rows to read whole: only the file's own links and lessons are read
 UNIT_LINKS = ("classes", "teaching_load")           # these also carry the unit's groups
 STAMPED = ("faculties", "departments", "academic_terms", "courses", "teaching_units", "rooms", "attendance_opening")
 IMPORTED_ROLES = ("student", "teacher")              # an import never touches another kind of account
@@ -73,10 +85,10 @@ class Item:
 class Context:
     """What the rows of a file are checked and compared against, read once before any write (no query per row)."""
 
-    def __init__(self, c, source: str, links: tuple[str, ...]):
+    def __init__(self, c, source: str, links: tuple[str, ...], keys: list[str] | None = None):
         self.c, self.source = c, source
-        self.links = {k: repo.links(c, k, source) for k in links}
-        self.rows = {k: repo.table(c, TARGETS[k][0], TARGETS[k][1], TARGETS[k][2]) for k in links}
+        self.links = {k: repo.links_in(c, k, source, keys or []) if k in BIG else repo.links(c, k, source) for k in links}
+        self.rows = {k: {} if k in BIG else repo.table(c, TARGETS[k][0], TARGETS[k][1], TARGETS[k][2]) for k in links}
         self.groups = repo.unit_groups(c)
         self.file_faculties: set[str] = set()          # orgs: faculties of this same file, for their departments
         self.reason = ""                               # grades: "import:<file name>:<its SHA-256>" (Task 21)
@@ -103,6 +115,46 @@ class Context:
         if ("keyed", name, cols) not in self._cache:
             self._cache[("keyed", name, cols)] = {tuple(r[x] for x in cols): k for k, r in self.table(name, cols, key).items()}
         return self._cache[("keyed", name, cols)]
+
+    # ---- the journal's own lookups (Task 38)
+    def enrolment(self, uid: int, course_id: int) -> dict | None:
+        """The student's enrolment in a course as a lesson list reads it (the student's own group when it names none)."""
+        key = self.enrolled().get((uid, course_id))
+        if key is None:
+            return None
+        e = self.table("enrollments", ("group_id", "subgroup", "begin_date", "end_date"), "rowid")[key]
+        return {**e, "group_id": e["group_id"] or self.table("users", ("group_id",))[uid]["group_id"]}
+
+    def lesson(self, unit: int, day: str, start: str) -> dict | None:
+        """The unit's lesson on a day and start: where it was held, else the slot it was planned in."""
+        if "lessons" not in self._cache:
+            held: dict = {}
+            slot: dict = {}
+            for r in self.table("lessons", ("unit_id", "day", "start", "slot_day", "slot_start", "status", "academic_hours")).values():
+                held[(r["unit_id"], r["day"], r["start"])] = r
+                slot[(r["unit_id"], r["slot_day"], r["slot_start"])] = r
+            self._cache["lessons"] = (held, slot)
+        held, slot = self._cache["lessons"]
+        return held.get((unit, day, start)) or slot.get((unit, day, start))
+
+    def marks(self, lesson_id: int) -> dict[int, int]:
+        """{student: the key of their record} of one lesson, read when a file row names the lesson."""
+        if ("marks", lesson_id) not in self._cache:
+            found = repo.marks_of(self.c, lesson_id)
+            self.rows["attendance"].update({r["_k"]: r for r in found})
+            self._cache[("marks", lesson_id)] = {r["user_id"]: r["_k"] for r in found}
+        return self._cache[("marks", lesson_id)]
+
+    def opening_dates(self) -> dict[tuple[int, int], str]:
+        if "openings" not in self._cache:
+            self._cache["openings"] = {(r["student_id"], r["course_id"]): r["as_of"] for r in
+                                       self.table("attendance_opening", ("student_id", "course_id", "as_of")).values()}
+        return self._cache["openings"]
+
+    def legacy_pairs(self) -> set[tuple[int, int]]:
+        if "legacy" not in self._cache:
+            self._cache["legacy"] = journal.legacy_pairs(self.c)
+        return self._cache["legacy"]
 
     def role(self, uid: int) -> str | None:
         hit = self.table("users", ("role",)).get(uid)
@@ -242,6 +294,8 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
             return None, E("Yalnız aktiv tələbə qeydiyyata alınır")
         if str(v.get("as_of") or "") > now().date().isoformat():
             return None, E("Açılış qalığının tarixi gələcəkdə ola bilməz")      # it would hide the journal's records up to that day
+        if (student_id, course_id) in ctx.legacy_pairs():                        # one form per student and course (Task 38)
+            return None, E("Bu tələbə və fənn üçün dərs səviyyəli qeydlər idxal olunub: açılış qalığı qəbul olunmur")
         keys = ctx.keyed("attendance_opening", ("student_id", "course_id", "term_id"))
         values = {"student_id": student_id, "course_id": course_id, "term_id": term_id, **v}
         return Item(n, "attendance_opening", sid, values, natural=keys.get((student_id, course_id, term_id))), None
@@ -264,6 +318,58 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
         item = Item(n, "grades", sid, {"user_id": user_id, "course_id": course_id, "component": v["component"], "score": v["score"],
                                        "max": float(comp["max"])}, natural=keys.get((user_id, course_id, v["component"])))
         item.extra["as_of"] = v["_as_of"]
+        return item, None
+    if kind == "attendance":
+        unit, user = ctx.linked("classes", v["_class"]), ctx.linked("users", v["_user"])
+        if not unit:
+            return None, _missing("Tədris vahidi", v["_class"])
+        if not user or ctx.role(user) != "student":
+            return None, _missing("Tələbə", v["_user"])
+        if v["_as_of"] > now().date().isoformat():
+            return None, E("Kəsid tarixi gələcəkdə ola bilməz")
+        u = ctx.table("teaching_units", ("course_id", "subgroup", "kind"))[unit]
+        enr = ctx.enrolment(user, u["course_id"])
+        if not enr or not timetable_rules.on_list(enr, {"day": v["day"], "unit_id": unit}, {unit: (ctx.groups.get(unit, []), u["subgroup"])}):
+            return None, E("Tələbə həmin gün bu tədris vahidinin siyahısında deyil")   # the journal would never count the record
+        opening = ctx.opening_dates().get((user, u["course_id"]))
+        if opening and v["day"] <= opening:                                      # one form per student and course
+            return None, E("Bu tələbə və fənn üçün açılış qalığı var ({day}): həmin tarixə qədərki dərs qeydi qəbul olunmur", day=opening)
+        les = ctx.lesson(unit, v["day"], v["start"])
+        if les and les["status"] == "cancelled":
+            return None, E("Zəka-da bu dərs ləğv olunub: qeyd sayılmazdı")
+        key = f"{unit}|{v['day']}|{v['start']}"
+        item = Item(n, "attendance", sid, {"lesson_id": les["_k"] if les else Pending("lessons", key), "user_id": user, "status": v["status"]},
+                    natural=ctx.marks(les["_k"]).get(user) if les else None)
+        item.extra.update(as_of=v["_as_of"], course_id=u["course_id"], hours=v["_hours"] or (les and les["academic_hours"]) or 2,
+                          lesson=(unit, v["day"], v["start"], v["_end"], v["_hours"], domain.KIND_LABEL.get(u["kind"])))
+        return item, None
+    if kind == "results":
+        user = ctx.linked("users", v.pop("_user"))
+        if not user or ctx.role(user) != "student":
+            return None, _missing("Tələbə", sid.split("|")[0])
+        if "finals" not in ctx._cache:                   # a term before Zəka only: the same course and term in Zəka is Zəka's
+            ctx._cache["finals"] = {(r["user_id"], r["course_code"], r["term_name"]): r for r in
+                                    ctx.table("final_grades", ("user_id", "course_code", "term_name", "source")).values()}
+        same = ctx._cache["finals"].get((user, v["course_code"], v["term_name"]))
+        if same and same["source"] != "legacy":
+            return None, E("Bu fənnin həmin semestrdəki yekun qiyməti Zəka-da yazılıb: tarixi nəticə kimi idxal olunmur")
+        return Item(n, "results", sid, {"user_id": user, **v}, natural=same["_k"] if same else None), None
+    if kind == "status-events":
+        user, group = ctx.linked("users", v["_user"]), v["_group"]
+        if not user or ctx.role(user) != "student":
+            return None, _missing("Tələbə", v["_user"])
+        active = {g["name"]: k for k, g in ctx.table("study_groups", ("name", "active")).items() if g["active"]}
+        if group and group not in active:
+            return None, _missing("Qrup", group)
+        order, problem = directory_rules.status_event({**v, "to_group_id": active[group] if group else None})
+        if problem:
+            return None, problem
+        events = ctx.keyed("student_status_events", ("student_id", "order_no", "order_date"))
+        item = Item(n, "status_events", sid, {"student_id": user, **{k: order[k] for k in ("kind", "order_no", "order_date",
+                                                                                       "effective_date", "to_group_id")}},
+                    natural=events.get((user, order["order_no"], order["order_date"])))
+        item.extra["note"] = order["note"]
+        item.extra["student"] = {"id": user, **ctx.table("users", ("username", "role", "group_id"))[user]}
         return item, None
     raise ValueError(kind)
 
@@ -397,11 +503,16 @@ def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, er
             it.action = "update"                       # a row never imported: filling its empty fields overwrites nothing
         else:
             changed = sorted(k for k in cur if cur[k] != _new(it).get(k))
-            it.action = "overwrite" if prefer else "conflict"
+            it.action = "overwrite" if prefer and it.link != "status_events" else "conflict"
             it.extra["fields"] = changed
-            if not prefer:
+            if it.action == "conflict":
                 conflicts.append({"row": it.extra.get("where", it.row), "id": it.row_id, "fields": changed,
                                   "reason": E("Zəka-da dəyişdirilib; mənbənin dəyəri yazılmadı")})
+        if it.link == "attendance" and it.action == "relink" and not link:
+            it.action = "update"                       # the same mark written in Zəka becomes the imported record
+        if it.link == "status_events" and it.action == "update":   # an order is never rewritten: a correction is a new order
+            it.action = "conflict"
+            conflicts.append({"row": it.row, "id": it.row_id, "reason": E("Status əmri dəyişdirilmir: düzəliş yeni əmrlə edilir")})
 
 
 # ---------------------------------------------------------------- writing
@@ -416,10 +527,19 @@ def _now_hash(c, it: Item) -> str | None:
     return domain.row_hash({**r, **({"groups": repo.groups_of(c, it.row_id)} if it.link in UNIT_LINKS else {})})
 
 
+# the old system's journal records and orders are written by the journal and the registry themselves (Task 38)
+WRITERS = loaders.WRITERS
+
+
 def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: list) -> int:
     new_ids: dict[tuple[str, str], int] = {}
     t = iso(now())
     done = 0
+    for it in items:                                   # held lessons the timetable did not plan are made first
+        ref = it.values.get("lesson_id")
+        if isinstance(ref, Pending) and it.action == "insert" and (ref.link, ref.source_id) not in new_ids:
+            unit, day, start, end, hours, kind = it.extra["lesson"]
+            new_ids[(ref.link, ref.source_id)] = timetable.add_imported_lesson(c, unit, day, start, end, hours, kind)
     order = {k: i for i, k in enumerate(("faculties", "departments"))}
     for it in sorted(items, key=lambda x: order.get(x.link, 9)):
         if it.action in ("unchanged", "conflict"):
@@ -428,9 +548,10 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
         table, cols, key = TARGETS[it.link]
         legacy = {"source": "legacy", "status": "published", "entered_by": user_id, "reason": ctx.reason, "as_of": it.extra.get("as_of"),
                   "updated_at": t} if table == "grades" else {}        # an imported score (Task 21): who, from which file
+        writer = WRITERS.get(it.link)
         if it.action == "insert":
             extra: dict = {"synthetic": 0} if table == "users" else {"created_at": t, "updated_at": t} if table in STAMPED else {}
-            rid = repo.insert(c, table, {**values, **extra, **legacy})
+            rid = writer(c, ctx, it, values, user_id, t) if writer else repo.insert(c, table, {**values, **extra, **legacy})
             new_ids[(it.link, it.source_id)] = rid
         else:
             rid = it.row_id if it.row_id is not None else 0       # set by _classify for every action but insert
@@ -443,7 +564,9 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
                 before = repo.one(c, "users", ("role", "status"), rid)
                 if before and (before["role"], before["status"]) != (values["role"], values["status"]):
                     identity.end_all_sessions(c, rid)             # a new role or status starts from a new sign-in
-            if it.action in ("update", "overwrite"):
+            if it.action in ("update", "overwrite") and writer:
+                writer(c, ctx, it, values, user_id, t)
+            elif it.action in ("update", "overwrite"):
                 prior = repo.one(c, "grades", ("score", "status"), rid, "rowid") if table == "grades" else None
                 if prior and prior["status"] != "published":
                     legacy["status"] = prior["status"]           # a teacher's draft stays a draft until the teacher publishes it
@@ -464,12 +587,22 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
 
 
 def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool = False, prefer_source: bool = False,
-        user_id: int | None = None, max_rows: int | None = None) -> dict:
-    """Import one file; the report says what was (or, with ``dry_run``, would be) written."""
+        user_id: int | None = None, max_rows: int | None = None, as_of: str | None = None, force: bool = False,
+        detail: bool = False) -> dict:
+    """Import one file; the report says what was (or, with ``dry_run``, would be) written. ``as_of``: the cut-over date of
+    the export for the journal kinds (a row may also carry its own). A writing import does not start while an exam is
+    going on, unless ``force`` (audited)."""
     if kind not in domain.KINDS:
         raise tables.TableError("Naməlum idxal növü")
     if not domain.SOURCE.fullmatch(source or ""):
         raise tables.TableError("Mənbə sisteminin adını yazın (--source)")
+    if as_of is not None and (kind not in domain.JOURNAL_KINDS or domain.a_date(as_of) != as_of or as_of > now().date().isoformat()):
+        raise tables.TableError("Kəsid tarixi (--as-of) jurnal növləri üçündür: İİİİ-AA-GG, bu gündən gec olmayan")
+    if kind == "status-events" and user_id is None and not dry_run:
+        raise tables.TableError("Status əmrini idxal edən hesab göstərilməlidir (--by)")   # it is the order's "entered by"
+    going = 0 if dry_run else exam.open_count(c)
+    if going and not force:
+        raise tables.TableError("İmtahan gedir: yazan idxal imtahan bağlanandan sonra başlayır")
     started = time.monotonic()
     errors: list = []
     conflicts: list = []
@@ -483,10 +616,17 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
             return _report(kind, source, 0, [], [{"row": 1, "reason": problem}], [], dry_run, None, started)
         if max_rows and len(cells) > max_rows:
             raise tables.TableError("Ekrandan ən çox 20 000 sətir idxal olunur; böyük faylı manage.py ilə idxal edin")
+        if len(cells) > MAX_FILE_ROWS:
+            raise tables.TableError("Bir faylda ən çox 200 000 sətir idxal olunur: faylı hissələrə bölün")
+        for n, x in cells if as_of else ():             # the export's date for every row that names none (Task 38)
+            if x.get("asOf") and domain.a_date(x["asOf"]) != as_of:
+                errors.append({"row": n, "reason": E("Sətrin tarixi --as-of ilə uyğun gəlmir")})
+            x["asOf"] = as_of
         links = {"users": ("users",), "orgs": ("faculties", "departments"), "terms": ("terms",), "courses": ("courses",),
                  "classes": ("classes",), "enrollments": ("unit_teachers", "enrollments", "users"), "timetable": ("timetable",),
-                 "rooms": ("rooms",), "attendance-opening": ("attendance_opening", "users"), "grades": ("grades", "users")}[kind]
-        ctx = Context(c, source, links)
+                 "rooms": ("rooms",), "attendance-opening": ("attendance_opening", "users"), "grades": ("grades", "users"),
+                 "attendance": ("attendance", "users"), "results": ("results", "users"), "status-events": ("status_events", "users")}[kind]
+        ctx = Context(c, source, links, [domain.source_key(kind, x) for _, x in cells] if kind in domain.COMPOSITE_KEYS else None)
         ctx.reason = f"import:{filename}:{hashlib.sha256(data).hexdigest()}"
         ctx.file_faculties = {x["sourcedId"] for _, x in cells if domain.ORG_TYPES.get(domain.norm(x.get("type", ""))) == "faculties"}
         items = _plan_rows(kind, ctx, cells, errors)
@@ -495,23 +635,32 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     _uniques(kind, ctx, items, errors)
     warnings = _held_check(c, items) if kind == "attendance-opening" else []
     if errors or dry_run:
-        return {**_report(kind, source, total, items, errors, conflicts, dry_run, None, started), "warnings": warnings}
+        out = {**_report(kind, source, total, items, errors, conflicts, dry_run, None, started), "warnings": warnings,
+               "checksums": _checksums(items), "hours": _hours(items) if kind in ("attendance", "attendance-opening") else {}}
+        if detail:                                    # the reconciliation's sample and difference list (Task 38)
+            out["items"] = [{"row": it.row, "source_id": it.source_id, "link": it.link, "row_id": it.row_id, "action": it.action,
+                             "values": {k: str(v) if isinstance(v, Pending) else v for k, v in _new(it).items()},
+                             "fields": it.extra.get("fields", []), "linked": it.source_id in ctx.links.get(it.link, {}),
+                             "aliases": len(it.extra.get("aliases", []))} for it in items]
+        return out
     c.commit()                                          # nothing of the request may be pending before the import's own transaction
     lock = time.monotonic()
     c.execute("BEGIN IMMEDIATE")
     try:
         _write(c, ctx, items, user_id, conflicts)
-        if kind in ("grades", "attendance-opening"):    # the final grades follow the imported scores and hours
+        if kind in ("grades", "attendance-opening", "attendance"):    # the final grades follow the imported scores and hours
             by_course: dict[int, set[int]] = {}
             for it in items:
                 if it.action in ("insert", "update", "overwrite"):
                     v = it.values
-                    by_course.setdefault(v["course_id"], set()).add(v["user_id"] if kind == "grades" else v["student_id"])
+                    by_course.setdefault(v.get("course_id") or it.extra["course_id"], set()).add(v.get("user_id") or v["student_id"])
             for cid, uids in sorted(by_course.items()):
                 journal.refresh_finals(c, cid, uids)
         counts = _counts(items)
         audit(c, user_id, "import", kind, f"{source} · {filename} · +{counts['inserted']} ~{counts['updated']} "
                                           f"={counts['unchanged']} !{len(conflicts)}")
+        if going:
+            audit(c, user_id, "import_forced", kind, f"{source} · {filename} · exams open: {going}")
         c.commit()
     except sqlite3.IntegrityError:                      # another writer took a unique value after the check
         c.rollback()
@@ -531,6 +680,31 @@ def _held_check(c, items: list[Item]) -> list[dict]:
         if planned is not None and planned != v["held_hours"]:
             out.append({"row": it.row, "reason": E("Keçilmiş saat Zəka-nın planından fərqlidir: faylda {a}, Zəka-da {b}",
                                                    a=v["held_hours"], b=planned)})
+    return out
+
+
+def _checksums(items: list[Item]) -> dict:
+    """The file's rows as the source has them and as Zəka holds them (a row not in Zəka: '-'): equal when nothing differs.
+    The reconciliation compares the two (Task 38)."""
+    src, cur = hashlib.sha256(), hashlib.sha256()
+    for it in sorted(items, key=lambda i: i.source_id):
+        new = domain.row_hash(_new(it))
+        src.update(f"{it.source_id}:{new}\n".encode())
+        cur.update(f"{it.source_id}:{new if it.action in ('unchanged', 'relink') else it.extra.get('cur_hash', '-')}\n".encode())
+    return {"source": src.hexdigest(), "zeka": cur.hexdigest()}
+
+
+def _hours(items: list[Item]) -> dict[str, list[int]]:
+    """{"<student>|<course>": [unexcused, excused]} hours the file's rows hold, per student and course."""
+    out: dict[str, list[int]] = {}
+    for it in items:
+        v = it.values
+        if it.link == "attendance_opening":
+            out[f"{v['student_id']}|{v['course_id']}"] = [v["unexcused_hours"], v["excused_hours"]]
+        elif it.link == "attendance":
+            pair = out.setdefault(f"{v['user_id']}|{it.extra['course_id']}", [0, 0])
+            if v["status"] in ("absent", "excused"):
+                pair[v["status"] == "excused"] += it.extra["hours"]
     return out
 
 

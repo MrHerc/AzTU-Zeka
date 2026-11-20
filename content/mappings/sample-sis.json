@@ -1,0 +1,36 @@
+{
+  "source": "sample-sis",
+  "note": "A synthetic old system (tests/fixtures, written by make_fixtures.py): the shape of a mapping for tools/etl/run.py, not a real export. A real source gets its own file once its export format is known.",
+  "files": [
+    {
+      "file": "attendance_lessons.csv",
+      "kind": "attendance",
+      "columns": {"Vahid": "classSourcedId", "Tələbə": "userSourcedId", "Tarix": "date", "Başlama": "start", "Saat": "hours", "Qeyd": "status"},
+      "ignore": {"Müəllim": "the lesson's teacher comes with the classes import"},
+      "transforms": {"date": "date", "status": "values"},
+      "values": {"status": {"i": "present", "q": "absent", "ü": "excused", "g": "late"}}
+    },
+    {
+      "file": "attendance_opening.csv",
+      "kind": "attendance-opening",
+      "columns": {"Semestr": "termSourcedId", "Fənn": "courseSourcedId", "Tələbə": "userSourcedId", "Keçilmiş saat": "heldHours",
+                  "Üzrsüz": "unexcusedHours", "Üzrlü": "excusedHours"}
+    },
+    {
+      "file": "grades.csv",
+      "kind": "grades",
+      "columns": {"Fənn": "courseSourcedId", "Tələbə": "userSourcedId", "Komponent": "component", "Bal (100)": "score"},
+      "transforms": {"score": "scale:100:10"}
+    },
+    {
+      "file": "status_events.csv",
+      "kind": "status-events",
+      "columns": {"Tələbə": "userSourcedId", "Növ": "kind", "Əmr №": "orderNo", "Əmr tarixi": "orderDate",
+                  "Qüvvəyə minmə tarixi": "effectiveDate", "Qrup": "group"},
+      "transforms": {"kind": "values", "orderDate": "date", "effectiveDate": "date"},
+      "values": {"kind": {"Qəbul": "admission", "Qrup dəyişikliyi": "group_change", "Köçürmə (gəlmə)": "transfer_in",
+                          "Köçürmə (getmə)": "transfer_out", "Akademik məzuniyyət": "academic_leave", "Xaric": "expulsion",
+                          "Bərpa": "reinstatement", "Məzun": "graduation"}}
+    }
+  ]
+}

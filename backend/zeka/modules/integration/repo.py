@@ -9,6 +9,21 @@ def links(c, kind: str, source: str) -> dict[str, dict]:
                                             (kind, source))}
 
 
+def links_in(c, kind: str, source: str, ids: list[str]) -> dict[str, dict]:
+    """The links of the given source ids only (a kind with too many rows to read whole: lesson records, Task 38)."""
+    out: dict[str, dict] = {}
+    for i in range(0, len(ids), 500):
+        part = ids[i:i + 500]
+        for r in rows(c, "SELECT source_id, row_id, source_hash FROM import_links WHERE kind=? AND source_system=? "
+                         f"AND source_id IN ({','.join('?' * len(part))})", (kind, source, *part)):  # nosec B608 - placeholders only
+            out[r["source_id"]] = r
+    return out
+
+
+def marks_of(c, lesson_id: int) -> list[dict]:
+    return rows(c, "SELECT rowid AS _k, lesson_id, user_id, status FROM attendance WHERE lesson_id=?", (lesson_id,))
+
+
 def table(c, name: str, cols: tuple[str, ...], key: str = "id") -> dict[int, dict]:
     """Every row of a target table with the given columns, by id (by rowid for enrollments)."""
     return {r["_k"]: r for r in rows(c, f"SELECT {key} AS _k, {', '.join(cols)} FROM {name}")}  # nosec B608 - constants

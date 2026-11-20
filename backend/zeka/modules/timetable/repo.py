@@ -100,6 +100,14 @@ def add_lessons(c, values: list[tuple]) -> int:
     return c.total_changes - before
 
 
+def add_imported_lesson(c, unit_id: int, day: str, start: str, end: str, hours: int, kind: str | None, at: str) -> int:
+    """A held lesson of the old system that the timetable did not plan (Task 38), in the slot its record names."""
+    return c.execute("INSERT INTO lessons(course_id,day,start,end,kind,unit_id,teacher_id,academic_hours,slot_day,slot_start,status,"
+                     "updated_at) SELECT u.course_id,?,?,?,?,u.id,COALESCE(u.teacher_id, co.teacher_id),?,?,?,'scheduled',? "
+                     "FROM teaching_units u JOIN courses co ON co.id=u.course_id WHERE u.id=?",
+                     (day, start, end, kind, hours, day, start, at, unit_id)).lastrowid
+
+
 def lesson(c, lid: int):
     return row(c, "SELECT l.*, co.name course FROM lessons l JOIN courses co ON co.id=l.course_id WHERE l.id=?", (lid,))
 

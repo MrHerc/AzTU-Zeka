@@ -930,19 +930,19 @@ Cari semestrin davamiyyəti iki formadan biri ilə gəlir (SPEC Open Questions 2
 Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, semestr, kredit, bal); bu növü də reyestrə bu tapşırıq əlavə edir. Uzlaşdırma keçəndə `history_reconciled_at` qoyulur. Köhnə sistemdə verilən status əmrləri `status-events` növü ilə gəlir (tələbənin `sourcedId`-si, növ, əmr nömrəsi, əmr tarixi, qüvvəyə minmə tarixi, qrup): `directory/service.py` ilə `student_status_events`-ə yazılır (Task 15), `entered_by` idxal edən hesabdır. Eyni (tələbə, əmr nömrəsi, əmr tarixi) üzrə Zəka-da artıq daxil edilmiş hadisə ikinci dəfə yaradılmır, mənbə ilə bağlanır (`import_links`). `manage.py reconcile --wave N --source <ad>`: varlıq üzrə say (istifadəçi, fənn, tədris vahidi, qeydiyyat, status əmri, cədvəl, davamiyyət açılış qalığı və ya dərs səviyyəli davamiyyət, bal), açar sahələrin yoxlama cəmi, əl yoxlaması üçün 50 təsadüfi qeyd, fərq hesabatı. Uzlaşdırma yalnız həmin mənbə üçün `import_links`-də olan sətirləri müqayisə edir; hesabata ixrac anı və hər mənbə faylının SHA-256-sı yazılır. Açar sahələrə tələbə × fənn üzrə üzrsüz və üzrlü saat, tələbə × fənn × komponent üzrə bal daxildir. Kəşf birinci saatdan başlayır: köhnə sistemlərin ixrac formatı.
 
 **Acceptance criteria:**
-- [ ] Verilən ixraclar üzərində quru sınaq izahsız sətir qalmayan xəritə və doğrulama hesabatı verir
-- [ ] İdxaldan sonra uzlaşdırma hər varlıq üçün mənbə sayı = mənbə ilə bağlı (`import_links`) sətir sayı göstərir
-- [ ] Zəka-da yaradılan sətir fərq sayılmır; hesabatda ixrac anı və fayl SHA-256-ları var
-- [ ] Davamiyyət və qiymət uzlaşdırılır: tələbə × fənn üzrə qayıb saatı cəmi (üzrsüz və üzrlü ayrıca) və (tələbə, fənn, komponent, bal) yoxlama cəmi mənbə ilə bərabərdir
-- [ ] Pilot fakültənin 50 təsadüfi tələbəsinin qayıb faizi kəsid tarixində köhnə sistemin rəqəmi ilə eynidir; dekanlıq təsdiqləyir
-- [ ] Açılış qalığı olan tələbə × fənn üçün `as_of`-a qədərki dərs səviyyəli sətir rədd olunur, dərs səviyyəli sətri olan üçün açılış qalığı rədd olunur: qayıb iki dəfə sayılmır
-- [ ] Köhnə sistemdə verilən status əmri `status-events` idxalından sonra `student_status_events`-dədir və tələbəni qüvvəyə minmə tarixindən sonrakı dərs siyahılarından çıxarır; eyni əmr Zəka-da əvvəlcədən daxil edilibsə ikinci hadisə yaranmır
-- [ ] Təkrar işlətmə dublikat yaratmır
-- [ ] Yazan idxal hər hansı imtahan `gedir` statusunda olanda başlamır (`--force` yalnız audit qeydi ilə); 200 000 sətirdən böyük yükləmə fayllara bölünür, hər fayl ayrıca atomardır
+- [x] Verilən ixraclar üzərində quru sınaq izahsız sətir qalmayan xəritə və doğrulama hesabatı verir (sintetik ixraclarla: `content/mappings/sample-sis.json`; real ixrac formatı sahibdən gözlənilir)
+- [x] İdxaldan sonra uzlaşdırma hər varlıq üçün mənbə sayı = mənbə ilə bağlı (`import_links`) sətir sayı göstərir
+- [x] Zəka-da yaradılan sətir fərq sayılmır; hesabatda ixrac anı və fayl SHA-256-ları var
+- [x] Davamiyyət və qiymət uzlaşdırılır: tələbə × fənn üzrə qayıb saatı cəmi (üzrsüz və üzrlü ayrıca) və (tələbə, fənn, komponent, bal) yoxlama cəmi mənbə ilə bərabərdir
+- [ ] Pilot fakültənin 50 təsadüfi tələbəsinin qayıb faizi kəsid tarixində köhnə sistemin rəqəmi ilə eynidir; dekanlıq təsdiqləyir (`reconcile` 50 təsadüfi qeydi verir; müqayisə real ixracla dekanlığındır)
+- [x] Açılış qalığı olan tələbə × fənn üçün `as_of`-a qədərki dərs səviyyəli sətir rədd olunur, dərs səviyyəli sətri olan üçün açılış qalığı rədd olunur: qayıb iki dəfə sayılmır
+- [x] Köhnə sistemdə verilən status əmri `status-events` idxalından sonra `student_status_events`-dədir və tələbəni qüvvəyə minmə tarixindən sonrakı dərs siyahılarından çıxarır; eyni əmr Zəka-da əvvəlcədən daxil edilibsə ikinci hadisə yaranmır
+- [x] Təkrar işlətmə dublikat yaratmır
+- [x] Yazan idxal hər hansı imtahan `gedir` statusunda olanda başlamır (`--force` yalnız audit qeydi ilə); 200 000 sətirdən böyük yükləmə fayllara bölünür, hər fayl ayrıca atomardır
 
 **Verification:**
-- [ ] `python -m pytest tests/migration/test_etl.py -q`
-- [ ] `python backend/manage.py reconcile --wave 0 --source <mənbə>`
+- [x] `python -m pytest tests/migration/test_etl.py -q`
+- [x] `python backend/manage.py reconcile --wave 0 --source <mənbə>` (sintetik mənbə ilə; `--dir` dalğanın fayllarının qovluğudur)
 
 **Dependencies:** Task 16, Task 20, Task 21, Task 26
 **Files likely touched:** `tools/etl/{adapters,transforms,run}.py`, `content/mappings/`, `backend/manage.py`, `backend/zeka/modules/migration/loaders.py`, `backend/zeka/modules/journal/service.py`, `tests/migration/test_etl.py`, `tests/fixtures/attendance_lessons.csv`, `tests/fixtures/attendance_opening.csv`, `tests/fixtures/grades.csv`, `tests/fixtures/status_events.csv`

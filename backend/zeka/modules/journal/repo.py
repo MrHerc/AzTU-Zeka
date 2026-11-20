@@ -60,6 +60,44 @@ def write_marks(c, lid: int, values: list[tuple[int, str]], by: int, at: str):
                   "marked_at=excluded.marked_at", [(lid, uid, st, by, at) for uid, st in values])
 
 
+def put_legacy_mark(c, lid: int, uid: int, status: str, as_of: str, by: int | None, at: str) -> int:
+    """A lesson record of the old system: it replaces a mark written in Zəka for that lesson and student."""
+    return c.execute("INSERT INTO attendance(lesson_id,user_id,status,source,as_of,marked_by,marked_at) VALUES(?,?,?,'legacy',?,?,?) "
+                     "ON CONFLICT(lesson_id,user_id) DO UPDATE SET status=excluded.status, source='legacy', as_of=excluded.as_of, "
+                     "marked_by=excluded.marked_by, marked_at=excluded.marked_at RETURNING rowid", (lid, uid, status, as_of, by, at)).fetchone()[0]
+
+
+def legacy_pairs(c) -> set[tuple[int, int]]:
+    """(student, course) with lesson records of the old system."""
+    return {(r["user_id"], r["course_id"]) for r in rows(c, "SELECT DISTINCT a.user_id, l.course_id FROM attendance a "
+                                                            "JOIN lessons l ON l.id=a.lesson_id WHERE a.source='legacy'")}
+
+
+def imported_hours(c, course_id: int) -> dict[int, tuple[int, int]]:
+    """{student: (unexcused, excused)} hours the course's imported records hold: an opening balance, else the legacy
+    lesson records of lessons not cancelled."""
+    out = {r["student_id"]: (r["unexcused_hours"], r["excused_hours"])
+           for r in rows(c, "SELECT student_id, unexcused_hours, excused_hours FROM attendance_opening WHERE course_id=?", (course_id,))}
+    for r in rows(c, "SELECT a.user_id, SUM(CASE WHEN a.status='absent' THEN COALESCE(l.academic_hours, 2) ELSE 0 END) u, "
+                     "SUM(CASE WHEN a.status='excused' THEN COALESCE(l.academic_hours, 2) ELSE 0 END) e FROM attendance a "
+                     "JOIN lessons l ON l.id=a.lesson_id WHERE l.course_id=? AND a.source='legacy' AND l.status<>'cancelled' "
+                     "GROUP BY a.user_id", (course_id,)):
+        out.setdefault(r["user_id"], (r["u"], r["e"]))
+    return out
+
+
+def put_history(c, rid: int | None, v: dict, at: str) -> int:
+    """A final grade of a term before Zəka (no course row): inserted, or its imported row changed."""
+    cols = ("user_id", "term_name", "term_name_en", "term_start", "course_code", "course_name", "course_name_en", "credits", "score",
+            "letter", "passed")
+    if rid is None:
+        return c.execute(f"INSERT INTO final_grades({', '.join(cols)}, source, published_at) "  # nosec B608 - constants
+                         f"VALUES({', '.join('?' * len(cols))}, 'legacy', ?)", (*(v[k] for k in cols), at)).lastrowid
+    c.execute(f"UPDATE final_grades SET {', '.join(f'{k}=?' for k in cols)}, published_at=? WHERE id=? AND source='legacy'",  # nosec B608
+              (*(v[k] for k in cols), at, rid))
+    return rid
+
+
 def excuse(c, request_id: int, student_id: int, lesson_ids: list[int], by: int, at: str) -> tuple[list[int], list[int]]:
     """The student's absences on these lessons become excused by the request: (the lessons changed, their courses). A mark
     corrected to present or late meanwhile stays as it is."""

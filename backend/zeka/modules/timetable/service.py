@@ -131,6 +131,16 @@ def deactivate_row(c, user, rid: int) -> str:
     return "ok"
 
 
+def add_imported_lesson(c, unit_id: int, day: str, start: str, end: str | None, hours: int | None, kind: str | None) -> int:
+    """A lesson the old system held and Zəka's timetable has not: made with the record's day and start (Task 38). Without
+    an end or hours it is one pair: 2 academic hours of 45 minutes."""
+    hours = hours or 2
+    if not end:
+        m = min(int(start[:2]) * 60 + int(start[3:]) + 45 * hours, 23 * 60 + 59)
+        end = f"{m // 60:02d}:{m % 60:02d}"
+    return repo.add_imported_lesson(c, unit_id, day, start, end, hours, kind, iso(now()))
+
+
 def lessons_of(c, user, first: str, last: str) -> list[dict]:
     """A person's lessons between two days: a student's groups' and units', anyone else's own teaching (Checkpoint E,
     SF-E10: a teacher acting in another role still has their lessons)."""

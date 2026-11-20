@@ -21,6 +21,9 @@ python backend/run.py --workers 4                 # N processes on one port (Lin
 ZEKA_MODE=prod ZEKA_PROXY_HOPS=1 python backend/run.py --host 0.0.0.0 --public-url https://host   # real deployment
 python backend/manage.py status | migrate | create-admin --username U --name "Full Name"   # schema and first admin
 python backend/manage.py import --kind users --source old-sis --file F.csv [--dry-run] [--prefer source]   # Task 16
+python backend/manage.py import --kind attendance|attendance-opening|grades --as-of D ... | --kind results | --kind status-events --by USER   # Task 38
+python tools/etl/run.py --mapping content/mappings/SRC.json --dir EXPORT --wave 0 --as-of D --by USER [--dry-run]   # a wave's ETL (Task 38)
+python backend/manage.py reconcile --wave 0 --source SRC --dir data/migration/SRC-wave0 [--out report.json]   # Task 38
 python backend/manage.py activation-codes --faculty CODE --out codes.csv   # one-time student codes for a dean's office
 python backend/manage.py export --kind grades|attendance|oneroster|registry|status-changes [--since ISO] [--out F]   # Task 37
 python backend/manage.py jobs status | run          # periodic jobs (Task 36): each job's last run; run what is due now
@@ -149,6 +152,10 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   its author and the course's teachers only, and an anonymous one hides the name from the teacher too.
 - **Outbound HTTP (webhooks).** `integration/webhooks.py` follows no redirects, refuses non-public addresses in prod at
   send time, and catches every exception per delivery; a new outbound call copies that, never `urllib.request.urlopen`.
+- **Migration (Task 38).** The old system's journal records, final grades and status orders are import kinds
+  (`attendance`, `results`, `status-events`) written by `modules/migration/loaders.py` through the owning module's
+  service. A writing import refuses while an exam is open (`--force`, audited) and a file over 199 999 rows
+  (`tools/etl/run.py` splits). `manage.py reconcile` re-reads the wave's logged files (`migration_files`) as a dry run.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).

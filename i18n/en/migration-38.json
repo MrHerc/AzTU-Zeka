@@ -1,0 +1,19 @@
+{
+ "Qeyd iştirak, qayıb, gecikmə və ya üzrlü olmalıdır": "The mark must be present, absent, late or excused",
+ "Kəsid tarixi yoxdur: onu --as-of ilə və ya «asOf» sütununda verin": "No cut-over date: give it with --as-of or in the «asOf» column",
+ "Dərsin tarixi kəsid tarixindən sonradır": "The lesson's date is after the cut-over date",
+ "Kəsid tarixi (--as-of) jurnal növləri üçündür: İİİİ-AA-GG, bu gündən gec olmayan": "The cut-over date (--as-of) is for the journal kinds: YYYY-MM-DD, not later than today",
+ "Status əmrini idxal edən hesab göstərilməlidir (--by)": "The account importing the status orders must be given (--by)",
+ "İmtahan gedir: yazan idxal imtahan bağlanandan sonra başlayır": "An exam is in progress: a writing import starts after the exam is closed",
+ "Bir faylda ən çox 200 000 sətir idxal olunur: faylı hissələrə bölün": "At most 200,000 rows are imported from one file: split the file",
+ "Bu tələbə və fənn üçün dərs səviyyəli qeydlər idxal olunub: açılış qalığı qəbul olunmur": "Lesson-level records were imported for this student and course: an opening balance is not accepted",
+ "Kəsid tarixi gələcəkdə ola bilməz": "The cut-over date cannot be in the future",
+ "Tələbə həmin gün bu tədris vahidinin siyahısında deyil": "The student is not on this teaching unit's list on that day",
+ "Bu tələbə və fənn üçün açılış qalığı var ({day}): həmin tarixə qədərki dərs qeydi qəbul olunmur": "This student and course have an opening balance ({day}): lesson records up to that date are not accepted",
+ "Zəka-da bu dərs ləğv olunub: qeyd sayılmazdı": "This lesson is cancelled in Zəka: the record would not count",
+ "Bu fənnin həmin semestrdəki yekun qiyməti Zəka-da yazılıb: tarixi nəticə kimi idxal olunmur": "The final grade of this course in that term was recorded in Zəka: it is not imported as a historical result",
+ "Status əmri dəyişdirilmir: düzəliş yeni əmrlə edilir": "A status order is not changed: a correction is made by a new order",
+ "Sətrin tarixi --as-of ilə uyğun gəlmir": "The row's date does not match --as-of",
+ "Dərs qeydi cəmlənmədi: fənn, semestr, qeyd və saat lazımdır": "The lesson record was not summed: the course, term, mark and hours are needed",
+ "«{field}» sahəsinin dəyəri oxunmadı: {value}": "The value of the «{field}» field could not be read: {value}"
+}
