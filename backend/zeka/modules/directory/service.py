@@ -142,26 +142,40 @@ def status_of(c, student_id: int) -> dict:
     return {"status": domain.academic_status(events, today()), "events": events}
 
 
-def record_status(c, user, student, values: dict) -> tuple[str, object]:
+def record_status(c, user, student, values: dict, history: bool = False) -> tuple[str, object]:
     """Write one status order: ('ok', event id) | ('invalid', reason). Leave, expulsion, transfer out and graduation end
     the student's open enrolments on the effective date: earlier attendance and grades stay; the account stays active,
-    so a student on leave still signs in and sees their own documents."""
+    so a student on leave still signs in and sees their own documents. Only the student's newest order (by effective
+    date) acts: a back-dated one is history. ``history``: an order of the old system (Task 38), written as a record only,
+    into a group that may since have closed; ``apply_newest`` acts once every order of the file is in (Checkpoint F,
+    AR-F1, AR-F7)."""
     if student["role"] != "student":
         return "invalid", E("Status əmri yalnız tələbəyə verilir")
     if values["to_group_id"]:
         group = repo.get(c, "groups", values["to_group_id"])
-        if not group or not group["active"]:
+        if not group or not (group["active"] or history):
             return "invalid", E("«{field}» sahəsində seçilən sətir tapılmadı", field="to_group_id")
     eid = repo.add_status_event(c, student["id"], values, student["group_id"], user["id"])
-    if values["kind"] in domain.ENDS_STUDY:
-        repo.end_open_enrollments(c, student["id"], values["effective_date"])
-    if values["to_group_id"]:
-        # shortcut: the group changes when the order is entered, also for a later effective date; a dated move waits for
-        # the scheduler of Task 37
-        repo.move_to_group(c, student["id"], values["to_group_id"])
+    if not history:
+        apply_newest(c, student["id"], only=eid)
     audit(c, user["id"], "status_" + values["kind"], "user",
           f"{student['username']} · №{values['order_no']} · {values['order_date']} → {values['effective_date']}")
     return "ok", eid
+
+
+def apply_newest(c, student_id: int, only: int | None = None):
+    """The effects of the student's newest order: one that ends study ends the open enrolments on its effective date; one
+    into an active group moves the student (also for a later effective date: a dated move waits for a scheduler). An
+    older order is history and changes nothing. ``only``: act only when that order is the newest."""
+    events = repo.status_events(c, student_id)          # by effective date, then id
+    if not events or (only is not None and events[-1]["id"] != only):
+        return
+    newest = events[-1]
+    if newest["kind"] in domain.ENDS_STUDY:
+        repo.end_open_enrollments(c, student_id, newest["effective_date"])
+    group = repo.get(c, "groups", newest["to_group_id"]) if newest["to_group_id"] else None
+    if group and group["active"]:
+        repo.move_to_group(c, student_id, newest["to_group_id"])
 
 
 def current_term(c) -> dict | None:

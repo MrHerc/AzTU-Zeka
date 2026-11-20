@@ -3,5 +3,7 @@
  "Son aktiv administratorun hesabı silinmir: əvvəl başqa administrator təyin edin": "Учётная запись последнего активного администратора не удаляется: сначала назначьте другого администратора",
  "Özünüzə rol verə bilməzsiniz: bunu başqa administrator edir": "Нельзя назначить роль самому себе: это делает другой администратор",
  "Hesab məxfilik sorğusu ilə silinib: idxal onu bərpa etmir": "Учётная запись удалена по запросу о конфиденциальности: импорт её не восстанавливает",
- "Bu növ ekrandan yox, manage.py import ilə idxal olunur": "Этот вид импортируется через manage.py import, а не с экрана"
+ "Bu növ ekrandan yox, manage.py import ilə idxal olunur": "Этот вид импортируется через manage.py import, а не с экрана",
+ "Faylda dərsin saatı ({a}), Zəka-da {b}: qeyd fərqli saat sayardı": "В файле у занятия {a} ч., в Zəka {b}: запись учла бы другое число часов",
+ "Eyni dərsin qeydi təkrarlanır: cəmə iki dəfə düşməz": "Запись того же занятия повторяется: она не суммируется дважды"
 }

@@ -67,22 +67,48 @@ def put_legacy_mark(c, lid: int, uid: int, status: str, as_of: str, by: int | No
                      "marked_by=excluded.marked_by, marked_at=excluded.marked_at RETURNING rowid", (lid, uid, status, as_of, by, at)).fetchone()[0]
 
 
-def legacy_pairs(c) -> set[tuple[int, int]]:
-    """(student, course) with lesson records of the old system."""
-    return {(r["user_id"], r["course_id"]) for r in rows(c, "SELECT DISTINCT a.user_id, l.course_id FROM attendance a "
-                                                            "JOIN lessons l ON l.id=a.lesson_id WHERE a.source='legacy'")}
+def legacy_pairs(c) -> dict[tuple[int, int], str]:
+    """(student, course) -> the day of their first lesson record of the old system."""
+    return {(r["user_id"], r["course_id"]): r["first"] for r in rows(c, "SELECT a.user_id, l.course_id, MIN(l.day) first FROM attendance a "
+                                                                      "JOIN lessons l ON l.id=a.lesson_id WHERE a.source='legacy' "
+                                                                      "GROUP BY a.user_id, l.course_id")}
+
+
+def hours_of(c, marks: list[int], openings: list[int]) -> dict[str, list[int]]:
+    """{"<student>|<course>": [unexcused, excused]} hours Zəka holds in these records (attendance rowids, opening ids),
+    as the reconciliation compares them with the file's rows (Checkpoint F, CR-F2)."""
+    out: dict[str, list[int]] = {}
+    for i in range(0, len(marks), 500):
+        part = marks[i:i + 500]
+        for r in rows(c, "SELECT a.user_id, l.course_id, SUM(CASE WHEN a.status='absent' THEN COALESCE(l.academic_hours, 2) ELSE 0 END) u, "  # nosec B608
+                         "SUM(CASE WHEN a.status='excused' THEN COALESCE(l.academic_hours, 2) ELSE 0 END) e FROM attendance a "
+                         f"JOIN lessons l ON l.id=a.lesson_id WHERE a.rowid IN ({','.join('?' * len(part))}) AND l.status<>'cancelled' "
+                         "GROUP BY a.user_id, l.course_id", tuple(part)):
+            acc = out.setdefault(f"{r['user_id']}|{r['course_id']}", [0, 0])
+            acc[0] += r["u"]
+            acc[1] += r["e"]
+    for i in range(0, len(openings), 500):
+        part = openings[i:i + 500]
+        for r in rows(c, "SELECT student_id, course_id, unexcused_hours u, excused_hours e FROM attendance_opening "  # nosec B608
+                         f"WHERE id IN ({','.join('?' * len(part))})", tuple(part)):
+            acc = out.setdefault(f"{r['student_id']}|{r['course_id']}", [0, 0])
+            acc[0] += r["u"]
+            acc[1] += r["e"]
+    return out
 
 
 def imported_hours(c, course_id: int) -> dict[int, tuple[int, int]]:
-    """{student: (unexcused, excused)} hours the course's imported records hold: an opening balance, else the legacy
-    lesson records of lessons not cancelled."""
+    """{student: (unexcused, excused)} hours the course's imported records hold, as the journal counts them: an opening
+    balance plus the legacy lesson records after its date (Checkpoint F, AR-F8), of lessons not cancelled."""
     out = {r["student_id"]: (r["unexcused_hours"], r["excused_hours"])
            for r in rows(c, "SELECT student_id, unexcused_hours, excused_hours FROM attendance_opening WHERE course_id=?", (course_id,))}
     for r in rows(c, "SELECT a.user_id, SUM(CASE WHEN a.status='absent' THEN COALESCE(l.academic_hours, 2) ELSE 0 END) u, "
                      "SUM(CASE WHEN a.status='excused' THEN COALESCE(l.academic_hours, 2) ELSE 0 END) e FROM attendance a "
-                     "JOIN lessons l ON l.id=a.lesson_id WHERE l.course_id=? AND a.source='legacy' AND l.status<>'cancelled' "
+                     "JOIN lessons l ON l.id=a.lesson_id LEFT JOIN attendance_opening o ON o.student_id=a.user_id AND o.course_id=l.course_id "
+                     "WHERE l.course_id=? AND a.source='legacy' AND l.status<>'cancelled' AND (o.as_of IS NULL OR l.day>o.as_of) "
                      "GROUP BY a.user_id", (course_id,)):
-        out.setdefault(r["user_id"], (r["u"], r["e"]))
+        u, e = out.get(r["user_id"], (0, 0))
+        out[r["user_id"]] = (u + r["u"], e + r["e"])
     return out
 
 

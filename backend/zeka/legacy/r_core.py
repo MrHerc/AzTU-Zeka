@@ -5,7 +5,7 @@ import os
 import base64
 import json
 import urllib.parse
-from datetime import timedelta
+from datetime import date, timedelta
 
 from . import engine, pdftext, store
 from .common import (ACTORS, BASE_URL, R, ROLE_HOME, STAFF, ctx, holder, make_key, may_read_request, pub_user, scope_sql, serves, session_cookie,
@@ -71,11 +71,19 @@ def healthz(req):
 @R("GET", "/.well-known/security.txt", auth=False)
 def security_txt(req):
     """RFC 9116 (Task 41): where to report a vulnerability. The contact is the operator's ZEKA_SECURITY_CONTACT (a mailto:
-    or https: address); without one there is no file rather than an address nobody reads."""
+    or https: address) and Expires the date the operator reviews it by, ZEKA_SECURITY_EXPIRES (YYYY-MM-DD, at most a year
+    ahead). Without both, or once that date has passed, there is no file rather than an address nobody reads (SA-F11)."""
     contact = os.environ.get("ZEKA_SECURITY_CONTACT", "").strip()
     if not contact.startswith(("mailto:", "https://")) or any(ch in contact for ch in "\r\n "):
         raise HTTPError(404, "Tapılmadı")
-    expires = (clock.now() + timedelta(days=365)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    try:
+        until = date.fromisoformat(os.environ.get("ZEKA_SECURITY_EXPIRES", "").strip())
+    except ValueError:
+        raise HTTPError(404, "Tapılmadı") from None
+    today = clock.now().date()
+    if not today < until <= today + timedelta(days=365):
+        raise HTTPError(404, "Tapılmadı")
+    expires = f"{until.isoformat()}T00:00:00Z"
     lines = [f"Contact: {contact}", f"Expires: {expires}", "Preferred-Languages: az, en, ru"]
     if BASE_URL["value"].startswith("https://"):
         lines.append(f"Canonical: {BASE_URL['value']}/.well-known/security.txt")

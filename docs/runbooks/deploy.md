@@ -55,6 +55,7 @@ Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_ho
 | `ZEKA_SMTP_PASSWORD` | boş | Relenin parolu. Yalnız `infra/.env`-də saxlanır, git-ə düşmür |
 | `ZEKA_SMTP_FROM` | `zeka@aztu.edu.az` | Göndərənin ünvanı |
 | `ZEKA_SECURITY_CONTACT` | `mailto:security@aztu.edu.az` | Zəifliyi bildirmə ünvanı, `/.well-known/security.txt`-də göstərilir (Task 41). `mailto:` və ya `https:` ilə başlayır. Boş olarsa fayl yoxdur |
+| `ZEKA_SECURITY_EXPIRES` | `2027-05-01` | Ünvanın yenidən yoxlanacağı tarix (İİİİ-AA-GG, ən çox bir il sonra): faylın `Expires` sahəsi. Boş, keçmiş və ya bir ildən uzaq olarsa fayl yoxdur. Tarixdən əvvəl ünvanı yoxlayın və tarixi yeniləyin |
 
 `ZEKA_ACCESS_CODE` və `ZEKA_ALLOW_OPEN_DEMO` yalnız demo üçündür: prod-da istifadə olunmur.
 

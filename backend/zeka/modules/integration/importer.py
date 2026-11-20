@@ -151,7 +151,7 @@ class Context:
                                        self.table("attendance_opening", ("student_id", "course_id", "as_of")).values()}
         return self._cache["openings"]
 
-    def legacy_pairs(self) -> set[tuple[int, int]]:
+    def legacy_pairs(self) -> dict[tuple[int, int], str]:
         if "legacy" not in self._cache:
             self._cache["legacy"] = journal.legacy_pairs(self.c)
         return self._cache["legacy"]
@@ -294,7 +294,8 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
             return None, E("Yalnız aktiv tələbə qeydiyyata alınır")
         if str(v.get("as_of") or "") > now().date().isoformat():
             return None, E("Açılış qalığının tarixi gələcəkdə ola bilməz")      # it would hide the journal's records up to that day
-        if (student_id, course_id) in ctx.legacy_pairs():                        # one form per student and course (Task 38)
+        first = ctx.legacy_pairs().get((student_id, course_id or 0))        # one form per student and course (Task 38): lesson
+        if first and first <= str(v.get("as_of") or ""):                       # records up to the opening's date (AR-F8)
             return None, E("Bu tələbə və fənn üçün dərs səviyyəli qeydlər idxal olunub: açılış qalığı qəbul olunmur")
         keys = ctx.keyed("attendance_opening", ("student_id", "course_id", "term_id"))
         values = {"student_id": student_id, "course_id": course_id, "term_id": term_id, **v}
@@ -337,6 +338,8 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
         les = ctx.lesson(unit, v["day"], v["start"])
         if les and les["status"] == "cancelled":
             return None, E("Zəka-da bu dərs ləğv olunub: qeyd sayılmazdı")
+        if les and v["_hours"] and les["academic_hours"] and v["_hours"] != les["academic_hours"]:   # Checkpoint F (CR-F2)
+            return None, E("Faylda dərsin saatı ({a}), Zəka-da {b}: qeyd fərqli saat sayardı", a=v["_hours"], b=les["academic_hours"])
         key = f"{unit}|{v['day']}|{v['start']}"
         item = Item(n, "attendance", sid, {"lesson_id": les["_k"] if les else Pending("lessons", key), "user_id": user, "status": v["status"]},
                     natural=ctx.marks(les["_k"]).get(user) if les else None)
@@ -358,10 +361,14 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
         user, group = ctx.linked("users", v["_user"]), v["_group"]
         if not user or ctx.role(user) != "student":
             return None, _missing("Tələbə", v["_user"])
-        active = {g["name"]: k for k, g in ctx.table("study_groups", ("name", "active")).items() if g["active"]}
-        if group and group not in active:
+        if "groups" not in ctx._cache:                 # built once (PY-F7); every group, the active one first for a reused
+            ctx._cache["groups"] = {}                    # name: an order of the past may name a closed group (AR-F7)
+            for k, g in sorted(ctx.table("study_groups", ("name", "active")).items(), key=lambda kv: (not kv[1]["active"], kv[0])):
+                ctx._cache["groups"].setdefault(g["name"], k)
+        groups = ctx._cache["groups"]
+        if group and group not in groups:
             return None, _missing("Qrup", group)
-        order, problem = directory_rules.status_event({**v, "to_group_id": active[group] if group else None})
+        order, problem = directory_rules.status_event({**v, "to_group_id": groups[group] if group else None})
         if problem:
             return None, problem
         events = ctx.keyed("student_status_events", ("student_id", "order_no", "order_date"))
@@ -593,10 +600,11 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
 
 def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool = False, prefer_source: bool = False,
         user_id: int | None = None, max_rows: int | None = None, as_of: str | None = None, force: bool = False,
-        detail: bool = False) -> dict:
+        detail: bool = False, on_written=None) -> dict:
     """Import one file; the report says what was (or, with ``dry_run``, would be) written. ``as_of``: the cut-over date of
     the export for the journal kinds (a row may also carry its own). A writing import does not start while an exam is
-    going on, unless ``force`` (audited)."""
+    going on, unless ``force`` (audited). ``on_written(c, report)`` runs in the import's own transaction before it commits
+    (the migration's file log, Checkpoint F SF-F5)."""
     if kind not in domain.KINDS:
         raise tables.TableError("Naməlum idxal növü")
     if not domain.SOURCE.fullmatch(source or ""):
@@ -652,7 +660,12 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     lock = time.monotonic()
     c.execute("BEGIN IMMEDIATE")
     try:
+        going = exam.open_count(c)                     # again under the lock: an exam may have opened while the file was read (PY-F1)
+        if going and not force:
+            raise tables.TableError("İmtahan gedir: yazan idxal imtahan bağlanandan sonra başlayır")
         _write(c, ctx, items, user_id, conflicts)
+        for finish in loaders.FINISH:                  # the effects of the newest status order per student (AR-F1)
+            finish(c, items)
         if kind in ("grades", "attendance-opening", "attendance"):    # the final grades follow the imported scores and hours
             by_course: dict[int, set[int]] = {}
             for it in items:
@@ -666,6 +679,9 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
                                           f"={counts['unchanged']} !{len(conflicts)}")
         if going:
             audit(c, user_id, "import_forced", kind, f"{source} · {filename} · exams open: {going}")
+        report = {**_report(kind, source, total, items, [], conflicts, False, time.monotonic() - lock, started), "warnings": warnings}
+        if on_written:
+            on_written(c, report)
         c.commit()
     except sqlite3.IntegrityError:                      # another writer took a unique value after the check
         c.rollback()
@@ -673,7 +689,7 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     except BaseException:
         c.rollback()
         raise
-    return {**_report(kind, source, total, items, [], conflicts, False, time.monotonic() - lock, started), "warnings": warnings}
+    return report
 
 
 def _held_check(c, items: list[Item]) -> list[dict]:

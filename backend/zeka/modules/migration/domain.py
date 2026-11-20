@@ -36,8 +36,16 @@ def _scale(v: str, spec: str) -> str:
         _, low, high = spec.split(":")
         n = float((v or "").strip().replace(",", "."))
         return f"{round(n * float(high) / float(low), 2):g}"
-    except ValueError:
+    except (ValueError, ZeroDivisionError):
         raise ValueError(spec) from None
+
+
+def _scale_ok(spec: str) -> bool:
+    try:
+        _, low, high = spec.split(":")
+        return float(low) > 0 and float(high) > 0
+    except ValueError:
+        return False
 
 
 def transform(name: str, v: str, values: dict[str, str] | None) -> str:
@@ -70,12 +78,18 @@ def check_spec(spec: dict) -> list[str]:
     problems = [f"unknown column {c!r}" for c in list(spec.get("columns", {}).values()) + list(spec.get("constants", {})) if c not in known]
     targets = set(spec.get("columns", {}).values()) | set(spec.get("constants", {}))
     problems += [f"transform of a column not mapped: {c!r}" for c in spec.get("transforms", {}) if c not in targets]
+    # Checkpoint F (SF-F11): a transform or a list the run could not use is refused before anything is loaded
+    problems += [f"unknown transform {t!r} of {c!r}" for c, t in spec.get("transforms", {}).items()
+                 if not (t in ("name", "group", "date", "values") or (str(t).startswith("scale:") and _scale_ok(t)))]
+    problems += [f"{k!r} must be an object" for k in ("columns", "ignore", "constants", "transforms", "values")
+                 if not isinstance(spec.get(k, {}), dict)]
     return problems
 
 
-def apply(spec: dict, header: list[str], rows: list[tuple[int, list[str]]]) -> tuple[str, list[str], list[dict], dict]:
+def apply(spec: dict, header: list[str], rows: list[tuple[int, list[str]]],
+          as_of: str | None = None) -> tuple[str, list[str], list[dict], dict]:
     """(import kind, its header, its rows, the report) of one export file. A lesson-level attendance export without the
-    class or the start of each lesson becomes opening balances per student and course (``aggregate``)."""
+    class or the start of each lesson becomes opening balances per student and course (``aggregate``) up to ``as_of``."""
     columns, ignore = spec.get("columns", {}), spec.get("ignore", {})
     by_key = {imports.key(k): (k, v) for k, v in columns.items()}
     left = {imports.key(k): k for k in ignore}
@@ -103,7 +117,7 @@ def apply(spec: dict, header: list[str], rows: list[tuple[int, list[str]]]) -> t
         out.append({"_row": n, **x})
     kind = spec["kind"]
     if kind == "attendance" and not {"classSourcedId", "start"} <= set(index) | set(spec.get("constants", {})):
-        out, refused = aggregate_opening(out)
+        out, refused = aggregate_opening(out, as_of, dated="date" in index, timed="start" in index)
         report["refused"] += refused
         report["aggregated"] = True
         kind = "attendance-opening"
@@ -111,17 +125,30 @@ def apply(spec: dict, header: list[str], rows: list[tuple[int, list[str]]]) -> t
     return kind, head, [{k: v for k, v in x.items() if k in head} | {"_row": x["_row"]} for x in out], report
 
 
-def aggregate_opening(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+def aggregate_opening(rows: list[dict], as_of: str | None = None, dated: bool = False,
+                      timed: bool = False) -> tuple[list[dict], list[dict]]:
     """Lesson records without their class or start, summed per student and course into opening balances: the hours held,
-    missed without and with an excuse (a lesson without its hours is one pair)."""
+    missed without and with an excuse (a lesson without its hours is one pair). With the lessons' dates (``dated``) a
+    record after the cut-over ``as_of`` is refused: Zəka's journal counts that day itself (Checkpoint F, AR-F2); with
+    their dates and starts (``timed``) the same lesson twice is refused, not summed twice (SF-F10)."""
     sums: dict[tuple[str, str, str], dict] = {}
     refused = []
+    seen: set[tuple] = set()
     for x in rows:
         status = imports.MARKS.get(imports.key(x.get("status", "")))
         hours = imports.an_int(x.get("hours") or str(DEFAULT_HOURS), 1, 12)
         if not status or hours is None or not x.get("courseSourcedId") or not x.get("termSourcedId"):
             refused.append({"row": x["_row"], "reason": E("Dərs qeydi cəmlənmədi: fənn, semestr, qeyd və saat lazımdır")})
             continue
+        if dated and (not x.get("date") or (as_of and x["date"] > as_of)):
+            refused.append({"row": x["_row"], "reason": E("Dərsin tarixi kəsid tarixindən sonradır") if x.get("date")
+                            else E("Dərs qeydi cəmlənmədi: fənn, semestr, qeyd və saat lazımdır")})
+            continue
+        lesson = (x["courseSourcedId"], x.get("userSourcedId", ""), x.get("date"), x.get("start"))
+        if dated and timed and lesson in seen:
+            refused.append({"row": x["_row"], "reason": E("Eyni dərsin qeydi təkrarlanır: cəmə iki dəfə düşməz")})
+            continue
+        seen.add(lesson)
         k = (x["termSourcedId"], x["courseSourcedId"], x.get("userSourcedId", ""))
         s = sums.setdefault(k, {"_row": x["_row"], "termSourcedId": k[0], "courseSourcedId": k[1], "userSourcedId": k[2],
                                 "heldHours": 0, "unexcusedHours": 0, "excusedHours": 0, "asOf": x.get("asOf", "")})

@@ -19,12 +19,19 @@ def result(c, ctx, it, values: dict, user_id: int | None, t: str) -> int:
 
 
 def status_event(c, ctx, it, values: dict, user_id: int | None, t: str) -> int:
-    """A status order given in the old system: written as one entered on the screen is (its enrolments end on the
-    effective date), with the importing account as the one who entered it."""
-    status, event = directory.record_status(c, {"id": user_id}, it.extra["student"], {**values, "note": it.extra["note"]})
+    """A status order given in the old system, with the importing account as the one who entered it: written as history;
+    its effects come from the student's newest order once the whole file is in (``finish``)."""
+    status, event = directory.record_status(c, {"id": user_id}, it.extra["student"], {**values, "note": it.extra["note"]}, history=True)
     if status != "ok":                                 # checked when the row was read; the registry changed meanwhile
         raise sqlite3.IntegrityError(str(event))
     return int(event)                                  # type: ignore[call-overload]  # the event's id
 
 
+def status_finish(c, items: list) -> None:
+    """After the file's orders are written: each student's newest order acts (Checkpoint F, AR-F1)."""
+    for sid in sorted({it.extra["student"]["id"] for it in items if it.link == "status_events" and it.action == "insert"}):
+        directory.apply_newest(c, sid)
+
+
 WRITERS = {"attendance": mark, "results": result, "status_events": status_event}
+FINISH = (status_finish,)          # run by the import after its rows are written, in the same transaction

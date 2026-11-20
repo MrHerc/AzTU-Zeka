@@ -9,13 +9,14 @@ one; the comment above each assertion is the name the check had there. Two of th
   question), so a graded late attempt cannot pass unnoticed.
 """
 import hashlib
+from datetime import datetime, timedelta, timezone
 import re
 import socket
 
 import pytest
 
 from zeka.legacy import store
-from zeka.core import security
+from zeka.core import clock, security
 from zeka.legacy.r_learning import _masked_history
 
 EVIL = "<script>alert(1)</script><img src=x onerror=alert(2)>"
@@ -274,10 +275,19 @@ def test_security_txt_names_the_operator_s_contact_or_is_not_there(app_db, anon,
         monkeypatch.setenv("ZEKA_SECURITY_CONTACT", bad)
         assert anon.get("/.well-known/security.txt").status == 404, bad
     monkeypatch.setenv("ZEKA_SECURITY_CONTACT", "mailto:security@example.az")
+    today = clock.now().date()
+    # Checkpoint F (SA-F11): Expires is the operator's review date; without one, past or over a year ahead: no file
+    for bad in ("", "soon", today.isoformat(), (today + timedelta(days=400)).isoformat()):
+        monkeypatch.setenv("ZEKA_SECURITY_EXPIRES", bad)
+        assert anon.get("/.well-known/security.txt").status == 404, bad
+    until = (today + timedelta(days=180)).isoformat()
+    monkeypatch.setenv("ZEKA_SECURITY_EXPIRES", until)
     r = anon.get("/.well-known/security.txt")
     lines = r.body.decode().splitlines()
     assert r.status == 200 and r.headers["Content-Type"].startswith("text/plain")
-    assert lines[0] == "Contact: mailto:security@example.az" and lines[1].startswith("Expires: 2027-") and lines[1].endswith("Z")
+    assert lines[0] == "Contact: mailto:security@example.az" and lines[1] == f"Expires: {until}T00:00:00Z"
+    monkeypatch.setattr(clock, "now", lambda: datetime.now(timezone.utc).replace(year=today.year + 2))   # the date has passed
+    assert anon.get("/.well-known/security.txt").status == 404
 
 
 def test_the_audit_log_is_append_only_and_keeps_a_row_at_least_a_year(app_db):

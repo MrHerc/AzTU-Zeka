@@ -61,7 +61,7 @@ Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backen
 `ZEKA_HANDLERS`/`ZEKA_SLOW`/`ZEKA_QUEUE_WAIT` (the handler gate in `backend/zeka/core/web.py`), `ZEKA_JOBS` (`0` turns the
 periodic job runner off) and `ZEKA_JOBS_DELAY` (seconds before its first cycle, default 15) and, in
 `backend/zeka/core/security.py`, `ZEKA_ACCESS_CODE`, `ZEKA_ALLOW_OPEN_DEMO`,
-`ZEKA_PROXY_HOPS`, `ZEKA_ACCESS_LOG`; `ZEKA_SECURITY_CONTACT` (the `/.well-known/security.txt` contact, Task 41); in `backend/zeka/core/mail.py`, `ZEKA_SMTP_HOST/PORT/TLS/USER/PASSWORD/FROM`
+`ZEKA_PROXY_HOPS`, `ZEKA_ACCESS_LOG`; `ZEKA_SECURITY_CONTACT` and `ZEKA_SECURITY_EXPIRES` (the `/.well-known/security.txt` contact and its review date, Task 41); in `backend/zeka/core/mail.py`, `ZEKA_SMTP_HOST/PORT/TLS/USER/PASSWORD/FROM`
 (Task 36: without a host nothing is e-mailed). `config.json` (git-ignored, copy from `config.example.json`) or the
 `AZTU_LLM_PROVIDER/BASE_URL/API_KEY/MODEL` env vars switch the AI from the offline engine to a real LLM.
 

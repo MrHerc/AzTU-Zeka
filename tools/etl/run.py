@@ -8,8 +8,12 @@ transforms, constants; a lesson export without its classes or starts is summed i
 files the import takes in one transaction, write them to ``--out`` and import each through Task 16's import (dry run,
 all or nothing, links), logged with the wave for ``manage.py reconcile --wave N --source <source> --dir <out>``.
 
-Exit 0: every file mapped with no column unexplained and every row imported (or checked); 1: refused rows or columns
-not explained (nothing of that file is written); 2: a file, the mapping or the database cannot be used.
+Every part of a file is checked first; a file is written only when none of its parts has a refused row (Checkpoint F,
+SF-F1), so a split file is never half loaded.
+
+Exit 0: every file mapped with no column unexplained and every row imported (or checked); 1: refused rows, conflicts
+(rows changed in Zəka, not overwritten) or columns not explained (nothing of a file with a refused row is written);
+2: a file, the mapping, the database or an option cannot be used.
 """
 from __future__ import annotations
 
@@ -52,7 +56,7 @@ def run(mapping: Path, folder: Path, wave: int, as_of: str, exported_at: str | N
             except (OSError, adapters.AdapterError, tables.TableError) as ex:
                 print(f"error: {f['file']}: {ex}", file=sys.stderr)
                 return 2
-            kind, head, canon, rep = domain.apply(f, header, rows)
+            kind, head, canon, rep = domain.apply(f, header, rows, as_of)
             print(f"{f['file']} -> {kind}: {rep['rows']} rows · mapped {', '.join(rep['mapped'])}"
                   + (f" · left out {', '.join(f'{k} ({v})' for k, v in rep['ignored'].items())}" if rep["ignored"] else "")
                   + (" · summed into opening balances" if rep.get("aggregated") else ""))
@@ -66,25 +70,36 @@ def run(mapping: Path, folder: Path, wave: int, as_of: str, exported_at: str | N
                 code = 1
                 continue
             source_sha = hashlib.sha256(path.read_bytes()).hexdigest()
-            parts = domain.chunks(canon, importer.MAX_FILE_ROWS)
-            for i, part in enumerate(parts, 1):
+            parts = []
+            for i, part in enumerate(domain.chunks(canon, importer.MAX_FILE_ROWS), 1):
                 name = f"{Path(f['file']).stem}.{kind}.{i:03d}.csv"
                 data = adapters.to_csv(head, part)
                 (out / name).write_bytes(data)
-                rows_of = {j + 2: x["_row"] for j, x in enumerate(part)}     # canonical line -> the export's line
-                try:
-                    r = service.load(c, wave, source, kind, name, data, as_of=as_of if kind in imports.JOURNAL_KINDS else None,
-                                     exported_at=exported_at, source_file=f["file"], source_sha256=source_sha, user_id=user_id,
-                                     dry_run=dry_run, force=force)
-                except tables.TableError as ex:
-                    print(f"error: {name}: {ex}", file=sys.stderr)
-                    return 2
-                print(f"  {name}: new {r['inserted']} · changed {r['updated']} · unchanged {r['unchanged']} · conflicts "
-                      f"{len(r['conflicts'])} · refused {r['error_count']}" + (" · dry run" if dry_run else ""))
-                for e in r["errors"]:
-                    print(f"    refused, export row {rows_of.get(e['row'], e['row'])}: {_az(e['reason'])}")
-                if r["error_count"]:
-                    code = 1
+                parts.append((name, data, {j + 2: x["_row"] for j, x in enumerate(part)}))   # canonical line -> the export's line
+            as_of_kind = as_of if kind in imports.JOURNAL_KINDS else None
+            for check in ((True,) if dry_run else (True, False)):          # every part checked before any is written (SF-F1)
+                refused = False
+                for name, data, rows_of in parts:
+                    try:
+                        r = service.load(c, wave, source, kind, name, data, as_of=as_of_kind, exported_at=exported_at,
+                                         source_file=f["file"], source_sha256=source_sha, user_id=user_id, dry_run=check, force=force)
+                    except tables.TableError as ex:
+                        print(f"error: {name}: {ex}", file=sys.stderr)
+                        return 2
+                    if check and not dry_run and not r["error_count"]:
+                        continue                                           # the real load prints it
+                    print(f"  {name}: new {r['inserted']} · changed {r['updated']} · unchanged {r['unchanged']} · conflicts "
+                          f"{len(r['conflicts'])} · refused {r['error_count']}" + (" · dry run" if check else ""))
+                    for e in r["errors"]:
+                        print(f"    refused, export row {rows_of.get(e['row'], e['row'])}: {_az(e['reason'])}")
+                    for w in r.get("warnings", []):
+                        print(f"    warning, export row {rows_of.get(w['row'], w['row'])}: {_az(w['reason'])}")
+                    refused = refused or bool(r["error_count"])
+                    if r["error_count"] or r["conflicts"]:
+                        code = 1
+                if refused:
+                    print(f"  {f['file']}: not written: a part has refused rows")
+                    break
     finally:
         c.close()
     return code
@@ -104,6 +119,11 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     if imports.a_date(a.as_of) != a.as_of:
         print("error: --as-of must be YYYY-MM-DD", file=sys.stderr)
+        return 2
+    try:                                               # Checkpoint F (PY-F8): the evidence moment is a real date-time
+        imports.moment(a.exported_at)
+    except ValueError:
+        print("error: --exported-at must be an ISO date-time, e.g. 2026-11-01T18:00:00+04:00", file=sys.stderr)
         return 2
     try:
         source = json.loads(a.mapping.read_text(encoding="utf-8"))["source"]

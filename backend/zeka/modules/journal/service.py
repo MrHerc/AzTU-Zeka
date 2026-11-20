@@ -380,9 +380,15 @@ def import_mark(c, lesson_id: int, student_id: int, status: str, as_of: str, by:
     return repo.put_legacy_mark(c, lesson_id, student_id, status, as_of, by, at)
 
 
-def legacy_pairs(c) -> set[tuple[int, int]]:
-    """(student, course) that have lesson records of the old system: an opening balance for one would count twice."""
+def legacy_pairs(c) -> dict[tuple[int, int], str]:
+    """(student, course) -> the day of their first lesson record of the old system: an opening balance dated on or after
+    it would count those records twice."""
     return repo.legacy_pairs(c)
+
+
+def hours_of(c, marks: list[int], openings: list[int]) -> dict[str, list[int]]:
+    """The hours Zəka holds in these imported records, per student and course (the reconciliation, Task 38)."""
+    return repo.hours_of(c, marks, openings)
 
 
 def imported_hours(c, course_id: int) -> dict[int, tuple[int, int]]:

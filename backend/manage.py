@@ -50,6 +50,8 @@ def main(argv=None) -> int:
     rc.add_argument("--dir", required=True, help="the folder holding the wave's loaded files")
     rc.add_argument("--sample", type=int, default=50, help="random records listed for a person to check")
     rc.add_argument("--out", help="also write the full report as JSON to this file")
+    rc.add_argument("--by", help="the account (username) that checked the wave: with it, a reconciled history makes the "
+                                 "transcript issuable; without it, nothing is marked")
     ac = sub.add_parser("activation-codes", help="one-time activation codes for a faculty's students, as CSV (Task 16)")
     ac.add_argument("--faculty", required=True, help="faculty code")
     ac.add_argument("--out", required=True, help="CSV file to write (handed to the dean's office)")
@@ -82,7 +84,7 @@ def main(argv=None) -> int:
         return run_import(args.kind, args.source, Path(args.file), args.dry_run, args.prefer == "source", args.as_of, args.force,
                           args.wave, args.exported_at, args.by)
     if args.cmd == "reconcile":
-        return run_reconcile(args.wave, args.source, Path(args.dir), args.sample, args.out)
+        return run_reconcile(args.wave, args.source, Path(args.dir), args.sample, args.out, args.by)
     if args.cmd == "activation-codes":
         return run_activation_codes(args.faculty, Path(args.out))
     if args.cmd == "create-admin":
@@ -271,6 +273,11 @@ def run_import(kind: str, source: str, path: Path, dry_run: bool, prefer_source:
     if kind in integration_rules.JOURNAL_KINDS and not as_of:
         print(f"error: --as-of is required for {kind}: the cut-over date of the export (Task 38)", file=sys.stderr)
         return 2
+    try:                                               # Checkpoint F (PY-F8)
+        integration_rules.moment(exported_at)
+    except ValueError:
+        print("error: --exported-at must be an ISO date-time, e.g. 2026-11-01T18:00:00+04:00", file=sys.stderr)
+        return 2
     try:
         store.init()
     except migrate.MigrationError as ex:
@@ -312,8 +319,8 @@ def staff_id(c, username: str) -> int | None:
     return u["id"] if u else None
 
 
-def run_reconcile(wave: int, source: str, folder: Path, sample: int, out: str | None) -> int:
-    """Exit 0: the wave reconciles; 1: differences (listed); 2: no database or no file of the wave."""
+def run_reconcile(wave: int, source: str, folder: Path, sample: int, out: str | None, by: str | None = None) -> int:
+    """Exit 0: the wave reconciles; 1: differences (listed); 2: no database, no file of the wave or an unknown --by."""
     import json
     from zeka.modules.migration import service as migration
     if not store.DB_PATH.exists():
@@ -321,7 +328,11 @@ def run_reconcile(wave: int, source: str, folder: Path, sample: int, out: str | 
         return 2
     c = store.connect()
     try:
-        r = migration.reconcile(c, wave, source, folder, sample)
+        user_id = staff_id(c, by) if by else None
+        if by and user_id is None:
+            print(f"error: no staff account {by!r}", file=sys.stderr)
+            return 2
+        r = migration.reconcile(c, wave, source, folder, sample, user_id)
     finally:
         c.close()
     if not r["files"]:
