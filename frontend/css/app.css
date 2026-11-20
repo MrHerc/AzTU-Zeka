@@ -11,12 +11,13 @@
 :root {
   --navy: #1a2355; --navy-800: #141b45; --navy-900: #0b1330; --navy-50: #eef0f8; --navy-100: #dde1f0;
   --blue: #5a9bd3; --blue-700: #2b5aa8; --blue-50: #eef5fc; --blue-100: #d9e9f7;
-  --coral: #ee7c7e; --coral-700: #c94b4e; --coral-50: #fdeff0;
+  --coral: #ee7c7e; --coral-700: #b9403f; --coral-50: #fdeff0;
   --bg: #f4f6fa; --surface: #ffffff; --surface-2: #f8f9fc; --surface-3: #eef1f6;
   --border: #e3e7ef; --border-2: #d2d8e4;
-  --text: #121a3a; --text-2: #3a4463; --muted: #667089; --faint: #9aa3b8;
-  --green: #0e9f6e; --green-50: #e7f7f0; --amber: #c27803; --amber-50: #fff5e0; --red: #d64045; --red-50: #fdecec;
-  --violet: #6d5bd0; --violet-50: #f1effc; --teal: #0e8aa8; --teal-50: #e6f5f8;
+  /* text colours reach 4.5:1 on the page, on surface-3 and on their own -50 background (WCAG 1.4.3; axe, Task 42) */
+  --text: #121a3a; --text-2: #3a4463; --muted: #5c6680; --faint: #667089;
+  --green: #047857; --green-50: #e7f7f0; --amber: #9a5b00; --amber-50: #fff5e0; --red: #c0353a; --red-50: #fdecec;
+  --violet: #6d5bd0; --violet-50: #f1effc; --teal: #0b7590; --teal-50: #e6f5f8;
   --link: #2b5aa8; --focus: #2b5aa8;
   --grad-brand: linear-gradient(135deg, #1a2355 0%, #2b5aa8 60%, #5a9bd3 100%);
   --grad-ai: linear-gradient(135deg, #1a2355 0%, #2b5aa8 55%, #5a9bd3 100%);
@@ -33,6 +34,7 @@
   --text: #e8ecf8; --text-2: #c7cfe4; --muted: #8f9abb; --faint: #6b7596;
   --navy-50: #18214a; --navy-100: #1f2a5c; --blue-50: #13284a; --blue-100: #183460; --coral-50: #3a1c26;
   --green-50: #0d2b22; --amber-50: #2f2410; --red-50: #35161b; --violet-50: #221d4a; --teal-50: #0d2a33; --link: #8fbde8; --focus: #8fbde8;
+  --green: #0e9f6e; --amber: #c27803; --red: #d64045; --teal: #0e8aa8; --coral-700: #c94b4e;     /* the light theme's darker ones are too dark here */
   --shadow: 0 1px 3px rgba(0, 0, 0, .3), 0 12px 30px -12px rgba(0, 0, 0, .55);
 }
 * { box-sizing: border-box; }
@@ -326,7 +328,8 @@ button { font: inherit; color: inherit; }
 .lesson { display: flex; gap: 14px; align-items: stretch; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
 .lesson .lt { width: 64px; flex: none; font-weight: 700; font-size: 13px; } .lesson .lt span { display: block; color: var(--muted); font-weight: 500; font-size: 12px; }
 .lesson .lbar { width: 4px; border-radius: 4px; flex: none; }
-.lesson.now { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-50); } .lesson.done { opacity: .62; }
+.lesson.now { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-50); }
+.lesson.done { background: var(--surface-2); } .lesson.done .lbar { opacity: .4; }     /* dimmed without fading its text below 4.5:1 */
 .week { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .wday { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
 .wday-h { padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); font-weight: 650; font-size: 13px; display: flex; justify-content: space-between; }

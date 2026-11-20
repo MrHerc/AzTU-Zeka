@@ -20,8 +20,9 @@ R = Router()
 COOKIE = "zeka_sid"
 BASE_URL = {"value": "http://127.0.0.1:5070"}
 ROLE_HOME = {"student": "/student", "teacher": "/teacher", "office": "/office", "leader": "/leader", "admin": "/admin",
-             # new roles (Task 13) start from the closest existing home until their own pages arrive
-             "dept_head": "/teacher", "academic_office": "/admin/directory", "proctor": "/proctor"}
+             # new roles (Task 13) start from the closest existing home until their own pages arrive; a department head's is
+             # its request queue, as the teacher's home and Zəka Radar refuse the role (tests/security/test_roles.py)
+             "dept_head": "/office", "academic_office": "/admin/directory", "proctor": "/proctor"}
 STAFF = ("office", "admin", "leader")
 
 # Tests (ZEKA_TX_GUARD=1): a request may hold SQLite's single write lock for at most 200 ms (Task 7).

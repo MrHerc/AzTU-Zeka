@@ -1,5 +1,5 @@
 import { api, html, raw, mount, on, md, ic, toast, modal, confirmBox, route, go, S, LANG, t, num, pageHead, fmtDate, ring, progress, loading, empty, failed,
-  infoTip, openDoc, openSyllabus, registerTour, refCard, esc, $, $$ } from "./core.js";
+  infoTip, openDoc, openSyllabus, registerTour, refCard, esc, $, $$, avatarBg } from "./core.js";
 import { stat } from "./student.js";
 
 const LET = "ABCD";
@@ -51,7 +51,7 @@ route("/teacher/academy", async (el) => {
           ${infoTip(t("Özünüqiymətləndirmə nəticəsinə görə sizə ən çox fayda verəcək istiqamətlər seçilir. İstədiyiniz vaxt yenidən keçə bilərsiniz."))}</h3>
         <button class="btn btn-sm" id="assess">${ic("sliders", 14)} ${Object.keys(a.assessment).length ? t("Yenidən qiymətləndir") : t("Özünüqiymətləndirmə")}</button></div>
         <div class="card-b">${rec.length ? html`<p class="small muted" style="margin:0 0 10px">${t("Qiymətləndirmənizə əsasən bu istiqamətlərdən başlamağı tövsiyə edirik:")}</p>
-          <div class="list">${rec.map((tr, i) => html`<div class="list-item click" data-go="/teacher/academy/track/${tr.key}"><span class="avatar" style="background:${tr.color}">${i + 1}</span>
+          <div class="list">${rec.map((tr, i) => html`<div class="list-item click" data-go="/teacher/academy/track/${tr.key}"><span class="avatar" style="background:${avatarBg(tr.color)}">${i + 1}</span>
             <div class="grow"><b class="small">${tr.title}</b><div class="tiny muted">${t("{done}/{total} modul", { done: tr.done, total: tr.total })} · ${t("{h} saat", { h: hrs(tr.minutes) })}</div></div>
             ${tr.next ? html`<button class="btn btn-sm btn-primary" data-go="/teacher/academy/module/${tr.next}">${tr.done ? t("Davam et") : t("Başla")}</button>` : html`<span class="badge b-green">${t("tamamlanıb")}</span>`}</div>`)}</div>`
           : empty("target", t("İnkişaf planı hazır deyil"), t("Bir dəqiqəlik özünüqiymətləndirmədən keçin — sizə uyğun istiqamətləri tövsiyə edək."), { label: t("Özünüqiymətləndirmə"), id: "assess-empty", icon: "sliders" })}</div></div>

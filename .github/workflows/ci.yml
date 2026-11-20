@@ -79,3 +79,38 @@ jobs:
           name: test-results-${{ matrix.os }}-py${{ matrix.python }}
           path: test-results.xml
           if-no-files-found: ignore
+
+  browser:
+    # The jobs above skip every browser test (no Playwright there); this one runs them (Task 42).
+    name: Browser tests (Playwright, axe-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
+      NODE_PATH: ${{ github.workspace }}/tests/e2e/node_modules
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+      - name: Install Playwright and axe-core
+        run: npm ci --prefix tests/e2e
+      - name: Install Chromium
+        run: npx --prefix tests/e2e playwright install --with-deps chromium
+      - name: Both resolve, so the tests below cannot pass by skipping
+        run: node -e "require('playwright'); require.resolve('axe-core')"
+      - name: Run the browser tests
+        run: >-
+          python -m pytest -q -p no:cacheprovider -rs
+          tests/integration/test_e2e_smoke.py tests/integration/test_a11y.py
+          tests/integration/test_exam_page.py tests/integration/test_exam_page_checkpoint_d.py
+          tests/integration/test_clubs_page.py

@@ -43,7 +43,7 @@ def test_a_granted_role_can_be_switched_to_with_a_new_session_id(app_db, db_user
     roles = me.get("/api/me/roles").json
     assert roles["active"] == "teacher" and {r["role"] for r in roles["roles"]} == {"teacher", "dept_head"}
     r = me.post("/api/me/role", {"role": "dept_head"})
-    assert r.status == 200 and r.json["home"] == "/teacher" and sid_of(r) != first
+    assert r.status == 200 and r.json["home"] == "/office" and sid_of(r) != first
     assert me.get("/api/me").json["role"] == "dept_head"
     assert app_db.client().get("/api/me", headers={"Cookie": f"zeka_sid={first}"}).status == 401
     assert any("teacher → dept_head" in d for d in audits("role_switched"))

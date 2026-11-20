@@ -1,0 +1,9 @@
+{
+  "name": "zeka-e2e",
+  "private": true,
+  "description": "Browser tests of Zəka, driven by pytest (tests/integration/test_e2e_smoke.py, test_a11y.py, test_exam_page*.py, test_clubs_page.py). Test tools only: the app has no runtime dependencies.",
+  "devDependencies": {
+    "axe-core": "4.10.2",
+    "playwright": "1.63.0"
+  }
+}

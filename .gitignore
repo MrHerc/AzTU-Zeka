@@ -27,3 +27,5 @@ backups/
 !.env.example
 # Sirr faylları: backup açarı və ssh açarı (infra/compose.yml)
 infra/secrets/
+# Brauzer testlərinin Playwright və axe-core paketləri (npm ci --prefix tests/e2e)
+tests/e2e/node_modules/

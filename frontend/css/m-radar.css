@@ -1,5 +1,5 @@
 /* Zəka Radar — early warning, explainable profile, support plans, presenter panel. Tokens come from app.css. */
-:root { --rd-high: #d64045; --rd-watch: #c27803; --rd-ok: #0e9f6e; --rd-att: #ee7c7e; --rd-ass: #2b5aa8; --rd-con: #6d5bd0; --rd-eng: #0e8aa8; }
+:root { --rd-high: var(--red); --rd-watch: var(--amber); --rd-ok: var(--green); --rd-att: #ee7c7e; --rd-ass: #2b5aa8; --rd-con: #6d5bd0; --rd-eng: #0e8aa8; }
 [data-theme="dark"] { --rd-ass: #6fa3e0; --rd-con: #9b8cf0; --rd-eng: #3fb6d1; }
 
 /* stacked driver bar: each segment is the points a driver contributes (out of 100) */

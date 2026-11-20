@@ -5,6 +5,7 @@ import { refreshBadges, ROLE_LABEL } from "./shell.js";
 
 const STAFF = ["office", "admin", "leader"];
 const QUEUE = [...STAFF, "academic_office", "dept_head"];     // also the roles a request's step is assigned to (Task 46)
+const DESK = ["office", "admin"];                               // may revoke an issued document (POST /api/documents/{id}/revoke)
 let SVC = null;
 async function services() { if (!SVC) SVC = await api.get("/api/services"); return SVC; }
 const catOf = (key) => (SVC && SVC.categories.find((c) => c.key === key)) || {};

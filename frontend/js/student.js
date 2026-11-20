@@ -106,8 +106,8 @@ function courseMiniCard(c) {
     <div class="course-mini-b"><div class="row"><span class="course-ic" style="background:${c.color}">${c.code.split("-")[0]}</span>
       <div class="grow"><b class="course-mini-t">${c.name}</b><span class="tiny muted">${c.teacher}</span></div></div>
       <div class="row between mt small"><span class="muted">${t("Davamiyyət")}</span><b style="color:${c.attendance.rate < 80 ? "var(--red)" : "inherit"}">${num(c.attendance.rate)}%</b></div>
-      ${progress(c.attendance.rate, c.attendance.rate < 80 ? "coral" : "green")}
-      <div class="row between mt-sm small"><span class="muted">${t("Test irəliləyişi")}</span><b>${num(c.progress)}%</b></div>${progress(c.progress)}</div></div>`;
+      ${progress(c.attendance.rate, c.attendance.rate < 80 ? "coral" : "green", t("Davamiyyət"))}
+      <div class="row between mt-sm small"><span class="muted">${t("Test irəliləyişi")}</span><b>${num(c.progress)}%</b></div>${progress(c.progress, "", t("Test irəliləyişi"))}</div></div>`;
 }
 
 // ---------------------------------------------------------------- courses

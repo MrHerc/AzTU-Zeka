@@ -44,7 +44,7 @@ route("/teacher", async (el) => {
           ${main ? html`<a class="small" href="#/teacher/course/${main.id}?tab=insights">${t("Ətraflı")} ${ic("arrow", 13)}</a>` : ""}</div>
           <div class="card-b">${ins ? html`<div class="grid g-2">
             <div><div class="label mb-sm">${t("Ən çox soruşulan mövzular")}</div>
-              ${ins.top_topics.length ? ins.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.topic}">${x.topic}</span>${progress((x.n / ins.top_topics[0].n) * 100)}<b class="right small">${num(x.n)}</b></div>`)
+              ${ins.top_topics.length ? ins.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.topic}">${x.topic}</span>${progress((x.n / ins.top_topics[0].n) * 100, "", x.topic)}<b class="right small">${num(x.n)}</b></div>`)
                 : empty("message", t("Hələ sual yoxdur"), t("Tələbələr tutora sual verdikcə mövzular burada toplanacaq."))}</div>
             <div><div class="label mb-sm">${t("Həftəlik suallar")}</div>${sparkline(ins.weekly, "#2b5aa8", 260, 70)}
               <div class="row wrap mt"><span class="badge b-green">${t("{n}% faydalı", { n: ins.positive_rate ?? "—" })}</span><span class="badge b-amber">${t("Mənbəsiz: {n}%", { n: num(ins.no_source_rate, 1) })}</span></div>
@@ -72,7 +72,7 @@ route("/teacher", async (el) => {
 
         <div class="card" data-tour="questions"><div class="card-h"><h3>${ic("inbox", 17)} ${t("Tələbə sualları")}</h3><a class="small" href="#/teacher/questions">${t("Hamısı")} ${ic("arrow", 13)}</a></div>
           <div class="card-b list">${d.questions.length ? d.questions.map((q) => html`<div class="list-item top click" data-go="/teacher/questions">
-            <span class="avatar sm" style="background:${q.anonymous ? "#9aa3b8" : "#2b5aa8"}">${q.anonymous ? "?" : q.student.split(" ").map((x) => x[0]).join("")}</span>
+            <span class="avatar sm" style="background:${q.anonymous ? "#64748b" : "#2b5aa8"}">${q.anonymous ? "?" : q.student.split(" ").map((x) => x[0]).join("")}</span>
             <div class="grow"><div class="row between"><b class="small">${q.student}</b><span class="tiny muted">${ago(q.created_at)}</span></div>
             <div class="small">${q.question.slice(0, 110)}${q.question.length > 110 ? "…" : ""}</div></div></div>`)
             : empty("check", t("Cavab gözləyən sual yoxdur"), t("Tələbələr tutordan sizə sual yönləndirdikdə burada görünəcək."))}</div></div>
@@ -239,7 +239,7 @@ async function attendanceTab(tgt, c) {
       ${a.lessons.map((l) => { const tot = l.present + l.late + l.absent + l.excused; const p_ = Math.round((100 * (l.present + l.late)) / Math.max(1, tot));
         return html`<tr><td class="nowrap"><b>${fmtDate(l.day)}</b> <span class="tiny muted">${l.start}</span></td><td class="small">${l.kind} · <span class="muted">${l.topic}</span></td>
           <td>${num(l.present)}</td><td><span class="att-cell absent">${num(l.absent)}</span></td><td><span class="att-cell excused">${num(l.excused)}</span></td><td><span class="att-cell late">${num(l.late)}</span></td>
-          <td style="min-width:110px"><div class="row">${progress(p_, p_ < 85 ? "coral" : "green")}<b class="small">${num(p_)}%</b></div></td></tr>`; })}</tbody></table></div>`
+          <td style="min-width:110px"><div class="row">${progress(p_, p_ < 85 ? "coral" : "green", t("Faiz"))}<b class="small">${num(p_)}%</b></div></td></tr>`; })}</tbody></table></div>`
         : html`<div class="card-b">${empty("calcheck", t("Hələ dərs qeydə alınmayıb"), t("Dərslər keçirildikcə davamiyyət burada görünəcək."))}</div>`}</div>
     <div class="stack"><div class="card"><div class="card-h"><h3>${ic("heart", 17)} ${t("Üzrlü hesab edilənlər")}</h3></div><div class="card-b list">
       ${a.excused.length ? a.excused.map((x) => html`<div class="list-item"><div class="grow"><b class="small">${x.student}</b><div class="tiny muted">${fmtDate(x.day)} · ${x.kind}</div></div>${badge("excused")}</div>`)
@@ -257,7 +257,7 @@ function insightsTab(tgt, c) {
         ${i.weekly.some((x) => x) ? barChart({ labels: i.weekly.map((_, k) => t("{n}-h", { n: k + 1 })), values: i.weekly, color: "#2b5aa8", label: t("Həftələr üzrə sual sayı") })
           : empty("chart", t("Hələ məlumat yoxdur"), t("Tələbə sualları toplandıqca qrafik burada görünəcək."))}</div></div>
       <div class="card"><div class="card-h"><h3>${t("Mövzular üzrə suallar")}</h3></div><div class="card-b">
-        ${i.top_topics.length ? i.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.topic}">${x.topic}</span>${progress((x.n / i.top_topics[0].n) * 100)}<b class="right small">${num(x.n)}</b></div>`)
+        ${i.top_topics.length ? i.top_topics.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.topic}">${x.topic}</span>${progress((x.n / i.top_topics[0].n) * 100, "", x.topic)}<b class="right small">${num(x.n)}</b></div>`)
           : empty("message", t("Mövzu yoxdur"), t("Suallar toplandıqca ən çox soruşulan mövzular burada sıralanacaq."))}</div></div></div>
     <div class="card mt"><div class="card-h"><h3>${ic("alert", 17)} ${t("Materiallarda cavabı tapılmayan suallar")}</h3></div><div class="card-b">
       ${i.gaps.length ? html`<div class="list">${i.gaps.map((g) => html`<div class="list-item"><span class="stat-ic ic-amber" style="width:32px;height:32px">${ic("help", 15)}</span><div class="grow">${g}</div>
@@ -453,7 +453,7 @@ route("/teacher/questions", async (el) => {
         { info: t("Yalnız tələbənin müəllimə yönləndirdiyi suallar sizə gəlir — tutorla adi söhbətlər məxfidir.") })}
       <div class="row between wrap mb" data-tour="filters"><div class="seg" role="tablist">${[["all", t("Hamısı"), qs.length], ["open", t("Cavab gözləyən"), openN], ["answered", t("Cavablandırılıb"), qs.length - openN]].map(([k, l, n]) =>
         html`<button data-f="${k}" class="${filter === k ? "active" : ""}" role="tab" aria-selected="${filter === k}">${l} (${n})</button>`)}</div></div>
-      <div class="stack" data-tour="q-list">${shown.length ? shown.map((q) => html`<div class="card pad slide-up"><div class="row between wrap"><div class="row"><span class="avatar" style="background:${q.anonymous ? "#9aa3b8" : "#2b5aa8"}">${q.anonymous ? "?" : q.student.split(" ").map((x) => x[0]).join("")}</span>
+      <div class="stack" data-tour="q-list">${shown.length ? shown.map((q) => html`<div class="card pad slide-up"><div class="row between wrap"><div class="row"><span class="avatar" style="background:${q.anonymous ? "#64748b" : "#2b5aa8"}">${q.anonymous ? "?" : q.student.split(" ").map((x) => x[0]).join("")}</span>
         <div><b>${q.student}</b><div class="small muted">${q.course} · ${ago(q.created_at)}</div></div></div>${badge(q.status)}</div>
         <p class="q-body">${q.question}</p>${q.context ? html`<div class="small muted">${ic("sparkles", 12)} ${q.context.slice(0, 160)}</div>` : ""}
         ${q.status === "answered" ? html`<div class="notice ok mt">${ic("check", 16)}<div><b>${t("Cavabınız")}:</b> ${q.answer}</div></div>`
@@ -466,7 +466,7 @@ route("/teacher/questions", async (el) => {
   on(el, "click", "[data-f]", (e, b) => { filter = b.dataset.f; render(); });
   on(el, "click", "[data-reply]", (e, b) => {
     const q = qs.find((x) => x.id === +b.dataset.reply);
-    modal({ title: t("Sualı cavablandır"), size: "lg", body: html`<div class="row mb"><span class="avatar" style="background:${q.anonymous ? "#9aa3b8" : "#2b5aa8"}">${q.anonymous ? "?" : q.student.split(" ").map((x) => x[0]).join("")}</span>
+    modal({ title: t("Sualı cavablandır"), size: "lg", body: html`<div class="row mb"><span class="avatar" style="background:${q.anonymous ? "#64748b" : "#2b5aa8"}">${q.anonymous ? "?" : q.student.split(" ").map((x) => x[0]).join("")}</span>
         <div><b>${q.student}</b><div class="small muted">${q.course} · ${ago(q.created_at)}</div></div></div>
       <div class="notice info mb">${ic("help", 15)}<div>${q.question}</div></div>
       <div class="field"><label class="label" for="ans">${t("Cavabınız")}</label><textarea class="textarea" id="ans" style="min-height:120px" placeholder="${t("Cavabınızı yazın…")}"></textarea></div>`,

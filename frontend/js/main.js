@@ -28,7 +28,8 @@ import { privacyCard } from "./privacy.js";
 import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;
-{ const sk = document.getElementById("skip-link"); if (sk) sk.textContent = t("Əsas məzmuna keç"); }
+{ const sk = document.getElementById("skip-link");      // its "#content" would be a route here (Səhifə tapılmadı): focus the page instead
+  if (sk) { sk.textContent = t("Əsas məzmuna keç"); sk.addEventListener("click", (e) => { e.preventDefault(); document.querySelector("main")?.focus(); }); } }
 const AUDIT = new URLSearchParams(location.search).get("audit") === "1";
 window.addEventListener("error", (e) => recordError(e.message));
 window.addEventListener("unhandledrejection", (e) => recordError((e.reason && e.reason.message) || String(e.reason)));
@@ -107,7 +108,7 @@ function activateModal() {
 }
 async function loginPage(root) {
   const uni = S.app.university;
-  mount(root, html`<div class="login">
+  mount(root, html`<main class="login" id="content" tabindex="-1">
     <div class="login-hero">
       <div class="row between"><div class="login-logo"><img src="/static/img/brand/icon.png" alt="${t("AzTU loqosu")}"><div><div class="ll-name">${t("Azərbaycan Texniki Universiteti")}</div>
         <div class="ll-sub">${t("Rəqəmsal Kampus")} · ${uni.platform}</div></div></div>${langSwitch("on-dark")}</div>
@@ -131,7 +132,7 @@ async function loginPage(root) {
       <div class="or">${t("və ya rol seçin")}</div>
       <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
       <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>`}
-    </div></div></div>`);
+    </div></div></main>`);
   ssoNotice();
   on(root, "click", "#activate-open", activateModal);
   on(root, "submit", "#login-form", async (e, f) => {

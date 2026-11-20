@@ -2,7 +2,7 @@ import { S, api, html, raw, mount, on, ic, icon, toast, modal, go, avatar, ago, 
 import { LANGS, setLang } from "./i18n.js";
 
 export const HOME = { student: "/student", teacher: "/teacher", office: "/office", leader: "/leader", admin: "/admin",
-  dept_head: "/teacher", academic_office: "/admin/directory", proctor: "/proctor" };
+  dept_head: "/office", academic_office: "/admin/directory", proctor: "/proctor" };
 // New roles (Task 13) use the navigation of the closest existing role until their own pages arrive.
 const NAV_ROLE = { dept_head: "teacher", academic_office: "office", proctor: "teacher" };
 const pick = (table, r) => table[r] || table[NAV_ROLE[r]] || [];
@@ -25,8 +25,8 @@ export const NAV = {
                            ["heart", t("Dəstək planım"), "/student/plan", "plan"], ["message", t("Sual-cavab"), "/qa"], ["clock", t("Qəbul saatları"), "/office-hours"], ["users", t("Klublar"), "/clubs"]]],
             [t("Xidmətlər"), [["grid", t("E-xidmətlər"), "/student/services"], ["inbox", t("Müraciətlərim"), "/student/requests", "requests"], ["help", t("Kampus köməkçisi"), "/student/campus"]]],
             UNI, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["grid", t("Tətbiqlər"), "/apps"], ["ticket", t("Dəstək"), "/support", "support"]]]],
-  dept_head: [[t("Kafedra"), [["home", t("Əsas səhifə"), "/teacher"], ["inbox", t("Müraciətlər"), "/office"], ["check", t("Sillabus təsdiqi"), "/syllabi"], ["calcheck", t("Elektron jurnal"), "/journal"],
-              ["activity", t("Zəka Radar"), "/radar", "radar"], ["shield", t("İmtahan nəzarəti"), "/proctor"]]], UNI, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["grid", t("Tətbiqlər"), "/apps"], ["ticket", t("Dəstək"), "/support", "support"]]]],
+  dept_head: [[t("Kafedra"), [["inbox", t("Müraciətlər"), "/office"], ["check", t("Sillabus təsdiqi"), "/syllabi"], ["calcheck", t("Elektron jurnal"), "/journal"],
+              ["shield", t("İmtahan nəzarəti"), "/proctor"]]], UNI, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["grid", t("Tətbiqlər"), "/apps"], ["ticket", t("Dəstək"), "/support", "support"]]]],
   proctor: [[t("İmtahan"), [["shield", t("İmtahan nəzarəti"), "/proctor"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
   teacher: [[t("Əsas"), [["home", t("Əsas səhifə"), "/teacher"], ["calendar", t("Dərs cədvəli"), "/teacher/schedule"]]],
             [t("Tədris"), [["calcheck", t("Elektron jurnal"), "/journal"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["book", t("Fənlərim"), "/teacher/courses"], ["wand", t("Test studiyası"), "/teacher/studio"], ["inbox", t("Tələbə sualları"), "/qa", "questions"], ["clock", t("Qəbul saatları"), "/office-hours"], ["users", t("Klublar"), "/clubs"], ["shield", t("İmtahan nəzarəti"), "/proctor"]]],
@@ -50,6 +50,7 @@ const BOTTOM = {
   leader: [["chart", t("Panel"), "/leader"], ["activity", t("Radar"), "/radar"], ["smile", t("Rəylər"), "/staff/feedback"], ["inbox", t("Xidmətlər"), "/office"]],
   admin: [["sliders", t("Panel"), "/admin"], ["ticket", t("Dəstək"), "/staff/support"], ["list", t("Audit"), "/admin/audit"], ["megaphone", t("Xəbərlər"), "/staff/news"]],
   proctor: [["shield", t("Nəzarət"), "/proctor"], ["buoy", t("Bələdçi"), "/guide"]],
+  dept_head: [["inbox", t("Müraciətlər"), "/office"], ["check", t("Sillabus"), "/syllabi"], ["calcheck", t("Davamiyyət"), "/journal"], ["shield", t("Nəzarət"), "/proctor"]],
 };
 const QUICK = {
   student: [["file", t("Arayış sifariş et"), "/student/services?new=enrollment_certificate"], ["heart", t("Qayıbı üzrlü et (həkim arayışı)"), "/student/services?new=absence_excuse"],

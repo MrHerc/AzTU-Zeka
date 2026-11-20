@@ -180,7 +180,7 @@ route("/radar/student/:id", async (el, p, q) => {
             <div class="rd-legend mt-sm">${["present", "late", "absent", "excused"].map((s) => html`<span class="rd-key"><i class="rd-dot ${s}" style="width:10px;height:10px;border-radius:3px"></i>${ATT_LABEL[s]}</span>`)}</div>
             ${att.missed_topics.length ? html`<div class="small mt">${t("Buraxılmış mövzular")}: <b>${att.missed_topics.join(", ")}</b></div>` : ""}</div></div>
           <div class="card"><div class="card-h"><h3>${ic("quiz", 17)} ${t("Testlər və ballar")}</h3></div><div class="card-b">
-            ${asm.series.length ? asm.series.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.title}">${x.title}</span>${progress(x.percent, x.percent < 50 ? "coral" : "green")}<b class="right small">${x.percent}%</b></div>`)
+            ${asm.series.length ? asm.series.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.title}">${x.title}</span>${progress(x.percent, x.percent < 50 ? "coral" : "green", x.title)}<b class="right small">${x.percent}%</b></div>`)
               : html`<div class="small muted">${t("Test cəhdi yoxdur")}</div>`}
             <div class="rd-compare mt">
               <div><b>${att.rate == null ? "—" : att.rate + "%"}</b><span>${t("Davamiyyət")} · ${t("kurs: {n}%", { n: d.cohort.attendance ?? "—" })}</span></div>

@@ -61,15 +61,15 @@ route("/leader", async (el) => {
 
     <div class="grid g-2 mt">
       <div class="card"><div class="card-h"><h3>${ic("grid", 17)} ${t("E-xidmətlər üzrə müraciətlər")}</h3></div><div class="card-b">${a.requests_by_type.length ? a.requests_by_type.map((r) => html`<div class="bar-row"><span class="ellipsis small" title="${r.name}">${r.name}</span>
-        ${progress((100 * r.n) / Math.max(1, a.requests_by_type[0].n))}<b class="right small">${cnt(r.n)}</b></div>`) : empty("grid", t("Hələ müraciət yoxdur"))}</div></div>
+        ${progress((100 * r.n) / Math.max(1, a.requests_by_type[0].n), "", r.name)}<b class="right small">${cnt(r.n)}</b></div>`) : empty("grid", t("Hələ müraciət yoxdur"))}</div></div>
       <div class="card"><div class="card-h"><h3>${ic("news", 17)} ${t("Ən çox oxunan xəbərlər")}</h3><a class="small" href="#/staff/news">${t("İdarə et")} ${ic("arrow", 13)}</a></div>
         <div class="card-b list">${a.news.length ? a.news.map((n) => html`<a class="list-item click" href="#/news/${n.id}"><div class="grow"><b class="small">${n.title}</b></div>
           <span class="badge b-gray">${ic("eye", 11)} ${cnt(n.reads)}</span>${n.rsvp ? html`<span class="badge b-coral">${t("{n} qeydiyyat", { n: n.rsvp })}</span>` : ""}</a>`) : empty("news", t("Hələ xəbər dərc edilməyib"), "", { label: t("Xəbər dərc et"), go: "/staff/news?new=1", icon: "megaphone" })}</div></div></div>
 
     <div class="grid g-12 mt">
-      <div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Fənlər üzrə")}</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>${t("Fənn")}</th><th>${t("Tutor sualları")}</th><th>${t("Test orta balı")}</th><th>${t("Davamiyyət")}</th><th>${t("Faydalı cavab")}</th><th>${t("Mənbəsiz")}</th></tr></thead><tbody>
+      <div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Fənlər üzrə")}</h3></div><div class="table-wrap" tabindex="0" role="region" aria-label="${t("Fənlər üzrə")}"><table class="table"><thead><tr><th>${t("Fənn")}</th><th>${t("Tutor sualları")}</th><th>${t("Test orta balı")}</th><th>${t("Davamiyyət")}</th><th>${t("Faydalı cavab")}</th><th>${t("Mənbəsiz")}</th></tr></thead><tbody>
         ${a.courses.map((c) => html`<tr><td><div class="row"><span class="dot" style="background:${c.color};box-shadow:none"></span><b class="small">${c.name}</b></div></td><td>${num(c.questions)}</td>
-          <td><div class="row" style="min-width:120px">${progress(c.quiz_avg || 0)}<b class="small">${c.quiz_avg == null ? "—" : c.quiz_avg + "%"}</b></div></td>
+          <td><div class="row" style="min-width:120px">${progress(c.quiz_avg || 0, "", t("Test orta balı"))}<b class="small">${c.quiz_avg == null ? "—" : c.quiz_avg + "%"}</b></div></td>
           <td>${c.attendance == null ? "—" : c.attendance + "%"}</td><td>${c.positive_rate == null ? "—" : c.positive_rate + "%"}</td>
           <td>${c.no_source_rate > 5 ? html`<span class="badge b-amber">${num(c.no_source_rate, 1)}%</span>` : html`${num(c.no_source_rate, 1)}%`}</td></tr>`)}</tbody></table></div></div>
       <div class="card" id="insights"><div class="card-h"><h3>${ic("bell", 17)} ${t("Diqqət tələb edənlər")}</h3></div><div class="card-b stack">

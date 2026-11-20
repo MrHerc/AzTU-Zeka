@@ -115,7 +115,15 @@ export function ago(s) {
   return fmtDate(s);
 }
 export const initials = (n) => String(n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
-export const avatar = (name, color, cls = "") => html`<span class="avatar ${cls}" style="background:${color || "#64748b"}" aria-hidden="true">${initials(name)}</span>`;
+// White initials need 4.5:1 on the person's colour (WCAG 1.4.3): a light #rrggbb is darkened just enough, others kept.
+const lum = (rgb) => rgb.reduce((a, v, i) => { const s = v / 255; return a + [0.2126, 0.7152, 0.0722][i] * (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4); }, 0);
+export const avatarBg = (c) => {
+  if (!/^#[0-9a-f]{6}$/i.test(c || "")) return c || "#64748b";
+  let rgb = [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  while (lum(rgb.map(Math.round)) > 0.18) rgb = rgb.map((v) => v * 0.95);     // (1 + .05) / (L + .05) >= 4.5
+  return `rgb(${rgb.map(Math.round).join(",")})`;
+};
+export const avatar = (name, color, cls = "") => html`<span class="avatar ${cls}" style="background:${avatarBg(color)}" aria-hidden="true">${initials(name)}</span>`;
 // Numbers follow the interface language, not the browser's locale data (Edge without Azerbaijani ICU data printed "88.6" next to
 // server-formatted "4,0"): az/ru "3 680" and "88,6" (non-breaking space, decimal comma), en "3,680" and "88.6". Negative sign: "−".
 const NUM_SEP = { az: ["\u00a0", ","], ru: ["\u00a0", ","], en: [",", "."] };
@@ -465,7 +473,8 @@ export function sparkline(values, color = "#2563eb", w = 120, h = 34) {
   const pts = values.map((v, i) => [(i * (w - 4)) / (values.length - 1) + 2, h - 4 - ((v - mn) * (h - 8)) / span]);
   return raw(`<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path class="chart-line" pathLength="1" d="${smooth(pts)}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/><circle cx="${pts.at(-1)[0]}" cy="${pts.at(-1)[1]}" r="3" fill="${color}"/></svg>`);
 }
-export const progress = (pct, cls = "", label = "") => html`<div class="progress ${cls}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct || 0)}" ${label ? raw(`aria-label="${esc(label)}"`) : ""}><span style="width:${Math.max(0, Math.min(100, pct || 0))}%"></span></div>`;
+// A progress bar needs a name (axe aria-progressbar-name): the caller's label, or "Progress" next to its visible caption.
+export const progress = (pct, cls = "", label = "") => html`<div class="progress ${cls}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct || 0)}" aria-label="${label || t("Gedişat")}"><span style="width:${Math.max(0, Math.min(100, pct || 0))}%"></span></div>`;
 // Animated number: counts up from 0 when it scrolls into view. Text content is already the final value.
 export const cnt = (value, { dec = 0, prefix = "", suffix = "" } = {}) =>
   html`<span class="count-up" data-count="${value}" data-dec="${dec}" data-prefix="${prefix}" data-suffix="${suffix}">${prefix}${num(value, dec)}${suffix}</span>`;
