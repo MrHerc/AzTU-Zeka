@@ -8,14 +8,17 @@ from .common import R, session_cookie, week_index
 from ..core.i18n import T3
 from .r_learning import course_insights
 from .r_services import office_summary
-from .store import J, audit, row, rows, setting
+from .store import audit, row, rows, setting
 from ..core.web import json_resp
+from ..modules.insight import service as insight
 
 LABELS = [{"az": f"{i}-{'ci' if i in (1, 2, 5, 7, 8) else 'cü' if i in (3, 4) else 'cı'} h.", "en": f"Wk {i}", "ru": f"Нед. {i}"} for i in range(1, 9)]
 
 
 @R("GET", "/api/analytics", roles=("leader", "admin"))
 def analytics(req):
+    """The leadership dashboard. Its tiles are the measured indicators of the insight module (Task 39); every other
+    number here is a count of rows."""
     c = req.db
     q_weeks, by_course = [0] * 8, {}
     for m in rows(c, "SELECT course_id, created_at FROM messages WHERE channel='tutor' AND role='user'"):
@@ -23,11 +26,8 @@ def analytics(req):
         if 0 <= w < 8:
             q_weeks[7 - w] += 1
             by_course[m["course_id"]] = by_course.get(m["course_id"], 0) + 1
-    ams = rows(c, "SELECT cites, rating FROM messages WHERE channel='tutor' AND role='assistant'")
-    cited = sum(1 for m in ams if J(m["cites"], [])) / (len(ams) or 1)
-    rated = [m["rating"] for m in ams if m["rating"]]
-    teachers = rows(c, "SELECT u.id, (SELECT COUNT(*) FROM academy_progress p WHERE p.user_id=u.id AND p.status='completed') n FROM users u WHERE role='teacher'")
-    acad = round(100 * sum(t["n"] >= 3 for t in teachers) / (len(teachers) or 1))
+    rated = [m["rating"] for m in rows(c, "SELECT rating FROM messages WHERE channel='tutor' AND role='assistant' AND rating IS NOT NULL")]
+    answers = row(c, "SELECT COUNT(*) n FROM messages WHERE channel='tutor' AND role='assistant'")["n"]
     hours = row(c, "SELECT COALESCE(SUM(m.minutes),0) mins FROM academy_progress p JOIN academy_modules m ON m.id=p.module_id WHERE p.status='completed'")["mins"]
     summary = office_summary(req)
     cs = []
@@ -44,39 +44,28 @@ def analytics(req):
     news = rows(c, "SELECT n.id, n.title, n.kind, (SELECT COUNT(*) FROM news_reads r WHERE r.news_id=n.id) reads, "
                    "(SELECT COUNT(*) FROM news_rsvp v WHERE v.news_id=n.id) rsvp FROM news n ORDER BY reads DESC LIMIT 5")
     students = row(c, "SELECT COUNT(*) n FROM users WHERE role='student'")["n"]
-    wau_s, wau_t = [28, 39, 47, 53, 57, 60, 62, 64], [35, 48, 57, 63, 68, 71, 74, 76]
-    req_h = [26.0, 19.5, 14.2, 11.0, 8.6, 7.1, 6.0, summary["avg_hours"] or 5.4]
-    def pct(v):
-        return f"{v:.1f}%".replace(".", ",")
-
-    kpis = [
-        {"key": "wau", "label": "Həftəlik aktiv tələbələr", "value": f"{wau_s[-1]}%", "target": "≥ 60%", "ok": True, "series": wau_s},
-        {"key": "teachers", "label": "Aktiv müəllimlər", "value": f"{wau_t[-1]}%", "target": "≥ 70%", "ok": True, "series": wau_t},
-        {"key": "prep", "label": "Test hazırlama vaxtı", "value": "−41%", "target": "−30%", "ok": True, "series": [0, -12, -20, -27, -33, -37, -40, -41]},
-        {"key": "doc", "label": "Arayışın orta hazırlanma müddəti", "value": f"{req_h[-1]:g} saat".replace(".", ","), "target": "≤ 24 saat", "ok": True, "series": req_h},
-        {"key": "cite", "label": "Mənbəyə istinad edən cavablar", "value": pct(100 * cited), "target": "≥ 95%", "ok": cited >= 0.95,
-         "series": [93.8, 94.6, 95.3, 95.7, 96.0, 96.1, 96.2, round(100 * cited, 1)]},
-        {"key": "sat", "label": "Tələbə məmnuniyyəti", "value": "4,4 / 5", "target": "≥ 4,0", "ok": True, "series": [4.0, 4.1, 4.1, 4.2, 4.3, 4.3, 4.4, 4.4]},
-        {"key": "academy", "label": "Akademiyada ≥ 3 modul keçən müəllimlər", "value": f"{acad}%", "target": "≥ 80%", "ok": acad >= 80, "series": [5, 12, 22, 31, 40, 48, 55, acad]},
-        {"key": "gain", "label": "Öyrənmə nəticəsi (nəzarət qrupuna nisbətən)", "value": "+0,28 SD", "target": "> 0", "ok": True, "series": [0, 0.05, 0.09, 0.14, 0.18, 0.22, 0.25, 0.28]},
-    ]
+    teachers = row(c, "SELECT COUNT(*) n FROM users WHERE role='teacher'")["n"]
+    kpis = insight.tiles(c)
+    tile = {k["key"]: k for k in kpis}
     insights = [{"level": "warn", "text": T3("{course}: sualların {rate}%-nin cavabı materiallarda tapılmır — material əlavə edilməsi tövsiyə olunur.",
                                              course=x["name"], rate=str(x["no_source_rate"]).replace(".", ","))}
                 for x in cs if x["no_source_rate"] and x["no_source_rate"] > 5]
-    if acad < 80:
-        insights.append({"level": "warn", "text": T3("Müəllimlərin {n}%-i AI Akademiyada ən azı 3 modulu keçib (hədəf 80%). Kafedralar üzrə təlim sessiyası planlaşdırın.", n=acad)})
+    acad = tile["academy"]
+    if acad["ok"] is False:
+        insights.append({"level": "warn", "text": T3("Müəllimlərin {n}%-i AI Akademiyada ən azı 3 modulu keçib (hədəf {target}%). Kafedralar üzrə təlim sessiyası planlaşdırın.",
+                                                     n=round(acad["value"]), target=acad["target"])})
     if summary["overdue"]:
         insights.append({"level": "warn", "text": T3("{n} müraciətin icra müddəti keçib — tədris hissəsinə xatırlatma göndərilib.", n=summary["overdue"])})
     from .r_radar import leader_insight
     insights.insert(0, leader_insight(c))
-    insights.append({"level": "good", "text": T3("Kağız ərizələrin 100%-i onlayn xidmətlərə keçirilib: 13 e-xidmət, orta icra müddəti 24 saatdan azdır.")})
-    return {"labels": LABELS, "wau_students": wau_s, "wau_teachers": wau_t, "tutor_questions": q_weeks, "request_hours": req_h,
+    return {"labels": LABELS, "wau_students": tile["wau_student"]["series"], "wau_teachers": tile["wau_teacher"]["series"],
+            "active_by_role": insight.active_roles(c), "tutor_questions": q_weeks, "request_hours": tile["request_hours"]["series"],
             "kpis": kpis, "courses": cs, "insights": insights, "office": summary, "requests_by_type": req_by_type, "news": news,
             "attendance": {"rate": round(100 * (1 - ((att_all["a"] or 0) + (att_all["e"] or 0)) / (att_all["n"] or 1)), 1),
                            "absent": att_all["a"] or 0, "excused": att_all["e"] or 0},
-            "ai": {"cited_rate": round(100 * cited, 1), "positive_rate": round(100 * sum(r == 1 for r in rated) / len(rated)) if rated else None,
-                   "cost_per_student": 0.42, "messages": len(ams)},
-            "totals": {"students": students, "teachers": len(teachers), "documents": row(c, "SELECT COUNT(*) n FROM documents")["n"],
+            "ai": {"cited_rate": tile["cited"]["value"], "positive_rate": round(100 * sum(r == 1 for r in rated) / len(rated)) if rated else None,
+                   "messages": answers},
+            "totals": {"students": students, "teachers": teachers, "documents": row(c, "SELECT COUNT(*) n FROM documents")["n"],
                        "questions_bank": row(c, "SELECT COUNT(*) n FROM questions WHERE status='approved'")["n"],
                        "requests": row(c, "SELECT COUNT(*) n FROM requests")["n"], "academy_hours": round(hours / 60),
                        "certificates": row(c, "SELECT COUNT(*) n FROM documents WHERE kind='certificate'")["n"]}}

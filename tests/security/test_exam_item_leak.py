@@ -1,7 +1,8 @@
 """An exam question never leaves its attempt (tasks/todo.md, Task 26): with exam questions that carry a marker in their
 text, options and explanation, an enrolled student calls every GET route a student may call, practises with the tutor
 until the pool runs out and opens a Radar plan; no answer holds the marker. An exam question is refused in a practice
-test, and an approved question keeps its purpose."""
+test, and an approved question keeps its purpose. The student's own export (Task 40) holds no exam form or question,
+and the score and the answers only after the release."""
 import json
 from pathlib import Path
 
@@ -100,3 +101,39 @@ def test_an_exam_question_is_not_put_in_a_test_and_keeps_its_purpose(app_db, lea
     draft = q("SELECT id FROM questions WHERE course_id=? AND status='draft' ORDER BY id LIMIT 1", (COURSE,))
     if draft:
         assert teacher.put(f"/api/questions/{draft[0]['id']}", {"purpose": "elsewhere"}).status == 400
+
+
+def test_the_export_holds_no_exam_question_and_the_score_only_after_release(app_db, leak):
+    """Task 40: the student's own export, taken from an ordinary session next to the attempt, never holds the form, a
+    question's text, options or key; the score and the answers appear only once the teacher releases the results."""
+    eid, teacher = leak["exam"], app_db.client("teacher")
+    s = app_db.client("student")
+    assert s.post(f"/api/exams/{eid}/enter").status == 200
+    qs = s.post(f"/api/exams/{eid}/start").json["questions"]
+    assert qs and MARK in qs[0]["text"]                       # inside the attempt the question is there
+    for x in qs:
+        assert s.put(f"/api/exams/{eid}/answers/{x['id']}", {"value": 0}).status == 200
+    assert s.post(f"/api/exams/{eid}/submit").status == 200
+    plain = app_db.client("student")                          # an ordinary sign-in does not end the exam session (Task 27)
+
+    def export():
+        r = plain.get("/api/me/export")
+        assert r.status == 200 and MARK not in r.text
+        tables = r.json["tables"]
+        assert "exam_forms" not in tables and "questions" not in tables
+        return tables, next(a for a in tables["exam_attempts"] if a["exam_id"] == eid)
+
+    for step in ("submitted", "closed"):
+        tables, attempt = export()
+        assert attempt["score"] is None and attempt["max_score"] is None, step
+        assert not [x for x in tables["exam_answers"] if x["attempt_id"] == attempt["id"]], step
+        assert not [x for x in tables["exam_events"] if x["exam_id"] == eid], step
+        if step == "submitted":
+            assert teacher.post(f"/api/exams/{eid}/close").status == 200
+    assert teacher.post(f"/api/exams/{eid}/release").status == 200
+    tables, attempt = export()
+    assert attempt["score"] is not None and attempt["max_score"] == len(qs)
+    answers = [x for x in tables["exam_answers"] if x["attempt_id"] == attempt["id"]]
+    assert {x["qid"] for x in answers} == {x["id"] for x in qs}
+    assert all(set(x) == {"attempt_id", "qid", "value", "saved_at"} for x in answers)      # the student's own answers only
+    assert [x for x in tables["exam_events"] if x["exam_id"] == eid]

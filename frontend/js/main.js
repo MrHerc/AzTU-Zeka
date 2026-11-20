@@ -24,6 +24,7 @@ import "./admin-import.js";
 import "./admin-settings.js";
 import "./timetable-admin.js";
 import "./journal.js";
+import { privacyCard } from "./privacy.js";
 import { demoButton } from "./demo.js";
 
 document.documentElement.dataset.theme = S.theme;
@@ -118,7 +119,7 @@ async function loginPage(root) {
          ["cap", t("Müəllimlər üçün AI Akademiya"), t("İngilis dilində tədris, sillabus və rəqəmsal alətlər")]].map(([i, ti, s]) =>
         html`<div class="feat"><span class="fi">${ic(i, 20)}</span><div><b>${ti}</b><span>${s}</span></div></div>`)}</div>
       <div class="login-ach" id="login-ach" aria-live="polite"></div>
-      <div class="foot">${S.app.mode === "prod" ? html`v${S.app.version || "0.3"}` : html`${t("Demo versiya")} v${S.app.version || "0.3"} · ${t("məlumatlar sintetikdir")}`} · ${(S.app.contact && S.app.contact.address) || uni.address} · <b>by Safarov Industries</b></div>
+      <div class="foot">${S.app.mode === "prod" ? html`v${S.app.version || "0.3"}` : html`${t("Demo versiya")} v${S.app.version || "0.3"} · ${t("məlumatlar sintetikdir")}`} · ${(S.app.contact && S.app.contact.address) || uni.address} · <a href="#" data-privacy-notice>${t("Məxfilik bildirişi")}</a> · <b>by Safarov Industries</b></div>
     </div>
     <div class="login-side"><div class="login-card">
       ${S.app.mode === "prod" ? passwordLogin() : html`<h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
@@ -163,22 +164,29 @@ async function loginPage(root) {
 }
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-setlang]"); if (b) { e.preventDefault(); switchLang(b.dataset.setlang); } });
 
-function consentModal(then) {
+// Task 40: the consent texts and their versions come from the server; the versions shown are sent back with the choice
+let consentOpen = false;
+async function consentModal(then) {
+  if (consentOpen) return;
+  consentOpen = true;
+  let p;
+  try { p = await api.get("/api/privacy"); } catch { consentOpen = false; return; }
+  const [ai, ext] = ["ai", "external_ai"].map((id) => p.purposes.find((x) => x.id === id));
   modal({
-    title: t("Məlumatlarınızın emalı"), dismissable: false, body: html`<div class="stack">
+    title: t("Məlumatlarınızın emalı"), dismissable: false, onClose: () => { consentOpen = false; }, body: html`<div class="stack">
       <p style="margin:0">${t("AI tutor və kampus köməkçisi suallarınızı emal edir. Davam etmək üçün razılığınızı təsdiqləyin.")}</p>
       <ul class="consent-list">
         <li>${ic("shield", 15)} <span>${t("Şəxsi məlumatlar (FİN, telefon, e-poçt) AI-yə göndərilməzdən əvvəl maskalanır.")}</span></li>
         <li>${ic("lock", 15)} <span>${t("Tələbə məlumatları AI modellərini öyrətmək üçün istifadə edilmir.")}</span></li>
         <li>${ic("eye", 15)} <span>${t("Tibbi sənədləri yalnız dekanlıq görür; müəllim fərdi söhbətlərinizi görmür.")}</span>
-          ${infoTip(t("Söhbətlər universitet platformasında 180 gün saxlanılır. Hər sənədə baxış audit jurnalına yazılır."))}</li>
+          ${infoTip(t("Söhbətlər universitet platformasında {n} gün saxlanılır. Hər sənədə baxış audit jurnalına yazılır.", { n: p.retention.chats_days }))}</li>
       </ul>
-      <label class="check"><input type="checkbox" id="c1"> ${t("Suallarımın fənn materialları əsasında emalına razıyam")}</label>
-      <label class="check"><input type="checkbox" id="c2"> ${t("Maskalanmış sualların xarici AI xidmətinə göndərilməsinə razıyam")} <span class="tiny muted">(${t("istəyə görə")})</span></label>
-      <span class="tiny muted">${t("Razılığı istənilən vaxt “Profil” bölməsində geri götürə bilərsiniz.")}</span></div>`,
+      <label class="check"><input type="checkbox" id="c1"> ${ai.text}</label>
+      <label class="check"><input type="checkbox" id="c2"> ${ext.text} <span class="tiny muted">(${t("istəyə görə")})</span></label>
+      <span class="tiny muted">${t("Razılığı istənilən vaxt “Profil” bölməsində geri götürə bilərsiniz.")} <a href="#" data-privacy-notice>${t("Məxfilik bildirişi")}</a></span></div>`,
     actions: [{ label: t("Qəbul edirəm"), cls: "btn-primary", onClick: async (w) => {
       if (!w.querySelector("#c1").checked) { toast(t("Davam etmək üçün birinci razılıq tələb olunur"), "err"); return false; }
-      const r = await api.post("/api/consent", { ai: true, external: w.querySelector("#c2").checked });
+      const r = await api.post("/api/consent", { ai: true, external: w.querySelector("#c2").checked, versions: { ai: ai.version, external_ai: ext.version } });
       S.user.consent_at = r.consent_at; toast(t("Razılığınız qeydə alındı"), "ok");
       setTimeout(then, 250);
     } }],
@@ -250,13 +258,7 @@ route("/profile", async (el) => {
         <div class="card"><div class="card-h"><h3>${ic("user", 17)} ${t("Şəxsi məlumatlar")}</h3><span class="badge b-gray">${t("Universitet reyestrindən")}</span></div>
           <div class="card-b"><div class="review-grid">${rows_.map(([k, v]) => html`<div>${k}</div><div>${v || "—"}</div>`)}</div>
           <p class="small muted mt">${t("Məlumatlarda səhv varsa, dekanlığa sərbəst ərizə ilə müraciət edin.")} ${me.role === "student" ? html`<a href="#/student/services?new=free_application">${t("Ərizə yaz")}</a>` : ""}</p></div></div>
-        <div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("Məxfilik")}</h3></div><div class="card-b stack">
-          ${me.role === "student" ? html`<div class="notice ${me.consent_at ? "ok" : "warn"}">${ic(me.consent_at ? "check" : "alert", 16)}<div>${me.consent_at ? html`${t("AI emalına razılıq verilib")}: <b>${fmtDateTime(me.consent_at)}</b>` : t("Razılıq verilməyib")}</div></div>` : ""}
-          <ul class="consent-list"><li>${ic("shield", 15)} <span>${t("Şəxsi məlumatlar AI xidmətlərinə göndərilməzdən əvvəl maskalanır.")}</span></li>
-            <li>${ic("lock", 15)} <span>${t("Tələbə məlumatları ilə AI modeli öyrədilmir.")}</span></li>
-            <li>${ic("eye", 15)} <span>${t("Tibbi və sosial sənədlərə yalnız dekanlıq baxa bilər; hər baxış audit jurnalına yazılır.")}</span></li></ul>
-          ${me.role === "student" ? html`<button class="btn btn-danger btn-sm" id="revoke" style="align-self:flex-start">${t("Razılığı geri götür")}</button>` : ""}
-        </div></div>
+        <div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("Məxfilik")}</h3></div><div class="card-b stack" id="privacy-box"><span class="small muted">…</span></div></div>
       </div>
       <div class="stack">
         <div class="card"><div class="card-h"><h3>${ic("sliders", 17)} ${t("Görünüş və dil")}</h3></div><div class="card-b stack">
@@ -376,9 +378,7 @@ route("/profile", async (el) => {
     await api.put("/api/me/prefs", { tours: [] });
     toast(t("Bələdçilər sıfırlandı. Səhifələrə daxil olduqda yenidən təklif olunacaq."), "ok");
   });
-  on(el, "click", "#revoke", () => modal({ title: t("Razılığın geri götürülməsi"), size: "sm",
-    body: html`<p style="margin:0">${t("Demo versiyada razılıq geri götürülmür. Pilot mərhələsində bu əməliyyat AI funksiyalarını söndürəcək və söhbət tarixçənizin silinməsi üçün sorğu yaradacaq.")}</p>`,
-    actions: [{ label: t("Aydındır"), cls: "btn-primary" }] }));
+  privacyCard($("#privacy-box", el));      // Task 40: consents, export, deletion request
 });
 
 function agentLabel(ua = "") {

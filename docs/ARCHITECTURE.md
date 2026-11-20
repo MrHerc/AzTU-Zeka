@@ -437,7 +437,7 @@ Routes are hash paths such as `#/student/tutor/1` or `#/office/request/12`, so t
 
 ## 16. Analytics
 
-The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and admin). The feedback and support dashboards (`#/staff/feedback`, `#/staff/support`) read `/api/feedback/summary` and `/api/support/summary`. The analytics endpoint mixes computed values with fixed illustrative series, which matters for anyone reading the dashboard as evidence.
+The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and admin). The feedback and support dashboards (`#/staff/feedback`, `#/staff/support`) read `/api/feedback/summary` and `/api/support/summary`. Since Task 39 every tile of the dashboard is a measured indicator of `modules/insight` (value, 8 weekly points, definition, period, target), and every other number on the page is a count of rows. The accreditation evidence page (`#/leader/evidence`) reads `GET /api/insight/evidence`.
 
 | Indicator | Source |
 |---|---|
@@ -449,8 +449,10 @@ The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and adm
 | Radar summary (first insight: high-risk and watch counts, students with plans whose risk fell) | Computed by `radar.analysis()` and `radar.impact()` |
 | Feedback average, distribution, weekly trend, by area, NPS | Computed from `feedback` (`/api/feedback/summary`) |
 | Support totals, first-response time, CSAT | Computed from `support_tickets` (`/api/support/summary`) |
-| Weekly active students and teachers, test preparation time reduction, satisfaction score and trend, learning gain, cost per student, the statement about paper applications moved online | Fixed values in `r_admin.py` |
-| Weekly series for request processing hours, citation rate and academy completion | Fixed values for the first seven weeks; only the last point is computed |
+| Weekly active students and teachers (and the active users per role) | Computed from `events` (Task 39: one row per sign-in, per signed-in request that changed something and per session's first request of a day) |
+| Lessons with attendance recorded, requests closed on time, exams opened | Computed from `lessons` and `attendance`, `requests`, `exams` |
+
+The test preparation time, the satisfaction tile, the learning gain, the AI cost per student and the statement about paper applications were fixed values and were removed (Task 39); the satisfaction survey is on the feedback page.
 
 The generated insights (for example "course X: N% of questions are not answered by the material") are computed. Teacher course insights (`course_insights`) are computed from the same message data.
 
@@ -496,7 +498,7 @@ CI: `.github/workflows/ci.yml` runs ruff, mypy, `node --check` over `frontend/js
 - There is no CSRF token. The mitigations in place are the `SameSite=Lax` cookie, the refusal of `POST`, `PUT` and `DELETE` requests that a browser marks as cross-site (`Sec-Fetch-Site`, `Origin`), and the rule that API calls with a body must use `Content-Type: application/json`, which plain HTML forms cannot send.
 - In demo mode `GET /api/demo/storyline` is public and returns the ids of the storyline students and course.
 - Reading a Radar plan can write to the database (automatic step progress and plan completion).
-- Several leadership dashboard series are illustrative (see section 16).
+- The leadership dashboard's targets are constants in `modules/insight/service.py`, not tenant settings.
 - Consent cannot be withdrawn; the profile page describes the planned behaviour.
 - The Render free plan has no disk, so uploads, consent and tour state are lost on restart.
 - `backend/zeka/legacy/api.py` exists only as a compatibility import for `backend/run.py` and the tests.

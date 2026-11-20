@@ -1,8 +1,9 @@
 """The admin screen's sections of the university settings (Task 17): read all, check one, save it with an audit entry.
 
 Sections: the rules of ``core.tenant`` (grading, attendance, journal, calendar, registry) in the ``tenant`` setting, and
-the university profile, session limits (Task 11), single sign-on (Task 14) and activation codes (Task 16) in their own
-settings. A section is saved only whole and only after its check passes.
+the university profile, session limits (Task 11), single sign-on (Task 14), activation codes (Task 16) and the retention
+periods (Task 40: in ``limits``, with the AI settings' chat period) in their own settings. A section is saved only whole
+and only after its check passes.
 """
 from __future__ import annotations
 
@@ -10,11 +11,11 @@ from ...core import tenant
 from ...core.i18n import E
 from ...legacy.store import audit, setting, set_setting
 from ..identity import domain as identity
-from ..identity import sso
+from ..identity import privacy, sso
 
 PROFILE = ("name", "name_en", "short", "platform", "semester", "semester_en", "semester_dates", "address", "site", "city", "city_en")
 SSO_KEYS = ("enabled", "issuer", "client_id", "label", "student_claim", "scopes", "mfa_amr", "mfa_acr")
-SECTIONS = ("university", *tenant.SECTIONS, "sessions", "sso", "activation")
+SECTIONS = ("university", *tenant.SECTIONS, "sessions", "sso", "activation", "retention")
 
 
 def read(c) -> dict:
@@ -24,7 +25,8 @@ def read(c) -> dict:
                 for kind, role in (("staff", "teacher"), ("student", "student"))}
     days = setting(c, "activation_days", 14)
     return {"university": setting(c, "university", {}) or {}, **tenant.load(c), "sessions": sessions,
-            "sso": {k: (setting(c, "sso", {}) or {}).get(k) for k in SSO_KEYS}, "activation": {"days": days}}
+            "sso": {k: (setting(c, "sso", {}) or {}).get(k) for k in SSO_KEYS}, "activation": {"days": days},
+            "retention": privacy.retention(c)}
 
 
 def _strings(v) -> bool:
@@ -63,6 +65,8 @@ def problem(section: str, v) -> dict | None:
         if v["enabled"] and (sso.url_problem(v.get("issuer")) or not v.get("client_id")):
             return E("Vahid giriş üçün https ünvanlı issuer və client_id lazımdır")
         return None
+    if section == "retention":
+        return privacy.retention_problem(v)
     days = v.get("days")
     if set(v) != {"days"} or not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= 90:
         return E("Aktivləşdirmə kodunun müddəti 1 ilə 90 gün arasında olmalıdır")
@@ -80,6 +84,8 @@ def save(c, user, section: str, v: dict):
         set_setting(c, "session_limits", {k: v[k] for k in ("staff", "student")})
     elif section == "sso":
         set_setting(c, "sso", {k: v.get(k) for k in SSO_KEYS if v.get(k) is not None})
+    elif section == "retention":
+        privacy.save_retention(c, v)
     else:
         set_setting(c, "activation_days", v["days"])
     audit(c, user["id"], "settings_change", "settings", section)

@@ -6,54 +6,47 @@ import { feedbackSummaryCard } from "./support.js";
 import { achievementsTeaser } from "./achievements.js";
 import { radarLeaderCard } from "./radar.js";
 
-const COL = { wau: "#2b5aa8", teachers: "#1a2355", prep: "#0e9f6e", doc: "#0e8aa8", cite: "#5a9bd3", sat: "#c27803", academy: "#ee7c7e", gain: "#0e9f6e" };
-// Pull the leading number out of a server-formatted KPI value ("64%", "−41%", "4,4 / 5", "5,4 saat") so it can count up; keep the rest as suffix.
-function kpiNumber(value) {
-  const s = String(value);
-  const m = s.match(/^([+\-−]?\d+(?:[.,]\d+)?)(.*)$/);
-  if (!m) return null;
-  const sign = m[1][0] === "−" || m[1][0] === "-" ? -1 : 1;
-  const n = sign * parseFloat(m[1].replace("−", "").replace(",", ".").replace(/^[+\-]/, ""));
-  if (!isFinite(n)) return null;
-  const dec = (m[1].split(/[.,]/)[1] || "").length;
-  const prefix = m[1][0] === "+" ? "+" : m[1][0] === "−" || m[1][0] === "-" ? "−" : "";
-  return { n, dec, prefix, suffix: m[2] };
-}
-function kpiValue(value) {
-  const k = kpiNumber(value);
-  // The sign is rendered by the prefix ("−41%"), so the animated number itself must be unsigned — otherwise "−-41%".
-  return k ? cnt(Math.abs(k.n), { dec: k.dec, prefix: k.prefix, suffix: k.suffix }) : html`${value}`;
-}
+const COL = { wau_student: "#2b5aa8", wau_teacher: "#1a2355", journal: "#0e9f6e", request_hours: "#0e8aa8", request_sla: "#0e8aa8", cited: "#5a9bd3",
+  exams: "#c27803", academy: "#ee7c7e" };
+// A tile is measured by the server (Task 39): value (null: nothing to measure in its period), unit, target, period.
+const unitText = (k) => (k.unit === "pct" ? "%" : k.unit === "hours" ? " " + t("saat") : "");
+const kpiValue = (k) => (k.value == null ? "—" : cnt(k.value, { dec: k.unit === "count" ? 0 : 1, suffix: unitText(k) }));
+const kpiTarget = (k) => `${k.lower ? "≤" : "≥"} ${num(k.target)}${unitText(k)}`;
+const period = (r) => (r.from ? `${fmtDate(r.from)} – ${fmtDate(r.to)}` : t("{date} tarixinədək", { date: fmtDate(r.to) }));
+const zeros = (xs) => xs.map((v) => v ?? 0);
+const ROLE_NAMES = { student: t("Tələbələr"), teacher: t("Müəllimlər"), dept_head: t("Kafedra müdirləri"), office: t("Dekanlıq"),
+  academic_office: t("Tədris hissəsi"), proctor: t("Nəzarətçilər"), leader: t("Rəhbərlik"), admin: t("Administratorlar"), api: "API" };
 
 // ---------------------------------------------------------------- leadership dashboard
 route("/leader", async (el) => {
   mount(el, loading());
   let a;
   try { a = await api.get("/api/analytics"); } catch (err) { mount(el, failed(err.message)); return; }
+  const kpi = Object.fromEntries(a.kpis.map((k) => [k.key, k]));
   mount(el, html`
     ${pageHead(t("Pilot idarə paneli"), t("{faculty} · {courses} fənn · {students} tələbə · {teachers} müəllim",
-        { faculty: S.app.faculty.name, courses: 6, students: a.totals.students, teachers: a.totals.teachers }),
+        { faculty: S.app.faculty.name, courses: a.courses.length, students: a.totals.students, teachers: a.totals.teachers }),
       html`<span class="demo-banner">${t("Pilot ssenarisi")}</span><button class="btn" id="print">${ic("printer", 15)} ${t("Hesabatı çap et")}</button>`,
       [[t("Rəhbərlik"), "/leader"], [t("Pilot idarə paneli")]],
-      { info: t("Göstəricilər pilot məqsədilə sintetik məlumatlar əsasında hazırlanıb. Hədəflər universitetin rəqəmsallaşma proqramına uyğundur.") })}
-    <div class="grid g-4" id="kpis">${a.kpis.map((k) => html`<div class="card kpi"><div class="kpi-top"><span class="kpi-l">${k.label}</span>
-      <span class="badge ${k.ok ? "b-green" : "b-amber"}">${k.ok ? t("Hədəfdə") : t("İcrada")}</span></div>
-      <div class="row between"><span class="kpi-v">${kpiValue(k.value)}</span>${sparkline(k.series, COL[k.key], 96, 34)}</div>
-      <span class="kpi-t">${t("Hədəf")}: ${k.target}</span></div>`)}</div>
+      { info: t("Hər göstərici bazadakı qeydlərdən hesablanır: tərifi kartın ⓘ işarəsində, zaman aralığı altındadır. Hədəflər universitetin rəqəmsallaşma proqramına uyğundur.") })}
+    <div class="grid g-4" id="kpis">${a.kpis.map((k) => html`<div class="card kpi"><div class="kpi-top"><span class="kpi-l">${k.label} ${infoTip(k.definition)}</span>
+      ${k.ok == null ? "" : html`<span class="badge ${k.ok ? "b-green" : "b-amber"}">${k.ok ? t("Hədəfdə") : t("İcrada")}</span>`}</div>
+      <div class="row between"><span class="kpi-v">${kpiValue(k)}</span>${sparkline(zeros(k.series), COL[k.key], 96, 34)}</div>
+      <span class="kpi-t">${k.target == null ? "" : `${t("Hədəf")}: ${kpiTarget(k)} · `}${period(k.range)}</span></div>`)}</div>
     <div id="leader-radar-slot"></div>
 
     <div class="grid g-12 mt">
       <div class="card"><div class="card-h"><h3>${ic("users", 17)} ${t("Həftəlik aktiv istifadəçilər")}</h3>
         <div class="row small"><span class="dot" style="background:#2b5aa8;box-shadow:none"></span>${t("Tələbələr")}
           <span class="dot" style="background:#1a2355;box-shadow:none;margin-left:8px"></span>${t("Müəllimlər")}</div></div>
-        <div class="card-b">${lineChart({ labels: a.labels, series: [{ name: t("Tələbələr"), values: a.wau_students, color: "#2b5aa8" }, { name: t("Müəllimlər"), values: a.wau_teachers, color: "#1a2355" }],
-          suffix: "%", target: { value: 60, label: t("Hədəf 60%") }, max: 100, label: t("Həftəlik aktiv istifadəçilər, %") })}</div></div>
+        <div class="card-b">${lineChart({ labels: a.labels, series: [{ name: t("Tələbələr"), values: zeros(a.wau_students), color: "#2b5aa8" }, { name: t("Müəllimlər"), values: zeros(a.wau_teachers), color: "#1a2355" }],
+          suffix: "%", target: { value: kpi.wau_student.target, label: t("Hədəf {n}%", { n: kpi.wau_student.target }) }, max: 100, label: t("Həftəlik aktiv istifadəçilər, %") })}
+          <div class="small muted mt-sm">${t("Son 7 gün, rol üzrə")}: ${a.active_by_role.length ? a.active_by_role.map((r) => `${ROLE_NAMES[r.role] || r.role} ${num(r.n)}`).join(" · ") : "—"}</div></div></div>
       <div class="card"><div class="card-h"><h3>${ic("sparkles", 17)} ${t("AI keyfiyyəti")}</h3>${infoTip(t("Mənbəli cavablar — AI-ın fənn materialına istinad etdiyi cavabların payı. Faydalı rəylər — tələbələrin müsbət qiymətləndirdiyi cavablar."))}</div>
         <div class="card-b">
-          <div class="row" style="justify-content:space-around">${ring(a.ai.cited_rate, 112, "#2b5aa8", num(a.ai.cited_rate, 1) + "%")}${ring(a.ai.positive_rate || 0, 112, "#0e9f6e", a.ai.positive_rate == null ? "—" : a.ai.positive_rate + "%")}</div>
+          <div class="row" style="justify-content:space-around">${ring(a.ai.cited_rate || 0, 112, "#2b5aa8", a.ai.cited_rate == null ? "—" : num(a.ai.cited_rate, 1) + "%")}${ring(a.ai.positive_rate || 0, 112, "#0e9f6e", a.ai.positive_rate == null ? "—" : a.ai.positive_rate + "%")}</div>
           <div class="row small muted" style="justify-content:space-around;margin-top:6px"><span>${t("Mənbəli cavablar")}</span><span>${t("Faydalı rəylər")}</span></div><div class="divider"></div>
-          <div class="row between small"><span class="muted">${t("AI xərci (aktiv tələbə / ay)")}</span><b>${cnt(a.ai.cost_per_student, { dec: 2, prefix: "$" })}</b></div>
-          <div class="row between small mt-sm"><span class="muted">${t("AI cavabları (cəmi)")}</span><b>${cnt(a.ai.messages)}</b></div>
+          <div class="row between small"><span class="muted">${t("AI cavabları (cəmi)")}</span><b>${cnt(a.ai.messages)}</b></div>
           <div class="row between small mt-sm"><span class="muted">${t("Təsdiqlənmiş sual bankı")}</span><b>${cnt(a.totals.questions_bank)}</b></div></div></div></div>
 
     <div class="grid g-4 mt">
@@ -64,7 +57,7 @@ route("/leader", async (el) => {
 
     <div class="grid g-2 mt">
       <div class="card"><div class="card-h"><h3>${ic("message", 17)} ${t("Tutor sualları (həftəlik)")}</h3></div><div class="card-b">${barChart({ labels: a.labels, values: a.tutor_questions, color: "#2b5aa8", label: t("Tutor sualları, həftəlik") })}</div></div>
-      <div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Arayışın hazırlanma müddəti, saat")}</h3></div><div class="card-b">${lineChart({ labels: a.labels, series: [{ name: t("Saat"), values: a.request_hours, color: "#0e8aa8" }], target: { value: 24, label: t("İcra müddəti 24 saat") }, label: t("Arayışın hazırlanma müddəti, saat") })}</div></div></div>
+      <div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Müraciətin orta icra müddəti, saat")}</h3></div><div class="card-b">${lineChart({ labels: a.labels, series: [{ name: t("Saat"), values: zeros(a.request_hours), color: "#0e8aa8" }], target: { value: kpi.request_hours.target, label: t("Hədəf {n} saat", { n: kpi.request_hours.target }) }, label: t("Müraciətin orta icra müddəti, saat") })}</div></div></div>
 
     <div class="grid g-2 mt">
       <div class="card"><div class="card-h"><h3>${ic("grid", 17)} ${t("E-xidmətlər üzrə müraciətlər")}</h3></div><div class="card-b">${a.requests_by_type.length ? a.requests_by_type.map((r) => html`<div class="bar-row"><span class="ellipsis small" title="${r.name}">${r.name}</span>
@@ -90,6 +83,22 @@ route("/leader", async (el) => {
     const box = $("#leader-extra", el);
     if (box) mount(box, html`${fb}${ach}`);
   });
+});
+
+// ---------------------------------------------------------------- accreditation evidence (Task 39)
+route("/leader/evidence", async (el) => {
+  mount(el, loading());
+  let ev;
+  try { ev = await api.get("/api/insight/evidence"); } catch (err) { mount(el, failed(err.message)); return; }
+  mount(el, html`${pageHead(t("Akkreditasiya sübutu"), t("Göstəricilər üzrə canlı say · {period}", { period: period(ev.range) }),
+      html`<a class="btn" href="/api/insight/evidence?format=csv&lang=${LANG}" download>${ic("download", 15)} CSV</a><button class="btn" id="print">${ic("printer", 15)} ${t("Çap et")}</button>`,
+      [[t("Rəhbərlik"), "/leader"], [t("Akkreditasiya sübutu")]],
+      { info: t("Akkreditasiya meyarları (KQ-05, 30.09.2022) üzrə platformanın qeydlərindən sayılır. Göstərici adları qısa yazılıb: hesabata daxil etməzdən əvvəl qərarın mətni ilə tutuşdurun.") })}
+    <div class="card"><div class="table-wrap"><table class="table" id="evidence"><thead><tr><th>${t("Göstərici")}</th><th>${t("Canlı say")}</th><th>${t("Sübut")}</th></tr></thead><tbody>
+      ${ev.indicators.map((i) => html`<tr><td><b>${i.code}</b> · ${i.title}${i.note ? html`<div class="tiny muted">${i.note}</div>` : ""}</td>
+        <td>${i.measures.map((m) => html`<div class="row between small"><span class="muted">${m.label}${m.range.from ? html` <span class="tiny">(${period(m.range)})</span>` : ""}</span><b>${num(m.value)}</b></div>`)}</td>
+        <td class="small">${i.links.length ? i.links.map((l) => html`<div><a href="#${l.href}">${l.label} ${ic("arrow", 12)}</a></div>`) : "—"}</td></tr>`)}</tbody></table></div></div>`);
+  $("#print", el).addEventListener("click", () => window.print());
 });
 
 // ---------------------------------------------------------------- platform settings (admin)
@@ -193,7 +202,7 @@ route("/admin/audit", async (el, p, q) => {
 
 // ---------------------------------------------------------------- page guides
 registerTour("leader", { route: "/leader", roles: ["leader"], title: t("Pilot idarə paneli"), group: t("Rəhbərlik"), icon: "chart", steps: [
-  { sel: "#kpis", title: t("Əsas göstəricilər"), text: t("Pilotun hədəfləri: aktivlik, keyfiyyət, icra müddəti və məmnuniyyət. Hər kartda cari dəyər və hədəf göstərilir.") },
+  { sel: "#kpis", title: t("Əsas göstəricilər"), text: t("Ölçülən göstəricilər: aktivlik, jurnal, müraciətlər, AI keyfiyyəti və imtahanlar. Hər kartda dəyər, hədəf, tərif və zaman aralığı var.") },
   { sel: ".grid.g-12 .card", title: t("Dinamika"), text: t("Həftəlik aktivlik və AI keyfiyyəti — tendensiyaları izləyin.") },
   { sel: "#insights", title: t("Diqqət tələb edənlər"), text: t("Sistem avtomatik olaraq diqqət tələb edən məsələləri qeyd edir — məsələn, materialı çatışmayan fənlər.") },
   { sel: "#leader-extra", title: t("Rəy və nailiyyətlər"), text: t("İstifadəçi məmnuniyyəti və universitetin son nailiyyətləri bir baxışda.") },

@@ -28,6 +28,7 @@ const READ = {
     label: $("[name=o-label]", w).value.trim() || null, student_claim: $("[name=o-claim]", w).value.trim() || null,
     scopes: list($("[name=o-scopes]", w).value), mfa_amr: list($("[name=o-amr]", w).value), mfa_acr: list($("[name=o-acr]", w).value) }),
   activation: (w) => ({ days: num($("[name=v-days]", w).value) }),
+  retention: (w) => Object.fromEntries(["chats_days", "community_days", "notifications_days", "logs_days", "audit_days"].map((k) => [k, num($(`[name=p-${k}]`, w).value)])),
 };
 
 const field = (name, label, value, type = "text", extra = "") => html`<div class="field"><label class="label" for="${name}">${label}</label>
@@ -73,6 +74,10 @@ function view(s) {
       ${field("o-amr", t("Etibarlı amr dəyərləri (vergüllə)"), (o.mfa_amr || []).join(", "))}${field("o-acr", t("Etibarlı acr dəyərləri (vergüllə)"), (o.mfa_acr || []).join(", "))}
       <p class="small muted" style="margin:0">${t("Müştəri sirri burada saxlanmır: serverdə ZEKA_OIDC_CLIENT_SECRET mühit dəyişənidir.")}</p>`)}
     ${card("activation", "users", t("Aktivləşdirmə kodları"), html`${field("v-days", t("Kodun müddəti, gün"), s.activation.days, "number")}`)}
+    ${card("retention", "clock", t("Saxlama müddətləri"), html`<div class="row wrap">${field("p-chats_days", t("AI söhbətləri, gün"), s.retention.chats_days, "number")}
+        ${field("p-community_days", t("Klub mesajları, gün"), s.retention.community_days, "number")}${field("p-notifications_days", t("Bildirişlər, gün"), s.retention.notifications_days, "number")}</div>
+      <div class="row wrap">${field("p-logs_days", t("Texniki jurnallar, gün"), s.retention.logs_days, "number")}${field("p-audit_days", t("Audit jurnalı, gün"), s.retention.audit_days, "number")}</div>
+      <p class="small muted" style="margin:0">${t("Gündəlik təmizləmə işi bu müddətdən köhnə sətirləri silir. Akademik qeydlər və imtahan jurnalı silinmir.")}</p>`)}
   </div>`;
 }
 

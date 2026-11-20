@@ -214,3 +214,211 @@ def identities_of(c, uid: int) -> list:
 def remove_identity(c, uid: int, identity_id: int):
     """The removed binding, or None."""
     return c.execute("DELETE FROM sso_identities WHERE id=? AND user_id=? RETURNING iss, sub", (identity_id, uid)).fetchone()
+
+
+# ---------------------------------------------------------------- privacy (Task 40)
+# The data inventory (docs/privacy/data-inventory.md is its readable form): every column that holds a person's id, how
+# that person's export reads it and what an approved erasure does with it. The export part is a condition on the table
+# with :uid, or None: the column does not put the row in the export (the reason is in the document). The erasure part:
+# "delete" the rows, or "keep" them (an academic or legal record, or someone else's record naming the person as its
+# actor); the users row itself is anonymised. tests/integration/test_privacy.py reads the schema and fails on a column
+# that is missing here.
+D, K = "delete", "keep"
+RELEASED = "exam_id IN (SELECT id FROM exams WHERE status = 'released')"
+INVENTORY: dict[tuple[str, str], tuple[str | None, str]] = {
+    ("users", "id"): ("id = :uid", "anonymise"),
+    ("academy_progress", "user_id"): ("user_id = :uid", D),
+    ("activation_codes", "user_id"): ("user_id = :uid", D),
+    ("api_tokens", "created_by"): (None, K),
+    ("assignments", "created_by"): (None, K),
+    ("attempts", "user_id"): ("user_id = :uid", K),
+    ("attendance", "user_id"): ("user_id = :uid", K),
+    ("attendance", "marked_by"): (None, K),
+    ("attendance_opening", "student_id"): ("student_id = :uid", K),
+    ("audit", "user_id"): ("user_id = :uid", K),
+    ("campus_kb", "updated_by"): (None, K),
+    ("campus_kb_versions", "changed_by"): (None, K),
+    ("club_members", "user_id"): ("user_id = :uid", D),
+    ("club_messages", "author_id"): ("author_id = :uid", D),
+    ("club_reports", "reporter_id"): ("reporter_id = :uid", D),
+    ("club_reports", "resolved_by"): (None, K),
+    ("clubs", "leader_id"): ("leader_id = :uid", K),
+    ("clubs", "decided_by"): (None, K),
+    ("consents", "user_id"): ("user_id = :uid", K),
+    ("course_tools", "added_by"): (None, K),
+    ("courses", "teacher_id"): ("teacher_id = :uid", K),
+    ("doc_keys", "user_id"): (None, D),
+    ("documents", "holder_id"): ("holder_id = :uid AND kind NOT IN ('exam_protocol', 'exam_statement')", K),
+    ("documents", "issued_by"): (None, K),
+    ("enrollments", "user_id"): ("user_id = :uid", K),
+    ("exam_attempts", "student_id"): ("student_id = :uid", K),
+    ("exam_events", "actor_id"): (None, K),
+    ("exam_events", "student_id"): (f"student_id = :uid AND {RELEASED}", K),
+    ("exam_forms", "student_id"): (None, K),
+    ("exam_proctors", "user_id"): ("user_id = :uid", K),
+    ("exam_proctors", "added_by"): (None, K),
+    ("exam_roster", "student_id"): ("student_id = :uid", K),
+    ("exam_roster", "added_by"): (None, K),
+    ("exam_statements", "closed_by"): (None, K),
+    ("events", "user_id"): ("user_id = :uid", D),             # Task 39: activity counts, a year
+    ("exams", "created_by"): (None, K),
+    ("feedback", "user_id"): ("user_id = :uid", D),
+    ("files", "owner_id"): ("owner_id = :uid", K),
+    ("final_grades", "user_id"): ("user_id = :uid", K),
+    ("grade_changes", "user_id"): ("user_id = :uid", K),
+    ("grade_changes", "changed_by"): (None, K),
+    ("grades", "user_id"): ("user_id = :uid AND status = 'published'", K),
+    ("grades", "entered_by"): (None, K),
+    ("ical_feeds", "user_id"): ("user_id = :uid", D),
+    ("interventions", "student_id"): ("student_id = :uid", D),
+    ("interventions", "created_by"): (None, K),
+    ("lessons", "teacher_id"): ("teacher_id = :uid", K),
+    ("materials", "uploaded_by"): (None, K),
+    ("messages", "user_id"): ("user_id = :uid", D),
+    ("migration_files", "imported_by"): (None, K),             # Task 38: the staff member who loaded a file
+    ("news", "author_id"): (None, K),
+    ("news_reads", "user_id"): ("user_id = :uid", D),
+    ("news_rsvp", "user_id"): ("user_id = :uid", D),
+    ("news_saved", "user_id"): ("user_id = :uid", D),
+    ("notifications", "user_id"): ("user_id = :uid", D),
+    ("office_bookings", "student_id"): ("student_id = :uid", D),
+    ("office_bookings", "teacher_id"): (None, K),
+    ("office_bookings", "cancelled_by"): (None, K),
+    ("office_hours", "teacher_id"): ("teacher_id = :uid", K),
+    ("outbox", "user_id"): ("user_id = :uid", D),
+    ("privacy_requests", "user_id"): ("user_id = :uid", K),
+    ("privacy_requests", "decided_by"): (None, K),
+    ("qa_replies", "author_id"): ("author_id = :uid", D),
+    ("qa_reports", "reporter_id"): ("reporter_id = :uid", D),
+    ("qa_reports", "resolved_by"): (None, K),
+    ("questions", "created_by"): (None, K),
+    ("recovery_codes", "user_id"): ("user_id = :uid", D),
+    ("request_events", "actor_id"): (None, K),
+    ("request_messages", "author_id"): ("author_id = :uid", K),
+    ("requests", "student_id"): ("student_id = :uid", K),
+    ("role_grants", "user_id"): ("user_id = :uid", D),
+    ("role_grants", "granted_by"): (None, K),
+    ("sessions", "user_id"): ("user_id = :uid", D),
+    ("sso_identities", "user_id"): ("user_id = :uid", D),
+    ("sso_identities", "linked_by"): (None, K),
+    ("sso_pending", "link_user_id"): (None, D),
+    ("student_status_events", "student_id"): ("student_id = :uid", K),
+    ("student_status_events", "entered_by"): (None, K),
+    ("submissions", "student_id"): ("student_id = :uid", K),
+    ("submissions", "graded_by"): (None, K),
+    ("support_messages", "author_id"): ("author_id = :uid", D),
+    ("support_tickets", "user_id"): ("user_id = :uid", D),
+    ("support_tickets", "assignee_id"): (None, K),
+    ("syllabi", "user_id"): (None, K),
+    ("syllabus_steps", "user_id"): (None, K),
+    ("syllabus_versions", "author_id"): (None, K),
+    ("syllabus_versions", "decided_by"): (None, K),
+    ("teacher_questions", "student_id"): ("student_id = :uid", D),
+    ("teaching_units", "teacher_id"): ("teacher_id = :uid", K),
+    ("webhooks", "created_by"): (None, K),
+}
+# Rows without a person column that belong to the person's own records: a released exam's answers (never the form or
+# the questions), the history of their requests, the replies to their support tickets (not the desk's internal notes).
+VIA = {
+    "exam_answers": "attempt_id IN (SELECT a.id FROM exam_attempts a JOIN exams e ON e.id = a.exam_id "
+                    "WHERE a.student_id = :uid AND e.status = 'released')",
+    "request_events": "request_id IN (SELECT id FROM requests WHERE student_id = :uid)",
+    "request_messages": "request_id IN (SELECT id FROM requests WHERE student_id = :uid)",
+    "support_messages": "internal = 0 AND ticket_id IN (SELECT id FROM support_tickets WHERE user_id = :uid)",
+}
+# An attempt's score is in the export only once its exam is released.
+SELECTS = {
+    "exam_attempts": "SELECT a.id, a.exam_id, a.student_id, a.started_at, a.deadline_at, a.submitted_at, a.auto, a.status, a.paused_at, "
+                     "CASE WHEN e.status = 'released' THEN a.score END AS score, CASE WHEN e.status = 'released' THEN a.max_score END "
+                     "AS max_score FROM exam_attempts a JOIN exams e ON e.id = a.exam_id WHERE a.student_id = :uid ORDER BY a.id",
+}
+# Deleted before the person's own rows: what hangs off them (reports of their club messages, the replies and reports of
+# their forum topics, the messages of their support tickets).
+ERASE_FIRST = (
+    "DELETE FROM club_reports WHERE message_id IN (SELECT id FROM club_messages WHERE author_id = :uid)",
+    "DELETE FROM qa_reports WHERE topic_id IN (SELECT id FROM teacher_questions WHERE student_id = :uid) "
+    "OR reply_id IN (SELECT id FROM qa_replies WHERE author_id = :uid)",
+    "DELETE FROM qa_replies WHERE topic_id IN (SELECT id FROM teacher_questions WHERE student_id = :uid)",
+    "DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id = :uid)",
+)
+# The users row stays (the kept records point at it) without what identifies or reaches the person; the student number
+# stays as the link to the state register (an owner's decision, docs/privacy/data-inventory.md).
+ANONYMISE = ("UPDATE users SET username = 'erased-' || id, full_name = '#' || id, patronymic = NULL, email = NULL, password_hash = NULL, "
+             "must_change = 0, totp_secret = NULL, totp_last = NULL, totp_enabled_at = NULL, prefs = '{}', consent_at = NULL, "
+             "failed_count = 0, locked_until = NULL, status = 'erased' WHERE id = :uid")
+
+
+def export_tables(c, uid: int) -> dict[str, list[dict]]:
+    """The person's own rows, table by table (every table the inventory exports from, empty ones too)."""
+    where: dict[str, list[str]] = {}
+    for (t, _), (cond, _) in INVENTORY.items():
+        if cond:
+            where.setdefault(t, []).append(cond)
+    for t, cond in VIA.items():
+        where.setdefault(t, []).append(cond)
+    # bandit B608: table names and conditions are the constants above
+    return {t: rows(c, SELECTS.get(t) or f'SELECT * FROM "{t}" WHERE ' + " OR ".join(f"({x})" for x in conds), {"uid": uid})  # nosec B608
+            for t, conds in sorted(where.items())}
+
+
+def erase(c, uid: int) -> dict[str, int]:
+    """Delete the person's rows the inventory deletes and anonymise the users row; the count per table.column."""
+    out: dict[str, int] = {}
+    for sql in ERASE_FIRST:
+        c.execute(sql, {"uid": uid})
+    for (t, col), (_, action) in INVENTORY.items():
+        if action == D:
+            n = c.execute(f'DELETE FROM "{t}" WHERE "{col}" = ?', (uid,)).rowcount  # nosec B608: the inventory's names
+            if n:
+                out[f"{t}.{col}"] = n
+    c.execute(ANONYMISE, {"uid": uid})
+    return out
+
+
+def consent_of(c, uid: int, purpose: str):
+    """The person's newest consent row of a purpose: their current choice."""
+    return row(c, "SELECT * FROM consents WHERE user_id=? AND purpose=? ORDER BY id DESC LIMIT 1", (uid, purpose))
+
+
+def add_consent(c, uid: int, purpose: str, version: str, granted: bool, method: str, lang: str, at: str, text: str):
+    c.execute("INSERT OR IGNORE INTO consent_texts(version,purpose,text,first_at) VALUES(?,?,?,?)", (version, purpose, text, at))
+    c.execute("INSERT INTO consents(user_id,purpose,version,granted,method,lang,at) VALUES(?,?,?,?,?,?,?)",
+              (uid, purpose, version, int(granted), method, lang, at))
+
+
+def set_consent_at(c, uid: int, at: str | None):
+    c.execute("UPDATE users SET consent_at=? WHERE id=?", (at, uid))
+
+
+def privacy_request(c, rid: int):
+    return row(c, "SELECT * FROM privacy_requests WHERE id=?", (rid,))
+
+
+def open_privacy_request(c, uid: int):
+    return row(c, "SELECT id FROM privacy_requests WHERE user_id=? AND status='pending' LIMIT 1", (uid,))
+
+
+def add_privacy_request(c, uid: int, reason: str, at: str) -> int:
+    return c.execute("INSERT INTO privacy_requests(user_id,kind,reason,status,created_at) VALUES(?,'erase',?,'pending',?)",
+                     (uid, reason, at)).lastrowid
+
+
+def privacy_requests_of(c, uid: int) -> list:
+    return rows(c, "SELECT id, kind, reason, status, created_at, decided_at, note FROM privacy_requests WHERE user_id=? "
+                   "ORDER BY id DESC", (uid,))
+
+
+def privacy_request_list(c, status: str | None) -> list:
+    """The newest requests (of one status, or all), with who asked."""
+    return rows(c, "SELECT r.*, u.full_name, u.username, u.role, u.student_no FROM privacy_requests r JOIN users u ON u.id=r.user_id "
+                   "WHERE (? IS NULL OR r.status=?) ORDER BY r.id DESC LIMIT 200", (status, status))
+
+
+def decide_privacy_request(c, rid: int, status: str, by: int, at: str, note: str) -> bool:
+    """True when this call decided the pending request (of two deciders at once, only one gets True)."""
+    return c.execute("UPDATE privacy_requests SET status=?, decided_by=?, decided_at=?, note=? WHERE id=? AND status='pending'",
+                     (status, by, at, note, rid)).rowcount == 1
+
+
+def set_privacy_result(c, rid: int, result: str):
+    c.execute("UPDATE privacy_requests SET result=? WHERE id=?", (result, rid))

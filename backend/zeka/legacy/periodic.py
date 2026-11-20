@@ -1,7 +1,8 @@
 """The periodic jobs of Zəka (tasks/todo.md, Task 36, slice 1), registered on import with ``core.jobs.periodic``.
 
-- ``retention.purge``, daily: AI conversations past the retention period, spent one-time keys, rate-limit events,
-  old sign-in blocks and sessions past every idle limit.
+- ``retention.purge``, daily: AI conversations, club messages, notifications, the audit log and the technical logs past
+  their retention periods (university settings, Task 40), spent one-time keys, rate-limit events, old sign-in blocks,
+  sessions past every idle limit and events older than a year (Task 39).
 - ``reminders.sla``, every 15 minutes: a request about to pass its SLA and one past it (to the dean's office), a support
   ticket past its SLA (to whoever holds it), an assignment due within a day (to its students who have not submitted);
   each threshold once per object.
@@ -21,30 +22,37 @@ from . import radar, store, support
 from .common import step_actors
 from .store import J, iso, notify, now, rows
 from ..modules.identity import domain as identity
+from ..modules.identity import privacy
 from ..modules.comms import service as _comms  # noqa: F401  registers outbox.send (Task 36, slice 2)
 
 DAY = timedelta(days=1)
 
 
 def retention_purge(c) -> str:
+    """Every period is a university setting (Task 40, privacy.RETENTION; docs/privacy/data-inventory.md)."""
     t = now()
+    keep = privacy.retention(c)
+    logs = timedelta(days=keep["logs_days"])
     chats = store.purge_expired(c)
     keys = c.execute("DELETE FROM doc_keys WHERE expires_at<?", (iso(t),)).rowcount
     hits = c.execute("DELETE FROM rate_hits WHERE ts<?", (time.time() - 86400,)).rowcount        # the longest window is minutes
     blocks = c.execute("DELETE FROM login_blocks WHERE COALESCE(until, first)<?", (time.time() - 86400,)).rowcount
     sessions = c.execute("DELETE FROM sessions WHERE last_seen<?", (iso(t - timedelta(seconds=identity.MAX_IDLE)),)).rowcount
-    old = (clock.now() - KEEP_LOGS).isoformat(timespec="seconds")   # job and outbox times are aware UTC (Checkpoint D, AR-13)
+    old = (clock.now() - logs).isoformat(timespec="seconds")   # job and outbox times are aware UTC (Checkpoint D, AR-13)
     runs = c.execute("DELETE FROM job_runs WHERE started_at<? AND status<>'running'", (old,)).rowcount
     mails = c.execute("DELETE FROM outbox WHERE created_at<? AND status IN ('sent','failed','skipped')", (old,)).rowcount
     from ..modules.community import service as community     # club messages past their retention period (Task 35)
     club = community.purge(c)
     hooks = c.execute("DELETE FROM webhook_deliveries WHERE status IN ('sent','failed') AND created_at<?",
-                      (iso(t - KEEP_LOGS),)).rowcount           # Checkpoint E (AR-E7): finished deliveries, after 90 days
+                      (iso(t - logs),)).rowcount                # Checkpoint E (AR-E7): finished deliveries
+    notes = c.execute("DELETE FROM notifications WHERE created_at<?", (iso(t - timedelta(days=keep["notifications_days"])),)).rowcount
+    logged = c.execute("DELETE FROM audit WHERE ts<?", (iso(t - timedelta(days=keep["audit_days"])),)).rowcount
+    events = c.execute("DELETE FROM events WHERE created_at<?", (iso(t - KEEP_EVENTS),)).rowcount
     return (f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions} · job runs {runs} · mails {mails}"
-            f" · club messages {club} · webhook deliveries {hooks}")
+            f" · club messages {club} · webhook deliveries {hooks} · notifications {notes} · audit {logged} · events {events}")
 
 
-KEEP_LOGS = timedelta(days=90)
+KEEP_EVENTS = timedelta(days=365)       # Task 39: one academic year of activity for the measured indicators and the evidence
 
 
 def _once(c, kind: str, obj_id: int, threshold: str) -> bool:

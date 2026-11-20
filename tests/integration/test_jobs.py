@@ -90,8 +90,8 @@ def _runner(path, holder, out):
     jobs.periodic("t.once", timedelta(hours=1), lambda c: None)
     c = sqlite3.connect(path, timeout=15)
     c.row_factory = sqlite3.Row
-    try:
-        out.put(jobs.run_due(c, holder, T0, names=["t.once"]))
+    try:   # as jobs.loop does: only the lease's holder runs jobs (a run without a lease blocks nothing since SF-20)
+        out.put(jobs.run_due(c, holder, T0, names=["t.once"]) if jobs.acquire(c, holder, T0) else [])
     finally:
         c.close()
 

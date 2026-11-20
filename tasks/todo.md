@@ -953,12 +953,12 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 **Description:** `events` cədvəli (kim, nə, nə vaxt, modul) nüvə qarmağı ilə yazılır. Göstəricilər hesablanır: rol üzrə həftəlik aktiv istifadəçi, jurnalın doldurulma faizi, müraciətin icra müddəti və SLA, mənbəli cavab payı, imtahan sayı. `r_admin.py` və `staff.js`-dəki sabit rəqəmlər çıxarılır. Akkreditasiya səhifəsi: 3.5.1, 3.5.3, 5.4.2–5.4.8 göstəriciləri üzrə canlı say və keçidlər; ixrac.
 
 **Acceptance criteria:**
-- [ ] Heç bir panel kafeli sabit rəqəmdən qidalanmır (test analitika modulunu yoxlayır və hər kafelin sorğusu olduğunu təsdiqləyir)
-- [ ] Hər kafel öz tərifini və zaman aralığını göstərir
-- [ ] Sübut səhifəsi ixrac olunur
+- [x] Heç bir panel kafeli sabit rəqəmdən qidalanmır (test analitika modulunu yoxlayır və hər kafelin sorğusu olduğunu təsdiqləyir)
+- [x] Hər kafel öz tərifini və zaman aralığını göstərir
+- [x] Sübut səhifəsi ixrac olunur
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_insight.py -q`
+- [x] `python -m pytest tests/integration/test_insight.py -q`
 
 **Dependencies:** Task 21, Task 30
 **Files likely touched:** `backend/zeka/core/events.py`, `backend/zeka/modules/insight/{service,repo,routes}.py`, `backend/migrations/0390_events.sql`, `backend/zeka/legacy/r_admin.py`, `frontend/js/staff.js`
@@ -969,12 +969,12 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 **Description:** Məqsəd üzrə razılıq qeydi: mətnin versiyası, vaxt, üsul. Saxlama işi: söhbət, icma, jurnallar tenant ayarına görə. `GET /api/me/export`: istifadəçinin öz məlumatı. Silmə sorğusu axını; qanunla saxlanmalı akademik qeydlər anonimləşdirilir. Məxfilik bildirişi üç dildə. `docs/privacy/data-inventory.md`: cədvəl × məqsəd × müddət × hüquqi əsas; maddə 15 qeydiyyatı üçün əsas.
 
 **Acceptance criteria:**
-- [ ] İxrac istifadəçiyə bağlı hər cədvəl sətrini ehtiva edir (test istifadəçi açarı olan cədvəlləri sadalayır). İstisna: `exam_forms` və açıqlanmamış imtahan balı ixraca düşmür; açıqlamadan sonra ixrac yalnız tələbənin öz cavablarını və balını verir, sual mətni və açar yoxdur. İstisna `data-inventory.md`-də yazılır; Task 26-nın sızma testi `/api/me/export`-u da çağırır.
-- [ ] Silmə inventara uyğun silir və ya anonimləşdirir və auditdədir
-- [ ] Xarici AI yalnız cari mətn versiyası üçün yazılmış razılıqla çağırılır
+- [x] İxrac istifadəçiyə bağlı hər cədvəl sətrini ehtiva edir (test istifadəçi açarı olan cədvəlləri sadalayır). İstisna: `exam_forms` və açıqlanmamış imtahan balı ixraca düşmür; açıqlamadan sonra ixrac yalnız tələbənin öz cavablarını və balını verir, sual mətni və açar yoxdur. İstisna `data-inventory.md`-də yazılır; Task 26-nın sızma testi `/api/me/export`-u da çağırır.
+- [x] Silmə inventara uyğun silir və ya anonimləşdirir və auditdədir
+- [x] Xarici AI yalnız cari mətn versiyası üçün yazılmış razılıqla çağırılır
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_privacy.py -q`
+- [x] `python -m pytest tests/integration/test_privacy.py -q`
 
 **Dependencies:** Task 36
 **Files likely touched:** `backend/zeka/modules/identity/privacy.py`, `backend/zeka/core/jobs.py`, `backend/migrations/0400_privacy.sql`, `docs/privacy/data-inventory.md`, `frontend/js/main.js`

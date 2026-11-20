@@ -18,7 +18,7 @@ from ...legacy.common import (BASE_URL, R, ROLE_HOME, _own_commit, blocked_respo
                              rotate_session, session_cookie, start_session)
 from ...legacy.qr import qr_svg
 from ...legacy.store import audit
-from . import domain, repo, service, sso
+from . import domain, privacy, repo, service, sso
 
 _password, _blocked = password_field, blocked_response      # shared with the activation route (legacy.common)
 
@@ -353,3 +353,47 @@ def admin_sso_unlink(req):
         raise HTTPError(404, "Bağlantı tapılmadı")
     audit(req.db, req.user["id"], "sso_unlinked", "user", f"{u['username']} · {gone['iss']}")
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- privacy (Task 40)
+@R("GET", "/api/privacy", auth=False)
+def privacy_state(req):
+    """The privacy notice's facts and the consent texts for anyone; a signed-in person's own choices and requests too."""
+    return privacy.state(req.db, req.user)
+
+
+@R("GET", "/api/me/export")
+def my_export(req):
+    """Everything the platform holds about the signed-in person (the data inventory's own rows), as a JSON file."""
+    return json_resp(privacy.export(req.db, req.user),
+                     headers=[("Content-Disposition", f'attachment; filename="zeka-export-{req.user["id"]}.json"')])
+
+
+@R("POST", "/api/me/erase")
+def my_erase(req):
+    status, out = privacy.request_erase(req.db, req.user, req.json().text("reason", 1000))
+    if status != "ok":
+        raise HTTPError(409, out)
+    return out
+
+
+@R("GET", "/api/privacy/requests", perm="privacy.decide")
+def privacy_requests(req):
+    status = req.query.get("status") or None
+    if status not in (None, "pending", "done", "rejected"):
+        raise HTTPError(400, "Naməlum status")
+    return {"items": privacy.requests(req.db, req.user, status)}
+
+
+@R("POST", "/api/privacy/requests/{id:int}/decide", perm="privacy.decide")
+def privacy_decide(req):
+    b = req.json()
+    approve = b.get("approve")
+    if not isinstance(approve, bool):
+        raise HTTPError(400, "Qərarı seçin: təsdiq və ya rədd")
+    status, out = privacy.decide(req.db, req.user, req.params["id"], approve, b.text("note", 1000))
+    if status == "missing":
+        raise HTTPError(404, "Sorğu tapılmadı")
+    if status != "ok":
+        raise HTTPError(403 if status == "own" else 409, out)
+    return out

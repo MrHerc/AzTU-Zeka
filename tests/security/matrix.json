@@ -567,6 +567,16 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/insight/evidence": {
+  "access": [
+   "admin",
+   "leader"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/integration/export/{kind}": {
   "access": [
    "admin"
@@ -789,6 +799,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/me/export": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/me/notifications": {
   "access": "any",
   "audit_read": null,
@@ -906,6 +923,22 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "GET /api/privacy": {
+  "access": "public",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/privacy/requests": {
+  "access": [
+   "academic_office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "privacy.decide",
   "slow": false
  },
  "GET /api/proctor/exams": {
@@ -2025,6 +2058,13 @@
   "perm": null,
   "slow": false
  },
+ "POST /api/me/erase": {
+  "access": "any",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "POST /api/me/role": {
   "access": "any",
   "audit_read": null,
@@ -2116,6 +2156,15 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "POST /api/privacy/requests/{id:int}/decide": {
+  "access": [
+   "academic_office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "privacy.decide",
   "slow": false
  },
  "POST /api/qa/replies/{id:int}/accept": {

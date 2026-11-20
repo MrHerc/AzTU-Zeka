@@ -15,6 +15,7 @@ from .common import (R, check_limit, cite_list, course_access, history, kb_cite_
 from ..core import tenant
 from ..core.i18n import E, S, S_, T3
 from ..modules.directory import service as directory
+from ..modules.identity import privacy
 from ..modules.journal import domain as journal_rules
 from ..modules.journal import service as journal
 from ..core.security import LIMITS
@@ -27,13 +28,6 @@ QUIZ_GRACE = timedelta(minutes=2)       # network / clock slack after a quiz tim
 def _ai_quota(u):
     if not LIMITS["ai"].hit(f"u{u['id']}"):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
-
-
-def external_ai_allowed(u) -> bool:
-    """Students' questions go to an external LLM only after the optional "external AI service" consent."""
-    if u["role"] != "student":
-        return True
-    return bool(((J(u.get("prefs"), {}) or {}).get("consent") or {}).get("external"))
 
 
 def _masked_history(hist, enabled):
@@ -404,7 +398,7 @@ def tutor_ask(req):
         hits = search_chunks(course["id"], masked)
         result = None
         if engine.llm_config()["enabled"] and hits and hits[0]["score"] >= 1.2:
-            if not external_ai_allowed(u):
+            if not privacy.allowed(c, u["id"], "external_ai"):     # anyone's questions: only with a consent to the current text (Task 40)
                 note = T3("Xarici AI xidmətinə razılıq verilmədiyi üçün demo mühərrik istifadə edildi.")
             else:
                 try:   # earlier turns are stored as typed; they are masked again before leaving the platform

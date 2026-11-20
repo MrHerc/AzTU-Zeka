@@ -15,7 +15,7 @@ from ..core.i18n import norm_lang, tr
 from ..core.security import CFG, LIMITS, access_code_ok, safe_next
 from .store import J, audit, iso, now, row, rows, setting
 from ..core.web import HTTPError, Response, json_resp, redirect
-from ..modules.identity import sso
+from ..modules.identity import privacy, sso
 from ..modules.learning import service as learning
 
 
@@ -103,13 +103,11 @@ def logout(req):
 
 @R("POST", "/api/consent")
 def consent(req):
-    b = req.json()
-    choice = {"ai": b.get("ai") is not False, "external": b.get("external") is True}
-    prefs = J(req.user.get("prefs"), {}) or {}
-    prefs["consent"] = choice                 # external=True is required before questions are sent to an external LLM
-    req.db.execute("UPDATE users SET consent_at=?, prefs=? WHERE id=?", (iso(now()), json.dumps(prefs, ensure_ascii=False), req.user["id"]))
-    audit(req.db, req.user["id"], "consent", "user", json.dumps(choice))
-    return {"ok": True, "consent_at": iso(now())}
+    """A consent per purpose and text version (Task 40): the external AI is used only with a consent to its current text."""
+    status, out = privacy.record(req.db, req.user, req.json(), req.lang)
+    if status != "ok":
+        raise HTTPError(409 if status == "stale" else 400, out)
+    return out
 
 
 # ---------------------------------------------------------------- profile

@@ -155,6 +155,7 @@ class Request:
         self.read_owner = None          # the person the data belongs to
         self.read_object = None         # the id of what was read
         self.route_scope = None         # Task 27: the route's scope ("exam" or None)
+        self.endpoint = None            # Task 39: the route's handler; its module and name go to the event log
 
     def content_length(self) -> int:
         raw = (self.headers.get("Content-Length") or "").strip()
@@ -359,6 +360,7 @@ def make_server(port: int, router: Router, static_dir: Path, before, after, log=
                         try:
                             req.audit_kind = getattr(fn, "audit_read", None)
                             req.route_scope = getattr(fn, "scope", None)
+                            req.endpoint = fn
                             before(req, roles, auth)      # inside the try: a 401/403 must still close the DB connection
                             resp = fn(req)
                             after(req, ok=True)

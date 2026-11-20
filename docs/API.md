@@ -1268,10 +1268,13 @@ Vocabularies:
 | `PUT` | `/api/admin/settings` | `admin` | Update platform limits |
 | `POST` | `/api/admin/test-llm` | `admin` | Send a short prompt to the configured LLM |
 | `GET` | `/api/admin/audit` | `admin`, `leader` | Last 200 audit log entries |
+| `GET` | `/api/insight/evidence` | `leader`, `admin` | Accreditation evidence: live counts per indicator; `?format=csv` |
 | `POST` | `/api/admin/reset` | `admin` | Delete all data and reseed the demo |
 | `GET` | `/api/system/status` | any | Status of the platform components |
 
-**`GET /api/analytics`** returns `labels` (8 week labels), `wau_students`, `wau_teachers`, `tutor_questions`, `request_hours`, `kpis` (8 indicators with `key`, `label`, `value`, `target`, `ok`, `series`), `courses` (per course: tutor questions, test average, no-source rate, positive rate, attendance), `insights` (the first one is the Zəka Radar summary, with a `link` to `/radar`), `office` (as `/api/office/summary`), `requests_by_type`, `news` (5 most read), `attendance`, `ai` and `totals`. Several series and values are fixed illustrative numbers in this version: weekly active students and teachers, the test preparation time reduction, the satisfaction score and trend, the learning gain, the cost per student, and all but the last point of the request time, citation and academy series. See section 16 of [ARCHITECTURE.md](ARCHITECTURE.md) for the full breakdown.
+**`GET /api/analytics`** returns `labels` (8 week labels), `wau_students`, `wau_teachers`, `active_by_role` (distinct active users of the last 7 days per role), `tutor_questions`, `request_hours`, `kpis`, `courses` (per course: tutor questions, test average, no-source rate, positive rate, attendance), `insights` (the first one is the Zəka Radar summary, with a `link` to `/radar`), `office` (as `/api/office/summary`), `requests_by_type`, `news` (5 most read), `attendance`, `ai` (`cited_rate` is the `cited` tile, `positive_rate`, `messages`) and `totals`. `kpis` are the measured indicators of the insight module (Task 39), each with `key` (`wau_student`, `wau_teacher`, `journal`, `request_hours`, `request_sla`, `cited`, `exams`, `academy`), `label`, `definition`, `unit` (`pct`, `hours`, `count`), `value` (null when its period has nothing to measure), `series` (8 weekly values, oldest first), `target`, `lower` (a smaller value is better), `ok` and `range` (`from`, `to`; `from` is null for the running total of `academy`).
+
+**`GET /api/insight/evidence`** (leader, admin) returns `range` (the last 30 days) and `indicators`: for each accreditation indicator (3.5.1, 3.5.3, 5.4.2–5.4.8) its `code`, `title`, `note`, `measures` (`key`, `label`, `value`, `range`; `range.from` is null for a count that is not limited to the period) and `links` (pages of the portal, only those the caller's role can open). `?format=csv` returns the same as a spreadsheet, one row per measure, in the language of `?lang=`.
 
 **`PUT /api/admin/settings`.** Body: any of `daily_messages` (5 to 500), `pii_masking` (boolean), `socratic_default` (boolean), `retention_days` (30 to 3,650). Saving deletes chat messages older than `retention_days`. Returns the stored limits. `socratic_default` is stored but does not affect behaviour in this version.
 
@@ -1558,6 +1561,7 @@ The verification code in the URL is case-insensitive. Pages accept `?lang=` like
 | PUT | `/api/admin/settings` | admin |
 | POST | `/api/admin/test-llm` | admin |
 | GET | `/api/admin/audit` | admin, leader |
+| GET | `/api/insight/evidence` | leader, admin |
 | POST | `/api/admin/reset` | admin (demo) |
 | GET | `/api/support/meta` | any |
 | GET | `/api/support/tickets` | any |

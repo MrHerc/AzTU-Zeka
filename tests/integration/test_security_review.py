@@ -240,10 +240,11 @@ def test_late_quiz_answers_are_not_graded(app_db):
 # ---------------------------------------------------------------- privacy
 def test_consent_is_recorded_as_choices(app_db):
     student = app_db.client("student")
-    student.post("/api/consent", {"ai": True, "external": False, "junk": "x" * 5000})
-    prefs = student.get("/api/me").json["prefs"]
-    # sec: consent choices stored (no arbitrary payload)
-    assert prefs.get("consent") == {"ai": True, "external": False}, prefs
+    r = student.post("/api/consent", {"ai": True, "external": False, "junk": "x" * 5000})
+    # sec: consent choices stored (no arbitrary payload); Task 40: one row per purpose with its text version
+    mine = {p["id"]: p["consent"] for p in student.get("/api/privacy").json["purposes"]}
+    assert r.status == 200 and "x" * 100 not in r.text
+    assert mine["ai"]["granted"] is True and mine["external_ai"]["granted"] is False and mine["ai"]["current"], mine
 
 
 def test_history_is_masked_before_an_external_llm_call():

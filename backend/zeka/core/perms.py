@@ -32,6 +32,9 @@ PERMS: dict[str, tuple[str, ...]] = {
     "kb.manage": ("academic_office", "admin"),
     "clubs.approve": ("office", "admin"),                 # a dean's office approves a club (Task 35)
     "integration.manage": ("admin",),                     # API keys, webhooks, exports, the apps page (Task 37)
+    # Task 40: deciding a person's request to delete their data. The registry office keeps the academic records the law
+    # requires, so it judges what may go; the administrator runs the system and does not decide (the owner confirms it).
+    "privacy.decide": ("academic_office",),
 }
 
 SCOPE_TYPES = ("faculty", "department", "course")

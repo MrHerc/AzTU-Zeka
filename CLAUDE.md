@@ -158,7 +158,14 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   (`tools/etl/run.py` splits). `manage.py reconcile` re-reads the wave's logged files (`migration_files`) as a dry run.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
-- Leadership-dashboard KPIs in `backend/zeka/legacy/r_admin.py` are partly hard-coded literals — not measurements (Task 39).
+- **Measured indicators (Task 39).** The leadership tiles and the accreditation evidence page (`/leader/evidence`) are
+  queries in `modules/insight/` over real rows; a number that cannot be measured is not a tile. `after()` writes one
+  `events` row for a signed-in request that changed rows, `start_session` one per sign-in, and a session's first request
+  of a day one `visit` (kept 365 days). Targets are pilot constants in `insight/service.py`.
+- **Personal data (Task 40).** Every column that holds a person is in `identity/repo.INVENTORY` (export condition and
+  erase action: delete, keep or anonymise) and in `docs/privacy/data-inventory.md`; `tests/integration/test_privacy.py`
+  fails on a new one until both list it. An external LLM is called only with a consent to the current text version
+  (`identity/privacy.allowed`); retention periods are university settings purged by `retention.purge`.
 - **Time.** Use `store.now()` (naive Baku wall clock, `ZEKA_TZ`) or `clock.now()` (aware UTC); `datetime.now()` and
   `date.today()` fail lint outside `backend/zeka/core/clock.py`. `tests/conftest.py` anchors the suite's today at
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test

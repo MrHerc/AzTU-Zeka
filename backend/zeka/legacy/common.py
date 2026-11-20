@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from . import engine, store
 from ..modules.identity import domain as identity
-from ..core import tenant
+from ..core import events, tenant
 from ..core.i18n import E, S
 from .store import J, iso, now, row, rows, setting
 from ..core.web import HTTPError, Router, json_resp
@@ -60,6 +60,7 @@ def start_session(req, u, how: str, scope: str = "full") -> tuple[str, list]:
     c.execute("INSERT INTO sessions(id_hash,user_id,created_at,last_seen,scope,ip,agent) VALUES(?,?,?,?,?,?,?)",
               (identity.session_hash(sid), u["id"], iso(t), iso(t), scope, req.ip, (req.headers.get("User-Agent") or "")[:200]))
     store.audit(c, u["id"], "login", "session", how)
+    events.record(c, u["id"], u["role"], "login", "identity")
     if not scope.startswith("exam:"):                  # Task 27: an ordinary sign-in while an exam session runs is an exam event
         exams = [r["scope"][5:] for r in rows(c, "SELECT DISTINCT scope FROM sessions WHERE user_id=? AND scope LIKE 'exam:%'", (u["id"],))]
         if exams:
@@ -99,6 +100,8 @@ def _own_commit(req):
     req.db.commit()
     if _TX_GUARD:
         req.first_write = None
+    if req.changes_from is not None:            # Task 39: bookkeeping is not an event
+        req.changes_from = req.db.total_changes
 
 
 def _session_user(req, sid: str):
@@ -120,6 +123,8 @@ def _session_user(req, sid: str):
         return None
     if (t - seen).total_seconds() > identity.SEEN_EVERY:
         req.db.execute("UPDATE sessions SET last_seen=? WHERE id=?", (iso(t), u["session_id"]))
+        if seen.date() != t.date():              # Task 39: a session's first request of a day counts its user as active
+            events.record(req.db, u["id"], u["role"], "visit", "identity")
         _own_commit(req)
     return u
 
@@ -135,6 +140,7 @@ def _note_write(req, sql: str):
 
 def before(req, roles, auth):
     req.db = store.connect()
+    req.changes_from = 0 if auth else None      # Task 39: rows changed past this count make an event (signed-in routes)
     if _TX_GUARD:
         req.first_write = None
         req.db.set_trace_callback(lambda sql: _note_write(req, sql))
@@ -192,6 +198,9 @@ def after(req, ok):
         held = _TX_GUARD and ok and req.first_write is not None and time.monotonic() - req.first_write
         if held and held > 0.2 and not req.path.startswith(TX_GUARD_EXEMPT):
             raise AssertionError(f"{req.path} held the write lock for {held * 1000:.0f} ms (limit 200)")
+        if ok and req.user and req.changes_from is not None and req.db.total_changes > req.changes_from:
+            # Task 39: the request changed something; written last, so the write lock is held a moment longer at most
+            events.record(req.db, req.user["id"], req.user["role"], req.endpoint.__name__, events.module_of(req.endpoint.__module__))
         if ok and req.audit_kind and req.read_owner and req.user and req.read_owner != req.user["id"]:
             # Task 13: someone else's document, file, request or risk profile was read; written last, so briefly locked
             store.audit(req.db, req.user["id"], f"read_{req.audit_kind}", req.audit_kind,
