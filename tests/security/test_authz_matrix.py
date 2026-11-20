@@ -25,6 +25,7 @@ def current() -> dict:
     for method, rx, fn, roles, auth in api.R.routes:
         path = re.sub(r"\(\?P<(\w+)>\[0-9\]\+\)", r"{\1:int}", rx.pattern[1:-1])
         path = re.sub(r"\(\?P<(\w+)>\[\^/\]\+\)", r"{\1}", path)
+        path = re.sub(r"\\(.)", r"\1", path)              # the literal parts are escaped in the route's regex
         out[f"{method} {path}"] = {"access": sorted(roles) if roles else "any" if auth else "public",
                                    "demo": bool(getattr(fn, "demo_only", False)), "slow": bool(getattr(fn, "slow", False)),
                                    "perm": getattr(fn, "perm", None), "audit_read": getattr(fn, "audit_read", None),

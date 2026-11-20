@@ -64,6 +64,25 @@ def test_numeric_untyped_params_become_int(router):
     assert params["tag"] == 2024
 
 
+def test_a_literal_dot_or_dash_in_a_route_matches_only_itself():
+    """Checkpoint F (Task 41): the literal parts of a route are escaped, so /api/v1/oneroster.zip is not /api/v1/onerosterXzip."""
+    r = Router()
+
+    @r("GET", "/.well-known/security.txt", auth=False)
+    def sec(req):
+        return "sec"
+
+    @r("GET", "/api/request-types/{code}")
+    def types(req):
+        return "types"
+    assert r.match("GET", "/.well-known/security.txt")[0].__name__ == "sec"
+    assert r.match("GET", "/api/request-types/x.y")[1] == {"code": "x.y"}
+    for path in ("/Xwell-known/security.txt", "/.well-known/securityXtxt", "/api/request+types/x"):
+        with pytest.raises(HTTPError) as e:
+            r.match("GET", path)
+        assert e.value.status == 404, path
+
+
 def test_registration_order_defines_priority():
     r = Router()
     r.add("GET", "/a/{x}", lambda req: 1)

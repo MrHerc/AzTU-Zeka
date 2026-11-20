@@ -263,3 +263,17 @@ def test_rate_limiter():
     lim = security.RateLimiter(3, 60)
     # sec: rate limiter
     assert [lim.hit("k") for _ in range(4)] == [True, True, True, False] and lim.hit("other")
+
+
+def test_security_txt_names_the_operator_s_contact_or_is_not_there(app_db, anon, monkeypatch):
+    """Task 41 (RFC 9116): /.well-known/security.txt with Contact and Expires; without a contact set, no file."""
+    monkeypatch.delenv("ZEKA_SECURITY_CONTACT", raising=False)
+    assert anon.get("/.well-known/security.txt").status == 404
+    for bad in ("security@example.az", "mailto:a@b.az\nContact: https://evil.example"):
+        monkeypatch.setenv("ZEKA_SECURITY_CONTACT", bad)
+        assert anon.get("/.well-known/security.txt").status == 404, bad
+    monkeypatch.setenv("ZEKA_SECURITY_CONTACT", "mailto:security@example.az")
+    r = anon.get("/.well-known/security.txt")
+    lines = r.body.decode().splitlines()
+    assert r.status == 200 and r.headers["Content-Type"].startswith("text/plain")
+    assert lines[0] == "Contact: mailto:security@example.az" and lines[1].startswith("Expires: 2027-") and lines[1].endswith("Z")

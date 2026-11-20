@@ -5,9 +5,10 @@ import os
 import base64
 import json
 import urllib.parse
+from datetime import timedelta
 
 from . import engine, pdftext, store
-from .common import (ACTORS, R, ROLE_HOME, STAFF, ctx, holder, make_key, may_read_request, pub_user, scope_sql, serves, session_cookie,
+from .common import (ACTORS, BASE_URL, R, ROLE_HOME, STAFF, ctx, holder, make_key, may_read_request, pub_user, scope_sql, serves, session_cookie,
                      start_session)
 from ..core import clock, config, tenant
 from ..core.i18n import norm_lang, tr
@@ -65,6 +66,20 @@ def healthz(req):
     """Liveness for the proxy and the supervisor: the database answers; which worker answered; the university clock."""
     req.db.execute("SELECT 1")
     return {"ok": True, "worker": os.getpid(), "server_time": clock.now().isoformat(timespec="seconds"), "tz": clock.TZ_NAME}
+
+
+@R("GET", "/.well-known/security.txt", auth=False)
+def security_txt(req):
+    """RFC 9116 (Task 41): where to report a vulnerability. The contact is the operator's ZEKA_SECURITY_CONTACT (a mailto:
+    or https: address); without one there is no file rather than an address nobody reads."""
+    contact = os.environ.get("ZEKA_SECURITY_CONTACT", "").strip()
+    if not contact.startswith(("mailto:", "https://")) or any(ch in contact for ch in "\r\n "):
+        raise HTTPError(404, "Tapılmadı")
+    expires = (clock.now() + timedelta(days=365)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    lines = [f"Contact: {contact}", f"Expires: {expires}", "Preferred-Languages: az, en, ru"]
+    if BASE_URL["value"].startswith("https://"):
+        lines.append(f"Canonical: {BASE_URL['value']}/.well-known/security.txt")
+    return Response(("\n".join(lines) + "\n").encode(), 200, "text/plain; charset=utf-8")
 
 
 @R("POST", "/api/auth/demo", auth=False, demo=True)

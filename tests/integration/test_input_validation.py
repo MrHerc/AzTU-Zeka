@@ -25,6 +25,7 @@ def _routes():
             continue
         path = re.sub(r"\(\?P<\w+>\[0-9\]\+\)", "1", rx.pattern.strip("^$"))
         path = re.sub(r"\(\?P<\w+>\[\^/\]\+\)", "x", path)
+        path = re.sub(r"\\(.)", r"\1", path)              # the literal parts are escaped in the route's regex
         src = inspect.getsource(sys.modules[fn.__module__])
         fields = sorted({a or b for a, b in _FIELD.findall(src)} | {"x"})
         out.append(pytest.param(method, path, (roles or ("student", "office"))[0], fields, id=f"{method} {path}"))

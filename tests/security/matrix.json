@@ -59,6 +59,13 @@
   "perm": null,
   "slow": false
  },
+ "GET /.well-known/security.txt": {
+  "access": "public",
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/academy": {
   "access": [
    "teacher"

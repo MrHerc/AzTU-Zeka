@@ -241,7 +241,10 @@ class Router:
         self.routes = []
 
     def add(self, method, pattern, fn, roles=None, auth=True):
-        regex = "^" + re.sub(r"\{(\w+)(:int)?\}", lambda m: f"(?P<{m.group(1)}>{'[0-9]+' if m.group(2) else '[^/]+'})", pattern) + "$"
+        # the literal parts are escaped: the "." of /api/v1/oneroster.zip or /.well-known/security.txt is a dot (Task 41)
+        parts = re.split(r"(\{\w+(?::int)?\})", pattern)
+        regex = "^" + "".join((f"(?P<{x[1:-1].split(':')[0]}>{'[0-9]+' if x.endswith(':int}') else '[^/]+'})" if i % 2 else re.escape(x))
+                              for i, x in enumerate(parts)) + "$"
         self.routes.append((method, re.compile(regex), fn, roles, auth))
 
     def __call__(self, method, pattern, roles=None, auth=True, demo=False, slow=False, perm=None, audit_read=None, scope=None):
