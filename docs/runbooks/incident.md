@@ -44,7 +44,7 @@ Adlar və telefonlar bu cədvələ hədəf serverdə yazılır (Task 44). Kənar
    - Server ələ keçirilib: tətbiqi dayandırın (`$C stop app`), diskin nüsxəsini (sübut) AzTU İT götürür, sonra təmiz
      serverdə ikinci hostdakı son backup-dan bərpa (`docs/runbooks/backup.md`).
 4. **Sübutu saxla.** Silmədən əvvəl: `$C logs app > incident-<tarix>.log`, giriş jurnalı (`ZEKA_ACCESS_LOG`), audit
-   (`/admin/audit`), lazım olsa `manage.py exam-verify <id>`. Audit jurnalı tətbiqdən silinmir.
+   (`/admin/audit`), lazım olsa `manage.py exam-verify <id>`. Audit jurnalının sətri dəyişdirilmir və ən azı bir il saxlanır (`0410`); universitetin saxlama müddəti (`audit_days`) bitəndən sonra gündəlik iş onu silir.
 5. **Bərpa et.** Səbəb aradan qalxandan sonra: `/healthz`, hər rolun əsas səhifəsi, `jobs status`, backup.
 6. **Xəbər ver.**
    - Fərdi məlumat pozuntusu: hüquqşünas qərar verir. Bildiriş müddəti universitetin müqaviləsinə və Azərbaycan
