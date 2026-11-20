@@ -20,6 +20,7 @@ internet ──443/80──▶ caddy (TLS, HSTS tətbiqdən, sorğu ≤ 16 MB) �
 ## İlk quraşdırma
 
 ```bash
+timedatectl show -p NTPSynchronized --value                    # yes: sənədlərin, son tarixlərin və imtahanın vaxtı host saatındandır
 git clone <repo> /opt/zeka && cd /opt/zeka
 cp infra/.env.example infra/.env && chmod 600 infra/.env        # dəyərləri doldurun (aşağıdakı cədvəl)
 mkdir -p infra/secrets/ssh
@@ -81,13 +82,30 @@ Yalnız birini dəyişmək ya müştəri ünvanını proksinin ünvanı edir (li
 
 ## Yeniləmə
 
+Açıq imtahan olmayan vaxtda, dərs saatlarından kənar.
+
 ```bash
-cd /opt/zeka && docker compose -f infra/compose.yml run --rm -T backup
-git pull && docker compose -f infra/compose.yml up -d --build
+cd /opt/zeka && docker compose -f infra/compose.yml run --rm -T backup     # kod 0
+git rev-parse HEAD > /opt/zeka-previous                                      # geri qaytarma üçün
+git fetch --tags && git checkout <yeni teq> && docker compose -f infra/compose.yml up -d --build
 ```
 
 Yeni miqrasiyalar başlanğıcda tətbiq olunur. Bundan əvvəl bazanın nüsxəsi `zeka-data` həcmindəki `backups/`-a yazılır.
-Baza koddan yenidirsə, tətbiq başlamır. Bu halda əvvəlki versiyaya qayıdın (`git checkout <tag>`).
+Baza koddan yenidirsə, tətbiq başlamır.
+
+## Geri qaytarma
+
+Yeni versiya işləmirsə (başlamır, `/healthz` 200 vermir, əsas səhifə xəta verir):
+
+1. Yeni versiya miqrasiya **tətbiq etməyibsə** (`manage.py status` əvvəlki kimidir): köhnə koda qayıtmaq kifayətdir.
+   ```bash
+   git checkout $(cat /opt/zeka-previous) && docker compose -f infra/compose.yml up -d --build
+   ```
+2. Miqrasiya **tətbiq olunubsa**, köhnə kod yeni bazanı açmır ("baza koddan yenidir"). Yeniləmədən əvvəlki backup-dan
+   bərpa edin (`docs/runbooks/backup.md`, Bərpa), sonra 1-ci addım. Yeniləmədən sonra yazılanlar itir: bərpadan əvvəl
+   `manage.py export --kind grades|attendance|status-changes --since <yeniləmə anı>` ilə saxlayın və bərpadan sonra
+   dekanlıqla yenidən daxil edin.
+3. Səbəb `docs/runbooks/incident.md` ilə qeydə alınır.
 
 ## Yoxlama
 
@@ -97,6 +115,7 @@ curl -sk -D- https://localhost/healthz                         # 200, strict-tra
 $C exec app id -u                                              # 10001
 docker inspect -f '{{.Name}} {{.HostConfig.LogConfig.Config}}' $($C ps -q)   # max-file:5 max-size:50m
 $C exec app python -c "import time; print(time.strftime('%z'))"   # +0400
+timedatectl show -p NTPSynchronized --value                    # yes
 curl -sk -H 'X-Forwarded-For: 1.2.3.4' https://localhost/healthz; $C logs app | grep -c '1.2.3.4'   # 0
 $C exec caddy hostname -i                                      # jurnaldakı "ip" bu ünvan deyil
 curl -s -m 3 http://localhost:5070/healthz                     # qoşulmur: tətbiqin portu hostda açıq deyil

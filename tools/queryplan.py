@@ -1,10 +1,14 @@
-"""Query plans of the load-test read routes on a large dataset (tasks/todo.md, Task 7).
+"""Query plans of the load-test routes on a large dataset (tasks/todo.md, Tasks 7 and 42).
 
     python tools/queryplan.py [--dataset university] [--min-rows 1000]
 
-Builds the dataset in a throw-away ZEKA_DATA directory, serves the API in this process, sends every route of the read
-scenario (tools/loadtest.py READ) as a student, records each SQL statement the handlers run and prints, as JSON, every
-statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows. Exit 1 when there is one.
+Builds the dataset in a throw-away ZEKA_DATA directory with an open exam (tools/loadtest.py exam_setup), serves the API in
+this process and sends, once each: every route of the mixed scenario (READ and WRITE) as a student; the exam scenario as
+a student (enter, start, every answer, view, submit) and the proctor board as the course's teacher; the leadership
+dashboard and the accreditation evidence (Task 39) as a leader. Records each SQL statement the handlers run and prints,
+as JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
+slowest routes. Exit 1 when a read, mixed or exam route scans one; the leader's routes are reported, not failed: the
+dashboard's Radar summary reads every student's records by design (docs/perf/task42.md).
 """
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ import sqlite3
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 import loadtest
@@ -36,6 +41,44 @@ def scans(db: sqlite3.Connection, sql: str, sizes: dict[str, int], min_rows: int
     return out
 
 
+def _send(port: int, method: str, path: str, cookie: str, body=None) -> tuple[int, str, bytes]:
+    import http.client
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+    try:
+        conn.request(method, path, body=None if body is None else json.dumps(body),
+                     headers={"Cookie": cookie, "Origin": f"http://127.0.0.1:{port}", "Content-Type": "application/json", "X-Lang": "az"})
+        r = conn.getresponse()
+        return r.status, r.getheader("Set-Cookie") or "", r.read()
+    finally:
+        conn.close()
+
+
+def _routes(port: int, data: Path, student: str, news: list[int], exam: tuple[int, list[str], str]):
+    """(scenario, method, path, cookie, body) in order; the exam's steps need the answers of the earlier ones."""
+    for _, method, path in loadtest.READ + loadtest.WRITE:
+        yield "mixed", method, path.format(news=news[0]), student, None if method == "GET" else ({"theme": "dark"} if path.endswith("prefs") else {})
+    eid, cookies, proctor = exam
+    status, back, _ = _send(port, "POST", f"/api/exams/{eid}/enter", cookies[0], {})
+    m = re.search(r"zeka_sid=[^;]+", back)
+    if status != 200 or not m:
+        raise SystemExit(f"exam: enter: HTTP {status}")
+    sitting = m.group(0)
+    status, _, raw = _send(port, "POST", f"/api/exams/{eid}/start", sitting, {})
+    if status != 200:
+        raise SystemExit(f"exam: start: HTTP {status}")
+    for q in json.loads(raw)["questions"]:
+        yield "exam", "PUT", f"/api/exams/{eid}/answers/{q['id']}", sitting, {"value": str(q["id"])}
+    yield "exam", "GET", f"/api/exams/{eid}", sitting, None
+    yield "exam", "GET", f"/api/exams/{eid}/board?after=0", proctor, None
+    yield "exam", "POST", f"/api/exams/{eid}/submit", sitting, {}
+    status, back, _ = _send(port, "POST", "/api/auth/demo", "", {"role": "leader"})
+    m = re.search(r"zeka_sid=[^;]+", back)
+    if status != 200 or not m:
+        raise SystemExit(f"leader: demo login: HTTP {status}")
+    yield "leader", "GET", "/api/analytics", m.group(0), None
+    yield "leader", "GET", "/api/insight/evidence", m.group(0), None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--dataset", choices=sorted(loadtest.SIZES), default="university")
@@ -45,9 +88,12 @@ def main(argv=None) -> int:
     with tempfile.TemporaryDirectory(prefix="zeka-plan-") as tmp:
         data = Path(tmp)
         loadtest.build_dataset(data, args.dataset)       # sets ZEKA_DATA before store is imported
+        exam = loadtest.exam_setup(data, 1)
         from zeka.core import web
         from zeka.legacy import api, store
         seen: list[str] = []
+        origin: dict[str, str] = {}                      # statement -> the scenario that first ran it
+        timing: list[dict] = []
         connect = store.connect
 
         def traced():
@@ -60,16 +106,15 @@ def main(argv=None) -> int:
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         port = srv.server_address[1]
         try:
-            token = loadtest.sessions(port, data)[0][0]
-            import http.client
-            for _, method, path in loadtest.READ:
-                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
-                try:
-                    status = loadtest.call(conn, method, path, None, {"Cookie": token, "Origin": f"http://127.0.0.1:{port}"})
-                finally:
-                    conn.close()
+            tokens, news = loadtest.sessions(port, data)
+            for name, method, path, cookie, body in _routes(port, data, tokens[0], news, exam):
+                first, t = len(seen), time.perf_counter()
+                status, _, _ = _send(port, method, path, cookie, body)
+                timing.append({"scenario": name, "route": f"{method} {re.sub(r'/[0-9]+', '/N', path)}",
+                               "ms": round((time.perf_counter() - t) * 1000), "statements": len(seen) - first})
+                origin.update({sql: name for sql in seen[first:] if sql not in origin})
                 if status != 200:
-                    raise SystemExit(f"{method} {path}: HTTP {status}")
+                    raise SystemExit(f"{name}: {method} {path}: HTTP {status}")
         finally:
             srv.shutdown()
             srv.server_close()
@@ -77,12 +122,18 @@ def main(argv=None) -> int:
         try:
             tables = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")]
             sizes = {t.lower(): db.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0] for t in tables}  # nosec B608 - names from sqlite_master
-            bad = {sql: plan for sql in dict.fromkeys(seen) if WRITES.match(sql)
-                   for plan in [scans(db, sql, sizes, args.min_rows)] if plan}
+            bad: dict[str, dict[str, list[str]]] = {}
+            for sql in dict.fromkeys(seen):
+                plan = scans(db, sql, sizes, args.min_rows) if WRITES.match(sql) else []
+                if plan:
+                    bad.setdefault(origin.get(sql, "setup"), {})[sql] = plan
         finally:
             db.close()
-    print(json.dumps({"dataset": args.dataset, "statements": len(set(seen)), "scans": bad}, ensure_ascii=False, indent=1))
-    return 1 if bad else 0
+    timing.sort(key=lambda r: -r["ms"])
+    print(json.dumps({"dataset": args.dataset, "statements": len(set(seen)), "scenarios": sorted({r["scenario"] for r in timing}),
+                      "scans": bad, "slowest": timing[:8]},
+                     ensure_ascii=False, indent=1))
+    return 1 if any(k != "leader" for k in bad) else 0
 
 
 if __name__ == "__main__":

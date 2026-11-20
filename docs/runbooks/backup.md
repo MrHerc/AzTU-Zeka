@@ -24,8 +24,9 @@ umask 077 && openssl rand -base64 48 > /etc/zeka/backup.key      # bir sətir, �
 
 - Fayl yalnız sahibi tərəfindən oxunmalıdır (`chmod 600`). Başqalarının oxuya bildiyi və ya qısa açar rədd olunur. Açar
   olmadan backup xəta ilə (kod 2) bitir və heç bir fayl yazmır.
-- Açarın ikinci nüsxəsi backup-lardan ayrı saxlanır: rektorluğun seyfində kağız nüsxə və ya parol meneceri. Açarı itirmək
-  bütün backup-ları itirmək deməkdir.
+- Açarın iki nüsxəsi serverdən və backup-lardan kənarda saxlanır: biri məhsulun sahibində, biri AzTU İT-də (seyfdə kağız
+  nüsxə və ya parol meneceri). Açarı itirmək bütün backup-ları itirmək deməkdir.
+- Bərpanı açarın kənar nüsxəsi ilə başqa adam da apara bilməlidir: ildə bir dəfə bu yoxlanır və `restore-log.md`-yə yazılır.
 - Açar dəyişəndə köhnə dəstlər köhnə açarla açılır. Köhnə açarı 4 həftə saxlayın.
 
 ## Mühit dəyişənləri
