@@ -429,6 +429,15 @@ def test_b9_a_sheet_with_no_data_rows_is_a_teacher_with_zero_load(sheets_b):
     assert form.units == [] and [n.cell for n in codes(form.notes, code="zero_load")] == ["#0"] and not form.posts[0].blocked
 
 
+
+def test_g9_a_sheet_whose_group_rows_give_nothing_is_a_conflict_not_a_zero_load(sheets_b):
+    """The guard against the old reader's silent "0 lines": rows with groups and no hours are no teacher with zero load."""
+    rows = [{1: "Fənn", 2: "6526a", 3: "10"}, {1: "Fənn 2", 2: "6526b", 3: "12"}, {1: "CƏMİ"}]
+    form = forma3.read([layout_b_sheet(sheets_b, rows)])
+    assert [(c.cell, c.blocking) for c in codes(form.conflicts, code="no_units")] == [("#0", False)]
+    assert not codes(form.notes, code="zero_load")
+
+
 # ---------------------------------------------------------------- rows, classes, merges (G1, G2, R1–R6, J1–J7)
 def test_j1_a_merged_lecture_is_one_class_for_every_group_it_covers(form_a, form_b):
     stream = unit(form_a, "#0!E11")

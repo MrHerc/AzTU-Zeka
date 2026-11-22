@@ -1414,9 +1414,10 @@ def read(sheets: list[Sheet]) -> Form:
         mine = form.units[before:]
         info.units, info.hours = len(mine), sum(u.hours for u in mine)
         info.rows = sum(p.rows[1] - p.rows[0] + 1 for p in posts if p.rows)
-        if not mine and info.rows and not any(x.sheet == g.i for x in form.load):
+        grouped = any(g.t(r, R.cols[p.ref].group) for p in posts if p.rows and p.ref in R.cols for r in range(p.rows[0] - 1, p.rows[1]))
+        if not mine and info.rows and not grouped and not any(x.sheet == g.i for x in form.load):
             form.notes.append(Note(f"#{g.i}", "", "zero_load", _m("zero_load")))
-        elif not mine and info.rows:
+        elif not mine and info.rows:                              # G9: groups on the rows and nothing read is itself a conflict
             form.conflicts.append(Conflict(f"#{g.i}", "no_units", _m("no_units"), False))
         elif not info.rows:
             form.notes.append(Note(f"#{g.i}", "", "zero_load", _m("zero_load")))
