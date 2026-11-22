@@ -222,6 +222,16 @@ def user_names(c, ids: list[int]) -> dict[int, str]:
     return out
 
 
+def user_details(c, ids: list[int]) -> dict[int, dict]:
+    """A person's patronymic and department name: what tells two people of one name apart."""
+    out: dict[int, dict] = {}
+    for part in _chunks(sorted(ids)):
+        for r in rows(c, f"SELECT u.id, u.patronymic, d.name department FROM users u LEFT JOIN departments d ON d.id=u.department_id "  # nosec B608
+                         f"WHERE u.id IN ({_in(part)})", tuple(part)):
+            out[r["id"]] = r
+    return out
+
+
 def term_units(c, term_id: int) -> list[dict]:
     """The active teaching units of a term's active courses, with their department and faculty."""
     return rows(c, f"SELECT {UNIT_COLS} FROM {UNIT_FROM} WHERE co.term_id=? AND co.active=1 AND u.active=1 ORDER BY u.id",  # nosec B608
@@ -578,6 +588,15 @@ def students_of_groups(c, group_ids: list[int]) -> list[int]:
         out.update(r["id"] for r in rows(c, f"SELECT id FROM users WHERE group_id IN ({_in(part)}) AND role='student' AND status='active'",  # nosec B608
                                           tuple(part)))
     return sorted(out)
+
+
+def course_rows(c, course_id: int) -> list[dict]:
+    return rows(c, "SELECT * FROM timetable WHERE course_id=? AND active=1", (course_id,))
+
+
+def course_lessons(c, course_id: int, first: str, last: str) -> list[dict]:
+    return rows(c, "SELECT id, course_id, day, start, end, kind, room, timetable_id, status FROM lessons "
+                   "WHERE course_id=? AND day BETWEEN ? AND ?", (course_id, first, last))
 
 
 def effective_of(c, version_ids: list[int]) -> dict[int, str]:

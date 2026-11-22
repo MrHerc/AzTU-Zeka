@@ -68,9 +68,11 @@ def next_lesson(c, course_id):
 
 
 def week_timetable(c, course_ids):
-    """Timetable rows of these courses by weekday and start: one indexed lookup per course, never the whole table."""
-    tt = [x for cid in course_ids for x in rows(c, "SELECT * FROM timetable WHERE course_id=?", (cid,))]
-    return sorted(tt, key=lambda x: (x["weekday"], x["start"], x["id"]))
+    """This week's classes of these courses by weekday and start, as they are held (the timetable module reads the week's
+    lessons, so a publication shows only from its effective date): indexed lookups per course, never the whole table."""
+    from ..modules.timetable import service as timetable     # here: that module imports the legacy layer
+    d = now().date()
+    return timetable.week_of(c, list(course_ids), d - timedelta(days=d.isoweekday() - 1))
 
 
 def att_summary(c, uid, course_id, standing: bool = True):

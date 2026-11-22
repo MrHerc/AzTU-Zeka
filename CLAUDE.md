@@ -179,7 +179,11 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   A move is checked live against its neighbourhood, then `bump_rev` (optimistic lock) inside one short write. A
   publication runs check → rows → drop → lessons → notify → done, each batch with its cursor in one transaction;
   while it runs, hand-written rows answer 409. A row a version published carries the version's effective date:
-  `make_lessons` never makes its lessons earlier. Units with hand-written rows stay out of runs (no adoption yet).
+  `make_lessons` never makes its lessons earlier. Units with hand-written rows stay out of runs (no adoption yet) and
+  their builder rows stay through a publication. A publication past its check never fails: an error retries from the
+  stored step and cursor with the term locked. A run's error is stored as JSON in every language (`_err`), a titled
+  and named problem list goes to `progress.problems`. The weekly schedule (`/api/schedule`) reads the week's lessons
+  (`timetable.service.week_of`), never a row's current time alone.
 - **Time.** Use `store.now()` (naive Baku wall clock, `ZEKA_TZ`) or `clock.now()` (aware UTC); `datetime.now()` and
   `date.today()` fail lint outside `backend/zeka/core/clock.py`. `tests/conftest.py` anchors the suite's today at
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test

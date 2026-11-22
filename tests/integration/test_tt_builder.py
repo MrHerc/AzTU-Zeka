@@ -18,6 +18,11 @@ TERM = 1
 EFF, EFF2 = "2026-11-23", "2026-11-30"
 
 
+def _dotted(day: str) -> str:
+    """A date as a notice writes it in Azerbaijani: dd.mm.yyyy."""
+    return ".".join(reversed(day.split("-")))
+
+
 def q(sql, args=()):
     c = store.connect()
     try:
@@ -341,10 +346,10 @@ def test_a_publication_writes_rows_lessons_and_one_notice_per_person(world):
         assert days == _lesson_days(r, term), r                            # every lesson from the effective date, none before
     for g, ids in world["students"].items():
         for s in ids:
-            n = q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND link='/student/schedule' AND title LIKE ?", (s, f"%{EFF}%"))
+            n = q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND link='/student/schedule' AND title LIKE ?", (s, f"%{_dotted(EFF)}%"))
             assert n[0]["n"] == 1, (g, s)
     for t in world["teachers"]:
-        assert q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND title LIKE ?", (t, f"%{EFF}%"))[0]["n"] == 1
+        assert q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND title LIKE ?", (t, f"%{_dotted(EFF)}%"))[0]["n"] == 1
     assert q("SELECT 1 FROM audit WHERE action='timetable_publish' AND detail LIKE ?", (f"{vid} ·%",))
     assert q("SELECT tx_ms FROM (SELECT json_extract(progress, '$.tx_ms_max') tx_ms FROM tt_runs WHERE id=?)", (run["id"],))[0]["tx_ms"] < 200
 
@@ -414,7 +419,7 @@ def test_a_second_publication_interrupted_after_every_batch_is_exactly_once(offi
     assert sorted(made) == days
     rows_ = q("SELECT COUNT(*) n FROM timetable WHERE active=1 AND meeting_key IS NOT NULL")[0]["n"]
     assert rows_ == q("SELECT COUNT(*) n FROM tt_placements WHERE version_id=?", (vid,))[0]["n"]
-    told = q("SELECT user_id, COUNT(*) n FROM notifications WHERE title LIKE ? GROUP BY user_id", (f"%{EFF2}%",))
+    told = q("SELECT user_id, COUNT(*) n FROM notifications WHERE title LIKE ? GROUP BY user_id", (f"%{_dotted(EFF2)}%",))
     assert told and all(x["n"] == 1 for x in told)
     assert q("SELECT status FROM tt_versions WHERE id=?", (first,))[0]["status"] == "superseded"
     world["moved"] = (row["id"], moved[0]["weekday"], moved[0]["start"])
@@ -565,3 +570,71 @@ def test_malformed_shifts_and_periods_answer_their_own_400(office_ao, world):
     for wd, period in ((1, -3), (1, 0), (1, 99), (0, 1), (8, 1)):
         r = office_ao.post(f"/api/timetable/versions/{vid}/placements/{p['id']}/move", {"weekday": wd, "period": period, "rev": rev})
         assert r.status == 400 and "Yeni vaxtı" in r.json["error"], (wd, period, r.text)
+
+
+def test_a_refused_publication_names_the_lesson_and_the_rule_and_the_grid_marks_it(office_ao, world):
+    """UX1: a failed publication said 'check: 1 violations'; UX2: a precheck run showed none of its findings."""
+    vid = world["draft"]
+    p = q("SELECT p.* FROM tt_placements p WHERE p.version_id=? AND p.room_id IS NOT NULL ORDER BY p.id LIMIT 1", (vid,))[0]
+    needs = f"/api/timetable/units/{p['unit_id']}/needs"
+    assert office_ao.put(needs, {"need": 500, "need_reason": "Sınaq üçün böyük axın"}).status == 200
+    rid = _publish(office_ao, vid, "2026-12-21")
+    run_jobs()
+    r = office_ao.get(f"/api/timetable/runs/{rid}").json
+    assert r["status"] == "failed" and r["error"].startswith("Dərc dayandırıldı"), r
+    bad = next(x for x in r["progress"]["problems"] if x["code"] == "capacity")
+    course = q("SELECT co.name FROM teaching_units u JOIN courses co ON co.id=u.course_id WHERE u.id=?", (p["unit_id"],))[0]["name"]
+    assert bad["title"] and bad["courses"] == [course] and bad["slot"] == [p["weekday"], p["period"]]
+    v = q("SELECT violations, checked_rev, rev FROM tt_versions WHERE id=?", (vid,))[0]
+    assert v["violations"] >= 1 and v["checked_rev"] == v["rev"]                   # the list shows it at once
+    g = q("SELECT group_id FROM teaching_unit_groups WHERE unit_id=? LIMIT 1", (p["unit_id"],))[0]["group_id"]
+    items = office_ao.get(f"/api/timetable/versions/{vid}/grid?group_id={g}").json["items"]
+    marked = next(x for x in items if x["id"] == p["id"])
+    assert [x["code"] for x in marked["problems"]] == ["capacity"] and marked["problems"][0]["title"]
+    pre = office_ao.post(f"{B}/runs", {"kind": "precheck"})
+    run_jobs()
+    pr = office_ao.get(f"/api/timetable/runs/{pre.json['id']}").json
+    assert pr["progress"]["phase"] == "done"
+    line = next(x for x in pr["report"]["precheck"] if x["code"] == "no_room_capacity" and x["key"].startswith(f"{p['unit_id']}:"))
+    assert "500" in line["title"] and line["courses"] == [course], line
+    assert office_ao.put(needs, {"need": None}).status == 200
+
+
+def test_a_run_and_the_readiness_say_which_units_hand_written_rows_keep_out(office_ao, world):
+    """UX3: the office read 'every lesson placed' while units with hand-written rows were never scheduled; UX11: the
+    samples were bare ids; UX4: the editor's week left those rows out."""
+    u = world["units"][0]
+    lines = office_ao.get(f"{B}/readiness").json["lines"]
+    manual = next(x for x in lines if x["code"] == "manual_rows")
+    assert u in manual["samples"] and manual["title"] and manual["level"] == "warn"
+    assert manual["labels"][manual["samples"].index(u)].startswith("Sınaq fənni 0")
+    vac = next(x for x in lines if x["code"] == "vacancies")
+    assert vac["labels"][vac["samples"].index(world["vacancy"])].startswith("Sınaq fənni 1")
+    shifts = next(x for x in lines if x["code"] == "group_shifts")
+    assert all(not str(x).startswith("#") for x in shifts["labels"])
+    v = q("SELECT run_id, score FROM tt_versions WHERE id=?", (world["draft"],))[0]
+    run = office_ao.get(f"/api/timetable/runs/{v['run_id']}").json
+    assert run["progress"]["kept_manual"] == len(run["report"]["kept_manual"]) > 0
+    assert office_ao.get(f"/api/timetable/versions/{world['draft']}/scorecard").json["score"]["kept_manual"] == run["progress"]["kept_manual"]
+    g = q("SELECT group_id FROM teaching_unit_groups WHERE unit_id=? LIMIT 1", (u,))[0]["group_id"]
+    grid = office_ao.get(f"/api/timetable/versions/{world['draft']}/grid?group_id={g}").json
+    mine = [x for x in grid["fixed"] if x["course"] == "Sınaq fənni 0"]
+    assert mine and all(x["start"] and x["period"] for x in mine), grid["fixed"]
+    assert not {x["id"] for x in grid["fixed"]} & {x["timetable_id"] for x in q("SELECT timetable_id FROM tt_placements WHERE version_id=? "
+                                                                                  "AND timetable_id IS NOT NULL", (world["draft"],))}
+
+
+def test_the_teachers_board_tells_apart_two_people_of_one_name(office_ao, world):
+    """UX12: the editor's teacher list showed two people of one name with nothing between them."""
+    items = office_ao.get(f"{B}/teachers").json["items"]
+    mine = next(x for x in items if x["id"] == world["teachers"][0])
+    assert mine["department"] == "Sınaq kafedrası" and "patronymic" in mine
+
+
+def test_the_weekly_schedule_shows_a_publication_only_from_its_effective_date(app_db, world):
+    """UX9: the teacher's week showed the first publication's rows (effective 23.11) in the week of 16.11."""
+    week = app_db.client("teacher").get("/api/schedule").json
+    shown = {x["id"] for d in week["days"] for x in d["items"]}
+    published = {x["id"] for x in q("SELECT id FROM timetable WHERE version_id IS NOT NULL")}
+    assert shown and not shown & published, shown & published
+    assert week["week_start"] == "2026-11-16"

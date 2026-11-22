@@ -113,7 +113,9 @@ def got(seen, key):
 def test_the_academic_office_confirms_the_settings_and_the_run_is_no_longer_blocked(seen):
     s = got(seen, "plan")
     assert "hesablama" in s["blocked"] and "Hazırdır" in s["after"], s
-    assert set(s["fixes"]) <= {"/admin/directory", "/admin/settings", "/office/timetable", "/dept/timetable"}, s["fixes"]
+    assert set(s["fixes"]) <= {"/admin/directory", "/admin/settings", "/office/timetable", "/dept/timetable", "/admin/timetable"}, s["fixes"]
+    assert "həftə, gözlənilən" in s["termLine"] and "Hazırdır" in s["termLine"], s["termLine"]          # confirmed: no warning left
+    assert s["fixedSlots"] == 1 and s["weeksExpected"] == 1
 
 
 def test_every_readiness_fix_link_is_a_page_of_the_app():
@@ -129,26 +131,31 @@ def test_a_teacher_confirms_a_grid_and_one_above_the_cap_waits_for_the_head(seen
     assert "Təsdiqlənib" in s["confirmed"]
     assert s["button"].strip() == "Kafedra müdirinə göndər" and "aşılıb" in s["meter"]
     assert "kafedra müdirinə" in s["sent"]
+    assert "tək həftələr" in s["weeksCell"] and "odd" not in s["weeksCell"], s["weeksCell"]
 
 
 def test_the_head_approves_the_pending_grid_and_saves_a_units_needs(seen):
     s = got(seen, "head")
     assert s["shown"] == 13 and s["decided"] == "Təsdiqləndi"
-    assert "26 yer" in s["row"]
+    assert "26 yer" in s["row"] and re.search(r"65[123]a", s["row"]), s["row"]          # the unit's group is in its row
+    assert "tək həftələr" in s["modalText"] and "Doktorantura seminarı" in s["modalText"]
     rauf = seen["world"]["rauf"]
     assert q("SELECT COUNT(*) n FROM tt_availability WHERE subject_id=? AND level='unavailable'", (rauf,))[0]["n"] == 13
 
 
 def test_the_deans_office_sets_the_groups_shifts(seen):
     s = got(seen, "dean")
-    assert s["groups"] >= 3 and s["saved"] == "Saxlanıldı"
+    assert s["groups"] >= 3 and s["saved"] == "Saxlanıldı" and "Qrupun növbəsi" in " ".join(s["heads"])
     assert {r["shift"] for r in q(f"SELECT shift FROM tt_group_terms WHERE group_id IN ({','.join(map(str, seen['world']['groups']))})")} == {"morning"}
 
 
 def test_a_run_a_keyboard_move_with_reasons_in_text_and_a_check(seen):
     s = got(seen, "build")
     assert s["solved"] == "done" and s["checked"] == "done"
-    assert s["draftMark"] == "LAYİHƏ"
+    assert s["draftMark"] == "LAYİHƏ" and s["title"].startswith("Layihə #")
+    assert s["printFor"] == f"Qrup: {s['pickName']}" and not s["hintPrinted"], s        # the printed sheet says whose it is
+    assert len(s["teachers"]) == len(set(s["teachers"])), s["teachers"]                # two people of one name told apart
+    assert s["fixedRows"] > 0
     assert s["reason"], "a blocked slot says why in text"
     assert "mümkündür" in s["status"] and s["moved"] == "Dərs köçürüldü" and s["stale"] == "Yoxlanılmayıb"
     vid = int(s["url"].rsplit("/", 1)[1])
@@ -166,6 +173,7 @@ def test_the_draft_is_published_after_a_wrong_unplaced_number_is_refused(seen):
     s = got(seen, "publish")
     assert "sayı" in s["refused"] and s["queued"] == "Dərc növbəyə qoyuldu" and s["published"] == "done"
     assert s["printed"] == 0, "a published version prints without the draft mark"
+    assert s["title"].startswith("Versiya #") and s["hint"] == 0, s                       # nothing to drag on a published one
     vid = int(seen["build"]["url"].rsplit("/", 1)[1])
     assert q("SELECT status FROM tt_versions WHERE id=?", (vid,))[0]["status"] == "published"
     assert q("SELECT COUNT(*) n FROM timetable WHERE version_id=? AND active=1", (vid,))[0]["n"] > 0

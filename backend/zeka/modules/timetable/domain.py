@@ -796,8 +796,10 @@ def availability_input(cells, days: list[int], periods: int, n: int) -> tuple[li
             return [], bad
         wd, p, level, weeks, note = x.get("weekday"), x.get("period"), x.get("level"), x.get("weeks", "all"), x.get("note")
         if (type(wd) is not int or wd not in days or type(p) is not int or not 1 <= p <= periods or level not in AVAIL_LEVELS
-                or not isinstance(weeks, str) or not week_mask(weeks, n) or (note is not None and not isinstance(note, str))):
+                or (note is not None and not isinstance(note, str))):
             return [], bad
+        if not isinstance(weeks, str) or not week_mask(weeks, n):
+            return [], E("Xananın həftələri düzgün deyil: bütün, tək və ya cüt həftələri, yaxud 1-8, 10 kimi nömrələri seçin")
         if (wd, p) in seen:
             return [], E("Eyni xana iki dəfə yazılıb")
         seen.add((wd, p))
@@ -865,7 +867,8 @@ def readiness(facts: dict, settings: dict, today: str) -> list[dict]:
     n = facts.get("weeks") or 0
     term_ok = bool(facts.get("term")) and 1 <= n <= 20
     blocks = ([] if term_ok else ["run", "publish"]) + ([] if "term_dates" in conf or "term_dates" not in need or not term_ok else ["publish"])
-    out.append(_line("term_dates", "block" if blocks else ("warn" if n != settings["weeks_expected"] or "term_dates" not in conf else "ok"),
+    # confirmed by the office, the term's weeks are what they are (a term that starts mid-week counts its partial weeks)
+    out.append(_line("term_dates", "block" if blocks else ("warn" if "term_dates" not in conf else "ok"),
                      blocks, n, settings["weeks_expected"], fix="/admin/directory", confirm_key="term_dates"))
     out.append(_line("pattern", "block" if "pattern" in need and "pattern" not in conf else ("warn" if "pattern" not in conf else "ok"),
                      ["publish"] if "pattern" in need and "pattern" not in conf else [], fix="/admin/settings", confirm_key="pattern"))
@@ -893,6 +896,9 @@ def readiness(facts: dict, settings: dict, today: str) -> list[dict]:
                      fix="/admin/directory"))
     vac = facts.get("units_no_teacher") or []
     out.append(_line("vacancies", "warn" if vac else "ok", [], len(vac), len(facts.get("units") or []), vac, fix="/dept/timetable"))
+    manual = facts.get("units_manual") or []
+    if manual:                                      # a run keeps these units as they are: their rows stay obstacles
+        out.append(_line("manual_rows", "warn", [], len(manual), len(facts.get("units") or []), manual, fix="/admin/timetable"))
     left = [k for k in ("shifts", "rooms", "limits", "travel", "fixed_slots", "weights", "availability_cap") if k not in conf]
     if "travel" in left and len({r.get("building_id") for r in rooms}) <= 1:
         left.remove("travel")                       # one building: no travel time to confirm

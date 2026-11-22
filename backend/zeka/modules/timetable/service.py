@@ -163,6 +163,36 @@ def term_rows(c, term_id: int | None) -> list[dict]:
     return [{**r, "from": eff[r["version_id"]]} if r.get("version_id") in eff else r for r in rs]
 
 
+def week_of(c, course_ids: list[int], monday: date) -> list[dict]:
+    """The classes of these courses in the week from ``monday`` as they are held (Task 48 review, UX9): a row's lessons
+    of that week where it has them (a publication moves a row only from its effective date, so a row's time and its
+    lessons before that date differ), else the active row when the week is one of its weeks and on or after its
+    effective date. Rows without a unit have no lessons and show as before. A cancelled lesson is not a class."""
+    last = monday + timedelta(days=6)
+    t = term(c, None)
+    out = []
+    for cid in course_ids:
+        les = repo.course_lessons(c, cid, monday.isoformat(), last.isoformat())
+        held = {x["timetable_id"] for x in les if x["timetable_id"]}
+        rs = repo.course_rows(c, cid)
+        by_id = {r["id"]: r for r in rs}
+        eff = repo.effective_of(c, sorted({r["version_id"] for r in rs if r.get("version_id")}))
+        for x in les:
+            if x["status"] != "cancelled":
+                d = date.fromisoformat(x["day"])
+                out.append({**by_id.get(x["timetable_id"], {}), **{k: x[k] for k in ("course_id", "start", "end", "kind", "room")},
+                            "id": x["timetable_id"] or -x["id"], "lesson_id": x["id"], "weekday": d.isoweekday(), "day": x["day"]})
+        for r in rs:
+            d = monday + timedelta(days=r["weekday"] - 1)
+            if r["id"] in held or (r.get("version_id") in eff and d.isoformat() < eff[r["version_id"]]):
+                continue
+            if t and r["unit_id"] and not (t["teaching_start"] <= d.isoformat() <= t["teaching_end"]
+                                           and domain.in_weeks(r["weeks"] or "all", domain.week_no(d, date.fromisoformat(t["teaching_start"])))):
+                continue
+            out.append({**r, "day": d.isoformat()})
+    return sorted(out, key=lambda x: (x["weekday"], x["start"], x["id"]))
+
+
 def make_lessons(c, rows_: list[dict], t: dict, start_from: date | None = None) -> int:
     """The lessons of weekly rows in the term's teaching period; a slot that already has its lesson is left alone."""
     holidays = tenant.load(c)["calendar"]["holidays"]

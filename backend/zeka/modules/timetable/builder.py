@@ -16,7 +16,7 @@ import zlib
 from datetime import date, timedelta
 
 from ...core import perms, tenant
-from ...core.i18n import E, S_, T3
+from ...core.i18n import LANGS, E, S, S_, T3
 from ...core.web import HTTPError
 from ...legacy.store import J, audit, iso, notify, now
 from ..directory import service as directory
@@ -59,6 +59,16 @@ TITLES = {   # readiness lines, publish gate and slot reasons: one catalogue key
     "blocked_weeks": S_("Bütün həftələr təcrübə və ya başqa səbəblə dərsdən azaddır"),
     "teacher_busy": S_("Müəllim başqa dərsdədir"), "group_busy": S_("Qrup başqa dərsdədir"), "day_limit": S_("Günlük cüt həddi aşılır"),
     "locked_infeasible": S_("Kilidli yerləşdirmə qaydalara uyğun deyil"), "free": S_("Boş vaxt var, amma axtarış onu tapmadı"),
+    # what a precheck finds before any search (solver.precheck) and the units a run leaves out
+    "no_groups": S_("Vahidin qrupu yoxdur: hesablamaya daxil edilmir"), "no_hours": S_("Vahidin saatı yoxdur: hesablamaya daxil edilmir"),
+    "no_room_kind": S_("Bu növdə otaq yoxdur"),
+    "room_reserved": S_("Tutumu çatan otaqlar başqa vahidlərə ayrılıb və ya vahidin otaq siyahısında deyil"),
+    "no_room_capacity": S_("Otaq tutumu çatmır: {need} yer lazımdır, ən böyük uyğun otaqda {max} yer var"),
+    "empty_time_domain": S_("Növbə, universitet tədbirləri və müəllimin məşğul vaxtları bu dərsə vaxt saxlamır"),
+    "teacher_overload": S_("Müəllimin dərs yükü boş vaxtına sığmır: semestrdə {pair_weeks} cüt lazımdır, boş xana {available}"),
+    "group_over_law": S_("Qrupun həftəlik auditoriya saatı qanuni həddi aşır: həftədə {hours} saat"),
+    "room_supply": S_("{need} və daha çox yerlik otaqlar çatmır: həftədə {demand} cüt lazımdır, imkan {supply} cütdür"),
+    "manual_rows": S_("Əl ilə yazılmış sətirləri olduğu üçün hesablamaya daxil edilməyən vahidlər"),
 }
 
 
@@ -76,7 +86,28 @@ def titled(items: list[dict], slot: bool = False) -> list[dict]:
     out = []
     for x in items:
         code = "pattern_weeks" if slot and x["code"] == "pattern" else x["code"]
-        out.append({**x, "code": code, "title": T3(TITLES[code]) if code in TITLES else code})
+        out.append({**x, "code": code, "title": T3(TITLES[code], **{k: v for k, v in x.items() if type(v) is int}) if code in TITLES else code})
+    return out
+
+
+def _unit_of(key) -> int | None:
+    head = key.split(":")[0] if isinstance(key, str) else ""
+    return int(head) if head.isdigit() else None
+
+
+def named(c, items: list[dict], slot: bool = False) -> list[dict]:
+    """Titled codes with the names the office reads: the courses of their meetings ("{unit}:{part}" keys) or units, the
+    teacher and the group (a precheck line, a publication's problems)."""
+    units = {u for x in items for u in [_unit_of(k) for k in x.get("keys") or [x.get("key")]] + [x.get("unit_id")] if u}
+    courses = {u["id"]: u["course"] for u in repo.units_by_id(c, sorted(units))}
+    teachers = repo.user_names(c, sorted({x["teacher_id"] for x in items if type(x.get("teacher_id")) is int}))
+    groups = repo.groups_info(c, sorted({x["group_id"] for x in items if type(x.get("group_id")) is int}))
+    out = []
+    for x in titled(items, slot):
+        us = [_unit_of(k) for k in x.get("keys") or [x.get("key")]] + [x.get("unit_id")]
+        out.append({**x, "courses": sorted({courses[u] for u in us if u in courses}),
+                    **({"teacher": teachers[x["teacher_id"]]} if x.get("teacher_id") in teachers else {}),
+                    **({"group": groups[x["group_id"]]["name"]} if x.get("group_id") in groups else {})})
     return out
 
 
@@ -215,6 +246,8 @@ def _facts(c, t: dict, s: dict, department_id: int | None = None) -> dict:
     gt, rooms, needs = repo.group_terms(c, t["id"]), repo.rooms(c), repo.term_needs(c, t["id"])
     sizes, status = repo.registry_sizes(c, groups), repo.availability_status(c, t["id"])
     teachers = sorted({u["teacher_id"] for u in units if u["teacher_id"]})
+    mine = {u["id"] for u in units}
+    manual = sorted({r["unit_id"] for r in repo.term_rows(c, t["id"]) if r["unit_id"] in mine and not r["meeting_key"]})
     over = []
     for u in units:
         nd = needs.get(u["id"]) or {}
@@ -227,7 +260,7 @@ def _facts(c, t: dict, s: dict, department_id: int | None = None) -> dict:
     return {"term": t, "weeks": domain.term_weeks(t), "lesson_times": bell(c)[0], "rooms": rooms, "groups": groups,
             "groups_no_shift": [g for g in groups if not (gt.get(g) or {}).get("shift")], "units": [u["id"] for u in units],
             "units_no_groups": [u["id"] for u in units if not ug.get(u["id"])], "units_no_teacher": [u["id"] for u in units if not u["teacher_id"]],
-            "units_over_room": over, "teachers": teachers,
+            "units_over_room": over, "teachers": teachers, "units_manual": manual,
             "teachers_unconfirmed": [x for x in teachers if not (status.get(x) or {}).get("confirmed_at")],
             "pending": [x for x in teachers if (status.get(x) or {}).get("pending")], "availability_due": dues(c, t)["availability"]}
 
@@ -237,8 +270,25 @@ def readiness(c, user, tid: int, department_id: int | None = None) -> dict:
     if department_id is not None and not _covers_department(c, s, department_id):
         raise HTTPError(404, "Kafedra tapılmadı")
     lines = domain.readiness(_facts(c, t, s, department_id), settings(c), _today())
-    return {"term_id": t["id"], "lines": titled(lines), "run_blocked": bool(domain.gate(lines, "run")),
+    return {"term_id": t["id"], "lines": _labelled(c, titled(lines)), "run_blocked": bool(domain.gate(lines, "run")),
             "publish_blocked": bool(domain.gate(lines, "publish")), "dues": dues(c, t)}
+
+
+SAMPLE_KIND = {"group_shifts": "group", "availability": "teacher", "availability_late": "teacher", "availability_pending": "teacher",
+               "rooms": "unit", "unit_groups": "unit", "vacancies": "unit", "manual_rows": "unit"}
+
+
+def _labelled(c, lines: list[dict]) -> list[dict]:
+    """The samples of readiness lines with the names the pages show (a group's name, a teacher's, a unit's course and kind)."""
+    want: dict[str, set] = {"group": set(), "teacher": set(), "unit": set()}
+    for x in lines:
+        if x["code"] in SAMPLE_KIND:
+            want[SAMPLE_KIND[x["code"]]].update(v for v in x["samples"] if type(v) is int)
+    names = {"group": {g: v["name"] for g, v in repo.groups_info(c, sorted(want["group"])).items()},
+             "teacher": repo.user_names(c, sorted(want["teacher"])),
+             "unit": {u["id"]: f"{u['course']} · {domain.KIND_LABEL.get(u['kind'], u['kind'])}" for u in repo.units_by_id(c, sorted(want["unit"]))}}
+    return [{**x, "labels": [names[SAMPLE_KIND[x["code"]]].get(v, f"#{v}") for v in x["samples"]]} if x["code"] in SAMPLE_KIND else x
+            for x in lines]
 
 
 def start_page(c, user, tid: int) -> dict:
@@ -327,13 +377,15 @@ def teachers(c, user, tid: int, department_id: int | None) -> dict:
     us = [u for u in repo.term_units(c, t["id"]) if u["teacher_id"] and covers(s, u) and (department_id is None or u["department_id"] == department_id)]
     ids = sorted({u["teacher_id"] for u in us})
     names, status, due = repo.user_names(c, ids), repo.availability_status(c, t["id"]), dues(c, t)["availability"]
+    more = repo.user_details(c, ids)
     cells: dict[int, int] = {}
     for a in repo.subjects_availability(c, t["id"], "teacher", ids):
         cells[a["subject_id"]] = cells.get(a["subject_id"], 0) + 1
     out = []
     for x in ids:
         st = status.get(x) or {}
-        out.append({"id": x, "full_name": names.get(x, ""), "units": sum(1 for u in us if u["teacher_id"] == x), "cells": cells.get(x, 0),
+        out.append({"id": x, "full_name": names.get(x, ""), "patronymic": (more.get(x) or {}).get("patronymic"),
+                    "department": (more.get(x) or {}).get("department"), "units": sum(1 for u in us if u["teacher_id"] == x), "cells": cells.get(x, 0),
                     "confirmed_at": st.get("confirmed_at"), "pending": bool(st.get("pending")), "pending_at": st.get("pending_at"),
                     "reopened_until": st.get("reopened_until"), "over_cap_cells": st.get("over_cap_cells"),
                     "late": not st.get("confirmed_at") and _today() > due})
@@ -600,8 +652,11 @@ def _run_for(c, user, rid: int, blobs: bool = False) -> dict:
 
 def get_run(c, user, rid: int) -> dict:
     r = _run_for(c, user, rid, blobs=True)
-    rep = _unz(r["report"]) or {}
-    return {**run_out(r), "report": {k: (v[:200] if isinstance(v, list) else v) for k, v in rep.items()}}
+    rep = {k: (v[:200] if isinstance(v, list) else v) for k, v in (_unz(r["report"]) or {}).items()}
+    for k in ("precheck", "excluded"):
+        if rep.get(k):
+            rep[k] = named(c, rep[k])
+    return {**run_out(r), "report": rep}
 
 
 def cancel_run(c, user, rid: int) -> dict:
@@ -703,7 +758,7 @@ def _solve_step(c, r: dict, budget: float, busy: bool, sol: dict) -> str:
         done = r["kind"] == "precheck"
         _, ms = _tx(c, lambda: repo.update_run(c, r["id"], input=blob, input_sha256=sha, report=_z(report), started_at=iso(now()),
                                                status="done" if done else "running", finished_at=iso(now()) if done else None,
-                                               progress=_progress(r, phase="snapshot", meetings=model.N, units=len(problem["units"]),
+                                               progress=_progress(r, phase="done" if done else "snapshot", meetings=model.N, units=len(problem["units"]),
                                                                   kept_manual=len(kept), tx_ms_max=0)))
         if not done:
             CACHE.clear()
@@ -746,7 +801,9 @@ def _write_version(c, r: dict, t: dict, model: solver.Model, state: dict, cpu: i
     def write():
         vid = repo.insert_version(c, {"term_id": t["id"], "run_id": r["id"], "parent_id": pub["id"] if pub else None, "status": "draft",
                                       "name": params.get("name"), "rev": 0, "checked_rev": 0, "violations": len(hard),
-                                      "score": json.dumps({**card, "hard": len(hard)}), "inputs_fp": r["input_sha256"], "scope": r["scope"],
+                                      "score": json.dumps({**card, "hard": len(hard), "problems": hard[:200],
+                                                           "kept_manual": (J(r["progress"], {}) or {}).get("kept_manual", 0)}),
+                                      "inputs_fp": r["input_sha256"], "scope": r["scope"],
                                       "unplaced": out["counts"]["unplaced"], "excluded": out["counts"]["excluded"],
                                       "created_by": r["requested_by"], "created_at": stamp})
         repo.insert_placements(c, vid, out["placements"], "solver", stamp)
@@ -761,6 +818,11 @@ def _write_version(c, r: dict, t: dict, model: solver.Model, state: dict, cpu: i
     CACHE.pop(r["id"], None)
     _tx(c, lambda: repo.update_run(c, r["id"], progress=_progress(repo.run(c, r["id"]), tx_ms_max=ms)))
     return f"run {r['id']}: version {vid}"
+
+
+def _score(v: dict, card: dict, hard: list[dict]) -> str:
+    """A version's stored scorecard after a check: the violations themselves too (the grid marks their placements)."""
+    return json.dumps({**card, "hard": len(hard), "problems": hard[:200], "kept_manual": (J(v["score"], {}) or {}).get("kept_manual", 0)})
 
 
 def _check_run(c, r: dict, busy: bool, sol: dict) -> str:
@@ -779,7 +841,7 @@ def _check_run(c, r: dict, busy: bool, sol: dict) -> str:
     stamp = iso(now())
 
     def write():
-        repo.update_version(c, v["id"], checked_rev=rev, violations=len(hard), score=json.dumps({**card, "hard": len(hard)}))
+        repo.update_version(c, v["id"], checked_rev=rev, violations=len(hard), score=_score(v, card, hard))
         repo.update_run(c, r["id"], status="done", started_at=stamp, finished_at=stamp,
                         progress=_progress(r, phase="done", hard=len(hard), violations=hard[:50]))
 
@@ -808,14 +870,38 @@ def grid(c, user, vid: int, group_id: int | None, teacher_id: int | None, room_i
     elif teacher_id is not None:
         teacher_for(c, user, t, teacher_id, write=False)
     items = _in_scope(c, user, repo.grid(c, vid, group_id, teacher_id, room_id))
+    fixed = _in_scope(c, user, _fixed_rows(c, v, t, group_id, teacher_id, room_id))
     _, times = bell(c)
-    names = repo.groups_of_units(c, sorted({x["unit_id"] for x in items}))
+    names = repo.groups_of_units(c, sorted({x["unit_id"] for x in items + fixed if x["unit_id"]}))
     info = repo.groups_info(c, sorted({g for v_ in names.values() for g in v_}))
-    out = []
+    bad: dict[str, list[dict]] = {}
+    for x in (J(v["score"], {}) or {}).get("problems") or []:
+        for k in x["keys"]:
+            bad.setdefault(k, []).append({"code": x["code"], "slot": x.get("slot")})
+    out, rows_ = [], []
     for x in items:
         span = domain.pair_span(times, x["period"], x["duration"]) or ("", "")
-        out.append({**x, "start": span[0], "end": span[1], "groups": [info[g]["name"] for g in names.get(x["unit_id"], []) if g in info]})
-    return {"version": _version_out(v), "items": out, "times": times, "days": settings(c)["days"]}
+        out.append({**x, "start": span[0], "end": span[1], "groups": [info[g]["name"] for g in names.get(x["unit_id"], []) if g in info],
+                    "problems": titled(bad.get(x["meeting_key"], []), slot=True)})
+    for r in fixed:
+        pairs = domain.pairs_of(times, r["start"], r["end"])
+        if pairs:
+            rows_.append({"id": r["id"], "weekday": r["weekday"], "period": pairs[0], "duration": pairs[1], "start": r["start"], "end": r["end"],
+                          "course": r["course"], "kind": r["unit_kind"] or r["kind"], "subgroup": r["subgroup"], "weeks": r["weeks"] or "all",
+                          "teacher": r["teacher"], "room": r["room"], "groups": [info[g]["name"] for g in names.get(r["unit_id"], []) if g in info]})
+    return {"version": _version_out(v), "items": out, "fixed": rows_, "times": times, "days": settings(c)["days"]}
+
+
+def _fixed_rows(c, v: dict, t: dict, group_id: int | None, teacher_id: int | None, room_id: int | None) -> list[dict]:
+    """The active rows of the term the version does not hold (hand-written rows, rows of units outside its scope): the
+    run kept them as obstacles, so the editor shows them read-only."""
+    if room_id is not None:
+        rs = repo.room_rows(c, t["id"], [room_id])
+    else:
+        ids = repo.group_term_units(c, t["id"], [group_id]) if group_id is not None else repo.teacher_term_units(c, t["id"], teacher_id or 0)
+        rs = repo.unit_rows(c, ids)
+    held = {x["unit_id"] for x in repo.placements_of_units(c, v["id"], sorted({r["unit_id"] for r in rs if r["unit_id"]}))}
+    return [r for r in rs if r["unit_id"] not in held]
 
 
 def unplaced(c, user, vid: int) -> list[dict]:
@@ -998,10 +1084,15 @@ def publish(c, user, vid: int, body) -> dict:
     return run_out(repo.run(c, rid))
 
 
-def _fail(c, r: dict, codes: list, text: str) -> str:
+def _fail(c, r: dict, problems: list[dict], message: dict, version: dict | None = None) -> str:
+    """A publication refused before any row is written: why, in every language, with each problem titled and named."""
+    found = named(c, problems[:50], slot=True)
+
     def write():
-        repo.update_run(c, r["id"], status="failed", finished_at=iso(now()), state=None, error=text[:500],
-                        progress=_progress(r, step="failed", problems=codes[:50]))
+        if version:                                     # the check found what the list and the grid must show
+            repo.update_version(c, version["id"], **version["values"])
+        repo.update_run(c, r["id"], status="failed", finished_at=iso(now()), state=None, error=_err(message),
+                        progress=_progress(r, step="failed", problems=found))
         notify(c, [r["requested_by"]], "timetable", T3("Cədvəl dərc olunmadı: yoxlamadan keçmədi"), "", "/admin/timetable/build")
     _tx(c, write)
     return f"run {r['id']}: publish refused"
@@ -1038,7 +1129,7 @@ def _p_check(c, r: dict) -> str:
     params = J(r["params"], {}) or {}
     gate = _gate(c, v, t, r["effective_from"], params.get("accept_unplaced"), params.get("override_reason") or "")
     if gate:
-        return _fail(c, r, [x["code"] for x in gate], "gate: " + ", ".join(x["code"] for x in gate))
+        return _fail(c, r, [{"code": x["code"]} for x in gate], T3("Dərc dayandırıldı: versiya dərcin şərtlərinə cavab vermir"))
     c.execute("BEGIN")
     try:
         problem, kept = snapshot(c, t, J(v["scope"], {"all": True}))
@@ -1051,12 +1142,15 @@ def _p_check(c, r: dict) -> str:
         c.rollback()
     hard = domain.check(problem, [_as_meeting(p) for p in pls])
     if hard:
-        return _fail(c, r, hard, f"check: {len(hard)} violations")
+        card = domain.scorecard(problem, [_as_meeting(p) for p in pls])
+        return _fail(c, r, hard, T3("Dərc dayandırıldı: yoxlama qaydaların pozuntusunu tapdı"),
+                     {"id": v["id"], "values": {"checked_rev": v["rev"], "violations": len(hard), "score": _score(v, card, hard)}})
     _, times = bell(c)
     st = settings(c)
     wanted = [domain.published_row(p, times, st["pair_hours"]) for p in pls]
     if any(w is None for w in wanted):
-        return _fail(c, r, ["duration"], "a placement is off the bell schedule")
+        return _fail(c, r, [{"code": "duration", "keys": [p["meeting_key"]]} for p, w in zip(pls, wanted, strict=True) if w is None],
+                     T3("Dərc dayandırıldı: dərslərdən biri zəng cədvəlindən kənara çıxır"))
     s = _scope_from_run(J(v["scope"], {"all": True}))
     # a unit with hand-written rows was kept out of the run: its builder rows are obstacles and stay (design §16.4)
     published = [x for x in trows if x["meeting_key"] and x["unit_id"] in units_ and x["unit_id"] not in set(kept)
@@ -1073,7 +1167,8 @@ def _p_check(c, r: dict) -> str:
              for x in trows if x["id"] not in replaced and x["id"] not in plan["unchanged"]]
     clashes = domain.conflicts_all(slots)
     if clashes:
-        return _fail(c, r, clashes, f"rows: {len(clashes)} clashes")
+        return _fail(c, r, [{"code": f"{x['what']}_clash", "keys": [k[2:] for k in (x["a"], x["b"]) if k.startswith("k:")]} for x in clashes],
+                     T3("Dərc dayandırıldı: yeni sətirlər cədvəldəki başqa sətirlərlə toqquşur"))
     ops = ([{"op": "update", **x} for x in plan["update"]] + [{"op": "insert", **x} for x in plan["insert"]]
            + [{"op": "deactivate", "id": x} for x in plan["deactivate"]])
     for o in ops:
@@ -1162,7 +1257,9 @@ def _p_notify(c, r: dict) -> str:
     part = state["people"][cur:cur + NOTIFY_BATCH]
 
     def write():
-        title = T3("Dərs cədvəliniz {date} tarixindən dəyişir", date=r["effective_from"])
+        day = date.fromisoformat(r["effective_from"])                  # the date as the portal writes dates in each language
+        title = {lg: S(S_("Dərs cədvəliniz {date} tarixindən dəyişir"), lg, date=day.strftime("%d/%m/%Y" if lg == "en" else "%d.%m.%Y"))
+                 for lg in LANGS}
         for who, link in (("s", "/student/schedule"), ("t", "/teacher/schedule")):
             ids = [x for x, k in part if k == who]
             if ids:

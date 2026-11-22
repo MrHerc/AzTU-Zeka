@@ -5,7 +5,7 @@
 // and the publication (shown only to an unscoped academic office: the server refuses everyone else anyway).
 import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, t, S, isoDay, fmtDate, fmtDateTime, progress, $, $$ } from "./core.js";
 import { HOME } from "./shell.js";
-import { DAYS, KIND, PAIR, SHIFT, CONFIRM, pickTerm, termSelect, tabs, readinessTable } from "./timetable-prep.js";
+import { DAYS, KIND, PAIR, SHIFT, CONFIRM, pickTerm, termSelect, tabs, readinessTable, weeksLabel } from "./timetable-prep.js";
 
 const POLL_MS = 5000;
 const ROOT = "/admin/timetable/build";
@@ -20,8 +20,9 @@ const COMP = () => ({ group_window: t("Qrupların boş cütləri"), teacher_wind
   foreign_building: t("Qrupun binasından kənar otaqlar"), hours_miss: t("Saatların Forma №3-dən fərqi"), stability_time: t("Vaxtı dəyişən dərslər"),
   stability_weeks: t("Həftələri dəyişən dərslər"), stability_room: t("Otağı dəyişən dərslər"), move_repair: t("Bərpada köçürülən dərslər") });
 const badgeOf = (map, k) => { const [l, c] = map()[k] || [k, "b-gray"]; return html`<span class="badge ${c}">${l}</span>`; };
-const weeksLabel = (w) => (w === "all" ? "" : w === "odd" ? t("tək həftələr") : w === "even" ? t("cüt həftələr") : t("həftələr {w}", { w }));
-const listOf = (items) => html`<ul class="tt-reasons">${items.map((x) => html`<li>${ic("alert", 13)} ${x.title || x.code}${x.slots ? html` <span class="muted">· ${t("{n} vaxtda", { n: x.slots })}</span>` : ""}</li>`)}</ul>`;
+// where a problem is: its courses, teacher or group (named by the server) and its slot
+const whereOf = (x) => [(x.courses || []).join(", "), x.teacher || "", x.group || "", x.slot ? `${DAYS()[x.slot[0]]}, ${PAIR(x.slot[1])}` : ""].filter(Boolean).join(" · ");
+const listOf = (items) => html`<ul class="tt-reasons">${items.map((x) => html`<li>${ic("alert", 13)} ${x.title || x.code}${whereOf(x) ? html` <span class="muted">— ${whereOf(x)}</span>` : ""}${x.slots ? html` <span class="muted">· ${t("{n} vaxtda", { n: x.slots })}</span>` : ""}</li>`)}</ul>`;
 const refusal = (err, title) => {
   const d = err.data || {};
   const items = d.lines || d.gate || d.reasons;
@@ -53,8 +54,13 @@ function watchRun(host, id, onEnd) {
           ${pr.meetings ? " · " + t("{n} dərs", { n: pr.meetings }) : ""}${pr.unplaced != null ? " · " + t("yerləşdirilməyən: {n}", { n: pr.unplaced }) : ""}
           ${pr.counts && pr.counts.notified != null ? " · " + t("bildiriş: {n}", { n: pr.counts.notified }) : ""}</p>
         ${r.status === "queued" ? html`<p class="small muted" style="margin:0">${t("Hesablama fon işində gedir: səhifəni bağlaya bilərsiniz, hazır olanda bildiriş gələcək.")}</p>` : ""}
-        ${r.error && r.status === "failed" ? html`<p class="small" style="margin:0">${t("Səbəb")}: ${r.error}</p>` : ""}
-        ${r.report && r.report.excluded && r.report.excluded.length ? html`<p class="small" style="margin:0">${t("Hesablamaya daxil edilməyən vahidlər: {n}", { n: r.report.excluded.length })}</p>` : ""}</div></div>`);
+        ${r.error && r.status !== "done" ? html`<p class="small" style="margin:0">${t("Səbəb")}: ${r.error}</p>` : ""}
+        ${pr.problems && pr.problems.length ? listOf(pr.problems) : ""}
+        ${r.report && r.report.excluded && r.report.excluded.length ? html`<p class="small" style="margin:0">${t("Hesablamaya daxil edilməyən vahidlər: {n}", { n: r.report.excluded.length })}</p>` : ""}
+        ${pr.kept_manual ? html`<p class="small" style="margin:0">${t("Əl ilə yazılmış sətirləri olduğu üçün hesablamaya daxil edilməyən vahidlər: {n}", { n: pr.kept_manual })}</p>` : ""}
+        ${r.kind === "precheck" && r.status === "done" ? (r.report && r.report.precheck && r.report.precheck.length
+          ? html`<p class="small" style="margin:0"><b>${t("İlkin yoxlamanın tapdıqları")}</b></p>${listOf(r.report.precheck)}`
+          : html`<p class="small" style="margin:0">${t("İlkin yoxlama heç bir maneə tapmadı.")}</p>`) : ""}</div></div>`);
   };
   const poll = async () => {
     if (stopped || !document.body.contains(host)) return;
@@ -95,12 +101,12 @@ route(ROOT, async (el, p, q) => {
 
   const summary = () => html`<div class="grid tt-summary">
     <div class="card card-b"><div class="tiny muted">${t("Semestr")}</div><b>${start.term.name}</b><div class="small muted">${fmtDate(start.term.teaching_start)} – ${fmtDate(start.term.teaching_end)} · ${t("{n} həftə", { n: start.weeks })}</div></div>
-    <div class="card card-b"><div class="tiny muted">${t("Hesablama")}</div><b>${start.run_blocked ? t("Dayandırılıb: hazırlıq siyahısına baxın") : t("Başlamaq olar")}</b>
+    <div class="card card-b"><div class="tiny muted">${t("Hesablamanın vəziyyəti")}</div><b>${start.run_blocked ? t("Dayandırılıb: hazırlıq siyahısına baxın") : t("Başlamaq olar")}</b>
       <div class="small muted">${t("Xəbərdarlıq: {n}", { n: start.warnings })}</div></div>
-    <div class="card card-b"><div class="tiny muted">${t("Dərc")}</div><b>${start.published_id ? t("Dərc olunmuş versiya: #{id}", { id: start.published_id }) : t("Hələ dərc olunmayıb")}</b>
+    <div class="card card-b"><div class="tiny muted">${t("Dərc vəziyyəti")}</div><b>${start.published_id ? t("Dərc olunmuş versiya: #{id}", { id: start.published_id }) : t("Hələ dərc olunmayıb")}</b>
       <div class="small muted">${start.publish_blocked ? t("Dərc üçün təsdiq gözləyən bəndlər var") : t("Dərc qapısı açıqdır")}</div></div>
     <div class="card card-b"><div class="tiny muted">${t("Son tarixlər")}</div><div class="small">${t("Tələblər")}: ${fmtDate(start.dues.needs)} · ${t("Məşğulluq")}: ${fmtDate(start.dues.availability)}</div>
-      <div class="small">${t("Dərc")}: ${fmtDate(start.dues.publish)}</div></div></div>`;
+      <div class="small">${t("Dərcin hədəf tarixi")}: ${fmtDate(start.dues.publish)}</div></div></div>`;
 
   const draw = async () => {
     mount(el, html`${head()}${summary()}${tabs([["ready", t("Hazırlıq")], ["settings", t("Ayarlar və plan")], ["versions", t("Hesablama və layihələr")]], tab)}<div id="tb-body">${loading()}</div>`);
@@ -128,7 +134,7 @@ route(ROOT, async (el, p, q) => {
   };
   const versionsCard = (vs) => html`<div class="card mt"><div class="card-h wrap"><h3>${ic("layers", 17)} ${t("Layihələr")}</h3><button class="btn btn-sm" id="tb-compare" disabled>${t("Seçilən ikisini müqayisə et")}</button></div>
           ${vs.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th><span class="sr-only">${t("Seç")}</span></th><th>#</th><th>${t("Ad")}</th><th>${t("Vəziyyət")}</th><th>${t("Yaradılıb")}</th>
-            <th>${t("Yerləşdirilməyən")}</th><th>${t("Pozuntu")}</th><th>${t("Yoxlama")}</th><th></th></tr></thead><tbody>${vs.map((v) => html`<tr>
+            <th>${t("Yerləşdirilməyən")}</th><th>${t("Pozuntu")}</th><th>${t("Yoxlanış")}</th><th></th></tr></thead><tbody>${vs.map((v) => html`<tr>
               <td><input type="checkbox" data-pick="${v.id}" aria-label="${t("Müqayisə üçün seç")}: #${v.id}" ${checked.has(v.id) ? "checked" : ""}></td><td>${v.id}</td><td>${v.name || "—"}</td><td>${badgeOf(STATUS, v.status)}</td>
               <td class="nowrap">${fmtDateTime(v.created_at)}</td><td>${v.unplaced}</td><td>${v.violations ?? "—"}</td>
               <td>${v.checked_rev === v.rev ? html`<span class="badge b-green">${t("Yoxlanılıb")}</span>` : html`<span class="badge b-amber">${t("Yoxlanılmayıb")}</span>`}</td>
@@ -155,20 +161,21 @@ route(ROOT, async (el, p, q) => {
         <h4 style="margin:0">${t("Hədlər")}</h4>
         <div class="row wrap">${num("max_pairs_day_group", t("Qrupun gündə ən çox cütü"), 1, 8)}${num("max_pairs_day_teacher", t("Müəllimin gündə ən çox cütü"), 1, 8)}
           ${num("max_week_hours_group", t("Qrupun həftəlik auditoriya saatı"), 1, 30)}${num("availability_cap_pct", t("Məşğul xanaların həddi (%)"), 0, 100)}
-          ${num("notice_days", t("Dəyişiklikdən əvvəl bildiriş (gün)"), 0, 60)}${num("hours_tolerance", t("Saat fərqinin yol verilən həddi"), 0, 20)}</div>
+          ${num("notice_days", t("Dəyişiklikdən əvvəl bildiriş (gün)"), 0, 60)}${num("hours_tolerance", t("Saat fərqinin yol verilən həddi"), 0, 20)}
+          ${num("weeks_expected", t("Semestrdə gözlənilən həftə sayı"), 1, 20)}</div>
         <label class="row small"><input type="checkbox" id="st-review" ${v.review_required ? "checked" : ""}> ${t("Dərcdən əvvəl rəy tələb olunur")}</label></div></div>
       <div class="card mt"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Semestrin planı")}</h3><button class="btn btn-sm btn-primary" id="pl-save">${t("Saxla")}</button></div>
         <div class="card-b stack"><div class="row wrap">${[["needs_due", t("Tələblərin son tarixi"), start.dues.needs], ["groups_due", t("Qrup növbələrinin son tarixi"), start.dues.groups],
           ["availability_due", t("Məşğulluq vaxtlarının son tarixi"), start.dues.availability], ["review_due", t("Rəyin son tarixi"), start.dues.review], ["publish_target", t("Dərcin hədəf tarixi"), start.dues.publish]].map(([k, l, d]) =>
           html`<div class="field"><label class="label" for="pl-${k}">${l}</label><input class="input" id="pl-${k}" type="date" value="${d || ""}"></div>`)}</div>
-          <div class="row wrap">${["practice", "reserved_weeks", "fixed_slots", "online"].map((k) => html`<label class="row small"><input type="checkbox" name="tconf" value="${k}" ${tconf.has(k) ? "checked" : ""}> ${CONFIRM()[k]}</label>`)}</div></div></div>`);
+          <div class="row wrap">${["practice", "reserved_weeks", "online"].map((k) => html`<label class="row small"><input type="checkbox" name="tconf" value="${k}" ${tconf.has(k) ? "checked" : ""}> ${CONFIRM()[k]}</label>`)}</div></div></div>`);
     on(body, "click", "#st-save", async (e, b) => {
       const shifts = {};
       for (const k of ["morning", "afternoon", "evening"]) {
         const ps = $(`#sh-${k}`, body).value.split(/[\s,;]+/).filter(Boolean).map(Number);
         if (ps.length) shifts[k] = ps;
       }
-      const nums = Object.fromEntries(["max_pairs_day_group", "max_pairs_day_teacher", "max_week_hours_group", "availability_cap_pct", "notice_days", "hours_tolerance"]
+      const nums = Object.fromEntries(["max_pairs_day_group", "max_pairs_day_teacher", "max_week_hours_group", "availability_cap_pct", "notice_days", "hours_tolerance", "weeks_expected"]
         .map((k) => [k, Number($(`#st-${k}`, body).value)]));
       b.disabled = true;
       try {
@@ -199,7 +206,7 @@ route(ROOT, async (el, p, q) => {
     try {
       const cards = await Promise.all(ids.map((id) => api.get(`/api/timetable/versions/${id}/scorecard`)));
       modal({ title: t("Layihələrin müqayisəsi"), size: "lg", body: html`${cards.some((c) => c.stale) ? html`<p class="small"><span class="badge b-amber">${t("Yoxlanılmayıb")}</span>
-        ${t("Əl ilə dəyişiklikdən sonra göstəricilər «Yoxla» ilə yenilənir.")}</p>` : ""}${scoreTable(cards.map((c) => ({ label: `#${c.version.id} ${c.version.name || ""}`, score: c.score || {} })))}` });
+        ${t("Əl ilə dəyişiklikdən sonra göstəricilər «Tam yoxla» ilə yenilənir.")}</p>` : ""}${scoreTable(cards.map((c) => ({ label: `#${c.version.id} ${c.version.name || ""}`, score: c.score || {} })))}` });
     } catch (err) { toast(err.message, "err"); }
   });
   on(el, "click", "#rn-start", async (e, b) => {
@@ -229,20 +236,24 @@ route(`${ROOT}/version/:id`, async (el, p, q) => {
   } catch (err) { return mount(el, failed(err.message)); }
   const v = () => card.version;
   const editable = () => start.manages && ["draft", "review"].includes(v().status);
-  const lists = { group: groups.map((g) => [g.id, g.name]), teacher: board.items.map((x) => [x.id, x.full_name]), room: rooms.map((r) => [r.id, r.code]) };
+  const twice = new Set(board.items.map((x) => x.full_name).filter((n, i, a) => a.indexOf(n) !== i));      // two teachers of one name
+  const lists = { group: groups.map((g) => [g.id, g.name]), room: rooms.map((r) => [r.id, r.code]),
+    teacher: board.items.map((x) => [x.id, twice.has(x.full_name) ? `${x.full_name} (${x.patronymic || x.department || "#" + x.id})` : x.full_name]) };
   let by = ["group", "teacher", "room"].includes(q.by) ? q.by : "group", pick = Number(q.id) || (lists[by][0] || [])[0] || null;
-  let items = [], rev = v().rev, sel = null, opts = null, cursor = null, times = [], days = [1, 2, 3, 4, 5, 6];
+  let items = [], fixed = [], rev = v().rev, sel = null, opts = null, cursor = null, times = [], days = [1, 2, 3, 4, 5, 6];
   const roomCode = Object.fromEntries(rooms.map((r) => [r.id, r.code]));
 
-  const head = () => html`${pageHead(t("Layihə #{id}", { id: vid }) + (v().name ? ` · ${v().name}` : ""), t("Dərsi sürüşdürün və ya seçib Enter, oxlar, Enter ilə köçürün: hər vaxtın mümkün olub-olmadığı dərhal yoxlanır."),
-    html`${badgeOf(STATUS, v().status)}${editable() ? html`<button class="btn btn-sm" id="vr-check">${ic("check", 15)} ${t("Yoxla")}</button>` : ""}
+  const title = () => (["draft", "review"].includes(v().status) ? t("Layihə #{id}", { id: vid }) : t("Versiya #{id}", { id: vid }));
+  const head = () => html`${pageHead(title() + (v().name ? ` · ${v().name}` : ""), editable() ? t("Dərsi sürüşdürün və ya seçib Enter, oxlar, Enter ilə köçürün: hər vaxtın mümkün olub-olmadığı dərhal yoxlanır.") : "",
+    html`${badgeOf(STATUS, v().status)}${editable() ? html`<button class="btn btn-sm" id="vr-check">${ic("check", 15)} ${t("Tam yoxla")}</button>` : ""}
       <button class="btn btn-sm" id="vr-print">${ic("printer", 15)} ${t("Çap et")}</button>
       ${start.can_publish && editable() ? html`<button class="btn btn-sm btn-primary" id="vr-publish">${ic("upload", 15)} ${t("Dərc et")}</button>` : ""}`,
-    [[t("Əsas"), HOME[S.user.role]], [t("Cədvəl qurucusu"), `${ROOT}?tab=versions&term=${v().term_id}`], [t("Layihə #{id}", { id: vid })]])}`;
+    [[t("Əsas"), HOME[S.user.role]], [t("Cədvəl qurucusu"), `${ROOT}?tab=versions&term=${v().term_id}`], [title()]])}`;
 
   const scoreCard = () => html`<div class="card"><div class="card-h wrap"><h3>${ic("chart", 17)} ${t("Göstəricilər")}</h3>
-    ${card.stale ? html`<span class="badge b-amber">${t("Yoxlanılmayıb")}</span><span class="small muted">${t("Əl ilə dəyişiklikdən sonra göstəricilər «Yoxla» ilə yenilənir.")}</span>`
-      : html`<span class="badge b-green">${t("Yoxlanılıb")}</span>`}</div>${scoreTable([{ label: t("Bu layihə"), score: card.score || {} }])}</div>`;
+    ${card.stale ? html`<span class="badge b-amber">${t("Yoxlanılmayıb")}</span><span class="small muted">${t("Əl ilə dəyişiklikdən sonra göstəricilər «Tam yoxla» ilə yenilənir.")}</span>`
+      : html`<span class="badge b-green">${t("Yoxlanılıb")}</span>`}</div>${scoreTable([{ label: t("Bu layihə"), score: card.score || {} }])}
+    ${card.score && card.score.kept_manual ? html`<p class="small card-b" style="margin:0">${t("Əl ilə yazılmış sətirləri olduğu üçün hesablamaya daxil edilməyən vahidlər: {n}", { n: card.score.kept_manual })}</p>` : ""}</div>`;
   const unplacedCard = () => html`<div class="card"><div class="card-h"><h3>${ic("alert", 17)} ${t("Yerləşdirilməyən dərslər")}</h3><span class="badge ${unplaced.length ? "b-amber" : "b-green"}">${unplaced.length}</span></div>
     ${unplaced.length ? html`<div class="list card-b">${unplaced.map((x) => html`<div class="list-item tt-unplaced"><div class="grow"><b class="small">${x.course} · ${KIND()[x.kind] || x.kind}${x.subgroup ? " · " + x.subgroup : ""}</b>
       ${listOf(x.reasons.slice(0, 4))}</div></div>`)}</div>` : html`<div class="card-b"><p class="muted small" style="margin:0">${t("Bütün dərslər yerləşdirilib.")}</p></div>`}</div>`;
@@ -251,16 +262,20 @@ route(`${ROOT}/version/:id`, async (el, p, q) => {
   const cellText = (o) => (!o ? "" : o.current ? t("indiki vaxt") : o.reasons.length ? o.reasons.map((r) => r.title).join("; ") : t("mümkündür") + (o.room_id ? ` · ${roomCode[o.room_id] || "#" + o.room_id}` : ""));
   const itemLine = (x) => (by === "group" ? [x.teacher, x.room] : by === "teacher" ? [x.groups.join(", "), x.room] : [x.groups.join(", "), x.teacher]).filter(Boolean).join(" · ");
   const gridHtml = () => {
-    const periods = Math.max(times.length, ...items.map((x) => x.period + x.duration - 1));
+    const periods = Math.max(times.length, ...items.concat(fixed).map((x) => x.period + x.duration - 1));
     return html`<div class="table-wrap tt-gridwrap ${opts ? "moving" : ""}" tabindex="0" role="region" aria-label="${t("Həftəlik cədvəl")}"><table class="table tt-grid"><thead><tr><th>${t("Cüt")}</th>${days.map((d) => html`<th>${DAYS()[d]}</th>`)}</tr></thead><tbody>
       ${Array.from({ length: periods }, (_, i) => i + 1).map((pr) => html`<tr><th scope="row" class="nowrap">${PAIR(pr)}<div class="tiny muted">${(times[pr - 1] || []).join("–")}</div></th>
-        ${days.map((d) => { const o = option(d, pr), here = items.filter((x) => x.weekday === d && x.period <= pr && pr < x.period + x.duration);
+        ${days.map((d) => { const o = option(d, pr), at = (x) => x.weekday === d && x.period <= pr && pr < x.period + x.duration, here = items.filter(at);
           const cls = o ? (o.current ? "cur" : o.reasons.length ? "no" : "ok") : "";
           return html`<td class="tt-slot ${cls} ${cursor && cursor[0] === d && cursor[1] === pr ? "cursor" : ""}" data-slot="${d}:${pr}" ${opts ? html`tabindex="-1" aria-label="${DAYS()[d]}, ${PAIR(pr)}: ${cellText(o)}"` : ""}>
-            ${here.map((x) => html`<div class="tt-item ${x.locked ? "locked" : ""} ${sel && sel.id === x.id ? "sel" : ""}" ${editable() && !x.locked ? html`draggable="true"` : ""} data-item="${x.id}">
-              <button class="tt-item-b" data-pickitem="${x.id}" aria-label="${x.course}, ${KIND()[x.kind] || x.kind}, ${DAYS()[d]} ${PAIR(x.period)}${x.locked ? ", " + t("kilidli") : ""}">
+            ${fixed.filter(at).map((x) => html`<div class="tt-item fixed"><div class="tt-item-b"><b>${x.course}</b>
+              <span class="tiny">${KIND()[x.kind] || x.kind}${x.subgroup ? " · " + x.subgroup : ""}${weeksLabel(x.weeks) ? " · " + weeksLabel(x.weeks) : ""}</span>
+              <span class="tiny muted">${itemLine(x)}</span><span class="tiny muted">${ic("edit", 11)} ${t("əl ilə yazılmış sətir: dəyişmir")}</span></div></div>`)}
+            ${here.map((x) => html`<div class="tt-item ${x.locked ? "locked" : ""} ${x.problems && x.problems.length ? "bad" : ""} ${sel && sel.id === x.id ? "sel" : ""}" ${editable() && !x.locked ? html`draggable="true"` : ""} data-item="${x.id}">
+              <button class="tt-item-b" data-pickitem="${x.id}" aria-label="${x.course}, ${KIND()[x.kind] || x.kind}, ${DAYS()[d]} ${PAIR(x.period)}${x.locked ? ", " + t("kilidli") : ""}${x.problems && x.problems.length ? ", " + x.problems.map((r) => r.title).join("; ") : ""}">
                 <b>${x.course}</b><span class="tiny">${KIND()[x.kind] || x.kind}${x.subgroup ? " · " + x.subgroup : ""}${weeksLabel(x.weeks) ? " · " + weeksLabel(x.weeks) : ""}</span>
-                <span class="tiny muted">${itemLine(x)}</span>${x.origin === "manual" ? html`<span class="tiny muted">${ic("edit", 11)} ${t("əl ilə")}</span>` : ""}</button>
+                <span class="tiny muted">${itemLine(x)}</span>${x.origin === "manual" ? html`<span class="tiny muted">${ic("edit", 11)} ${t("əl ilə")}</span>` : ""}
+                ${x.problems && x.problems.length ? html`<span class="tiny tt-bad">${ic("alert", 11)} ${x.problems.map((r) => r.title).join("; ")}</span>` : ""}</button>
               ${editable() ? html`<button class="btn-icon tt-lock" data-lock="${x.id}" aria-pressed="${!!x.locked}" aria-label="${x.locked ? t("Kilidi aç") : t("Kilidlə")}" title="${x.locked ? t("Kilidi aç") : t("Kilidlə")}">${ic("lock", 13)}</button>`
                 : x.locked ? html`<span class="tt-lock">${ic("lock", 13)}</span>` : ""}</div>`)}
             ${o && !o.current ? html`<span class="tt-why">${o.reasons.length ? html`${ic("x", 11)} ${o.reasons.map((r) => r.title).join("; ")}` : html`${ic("check", 11)} ${t("mümkündür")}`}</span>` : ""}</td>`; })}</tr>`)}
@@ -273,16 +288,17 @@ route(`${ROOT}/version/:id`, async (el, p, q) => {
     mount(host, html`<div class="card-h wrap"><div class="seg" role="tablist">${[["group", t("Qrup")], ["teacher", t("Müəllim")], ["room", t("Otaq")]].map(([k, l]) =>
         html`<button role="tab" aria-selected="${by === k}" class="${by === k ? "active" : ""}" data-by="${k}">${l}</button>`)}</div>
       <select class="input input-sm" id="vr-pick" aria-label="${t("Seçim")}">${lists[by].map(([id, n]) => html`<option value="${id}" ${id === pick ? "selected" : ""}>${n}</option>`)}</select>
+      <b class="tt-printfor">${{ group: t("Qrup"), teacher: t("Müəllim"), room: t("Otaq") }[by]}: ${(lists[by].find(([id]) => id === pick) || [])[1] || ""}</b>
       ${editable() && items.length ? html`<button class="btn btn-ghost btn-sm" id="vr-lockall">${ic("lock", 14)} ${t("Hamısını kilidlə")}</button>` : ""}
 </div><p class="small muted tt-status" id="vr-status" role="status" aria-live="polite">${sel ? (opts ? t("«{c}» seçilib: yeni vaxtı seçin (Esc: ləğv)", { c: sel.course }) : t("Mümkün vaxtlar yoxlanılır…")) : ""}
         ${cursor && opts ? " " + DAYS()[cursor[0]] + ", " + PAIR(cursor[1]) + ": " + cellText(option(...cursor)) : ""}</p>
-      ${pick ? (items.length ? gridHtml() : html`<div class="card-b">${gridHtml()}<p class="muted small">${t("Bu seçimdə dərs yoxdur")}</p></div>`) : html`<div class="card-b">${empty("calendar", t("Seçim yoxdur"))}</div>`}`);
+      ${pick ? (items.length || fixed.length ? gridHtml() : html`<div class="card-b">${gridHtml()}<p class="muted small">${t("Bu seçimdə dərs yoxdur")}</p></div>`) : html`<div class="card-b">${empty("calendar", t("Seçim yoxdur"))}</div>`}`);
     if (cursor && opts) host.querySelector(`[data-slot="${cursor[0]}:${cursor[1]}"]`)?.focus();
   };
   const loadGrid = async () => {
-    if (!pick) { items = []; return drawGrid(); }
+    if (!pick) { items = []; fixed = []; return drawGrid(); }
     const r = await api.get(`/api/timetable/versions/${vid}/grid?${by}_id=${pick}`);
-    items = r.items; rev = r.version.rev; card.version = { ...card.version, ...r.version }; times = r.times; days = r.days;
+    items = r.items; fixed = r.fixed || []; rev = r.version.rev; card.version = { ...card.version, ...r.version }; times = r.times; days = r.days;
     drawGrid();
   };
   const draw = () => {

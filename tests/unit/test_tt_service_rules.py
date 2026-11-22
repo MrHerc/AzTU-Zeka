@@ -136,3 +136,20 @@ def test_a_move_is_checked_against_its_neighbourhood():
     for o in opts.values():                                                    # every slot it calls free really is
         if not o["reasons"]:
             assert domain.move_problems(problem, pls, {**pls[0], "weekday": o["weekday"], "period": o["period"], "room_id": o["room_id"]}) == []
+
+
+def test_review_readiness_a_confirmed_term_is_ok_and_hand_written_units_are_named():
+    """Task 48 review UX13: a confirmed term of 16 weeks against 15 expected stayed a warning nobody could clear; UX3:
+    units kept out of a run by their hand-written rows are a line of their own."""
+    st = {**ST, "confirmed": ["term_dates", "lesson_times", "pattern"], "weeks_expected": 15}
+    assert _line(domain.readiness(_facts(weeks=16), st, "2026-08-01"), "term_dates")["level"] == "ok"
+    assert _line(domain.readiness(_facts(weeks=16), {**st, "confirmed": [], "publish_requires": []}, "2026-08-01"), "term_dates")["level"] == "warn"
+    assert "manual_rows" not in {x["code"] for x in domain.readiness(_facts(), st, "2026-08-01")}
+    line = _line(domain.readiness(_facts(units_manual=[11]), st, "2026-08-01"), "manual_rows")
+    assert (line["level"], line["found"], line["of"], line["samples"], line["blocks"]) == ("warn", 1, 2, [11], [])
+
+
+def test_review_a_wrong_week_set_says_so():
+    """UX6: a week set the grammar refuses answered with the grid's general message."""
+    _, problem = domain.availability_input([{"weekday": 1, "period": 1, "level": "unavailable", "weeks": "tək"}], DAYS, 6, 15)
+    assert problem["az"].startswith("Xananın həftələri düzgün deyil")

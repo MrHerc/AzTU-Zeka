@@ -77,8 +77,13 @@ async function runEnds(p, ms = 120000) {
     await p.waitForSelector("tr[data-line='lesson_times']");
     const after = await p.$eval("tr[data-line='lesson_times']", (x) => x.innerText);
     const fixes = await p.$$eval("tr[data-line] a[href^='#/']", (xs) => xs.map((x) => x.getAttribute("href").slice(1)));
+    const termLine = await p.$eval("tr[data-line='term_dates']", (x) => x.innerText);
+    await p.click("[data-tab='settings']");
+    await p.waitForSelector("#st-save");
+    const fixedSlots = await p.$$eval("input[value='fixed_slots']", (xs) => xs.length);      // confirmed in one place only
+    const weeksExpected = await p.$$eval("#st-weeks_expected", (xs) => xs.length);
     await ctx.close();
-    return { blocked, saved, after, fixes, errors: S.errors };
+    return { blocked, saved, after, fixes, termLine, fixedSlots, weeksExpected, errors: S.errors };
   }, out);
 
   await run("teacher", async () => {
@@ -91,12 +96,15 @@ async function runEnds(p, ms = 120000) {
     const confirmed = await p.waitForSelector(".badge.b-green").then((x) => x.innerText());
     const cells = ["1:2", "1:3", "1:4", "1:5", "1:6", "3:1", "3:2", "3:3", "3:4", "3:5", "3:6", "4:1"];
     for (const c of cells) await p.click(`[data-cell='${c}']`);
+    await p.selectOption("#av-weeks", "odd");                       // the last cell, in odd weeks only, with a note
+    await p.fill("#av-note", "Doktorantura seminarı");
+    const weeksCell = await p.$eval("[data-cell='4:1']", (x) => x.innerText);
     const button = await p.$eval("#av-save", (x) => x.innerText);
     const meter = await p.$eval("#av-meter", (x) => x.innerText);
     const sent = await said(p, () => p.click("#av-save"));
     await p.waitForSelector(".badge.b-violet");
     await ctx.close();
-    return { confirmed, button, meter, sent, errors: S.errors };
+    return { confirmed, button, meter, sent, weeksCell, errors: S.errors };
   }, out);
 
   await run("head", async () => {
@@ -106,6 +114,7 @@ async function runEnds(p, ms = 120000) {
     await p.click("[data-decide]");
     await p.waitForSelector(".modal .tt-avail");
     const shown = await p.$$eval(".modal .tt-cell.lv-unavailable", (xs) => xs.length);
+    const modalText = await p.$eval(".modal", (x) => x.innerText);
     const decided = await said(p, () => p.click(".modal [data-act='1']"));
     await p.click("[data-tab='units']");
     await p.waitForSelector("[data-needs]");
@@ -117,7 +126,7 @@ async function runEnds(p, ms = 120000) {
     await p.waitForSelector("[data-needs]");
     const row = await p.$eval("[data-needs]", (b) => b.closest("tr").innerText);
     await ctx.close();
-    return { shown, decided, needs, row, errors: S.errors };
+    return { shown, modalText, decided, needs, row, errors: S.errors };
   }, out);
 
   await run("dean", async () => {
@@ -125,10 +134,11 @@ async function runEnds(p, ms = 120000) {
     await open(p, "/office/timetable");
     await p.waitForSelector("#og-all");
     const groups = await p.$$eval("[data-group]", (xs) => xs.length);
+    const heads = await p.$$eval("thead th", (xs) => xs.map((x) => x.textContent));
     await p.selectOption("#og-all", "morning");
     const saved = await said(p, () => p.click("#og-save"));
     await ctx.close();
-    return { groups, saved, errors: S.errors };
+    return { groups, heads, saved, errors: S.errors };
   }, out);
 
   await run("build", async () => {
@@ -142,10 +152,14 @@ async function runEnds(p, ms = 120000) {
     await p.waitForSelector("a[href*='/admin/timetable/build/version/']", { timeout: 15000 });
     await p.click("a[href*='/admin/timetable/build/version/']");
     await p.waitForSelector(".tt-item-b");
+    const title = await p.$eval("#vr-head h1", (x) => x.innerText);
     const draftMark = await p.emulateMedia({ media: "print" }).then(() => p.$eval(".tt-draftmark", (x) => getComputedStyle(x).display !== "none" && x.innerText));
+    const printFor = await p.$eval(".tt-printfor", (x) => getComputedStyle(x).display !== "none" && x.innerText);
+    const pickName = await p.$eval("#vr-pick", (x) => x.selectedOptions[0].text);
+    const hintPrinted = await p.$eval("#vr-head .ph-main > p", (x) => getComputedStyle(x).display !== "none");
     await p.emulateMedia({ media: "screen" });
     // keyboard only: focus a meeting, Enter, arrows to a free slot, Enter
-    await p.focus(".tt-item:not(.locked) .tt-item-b");
+    await p.focus(".tt-item:not(.locked):not(.fixed) .tt-item-b");
     await p.keyboard.press("Enter");
     await p.waitForSelector(".tt-gridwrap.moving");
     const reason = await p.$$eval(".tt-slot.no .tt-why", (xs) => xs.map((x) => x.innerText.trim()).filter(Boolean)[0] || "");
@@ -168,8 +182,15 @@ async function runEnds(p, ms = 120000) {
     const checked = await runEnds(p);
     await p.waitForFunction(() => [...document.querySelectorAll(".tt-vgrid .badge")].some((b) => b.classList.contains("b-green")), null, { timeout: 15000 });
     const url = p.url().split("#")[1];
+    await p.click("[data-by='teacher']");                           // the demo teacher's hand-written rows show, read-only
+    await p.waitForSelector("#vr-pick");
+    const teachers = await p.$$eval("#vr-pick option", (xs) => xs.map((x) => x.text));
+    const rauf = await p.$$eval("#vr-pick option", (xs) => (xs.find((x) => x.text.startsWith("Rauf")) || {}).value);
+    await p.selectOption("#vr-pick", rauf);
+    await p.waitForSelector(".tt-item.fixed");
+    const fixedRows = await p.$$eval(".tt-item.fixed", (xs) => xs.length);
     await ctx.close();
-    return { solved, draftMark, reason, status, moved, target: plan.target, stale, checked, url, errors: S.errors };
+    return { solved, title, draftMark, printFor, pickName, hintPrinted, reason, status, moved, target: plan.target, stale, checked, url, teachers, fixedRows, errors: S.errors };
   }, out);
 
   await run("no-publish", async () => {
@@ -200,8 +221,10 @@ async function runEnds(p, ms = 120000) {
     const published = await runEnds(p);
     await p.waitForFunction(() => [...document.querySelectorAll(".ph-actions .badge")].some((b) => b.classList.contains("b-green")), null, { timeout: 15000 });
     const printed = await p.emulateMedia({ media: "print" }).then(() => p.$$eval(".tt-draftmark", (xs) => xs.length));
+    const title = await p.$eval("#vr-head h1", (x) => x.innerText);
+    const hint = await p.$$eval("#vr-head .ph-main > p", (xs) => xs.length);
     await ctx.close();
-    return { unplaced, refused, queued, published, printed, errors: S.errors.filter((e) => !e.includes("status of 409")) };   // the refusal above
+    return { unplaced, refused, queued, published, printed, title, hint, errors: S.errors.filter((e) => !e.includes("status of 409")) };   // the refusal above
   }, out);
 
   await browser.close();

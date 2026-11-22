@@ -149,10 +149,10 @@
  "Yerləşdirilməyən dərslərin sayını yazın": "Type the number of unplaced classes",
  "Rəy mərhələsi olmadan dərcin səbəbi (ən azı 10 simvol)": "Reason for publishing without a review (at least 10 characters)",
  "Dərc növbəyə qoyuldu": "Publishing queued",
- "6-cı cüt": "6th pair",
- "7-ci cüt": "7th pair",
- "8-ci cüt": "8th pair",
- "Cüt {n}": "Pair {n}",
+ "6-cı cüt": "6th period",
+ "7-ci cüt": "7th period",
+ "8-ci cüt": "8th period",
+ "Cüt {n}": "Period {n}",
  "Boş": "Free",
  "Məşğulam": "Unavailable",
  "Arzuolunmaz": "Undesired",
@@ -206,7 +206,7 @@
  "Otaq növü (boşdursa: vahidin növünə görə)": "Room type (empty: by the unit's type)",
  "Yalnız bu otaqlar": "Only these rooms",
  "Yer sayını dəyişməyin səbəbi": "Reason for changing the seat count",
- "Bir dərsdə cüt sayı": "Pairs per class",
+ "Bir dərsdə cüt sayı": "Periods per class",
  "Forma": "Mode",
  "Onlayn": "Online",
  "Həftələrin bölgüsü (məs.: odd, even və ya 1-8)": "Week pattern (e.g. odd, even or 1-8)",
@@ -222,8 +222,8 @@
   "other": "{n} seats"
  },
  "{n} cüt": {
-  "one": "{n} pair",
-  "other": "{n} pairs"
+  "one": "{n} period",
+  "other": "{n} periods"
  },
  "Dəyiş": "Change",
  "Bu semestrdə kafedranın vahidi yoxdur": "The department has no units this term",
@@ -244,7 +244,7 @@
  "Təsdiq et": "Approve",
  "Yeni son tarix": "New deadline",
  "Uzat": "Extend",
- "Qrupların növbəsi: cədvəl qurulanda qrupun dərsləri yalnız öz növbəsinin cütlərinə qoyulur.": "Group shifts: when the timetable is built, a group's classes go only into its shift's pairs.",
+ "Qrupların növbəsi: cədvəl qurulanda qrupun dərsləri yalnız öz növbəsinin cütlərinə qoyulur.": "Group shifts: when the timetable is built, a group's classes go only into its shift's periods.",
  "Hamısına": "For all",
  "Göstərilməyib": "Not set",
  "Qrup yoxdur": "No groups",
@@ -253,7 +253,7 @@
  "Bütün həftələr təcrübə və ya başqa səbəblə dərsdən azaddır": "Every week is free of classes because of a placement or another reason",
  "Müəllim başqa dərsdədir": "The teacher has another class",
  "Qrup başqa dərsdədir": "The group has another class",
- "Günlük cüt həddi aşılır": "The daily limit of pairs is exceeded",
+ "Günlük cüt həddi aşılır": "The daily limit of periods is exceeded",
  "Kilidli yerləşdirmə qaydalara uyğun deyil": "A locked placement breaks the rules",
  "Boş vaxt var, amma axtarış onu tapmadı": "A free time exists, but the search did not find it"
 }
