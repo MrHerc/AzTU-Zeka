@@ -183,7 +183,7 @@ async function runEnds(p, ms = 120000) {
     await p.waitForFunction(() => [...document.querySelectorAll(".tt-vgrid .badge")].some((b) => b.classList.contains("b-green")), null, { timeout: 15000 });
     const url = p.url().split("#")[1];
     await p.click("[data-by='teacher']");                           // the demo teacher's hand-written rows show, read-only
-    await p.waitForSelector("#vr-pick");
+    await p.waitForSelector("[data-by='teacher'][aria-selected='true']");    // the teachers' list, not the groups' one still shown
     const teachers = await p.$$eval("#vr-pick option", (xs) => xs.map((x) => x.text));
     const rauf = await p.$$eval("#vr-pick option", (xs) => (xs.find((x) => x.text.startsWith("Rauf")) || {}).value);
     await p.selectOption("#vr-pick", rauf);

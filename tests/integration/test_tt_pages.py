@@ -41,7 +41,7 @@ def world(app_db) -> dict:
         dep = c.execute("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(?,'TTP','Sınaq kafedrası',1,?,?)",
                         (fid, now, now)).lastrowid
         groups = [c.execute("INSERT INTO study_groups(name,year,faculty_id,active) VALUES(?,2025,?,1)", (g, fid)).lastrowid
-                  for g in ("651a", "652a", "653a")]
+                  for g in ("6524a1", "6524a2", "6524a3")]
         for name, patronymic, username in (("Elçin Quliyev", "Rauf oğlu", "e.quliyev"), ("Leyla Həsənova", "Akif qızı", "l.hesenova")):
             c.execute("INSERT INTO users(username,full_name,patronymic,role,title,color,department_id,synthetic,consent_at) "
                       "VALUES(?,?,?,'teacher','','#333',?,1,?)", (username, name, patronymic, dep, now))
@@ -58,12 +58,14 @@ def world(app_db) -> dict:
     data = (FIX / "forma3_blocks.xlsx").read_bytes()
     r = admin.post("/api/admin/import", {"kind": "teaching-load", "source": "f3-a", "filename": "forma3_blocks.xlsx",
                                          "content_b64": base64.b64encode(data).decode(), "dry_run": False, "prefer_source": False})
-    assert r.status == 200 and r.json["inserted"] == 8, r.text
+    # the first block's five units; the others name groups, a subject or a person (two Leyla Həsənova) this registry lacks
+    assert r.status == 200 and r.json["inserted"] == 5, r.text
     c = store.connect()
     try:
         rauf = store.row(c, "SELECT id FROM users WHERE username='rauf'")["id"]
-        fizika = store.row(c, "SELECT u.id FROM teaching_units u JOIN courses co ON co.id=u.course_id WHERE co.code='FIZ-F3'")["id"]
-        c.execute("UPDATE teaching_units SET teacher_id=? WHERE id=?", (rauf, fizika))     # the demo teacher teaches in the department
+        seminar = store.row(c, "SELECT u.id FROM teaching_units u JOIN courses co ON co.id=u.course_id WHERE co.code='VB-F3' "
+                               "AND u.kind='seminar'")["id"]
+        c.execute("UPDATE teaching_units SET teacher_id=? WHERE id=?", (rauf, seminar))     # the demo teacher teaches in the department
         c.execute("UPDATE users SET department_id=? WHERE id=?", (dep, rauf))
         c.commit()
     finally:
@@ -137,7 +139,7 @@ def test_a_teacher_confirms_a_grid_and_one_above_the_cap_waits_for_the_head(seen
 def test_the_head_approves_the_pending_grid_and_saves_a_units_needs(seen):
     s = got(seen, "head")
     assert s["shown"] == 13 and s["decided"] == "Təsdiqləndi"
-    assert "26 yer" in s["row"] and re.search(r"65[123]a", s["row"]), s["row"]          # the unit's group is in its row
+    assert "26 yer" in s["row"] and re.search(r"6524a[123]", s["row"]), s["row"]          # the unit's group is in its row
     assert "tək həftələr" in s["modalText"] and "Doktorantura seminarı" in s["modalText"]
     rauf = seen["world"]["rauf"]
     assert q("SELECT COUNT(*) n FROM tt_availability WHERE subject_id=? AND level='unavailable'", (rauf,))[0]["n"] == 13
