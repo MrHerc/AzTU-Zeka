@@ -5,6 +5,9 @@
     "api_key": "",
     "model": "gpt-4o-mini",
     "timeout": 40,
+    "vendor": "",
+    "country": "",
+    "_vendor": "vendor və country: xidməti göstərən təşkilat və onun emal etdiyi ölkə; məxfilik bildirişində göstərilir, dəyişəndə xarici AI razılığı yenidən soruşulur",
     "_providers": "openai (OpenAI-uyğun API) | azure (base_url=https://<resurs>.openai.azure.com, model=<deployment>) | anthropic (model=claude-...)"
   }
 }

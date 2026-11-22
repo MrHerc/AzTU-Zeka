@@ -48,6 +48,8 @@ Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_ho
 | `AZTU_LLM_BASE_URL` | boş | OpenAI-uyğun və ya Azure son nöqtəsi |
 | `AZTU_LLM_API_KEY` | boş | LLM açarı. Yalnız `infra/.env`-də saxlanır, o da git-ə düşmür |
 | `AZTU_LLM_MODEL` | boş | Modelin adı |
+| `AZTU_LLM_VENDOR` | boş | Xidməti göstərən təşkilat (məsələn, "OpenAI, L.L.C."). Məxfilik bildirişində göstərilir. Xarici LLM qoşulubsa doldurulmalıdır |
+| `AZTU_LLM_COUNTRY` | boş | Xidmətin məlumatı emal etdiyi ölkə. Bildirişdə göstərilir; bu iki dəyər dəyişəndə xarici AI razılığı yenidən soruşulur (`docs/privacy/data-inventory.md`, "Qərarlar") |
 | `ZEKA_SMTP_HOST` | `smtp.aztu.edu.az` | E-poçt releyi (Task 36). Boş olarsa e-poçt növbəyə yazılmır, bildirişlər yalnız portalda görünür |
 | `ZEKA_SMTP_PORT` | `587` | Relenin portu. `ssl` ilə adətən `465` |
 | `ZEKA_SMTP_TLS` | `starttls` | `starttls`, `ssl` və ya `none`. `none` yalnız bu maşındakı relə (127.0.0.1) üçün: parol şəbəkədən açıq getmir |

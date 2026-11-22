@@ -291,7 +291,7 @@ V1 o zaman hazırdır ki, aşağıdakıların hamısı testlə və ya ölçmə i
 7. Qiymət sxemi bütün fənlər üçün eynidir, yoxsa fənn üzrə dəyişir.
 8. "Sillabus üçün NIST": NICE Framework xəritəsi və platformanın NIST nəzarətləri kimi başa düşmüşəm. Düzdür?
 9. İlk dalğanın fakültəsi, fənləri, başlama tarixi və kəsid tarixi (`journal.cutover_date` ayarı, T17; idxalda `as_of`). Dalğa 0-da yazı sistemi (müəllim hər iki sistemə, yoxsa yalnız Zəka-ya yazır): sual 19.
-10. Maddə 8 üzrə razılıq forması və maddə 15 üzrə qeydiyyat: AzTU hüquqşünasının rəyi.
+10. Maddə 8 üzrə razılıq forması və maddə 15 üzrə qeydiyyat: AzTU hüquqşünasının rəyi. Razılıq forması, saxlama, tələbə bileti nömrəsi və xarici AI üzrə qərarları sahibin tapşırığı ilə 2026-11-21-də verdim (`docs/privacy/data-inventory.md`, "Qərarlar"). Maddə 15 üzrə qeydiyyat açıq qalır.
 11. İmtahan sualının açarı və izahı nəticə açıqlanandan sonra tələbəyə göstərilirmi (məsələn, apellyasiyada)? Susmaya görə V1-də yox: baxış müəllimin ekranında aparılır (T26).
 12. İmtahan cəhdi gedərkən adi giriş imtahan sessiyasını bağlamır; cəhdi yalnız T28 və T29 yoxlamalarından keçən yeni imtahana giriş götürür (T27). Təsdiqlənirmi? Alternativdə (son giriş qalib gəlir) parolu bilən hər kəs imtahan verəni sessiyadan çıxarır.
 13. TOTP toxumu bazada açıq saxlanır; risk T41 təhdid modelində qəbul edilmiş kimi yazılır (T12). Toxumu mühit açarı ilə şifrələmək üçün `cryptography` icazəsi verilirmi?

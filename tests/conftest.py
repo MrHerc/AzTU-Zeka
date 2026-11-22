@@ -48,7 +48,7 @@ store.DATA = TMP / "data"
 store.UPLOADS = store.DATA / "uploads"
 store.DB_PATH = store.DATA / "campus.db"
 engine.ROOT = TMP  # no config.json here -> the demo engine is always used
-for _k in ("AZTU_LLM_PROVIDER", "AZTU_LLM_BASE_URL", "AZTU_LLM_API_KEY", "AZTU_LLM_MODEL"):
+for _k in ("AZTU_LLM_PROVIDER", "AZTU_LLM_BASE_URL", "AZTU_LLM_API_KEY", "AZTU_LLM_MODEL", "AZTU_LLM_VENDOR", "AZTU_LLM_COUNTRY"):
     os.environ.pop(_k, None)
 
 # The demo term is seeded around "today" (store.demo_term_start). One fixed today, a Thursday in week 10 of the autumn

@@ -972,6 +972,14 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 - [x] İxrac istifadəçiyə bağlı hər cədvəl sətrini ehtiva edir (test istifadəçi açarı olan cədvəlləri sadalayır). İstisna: `exam_forms` və açıqlanmamış imtahan balı ixraca düşmür; açıqlamadan sonra ixrac yalnız tələbənin öz cavablarını və balını verir, sual mətni və açar yoxdur. İstisna `data-inventory.md`-də yazılır; Task 26-nın sızma testi `/api/me/export`-u da çağırır.
 - [x] Silmə inventara uyğun silir və ya anonimləşdirir və auditdədir
 - [x] Xarici AI yalnız cari mətn versiyası üçün yazılmış razılıqla çağırılır
+- [x] Sahibin qərarları (2026-11-21):
+  - AI tutor və kampus köməkçisi hər rol üçün yalnız cari `ai` razılığı ilə işləyir; razılıq yoxdursa, 403 qaytarır və
+    heç nə saxlamır.
+  - Profildə razılığı geri götürmək olar; geri götürmə söhbətləri silir.
+  - Razılıq pəncərəsi yalnız AI səhifəsində çıxır və "İndi yox" düyməsi var.
+  - Xarici AI xidmətinin adı və ölkəsi bildirişdə ayardan göstərilir; başqa xidmət yeni versiyadır.
+  - Radar risk balı ixracdadır.
+  - Hüquqi suallar `docs/privacy/data-inventory.md`, "Qərarlar" bölməsində həll olunub.
 
 **Verification:**
 - [x] `python -m pytest tests/integration/test_privacy.py -q`
@@ -1053,6 +1061,20 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 - [ ] `python tools/loadtest.py --scenario exam --users 500 --dataset university --seconds 300`
 - [ ] `python backend/manage.py reconcile --wave 0 --source <mənbə>`
 - [ ] `infra/restore.sh` ikinci maşında
+
+**Sahibin verəcəkləri (BOŞ YERLƏR, 2026-11-21).** Sahib bu dəyərləri sonra verəcək, yerləri saxlanılsın. Dəyər
+`docs/runbooks/release-v1.md`-dəki "Sahibin verəcəkləri" cədvəlinə yazılır və burada işarələnir:
+- [ ] 1. Hədəf server: host, əməliyyat sistemi, disk, backup üçün ikinci host → `infra/.env` (serverdə), `release-v1.md`.
+  Gələnə qədər yerləşdirmə, serverdə yük testi, bərpa sınağı və izləmə bloklanır.
+- [ ] 2. Windows-da SEB 3.x ilə əl sınağı → `release-v1.md`, "Əl sınaqları". Gələnə qədər Task 28-in son meyarı və `seb`
+  rejimli ilk real imtahan bloklanır.
+- [ ] 3. İstinad `.seb` faylı və açarı → `tests/fixtures/reference.seb`, `reference.seb.key`. Gələnə qədər Task 28-in
+  Config Key meyarı bloklanır: test faylı gözləyir və bu yoxlamanı buraxır.
+- [ ] 4. İnsident əlaqələri (adlar, telefonlar) → hədəf serverdəki `docs/runbooks/incident.md`, git-ə yazılmır. Gələnə
+  qədər insident cavabının hazırlığı və Checkpoint F-də sahibin qərarı bloklanır.
+- [ ] 5. Təhlükəsizlik əlaqəsi və yoxlanma tarixi → `ZEKA_SECURITY_CONTACT`, `ZEKA_SECURITY_EXPIRES` (serverdə
+  `infra/.env`). Gələnə qədər `/.well-known/security.txt` verilmir.
+- [ ] 6. T0 anı → `release-v1.md`, "Anlar"; idxalda `--as-of`. Gələnə qədər dalğa 0-ın idxalı və uzlaşdırma bloklanır.
 
 **Dependencies:** Task 38, Task 41, Task 42, Task 43
 **Files likely touched:** `infra/.env` (serverdə), `docs/runbooks/release-v1.md`, `docs/perf/target.md`

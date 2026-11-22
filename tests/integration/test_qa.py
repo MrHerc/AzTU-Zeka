@@ -86,6 +86,7 @@ def test_the_ai_draft_is_the_teacher_s_until_published_and_a_faq_answer_is_cited
     assert shown["status"] == "answered" and [r["accepted"] for r in shown["replies"] if r["id"] == rid] == [1]
     assert student.get(f"/api/qa/topics/{t['id']}").json["replies"][0]["text"] == answer
     assert teacher.post(f"/api/qa/topics/{t['id']}/faq", {"on": True}).json["faq"] is True
+    assert student.post("/api/consent", {"ai": True}).status == 200       # a new account: the AI tutor needs its consent (Task 40)
     ask = student.post(f"/api/tutor/{forum['course']}/ask", {"message": "Kirxhofun ikinci qanununda EHQ-lərin işarəsini necə seçirik?",
                                                              "mode": "explain"}).json["answer"]
     assert any(c["material"] == "Fənnin FAQ-ı" for c in ask["cites"]), ask["cites"]

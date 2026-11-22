@@ -165,35 +165,6 @@ async function loginPage(root) {
 }
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-setlang]"); if (b) { e.preventDefault(); switchLang(b.dataset.setlang); } });
 
-// Task 40: the consent texts and their versions come from the server; the versions shown are sent back with the choice
-let consentOpen = false;
-async function consentModal(then) {
-  if (consentOpen) return;
-  consentOpen = true;
-  let p;
-  try { p = await api.get("/api/privacy"); } catch { consentOpen = false; return; }
-  const [ai, ext] = ["ai", "external_ai"].map((id) => p.purposes.find((x) => x.id === id));
-  modal({
-    title: t("Məlumatlarınızın emalı"), dismissable: false, onClose: () => { consentOpen = false; }, body: html`<div class="stack">
-      <p style="margin:0">${t("AI tutor və kampus köməkçisi suallarınızı emal edir. Davam etmək üçün razılığınızı təsdiqləyin.")}</p>
-      <ul class="consent-list">
-        <li>${ic("shield", 15)} <span>${t("Şəxsi məlumatlar (FİN, telefon, e-poçt) AI-yə göndərilməzdən əvvəl maskalanır.")}</span></li>
-        <li>${ic("lock", 15)} <span>${t("Tələbə məlumatları AI modellərini öyrətmək üçün istifadə edilmir.")}</span></li>
-        <li>${ic("eye", 15)} <span>${t("Tibbi sənədləri yalnız dekanlıq görür; müəllim fərdi söhbətlərinizi görmür.")}</span>
-          ${infoTip(t("Söhbətlər universitet platformasında {n} gün saxlanılır. Hər sənədə baxış audit jurnalına yazılır.", { n: p.retention.chats_days }))}</li>
-      </ul>
-      <label class="check"><input type="checkbox" id="c1"> ${ai.text}</label>
-      <label class="check"><input type="checkbox" id="c2"> ${ext.text} <span class="tiny muted">(${t("istəyə görə")})</span></label>
-      <span class="tiny muted">${t("Razılığı istənilən vaxt “Profil” bölməsində geri götürə bilərsiniz.")} <a href="#" data-privacy-notice>${t("Məxfilik bildirişi")}</a></span></div>`,
-    actions: [{ label: t("Qəbul edirəm"), cls: "btn-primary", onClick: async (w) => {
-      if (!w.querySelector("#c1").checked) { toast(t("Davam etmək üçün birinci razılıq tələb olunur"), "err"); return false; }
-      const r = await api.post("/api/consent", { ai: true, external: w.querySelector("#c2").checked, versions: { ai: ai.version, external_ai: ext.version } });
-      S.user.consent_at = r.consent_at; toast(t("Razılığınız qeydə alındı"), "ok");
-      setTimeout(then, 250);
-    } }],
-  });
-}
-
 // ---------------------------------------------------------------- router outlet with transitions
 let renderSeq = 0;
 async function render() {
@@ -238,9 +209,8 @@ async function render() {
   if (!S.user || seq !== renderSeq || AUDIT) return;
   const pend = sessionStorage.getItem("zeka-start-tour");
   if (pend) { sessionStorage.removeItem("zeka-start-tour"); setTimeout(() => { if (!startPageTour(pend)) toast(t("Bu səhifə üçün bələdçi hələ hazırlanmayıb")); }, 450); return; }
-  const tourTime = () => setTimeout(() => startTour(false), 500);
-  if (S.user.role === "student" && !S.user.consent_at) { if (!document.querySelector(".modal-back")) consentModal(tourTime); }
-  else if (!tourDone(S.user.role) && path === HOME[S.user.role]) tourTime();
+  // Task 40: no portal-wide consent dialog; the AI pages ask for theirs (privacy.aiConsent, chat.js)
+  if (!tourDone(S.user.role) && path === HOME[S.user.role]) setTimeout(() => startTour(false), 500);
   else setTimeout(maybeHint, 1200);
 }
 

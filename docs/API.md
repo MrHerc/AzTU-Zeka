@@ -186,7 +186,7 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `GET` | `/api/submissions/{id}` | its student, the course's teachers | One submission (an audited read for the teacher) |
 | `POST` | `/api/submissions/{id}/grade` | the course's teachers | `{"score", "feedback"?}`; the component's total goes to the grade journal as a draft |
 | `GET` | `/api/materials/{id}/file` | the course's students (current version), its teachers (any) | A material's original file as uploaded |
-| `POST` | `/api/consent` | any | Record consent to AI processing |
+| `POST` | `/api/consent` | any | Record or withdraw a consent per purpose (Task 40, below) |
 
 ### Bulk import (Task 16)
 
@@ -514,9 +514,45 @@ Works with or without a session. Returns:
 | `home` | Home route of the user's role, or `null` |
 | `unread` | Number of unread notifications |
 
-### `POST /api/consent`
+### Privacy (Task 40)
 
-Body: `{"ai": <bool>, "external": <bool>}`. `ai` counts as given unless it is `false`; `external` (consent to send questions to an external AI service) only when it is `true`. The choice is stored in the user's preferences and in the audit log. A student's tutor questions go to a configured LLM only when `external` was given. Response: `{"ok": true, "consent_at": "<timestamp>"}`.
+The purposes, the legal bases and the decisions behind them are in `docs/privacy/data-inventory.md`.
+
+**`GET /api/privacy`** (with or without a session) returns the following:
+
+- `purposes`: `ai` (the AI tutor and the campus assistant inside the platform) and `external_ai` (masked questions sent to the external AI service). Each has `id`, `text`, `version` and the person's newest `consent`: `granted`, `version`, `at`, `method` and `current` (whether it was given to the current version). Without a session, `consent` is `null`.
+- `retention`: the retention periods in days.
+- `operator`: the university's name.
+- `external_ai`: `enabled`, `vendor` and `country`, taken from the LLM settings. The notice names the service and its country from them; the key and the address are never returned.
+- `requests`: the person's own deletion requests (with a session only).
+
+A version is the first 12 hex digits of the SHA-256 of the text consented to. For `external_ai` that text includes the configured `vendor` and `country`, so another service is a new version.
+
+**`POST /api/consent`** takes `{"ai": <bool>, "external": <bool>, "versions": {"ai": "...", "external_ai": "..."}}`:
+
+- Each boolean that is present is one `consents` row with method `portal`, plus the text in `consent_texts` and an audit `consent` entry. A body with neither boolean records `ai: true`.
+- `versions` names the version the page showed. Another version gives `409`, and so does an `external: true` without its version.
+- `ai: false` withdraws the AI study aids' consent and deletes the person's AI chats at once. The audit entry carries `chats_deleted`.
+
+Response: `{"ok": true, "consent_at": ..., ...}` followed by the `GET /api/privacy` fields. `consent_at` mirrors the `ai` consent.
+
+Without a current `ai` consent, the tutor (`POST /api/tutor/{cid}/ask`) and the campus assistant (`POST /api/campus/ask`) answer `403` with a translated message. They store nothing. Every role is covered. The rest of the portal does not depend on this consent.
+
+**`GET /api/me/export`** returns the signed-in person's own rows as a JSON file (`Content-Disposition: attachment`). The format is `zeka-export/1` with these fields: `generated_at`, `user_id`, `tables` (table → rows), `not_exported` (the inventory's columns that are never exported) and `notice`. Each export writes `privacy_export` to the audit log.
+
+The export leaves out the following:
+
+- secrets;
+- `audit.detail`, `files.path` and `exam_events.actor_id`;
+- `teacher_questions.ai_draft` (the teacher's unsent AI draft);
+- exam forms and questions;
+- unreleased exam scores;
+- draft grades;
+- other people's rows.
+
+The Zəka Radar support plan's `interventions.risk_before`, `interventions.level_before` and `interventions.drivers` **are** exported. This is the owner's decision of 2026-11-21: they are the student's own data. The student screens still leave them out (Zəka Radar, below).
+
+**`POST /api/me/erase`** takes `{"reason"?}` and sends a deletion request. A second request while one is pending gives `409`. The academic office decides with `GET /api/privacy/requests` and `POST /api/privacy/requests/{id}/decide` (`privacy.decide`), as `docs/privacy/data-inventory.md` describes.
 
 ## Profile, notifications, search and files
 
@@ -611,9 +647,9 @@ Course access means: students must be enrolled, teachers must teach the course, 
 | `message` | string | Required, cut to 2,000 characters |
 | `mode` | `socratic`, `explain` or `practice` | Must be one of the modes the teacher allows; otherwise the first allowed mode is used |
 
-Errors: `400` empty message, `423` tutor locked by the teacher (students only), `429` daily limit reached (students only; default 50 messages per day across the tutor and the campus assistant) or more than 30 assistant calls in a minute.
+Errors: `400` empty message, `403` no current consent for the AI study aids (any role; nothing is stored, see Privacy above), `423` tutor locked by the teacher (students only), `429` daily limit reached (students only; default 50 messages per day across the tutor and the campus assistant) or more than 30 assistant calls in a minute.
 
-The message is masked for personal data (unless the administrator turned masking off), then answered by the configured LLM when one is enabled and a relevant passage exists, and by the offline engine otherwise. A student's question goes to the LLM only after the student consented to external AI processing (`POST /api/consent` with `external: true`). In practice mode the message is either an answer to the pending question or a request for a new one. The answer `meta` can contain `mode`, `topic`, `level` (Socratic step), `guardrail` (the user asked for a finished answer), `no_source`, `practice_qid`, `graded`, `correct`, `engine` and `note` (why the LLM was not used).
+The message is masked for personal data (unless the administrator turned masking off), then answered by the configured LLM when one is enabled and a relevant passage exists, and by the offline engine otherwise. A question goes to the LLM only after the person consented to the current external AI text and service (`POST /api/consent` with `external: true` and its version); otherwise the offline engine answers and `meta.note` says why. In practice mode the message is either an answer to the pending question or a request for a new one. The answer `meta` can contain `mode`, `topic`, `level` (Socratic step), `guardrail` (the user asked for a finished answer), `no_source`, `practice_qid`, `graded`, `correct`, `engine` and `note` (why the LLM was not used).
 
 ```http
 POST /api/tutor/1/ask
@@ -652,7 +688,7 @@ Body: `{"rating": 1}` or `{"rating": -1}`; any other number clears the rating. O
 
 ### `POST /api/campus/ask`
 
-Body: `{"message": "..."}`, required, cut to 1,500 characters. The same daily limit and per-minute limit apply. English and Russian keywords are expanded to the Azerbaijani terms used in the knowledge base. Before the knowledge base the assistant answers two questions from the university's own records (Task 31): where a room is (by its code, its name, or a number in a question about a place) with the way from the building's entrance, step-free when the question mentions a lift or a wheelchair; and the person's next lesson ("növbəti dərsim hardadır") from their timetable, with its room and the way. Such an answer has `meta.source` `rooms` or `timetable` and a link action (`{"type": "link", "href": "/r/{code}"}`). `answer.meta.actions` lists request forms the user can open from the answer:
+Body: `{"message": "..."}`, required, cut to 1,500 characters. The same consent (`403` without it), daily limit and per-minute limit apply. English and Russian keywords are expanded to the Azerbaijani terms used in the knowledge base. Before the knowledge base the assistant answers two questions from the university's own records (Task 31): where a room is (by its code, its name, or a number in a question about a place) with the way from the building's entrance, step-free when the question mentions a lift or a wheelchair; and the person's next lesson ("növbəti dərsim hardadır") from their timetable, with its room and the way. Such an answer has `meta.source` `rooms` or `timetable` and a link action (`{"type": "link", "href": "/r/{code}"}`). `answer.meta.actions` lists request forms the user can open from the answer:
 
 ```json
 {
@@ -1299,7 +1335,7 @@ Early warning: a risk score per student and course from attendance, grades, test
 | `POST` | `/api/student/plans/{id}/steps` | `student`, own plan | Mark a step done or not done |
 | `GET` | `/api/demo/storyline` | public, demo mode only | Ids of the demo storyline students and their course |
 
-Scope: a teacher sees the courses they teach (`403` when they teach none); `office`, `leader` and `admin` see all courses. Student access means the student exists (`404` otherwise) and is enrolled in a course in scope (`403` otherwise). Students never see a risk score: the student endpoints leave out `risk_before`, `level_before` and `drivers`.
+Scope: a teacher sees the courses they teach (`403` when they teach none); `office`, `leader` and `admin` see all courses. Student access means the student exists (`404` otherwise) and is enrolled in a course in scope (`403` otherwise). Students never see a risk score on screen: the student endpoints leave out `risk_before`, `level_before` and `drivers`. The student's own data export (`GET /api/me/export`) does include them (the owner's decision of 2026-11-21, Privacy above).
 
 Reading a plan (any endpoint that returns one) first ticks open steps that the student's activity since the plan was sent has completed, and closes the plan as `completed` when every step is done; the plan's author is then notified.
 

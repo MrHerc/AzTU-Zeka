@@ -198,7 +198,7 @@ SQLite at `data/campus.db`, WAL journal, `PRAGMA foreign_keys=ON` (the schema de
 
 | Domain | Tables | Notes |
 |---|---|---|
-| Identity and settings | `settings`, `study_groups`, `users`, `sessions` | `settings` holds JSON values (university, faculty, specialty, demo logins, limits, semester start, vocabularies). `users.prefs` holds theme, language, sidebar state, completed tours, the consent choice and the academy self-assessment. `users.synthetic` marks generated people. `sessions` holds the id, the user and the creation time |
+| Identity and settings | `settings`, `study_groups`, `users`, `sessions` | `settings` holds JSON values (university, faculty, specialty, demo logins, limits, semester start, vocabularies). `users.prefs` holds theme, language, sidebar state, completed tours and the academy self-assessment; consents are rows in `consents` with their text in `consent_texts` (Task 40). `users.synthetic` marks generated people. `sessions` holds the id, the user and the creation time |
 | Teaching | `courses`, `enrollments`, `timetable`, `lessons`, `attendance`, `grades` | `timetable` is the weekly pattern; `lessons` are dated instances generated from it since the semester start; `attendance` rows are per lesson and student with status `present`, `late`, `absent` or `excused` and the excusing request id; `courses` carries the tutor settings (`tutor_modes`, `tutor_rules`, `tutor_locked`) |
 | Material and knowledge | `materials`, `chunks`, `campus_kb` | A material keeps the full text; `chunks` are its sections, which are the unit of retrieval and citation; `campus_kb` entries come from `content/campus_kb.md` and may point to a request type |
 | Conversations | `messages`, `teacher_questions` | `messages.channel` is `tutor` (per course) or `campus`; `cites` is a list of chunk or knowledge base ids; `meta` holds mode, topic, Socratic level, practice state, PII labels and engine notes; `rating` is 1, -1 or null |
@@ -341,7 +341,7 @@ Before a question reaches the retrieval or an LLM, `mask_pii()` replaces e-mail 
 
 ### LLM client
 
-`llm_config()` merges `config.json` in the repository root (key `llm`) with the environment variables `AZTU_LLM_PROVIDER`, `AZTU_LLM_BASE_URL`, `AZTU_LLM_API_KEY` and `AZTU_LLM_MODEL`; environment values win. The provider is enabled only when both an API key and a model are set. `llm_chat(system, messages, max_tokens)` posts with `urllib` to the OpenAI chat completions endpoint, the Azure OpenAI deployment endpoint (`api-version` configurable, default `2024-10-21`) or the Anthropic Messages API, with a configurable timeout (default 40 seconds) and temperature 0.3 where supported. The endpoint must use `https://`; `http://` is accepted only for `127.0.0.1`, `localhost` and `::1`. Any exception propagates to the caller, which falls back to the offline engine.
+`llm_config()` merges `config.json` in the repository root (key `llm`) with the environment variables `AZTU_LLM_PROVIDER`, `AZTU_LLM_BASE_URL`, `AZTU_LLM_API_KEY`, `AZTU_LLM_MODEL`, `AZTU_LLM_VENDOR` and `AZTU_LLM_COUNTRY`; environment values win. The vendor and country are what the privacy notice names; they are part of the external AI consent's version. The provider is enabled only when both an API key and a model are set. `llm_chat(system, messages, max_tokens)` posts with `urllib` to the OpenAI chat completions endpoint, the Azure OpenAI deployment endpoint (`api-version` configurable, default `2024-10-21`) or the Anthropic Messages API, with a configurable timeout (default 40 seconds) and temperature 0.3 where supported. The endpoint must use `https://`; `http://` is accepted only for `127.0.0.1`, `localhost` and `::1`. Any exception propagates to the caller, which falls back to the offline engine.
 
 ## 10. Tutor and campus assistant
 
@@ -349,10 +349,10 @@ Before a question reaches the retrieval or an LLM, `mask_pii()` replaces e-mail 
 
 1. The course is loaded with access checks; a locked tutor returns 423 to students.
 2. The mode is taken from the body if the course allows it, otherwise the first allowed mode.
-3. The daily limit is checked for students (default 50 user messages per day across all channels; 429 when reached), then the per-user `ai` rate limit (30 calls per minute; 429).
+3. Without the person's consent to the current `ai` text the request ends with a translated 403 and nothing is stored (Task 40; the campus assistant does the same). Then the daily limit is checked for students (default 50 user messages per day across all channels; 429 when reached), then the per-user `ai` rate limit (30 calls per minute; 429).
 4. The message is PII-masked if enabled and the last 12 messages of this user and course are loaded as history.
 5. Practice mode goes to `practice_turn()`. Other modes retrieve the top 4 chunks of the course.
-6. If an LLM is enabled and the best chunk scores at least 1.2, a student's question goes to the LLM only when the student gave the optional consent to external AI processing (`prefs.consent.external`); otherwise the offline engine answers and the metadata note says why. `llm_tutor()` builds a system prompt with the course name, the teacher's rules, the answer language and the top sources (up to 1,500 characters each), sends the last 6 messages, with earlier user messages masked again when masking is on, and renumbers the model's `[n]` citations to the sources actually used. On any error the offline engine answers and the error type is recorded in the message metadata as a note.
+6. If an LLM is enabled and the best chunk scores at least 1.2, a question goes to the LLM only when the person consented to the current external AI text and service (`privacy.allowed`, Task 40); otherwise the offline engine answers and the metadata note says why. `llm_tutor()` builds a system prompt with the course name, the teacher's rules, the answer language and the top sources (up to 1,500 characters each), sends the last 6 messages, with earlier user messages masked again when masking is on, and renumbers the model's `[n]` citations to the sources actually used. On any error the offline engine answers and the error type is recorded in the message metadata as a note.
 7. Otherwise `compose_tutor()` answers offline.
 8. The original user message and the answer are stored; the response carries the answer, its citations and the usage counter.
 
@@ -418,11 +418,11 @@ The application is a set of ES modules in `frontend/js/`, loaded by `frontend/in
 |---|---|
 | `core.js` | Shared state `S`, the `html` tagged template (escapes interpolated values; `raw()` opts out), `mount`, event delegation, the `api` client (adds `X-Lang`; the session is the cookie; redirects to login on 401), the hash router with `:param` and optional `:param?` segments, the page-tour registry, date and number formatting, status badges, toasts, modals and confirmation dialogs |
 | `shell.js` | Role definitions, navigation per role, header, badges, language switch, theme, sidebar state |
-| `main.js` | Boot, login page (with the access code field when `app.access_required` is true), consent dialog, route rendering with view transitions, profile and notification pages, error capture, an overflow audit mode (`?audit=1`) for automated layout checks |
+| `main.js` | Boot, login page (with the access code field when `app.access_required` is true), route rendering with view transitions, profile and notification pages, error capture, an overflow audit mode (`?audit=1`) for automated layout checks |
 | `student.js`, `services.js`, `news.js`, `teacher.js`, `academy.js`, `staff.js`, `support.js`, `guide.js`, `achievements.js` | Pages per area |
 | `radar.js` | Radar dashboard (`#/radar`), student profile (`#/radar/student/:id`) and the student's support plan (`#/student/plan/:id?`) |
 | `demo.js` | Three-minute presenter mode: a floating script that switches roles and opens the pages of the Radar storyline; started from the login page, with `?demo=1` or from the profile menu; state in `sessionStorage` |
-| `chat.js` | Chat interface shared by the tutor and the campus assistant: modes, citations, ratings, forwarding to the teacher |
+| `chat.js` | Chat interface shared by the tutor and the campus assistant: modes, citations, ratings, forwarding to the teacher; without the AI consent the composer stays closed and `privacy.aiConsent` asks for it ("not now" allowed) |
 | `tour.js` | Welcome tour and page guides; completed tours are kept in `localStorage` and in `prefs.tours` |
 | `i18n.js` | Language detection, catalogue loading, `t()` |
 | `print.js` | Print button on document and syllabus pages |
@@ -499,6 +499,5 @@ CI: `.github/workflows/ci.yml` runs ruff, mypy, `node --check` over `frontend/js
 - In demo mode `GET /api/demo/storyline` is public and returns the ids of the storyline students and course.
 - Reading a Radar plan can write to the database (automatic step progress and plan completion).
 - The leadership dashboard's targets are constants in `modules/insight/service.py`, not tenant settings.
-- Consent cannot be withdrawn; the profile page describes the planned behaviour.
 - The Render free plan has no disk, so uploads, consent and tour state are lost on restart.
 - `backend/zeka/legacy/api.py` exists only as a compatibility import for `backend/run.py` and the tests.

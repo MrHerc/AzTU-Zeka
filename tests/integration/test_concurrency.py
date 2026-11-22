@@ -161,9 +161,11 @@ def test_the_pdf_preview_runs_under_the_slow_slots():
 
 def test_tutor_answers_waiting_on_the_llm_leave_reads_and_writes_fast(teacher, student, monkeypatch):
     from zeka.legacy import r_learning, tutor
+    from zeka.modules.identity import privacy
     cid = teacher.get("/api/courses").json[0]["id"]
-    assert teacher.post("/api/consent", {"external": True}).status == 200      # Task 40: the external AI needs a consent
     monkeypatch.setattr(engine, "llm_config", lambda: {"enabled": True, "provider": "openai", "model": "fake", "api_key": "x", "base_url": "https://x"})
+    # Task 40: the external AI needs a consent to the version the page showed (Checkpoint F, SF-F9)
+    assert teacher.post("/api/consent", {"ai": True, "external": True, "versions": {"external_ai": privacy.version("external_ai")}}).status == 200
     monkeypatch.setattr(r_learning, "search_chunks", lambda course_id, q: [{"score": 5.0}])
     monkeypatch.setattr(tutor, "llm_tutor", lambda *a, **k: time.sleep(1.5) or {"text": "ok", "cites": [], "meta": {"mode": "explain"}})
     with ThreadPoolExecutor(4) as pool:

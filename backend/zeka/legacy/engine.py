@@ -355,6 +355,8 @@ def llm_config() -> dict:
         "base_url": os.environ.get("AZTU_LLM_BASE_URL"),
         "api_key": os.environ.get("AZTU_LLM_API_KEY"),
         "model": os.environ.get("AZTU_LLM_MODEL"),
+        "vendor": os.environ.get("AZTU_LLM_VENDOR"),       # the service and its country, as the privacy notice names them
+        "country": os.environ.get("AZTU_LLM_COUNTRY"),
     }
     cfg.update({k: v for k, v in env.items() if v})
     cfg["enabled"] = bool(cfg.get("api_key") and cfg.get("model"))

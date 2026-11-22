@@ -12,7 +12,8 @@ Kim üçün: növbətçi admin, AzTU İT və məhsulun sahibi. Nəzarət: NIST C
 | AzTU İT | İT şöbəsinin rəhbəri | Server, şəbəkə, backup açarının ikinci nüsxəsi |
 | Hüquqşünas | Universitet | Fərdi məlumat pozuntusunda bildiriş qərarı |
 
-Adlar və telefonlar bu cədvələ hədəf serverdə yazılır (Task 44). Kənardan gələn zəiflik bildirişi
+Adlar və telefonlar bu cədvələ hədəf serverdə yazılır (Task 44). **Hələ boşdur:** sahib sonra verəcək
+(`docs/runbooks/release-v1.md`, "Sahibin verəcəkləri", 4). Kənardan gələn zəiflik bildirişi
 `ZEKA_SECURITY_CONTACT` ünvanına gəlir (`/.well-known/security.txt`).
 
 ## Səviyyələr

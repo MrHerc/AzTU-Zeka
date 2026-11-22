@@ -191,7 +191,7 @@ You can switch roles from the profile menu. A role can also be opened directly w
 
 ### Connecting an LLM
 
-By default the offline engine answers from the material. To use a hosted model, copy `config.example.json` to `config.json` and fill in the provider, base URL, API key and model, or set the environment variables `AZTU_LLM_PROVIDER`, `AZTU_LLM_BASE_URL`, `AZTU_LLM_API_KEY` and `AZTU_LLM_MODEL`. Supported providers:
+By default the offline engine answers from the material. To use a hosted model, copy `config.example.json` to `config.json` and fill in the provider, base URL, API key and model, or set the environment variables `AZTU_LLM_PROVIDER`, `AZTU_LLM_BASE_URL`, `AZTU_LLM_API_KEY` and `AZTU_LLM_MODEL`. Also set `vendor` and `country` (`AZTU_LLM_VENDOR`, `AZTU_LLM_COUNTRY`): the organisation that runs the service and the country it processes in. The privacy notice names both, and changing either asks every person for the external AI consent again (`docs/privacy/data-inventory.md`). Supported providers:
 
 | `provider` | Endpoint used | Notes |
 |---|---|---|
@@ -255,7 +255,7 @@ The compose file publishes the port on this computer only. The script, what to s
 
 A walk-through that shows the main flows in about 12 minutes:
 
-1. **Student**: accept the consent dialog, follow the welcome tour, ask the AI tutor a question in Socratic mode, click a citation to open the source, switch the interface to English or Russian.
+1. **Student**: follow the welcome tour, ask the AI tutor a question in Socratic mode (the demo's people have already consented to the AI study aids; withdraw it in the profile to see the consent dialog the tutor page then shows), click a citation to open the source, switch the interface to English or Russian.
 2. **Student**: order an enrolment certificate in E-services; open Attendance and excuse an absence with a medical certificate.
 3. **Dean's office**: approve the request, preview the document inside the portal, issue it; answer a support ticket and change its status.
 4. **Teacher**: upload a material, generate questions in Test Studio, approve them, publish a test; complete an AI Academy module to receive a certificate.

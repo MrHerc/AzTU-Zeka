@@ -1,9 +1,11 @@
 """Privacy (tasks/todo.md, Task 40): consent per purpose and text version, the person's own export, the request to
 delete their data and its decision, and the retention periods.
 
-A consent text's version is the first 12 hex digits of the SHA-256 of its Azerbaijani source, so editing the text is a
-new version: the external AI then waits until the person consents to the new text (``allowed``). Which column holds a
-person's id, and what the export and an erasure do with it, is ``repo.INVENTORY`` (docs/privacy/data-inventory.md).
+A consent text's version is the first 12 hex digits of the SHA-256 of the text the person consents to (``consent_text``), so
+editing the text is a new version: the AI tutor and the campus assistant (``ai``) and the external AI then wait until the
+person consents to the new text (``allowed``). The ``ai`` consent is the basis of the optional AI study aids only: the rest
+of the portal never depends on it (docs/privacy/data-inventory.md, "AI köməkçiləri"). Which column holds a person's id,
+and what the export and an erasure do with it, is ``repo.INVENTORY``.
 """
 from __future__ import annotations
 
@@ -13,6 +15,7 @@ import re
 
 from ...core import perms
 from ...core.i18n import E, S_, T3
+from ...legacy import engine
 from ...legacy.common import covers, step_actors
 from ...legacy.store import audit, iso, notify, now, setting, set_setting
 from . import repo
@@ -20,10 +23,10 @@ from . import repo
 PURPOSES = {      # the Azerbaijani source is the legal text; its translations follow it
     "ai": S_("Suallarımın və söhbətlərimin AI tutor və kampus köməkçisi tərəfindən fənn materialları əsasında universitet "
              "platformasında emalına razıyam."),
-    "external_ai": S_("Maskalanmış suallarımın cavab hazırlamaq üçün universitetin qoşduğu xarici AI xidmətinə, o cümlədən ölkə "
-                      "xaricinə göndərilməsinə razıyam. Bu razılığı istənilən vaxt geri götürə bilərəm."),
+    "external_ai": S_("Maskalanmış suallarımın cavab hazırlanması üçün universitetin qoşduğu xarici AI xidmətinə göndərilməsinə "
+                      "razıyam. Xidmətin adı və yerləşdiyi ölkə məxfilik bildirişində göstərilir; bu ölkə Azərbaycan "
+                      "Respublikasından kənarda ola bilər. Bu razılığı istənilən vaxt geri götürə bilərəm."),
 }
-REQUIRED = ("ai",)            # the portal's AI features ask for it first; the external AI is optional
 FIELDS = {"ai": "ai", "external": "external_ai"}     # the body of POST /api/consent -> purpose
 SECRET = re.compile(r"password|secret|nonce|verifier|_hash$|^totp_")      # never in an export, whatever the table
 OMIT = {"audit": ("detail",), "files": ("path",), "exam_events": ("actor_id",),      # details that name other people or the disk
@@ -34,8 +37,24 @@ RETENTION = {"chats_days": ("retention_days", 180, 30, 3650), "community_days": 
              "audit_days": ("audit_retention_days", 1825, 365, 3650)}
 
 
+def service() -> dict:
+    """The external AI service the notice names, from the LLM settings (``llm.vendor``/``llm.country`` in config.json or
+    AZTU_LLM_VENDOR/AZTU_LLM_COUNTRY); never its key or address."""
+    cfg = engine.llm_config()
+    return {"enabled": cfg["enabled"], "vendor": cfg.get("vendor") or None, "country": cfg.get("country") or None}
+
+
+def consent_text(purpose: str) -> str:
+    """The text a consent is given to. The external AI's carries the service and country the notice names, so another
+    service is a new version and the consents to the old one stop (Qərarlar, data-inventory.md)."""
+    if purpose != "external_ai":
+        return PURPOSES[purpose]
+    s = service()
+    return f"{PURPOSES[purpose]}\n{s['vendor'] or '—'} · {s['country'] or '—'}"
+
+
 def version(purpose: str) -> str:
-    return hashlib.sha256(PURPOSES[purpose].encode("utf-8")).hexdigest()[:12]
+    return hashlib.sha256(consent_text(purpose).encode("utf-8")).hexdigest()[:12]
 
 
 def allowed(c, uid: int, purpose: str = "external_ai") -> bool:
@@ -46,12 +65,13 @@ def allowed(c, uid: int, purpose: str = "external_ai") -> bool:
 
 def state(c, u: dict | None) -> dict:
     """The purposes with their current texts and, for a signed-in person, their choices and deletion requests."""
-    out: dict = {"purposes": [], "retention": retention(c), "operator": (setting(c, "university", {}) or {}).get("name")}
+    out: dict = {"purposes": [], "retention": retention(c), "operator": (setting(c, "university", {}) or {}).get("name"),
+                 "external_ai": service()}
     for p, text in PURPOSES.items():
-        mine = repo.consent_of(c, u["id"], p) if u else None
-        out["purposes"].append({"id": p, "text": text, "version": version(p), "required": p in REQUIRED,
+        v, mine = version(p), repo.consent_of(c, u["id"], p) if u else None
+        out["purposes"].append({"id": p, "text": text, "version": v,
                                 "consent": {"granted": bool(mine["granted"]), "version": mine["version"], "at": mine["at"],
-                                            "method": mine["method"], "current": mine["version"] == version(p)} if mine else None})
+                                            "method": mine["method"], "current": mine["version"] == v} if mine else None})
     if u:
         out["requests"] = repo.privacy_requests_of(c, u["id"])
     return out
@@ -72,12 +92,15 @@ def record(c, u: dict, body, lang: str) -> tuple[str, object]:
         return "stale", E("Razılıq mətni yenilənib: səhifəni yeniləyib mətni yenidən oxuyun")
     at = iso(now())
     for p, granted in choices.items():
-        repo.add_consent(c, u["id"], p, version(p), granted, "portal", lang, at, PURPOSES[p])
+        repo.add_consent(c, u["id"], p, version(p), granted, "portal", lang, at, consent_text(p))
     consent_at = u.get("consent_at")
-    if "ai" in choices:                                 # the portal's own record of the required consent (the modal)
+    detail: dict[str, object] = {p: {"granted": g, "version": version(p)} for p, g in choices.items()}
+    if "ai" in choices:                                 # users.consent_at mirrors the AI study aids' consent
         consent_at = at if choices["ai"] else None
         repo.set_consent_at(c, u["id"], consent_at)
-    audit(c, u["id"], "consent", "user", json.dumps({p: {"granted": g, "version": version(p)} for p, g in choices.items()}))
+        if not choices["ai"]:      # no other basis keeps the chats once the consent is withdrawn (EDPB Guidelines 05/2020, 117)
+            detail["chats_deleted"] = repo.delete_chats(c, u["id"])
+    audit(c, u["id"], "consent", "user", json.dumps(detail))
     return "ok", {"ok": True, "consent_at": consent_at, **state(c, u)}
 
 

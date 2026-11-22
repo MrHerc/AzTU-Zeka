@@ -390,6 +390,11 @@ def set_consent_at(c, uid: int, at: str | None):
     c.execute("UPDATE users SET consent_at=? WHERE id=?", (at, uid))
 
 
+def delete_chats(c, uid: int) -> int:
+    """The person's AI tutor and campus assistant chats (``messages`` holds nothing else)."""
+    return c.execute("DELETE FROM messages WHERE user_id=?", (uid,)).rowcount
+
+
 def privacy_request(c, rid: int):
     return row(c, "SELECT * FROM privacy_requests WHERE id=?", (rid,))
 

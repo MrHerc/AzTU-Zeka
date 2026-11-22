@@ -30,6 +30,14 @@ def _ai_quota(u):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
 
 
+def _ai_consent(c, u):
+    """The AI tutor and the campus assistant are optional study aids: only with the person's consent to the current
+    text (Task 40, the owner's decision of 2026-11-21). Checked before anything is counted or stored."""
+    if not privacy.allowed(c, u["id"], "ai"):
+        raise HTTPError(403, "AI tutor və kampus köməkçisi yalnız razılığınızla işləyir. Razılığı köməkçinin səhifəsində "
+                             "və ya “Profil” bölməsində verə bilərsiniz.")
+
+
 def _masked_history(hist, enabled):
     if not enabled:
         return hist
@@ -386,6 +394,7 @@ def tutor_ask(req):
         raise HTTPError(423, "Müəllim bu fənn üzrə tutoru müvəqqəti bağlayıb (məsələn, test davam edir).")
     modes = J(course["tutor_modes"], ["socratic"])
     mode = body.get("mode") if body.get("mode") in modes else modes[0]
+    _ai_consent(c, u)
     used, lim = check_limit(c, u)
     _ai_quota(u)
     masking = setting(c, "limits", {}).get("pii_masking", True)
@@ -459,6 +468,7 @@ def campus_ask(req):
     msg = req.json().text("message", 1500)
     if not msg:
         raise HTTPError(400, "Sual boşdur")
+    _ai_consent(c, u)
     used, lim = check_limit(c, u)
     _ai_quota(u)
     masked, pii = engine.mask_pii(msg)

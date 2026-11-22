@@ -867,6 +867,12 @@ def seed(c):
     support.seed(c, uid, t0)
     from . import radar_seed
     radar_seed.seed(c, t0)
+    # Task 40: the demo's people have consented to the AI study aids (the profile withdraws it); prod seeds nobody
+    from ..modules.identity import privacy      # here: it imports this module
+    ai = privacy.version("ai")
+    c.execute("INSERT OR IGNORE INTO consent_texts(version,purpose,text,first_at) VALUES(?,'ai',?,?)", (ai, privacy.PURPOSES["ai"], stamp))
+    c.execute("UPDATE users SET consent_at=COALESCE(consent_at, ?)", (stamp,))
+    c.execute("INSERT INTO consents(user_id,purpose,version,granted,method,lang,at) SELECT id,'ai',?,1,'portal','az',consent_at FROM users", (ai,))
     audit(c, None, "seed", "system", "Demo məlumatları yaradıldı")
 
 

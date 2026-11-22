@@ -656,6 +656,7 @@ body.lang-switching #root { opacity: .35; transition: opacity .15s; }
 .tour-hint .th-ic { width: 12px; height: 12px; border-radius: 50%; background: var(--coral); flex: none; box-shadow: 0 0 0 0 rgba(238, 124, 126, .6); animation: beacon 1.6s infinite; }
 @keyframes beacon { 0% { box-shadow: 0 0 0 0 rgba(238, 124, 126, .6); } 70% { box-shadow: 0 0 0 12px rgba(238, 124, 126, 0); } 100% { box-shadow: 0 0 0 0 rgba(238, 124, 126, 0); } }
 body.touring .fab-feedback, body.touring .tour-hint { display: none; }
+body:has(.modal-back) .tour-hint { display: none; }      /* it sits above dialogs, e.g. the AI page's consent dialog */
 
 /* ---------- floating feedback, bottom nav */
 .fab-feedback { position: fixed; right: 22px; bottom: 22px; z-index: 60; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px;

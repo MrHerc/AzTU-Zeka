@@ -1,9 +1,10 @@
 """Privacy (tasks/todo.md, Task 40): every column of the schema that holds a person's id is in the data inventory and its
 document; the export holds every row of the person's own and no one else's, without secrets, exam forms or unreleased
 scores (the exam part is in tests/security/test_exam_item_leak.py); an approved deletion request deletes or keeps each
-column as the inventory says, anonymises the account and is audited, and only the academic office decides; the external
-AI is called only with a consent to the current text; the retention job follows the university settings; the notice
-and the consent texts are in three languages."""
+column as the inventory says, anonymises the account and is audited, and only the academic office decides; the AI tutor
+and the campus assistant answer only with the person's consent to the current text, and a withdrawal deletes the chats;
+the external AI is called only with a consent to the current text and the service the notice names; the retention job
+follows the university settings; the notice and the consent texts are in three languages."""
 import json
 import re
 from datetime import timedelta
@@ -173,7 +174,7 @@ def test_the_external_ai_is_called_only_with_a_consent_to_the_current_text(app_d
     assert s.post("/api/consent", {"external": True, "versions": {"external_ai": v1}}).status == 409      # the page showed the old text
     assert s.post("/api/consent", {"external": True, "versions": {"external_ai": v2}}).status == 200
     assert _ask(s).status == 200 and len(calls) == 2
-    assert q("SELECT text FROM consent_texts WHERE version=?", (v2,))[0]["text"].endswith("yeni təchizatçı.")
+    assert q("SELECT text FROM consent_texts WHERE version=?", (v2,))[0]["text"].endswith("yeni təchizatçı.\n— · —")   # no service named
     assert s.post("/api/consent", {"external": False}).status == 200            # withdrawn
     assert _ask(s).status == 200 and len(calls) == 2
     history = q("SELECT version, granted, method FROM consents c JOIN users u ON u.id=c.user_id WHERE u.username=? "
@@ -189,6 +190,8 @@ def test_a_teacher_also_needs_the_consent(app_db, monkeypatch):
     monkeypatch.setattr(tutor, "llm_tutor", lambda mode, text, hits, *a: calls.append(text) or {"text": "ok [1]", "cites": [hits[0]["id"]], "meta": {"mode": mode}})
     t = app_db.client("teacher")
     run("DELETE FROM consents WHERE user_id=?", (t.user["id"],))
+    assert _ask(t).status == 403 and calls == []                                  # the AI study aids need their own consent
+    assert t.post("/api/consent", {"ai": True}).status == 200
     assert _ask(t).status == 200 and calls == []
     # Checkpoint F (SF-F9): a consent to the external AI names the version of the text the page showed
     assert t.post("/api/consent", {"external": True}).status == 409 and _ask(t).status == 200 and calls == []
@@ -208,7 +211,7 @@ def test_nothing_leaves_for_the_external_ai_unmasked_even_with_masking_off(app_d
     run("UPDATE settings SET value=? WHERE key='limits'", (json.dumps({**limits, "pii_masking": False}),))
     try:
         t = app_db.client("teacher")
-        assert t.post("/api/consent", {"external": True, "versions": {"external_ai": privacy.version("external_ai")}}).status == 200
+        assert t.post("/api/consent", {"ai": True, "external": True, "versions": {"external_ai": privacy.version("external_ai")}}).status == 200
         ask = "Paralel birləşmədə ekvivalent müqavimət necə tapılır? Nömrəm +994 50 123 45 67, poçtum ali@example.az"
         for _ in range(2):                                 # the second call carries the first question in its history
             assert t.post("/api/tutor/1/ask", {"message": ask, "mode": "explain"}).status == 200
@@ -216,6 +219,95 @@ def test_nothing_leaves_for_the_external_ai_unmasked_even_with_masking_off(app_d
         run("UPDATE settings SET value=? WHERE key='limits'", (json.dumps(limits),))
     sent = json.dumps(calls, ensure_ascii=False)
     assert len(calls) == 2 and "123 45 67" not in sent and "ali@example.az" not in sent, sent
+
+
+def _chats(uid):
+    return q("SELECT COUNT(*) n FROM messages WHERE user_id=?", (uid,))[0]["n"]
+
+
+def _allowed(uid, purpose="external_ai"):
+    c = store.connect()
+    try:
+        return privacy.allowed(c, uid, purpose)
+    finally:
+        c.close()
+
+
+@pytest.mark.parametrize("role", ["student", "teacher"])
+def test_the_ai_helpers_answer_only_with_the_current_consent_and_a_withdrawal_closes_them(app_db, role):
+    """The owner's decision of 2026-11-21: the AI tutor and the campus assistant are optional study aids. Without the
+    person's consent to the current text both refuse, store nothing and leave the rest of the portal as it was; the
+    profile withdraws the consent, and the withdrawal deletes the chats it covered."""
+    client = app_db.client(role)
+    uid = client.user["id"]
+    campus = {"message": "Arayışı necə ala bilərəm?"}
+    run("DELETE FROM consents WHERE user_id=?", (uid,))
+    have = _chats(uid)
+    for path, body in (("/api/tutor/1/ask", {"message": "Om qanunu nədir?", "mode": "explain"}), ("/api/campus/ask", campus)):
+        r = client.post(path, body)
+        assert r.status == 403 and "razılı" in r.json["error"], (path, r.text)
+        assert client.post(path, body, lang="en").json["error"] != r.json["error"]            # translated
+    assert _chats(uid) == have, "a refused question is not stored"
+    assert client.get("/api/me").status == 200 and client.get("/api/courses").status == 200   # the portal does not depend on it
+    assert client.post("/api/consent", {"ai": True}).status == 200
+    assert _ask(client).status == 200 and client.post("/api/campus/ask", campus).status == 200 and _chats(uid) == have + 4
+    ai = next(p for p in client.get("/api/privacy").json["purposes"] if p["id"] == "ai")
+    assert ai["consent"]["granted"] and ai["consent"]["current"] and "required" not in ai
+    assert client.post("/api/consent", {"ai": False, "versions": {"ai": privacy.version("ai")}}).status == 200
+    assert _chats(uid) == 0, "the withdrawal deletes the chats the consent covered"
+    assert _ask(client).status == 403 and client.post("/api/campus/ask", campus).status == 403 and _chats(uid) == 0
+    assert q("SELECT granted FROM consents WHERE user_id=? AND purpose='ai' ORDER BY id DESC LIMIT 1", (uid,))[0]["granted"] == 0
+    assert client.post("/api/consent", {"ai": True}).status == 200 and _ask(client).status == 200     # given again
+
+
+def test_a_new_ai_text_asks_again(app_db, monkeypatch):
+    s = app_db.client("student")
+    assert s.post("/api/consent", {"ai": True}).status == 200 and _ask(s).status == 200
+    monkeypatch.setitem(privacy.PURPOSES, "ai", privacy.PURPOSES["ai"] + " Yeni mətn.")
+    assert _ask(s).status == 403
+    assert s.post("/api/consent", {"ai": True, "versions": {"ai": privacy.version("ai")}}).status == 200 and _ask(s).status == 200
+    monkeypatch.undo()
+    assert not _allowed(s.user["id"], "ai") and s.post("/api/consent", {"ai": True}).status == 200
+
+
+def test_the_notice_names_the_external_service_and_a_new_service_asks_again(app_db, monkeypatch):
+    """The owner's decision of 2026-11-21 (data-inventory.md, Qərarlar): the consent text says the notice names the
+    service and its country; the notice takes them from the LLM settings, and another service is a new version."""
+    assert "məxfilik bildirişində" in privacy.PURPOSES["external_ai"]
+    anon = app_db.client()
+    assert anon.get("/api/privacy").json["external_ai"] == {"enabled": False, "vendor": None, "country": None}
+    cfg = {"enabled": True, "provider": "openai", "model": "fake", "api_key": "sirr-açar", "base_url": "https://x",
+           "vendor": "Nümunə AI MMC", "country": "Almaniya"}
+    monkeypatch.setattr(engine, "llm_config", lambda: cfg)
+    r = anon.get("/api/privacy")
+    assert r.json["external_ai"] == {"enabled": True, "vendor": "Nümunə AI MMC", "country": "Almaniya"} and "sirr-açar" not in r.text
+    s = app_db.client("teacher")
+    v1 = privacy.version("external_ai")
+    assert s.post("/api/consent", {"ai": True, "external": True, "versions": {"external_ai": v1}}).status == 200
+    assert _allowed(s.user["id"])
+    assert q("SELECT text FROM consent_texts WHERE version=?", (v1,))[0]["text"].endswith("Nümunə AI MMC · Almaniya")
+    monkeypatch.setitem(cfg, "country", "ABŞ")
+    assert privacy.version("external_ai") != v1 and not _allowed(s.user["id"])
+    assert s.post("/api/consent", {"external": True, "versions": {"external_ai": v1}}).status == 409
+
+
+def test_the_radar_risk_score_is_in_the_student_s_own_export(app_db):
+    """The owner's decision of 2026-11-21: the support plan's risk score, level and drivers are the student's own data
+    and are exported; the teacher's unsent AI draft is still not."""
+    sid = q("SELECT student_id FROM interventions WHERE risk_before IS NOT NULL ORDER BY id LIMIT 1")[0]["student_id"]
+    s = login_as(app_db, q("SELECT username FROM users WHERE id=?", (sid,))[0]["username"])
+    t = store.iso(store.now())
+    run("INSERT INTO teacher_questions(course_id,student_id,anonymous,title,question,status,created_at,updated_at,private,ai_draft) "
+        "VALUES(1,?,0,'s','sual','open',?,?,1,'Müəllimin radar qaralaması')", (sid, t, t))
+    out = s.get("/api/me/export").json
+    plans = out["tables"]["interventions"]
+    assert plans and all(p["student_id"] == sid for p in plans)
+    assert all({"risk_before", "level_before", "drivers"} <= set(p) for p in plans)
+    assert any(p["risk_before"] is not None and p["level_before"] and json.loads(p["drivers"]) for p in plans)
+    assert all("ai_draft" not in x for x in out["tables"]["teacher_questions"])
+    assert "Müəllimin radar qaralaması" not in json.dumps(out, ensure_ascii=False)
+    for doc in (DOC, ROOT / "docs" / "API.md"):
+        assert "interventions.risk_before" in doc.read_text(encoding="utf-8"), doc
 
 
 # ---------------------------------------------------------------- deletion

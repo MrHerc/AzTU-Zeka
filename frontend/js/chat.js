@@ -1,4 +1,5 @@
 import { api, html, raw, mount, on, md, icon, ic, toast, modal, confirmBox, esc, highlight, MODE_LABEL, LANG, go, sleep, S, t, infoTip, empty, failed } from "./core.js";
+import { aiConsent } from "./privacy.js";
 
 /**
  * Shared chat component — AI tutor (/student/tutor/:cid, teacher tutor test) and campus assistant (/student/campus).
@@ -302,6 +303,15 @@ export async function chatView(el, cfg) {
   }
   render();
   if (cfg.locked) lockComposer(t("Tutor müvəqqəti bağlıdır."));
+  const reopen = () => chatView(el, cfg);    // the first view's handlers stay on `el`, but its composer is locked: they send nothing
+  if (!(await aiConsent(reopen))) {    // Task 40: an optional study aid; the server refuses questions without the consent
+    lockComposer(t("Sual vermək üçün razılığınız lazımdır."));
+    el.querySelector(".chat-top").insertAdjacentHTML("afterend", `<div class="notice info" style="margin:12px 16px 0" role="status">${icon("shield", 16)}
+      <div class="grow"><b>${esc(t("Razılıq verilməyib"))}</b><div class="small">${esc(t("AI köməkçisi razılığınız olmadan suallara cavab vermir. Portalın qalan bölmələri bu razılıqdan asılı deyil."))}</div></div>
+      <button class="btn btn-sm" id="consent-give">${esc(t("Razılıq ver"))}</button></div>`);
+    el.querySelector("#consent-give").addEventListener("click", async () => { if (await aiConsent(reopen)) reopen(); });
+    return { send };
+  }
   const last = [...st.messages].reverse().find((m) => m.role === "assistant" && m.cites && m.cites.length);
   if (last && !isMobile()) showSource(last.cites[0], "");
   if (cfg.prefill) send(cfg.prefill);
