@@ -517,6 +517,12 @@ def test_g1_text_in_an_hour_cell_of_a_data_row_blocks_and_a_stray_text_row_is_a_
     stray[0].rows.insert(30, [""] * len(stray[0].rows[0]))
     form = forma3.read(changed(sheets_b, **{"#0!I27": "\\"}))
     assert [n.cell for n in codes(form.notes, code="stray_text")] == ["#0!I27"] and not codes(form.conflicts, code="hours_text")
+    form = forma3.read(changed(sheets_b, **{"#0!I27": "#REF!"}))
+    assert [(c.cell, c.blocking) for c in codes(form.conflicts, code="hours_text")] == [("#0!I27", True)], "G1: an error value is no stray text"
+    assert not codes(form.notes, code="stray_text") and post(form, "#0!B23").blocked
+    rows = [{1: "Fənn", 2: "6526a", 3: "10", 5: "30", 23: "30", 44: "30"}, {5: "#REF!"}, {1: "CƏMİ", 5: "30", 23: "30", 44: "30"}]
+    form = forma3.read([layout_b_sheet(sheets_b, rows)])
+    assert [c.cell for c in codes(form.conflicts, code="hours_text")] == ["#0!F12"] and form.posts[0].blocked
 
 
 def test_g2_a_value_under_a_merge_is_a_blocking_conflict(sheets_a):

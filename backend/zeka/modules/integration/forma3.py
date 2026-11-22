@@ -578,9 +578,10 @@ def _rows(R: _Reader, g: Grid, post: Post, cols: Cols, r0: int, r1: int, total: 
                 row[c] = v
         group = g.t(r, cols.group)
         if texts and not subject and not group and not any(row.values()):
-            for c in texts:                                       # R1.13: a stray text is not a data row (G1)
-                R.note(g, r, c, "stray_text", post, x=g.t(r, c))
-            texts = []
+            for c in texts:                                       # R1.13: a stray text is not a data row (G1) ...
+                if not tx.is_error(g.t(r, c)):                    # ... an error value is legal only in a total row
+                    R.note(g, r, c, "stray_text", post, x=g.t(r, c))
+            texts = [c for c in texts if tx.is_error(g.t(r, c))]
         for c in texts:
             R.conflict(g, r, c, "hours_text", True, post, x=g.t(r, c))
         info[r] = {"subject": subject, "group": group, "students": d, "d_text": d_text, "seq": g.t(r, cols.seq), "hidden": hidden,
@@ -1141,7 +1142,10 @@ def _sheet_b(R: _Reader, g: Grid, hidden: bool, consensus: dict[int, str]) -> li
                 g.use_row(r, "conflict")
             else:
                 for c in filled:
-                    R.note(g, r, c, "stray_text", post, x=g.t(r, c))
+                    if c in cols.hours and tx.is_error(g.t(r, c)):     # G1: an error value is legal only in a total row
+                        R.conflict(g, r, c, "hours_text", True, post, x=g.t(r, c))
+                    else:
+                        R.note(g, r, c, "stray_text", post, x=g.t(r, c))
     if who_at and name_tokens and posts:
         R.form.notes.append(Note(posts[0].ref, "", "sheet_name", _m("sheet_name", x=", ".join(name_tokens)), posts[0].ref))
     return posts
