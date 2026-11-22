@@ -31,8 +31,13 @@ def test_core_does_not_import_legacy_or_modules():
 
 
 def test_domain_files_have_no_io():
-    bad = {str(f.relative_to(ZEKA)): m for f in ZEKA.glob("modules/*/domain.py") for m in _imports(f)
+    """Rules and the timetable solver (Task 48) are pure: no database, no network, no clock (the solver takes one)."""
+    solver = ZEKA / "modules" / "timetable" / "solver.py"
+    bad = {str(f.relative_to(ZEKA)): m for f in [*ZEKA.glob("modules/*/domain.py"), solver] for m in _imports(f)
            if m == "sqlite3" or m.startswith(FORBIDDEN_IN_DOMAIN)}
+    clock = [m for m in _imports(solver) if m.split(".")[0] in ("time", "datetime", "os") or m.endswith((".repo", ".service"))]
+    if clock:
+        bad["solver"] = ", ".join(clock)
     assert not bad, bad
 
 

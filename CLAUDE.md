@@ -32,7 +32,7 @@ python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1577 tests, about 5 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1748 tests, about 8 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -40,6 +40,7 @@ python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset facu
 python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty [--burst]      # Task 27: lost answers must be 0
 python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes (must be none)
 python tools/eval_assistant.py tests/eval/assistant_az.jsonl   # campus assistant: 50 questions, at least 45 right (Task 32)
+python tools/ttbench.py --units 1250 [--groups 300 --teachers 90 --rooms 60 --iters 50000]   # timetable solver timings (Task 48, docs/perf/timetable.md)
 
 python tools/i18n.py lint                 # user-visible strings not wrapped for translation (72 known: official documents are Azerbaijani)
 python tools/i18n.py extract              # refresh i18n/source/*, write untranslated keys to i18n/todo/*.json
@@ -166,6 +167,11 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   erase action: delete, keep or anonymise) and in `docs/privacy/data-inventory.md`; `tests/integration/test_privacy.py`
   fails on a new one until both list it. An external LLM is called only with a consent to the current text version
   (`identity/privacy.allowed`); retention periods are university settings purged by `retention.purge`.
+- **Timetable solver (Task 48).** `modules/timetable/solver.py` is pure like a `domain.py` (no clock, no I/O, no
+  repo; `test_layers.py`): ints only and `rng.random()` only, so one seed gives the same bytes on every Python (the
+  golden signature in `tests/unit/test_tt_props.py` changes with any solver change: recompute it on purpose). Its state
+  never holds a hard violation; `domain.check` is the independent checker and `domain.scorecard` must equal the
+  solver's running cost. Week sets are bit masks (`domain.week_mask`/`week_text`: `all | odd | even | N[-M],...`).
 - **Time.** Use `store.now()` (naive Baku wall clock, `ZEKA_TZ`) or `clock.now()` (aware UTC); `datetime.now()` and
   `date.today()` fail lint outside `backend/zeka/core/clock.py`. `tests/conftest.py` anchors the suite's today at
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test

@@ -1,0 +1,10 @@
+{
+ "Dərs günləri 1 (bazar ertəsi) ilə 7 (bazar) arasında təkrarlanmayan rəqəmlərdir": "Учебные дни — неповторяющиеся числа от 1 (понедельник) до 7 (воскресенье)",
+ "Növbənin dərs cütləri 1 ilə 16 arasındakı nömrələrlə yazılır": "Пары смены указываются номерами от 1 до 16",
+ "Qrupun həftəlik auditoriya yükü 30 saatdan çox ola bilməz": "Недельная аудиторная нагрузка группы не может превышать 30 часов",
+ "Əmsallar 0 ilə 10 000 arasında tam ədədlərdir": "Весовые коэффициенты — целые числа от 0 до 10 000",
+ "Hesablamanın bir mərhələsi 5 ilə 60 saniyə arasında olmalıdır; həllin digər hədləri tam ədədlərdir": "Один шаг расчёта должен длиться от 5 до 60 секунд; остальные ограничения решателя — целые числа",
+ "Son tarix dərslər başlamazdan neçə gün əvvəl olduğunu göstərən mənfi ədədlə yazılır": "Срок указывается числом дней до начала занятий, отрицательным числом",
+ "Dərc üçün dərs tarixləri, zəng cədvəli və həftəlik bölgü qaydası mütləq təsdiqlənməlidir": "Перед публикацией обязательно подтверждаются даты занятий, расписание звонков и правило распределения по неделям",
+ "Təsdiq siyahısında naməlum bənd var": "В списке подтверждений есть неизвестный пункт"
+}

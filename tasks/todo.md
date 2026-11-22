@@ -1086,3 +1086,33 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 - [ ] Hədəf serverdə bərpa sınağı və `university` yük testi keçib; ilk fakültənin T0 ixracına qarşı uzlaşdırma fərqi 0 və ya izahlı; T0 release runbook-da yazılıb
 - [ ] Açıq yüksək səviyyəli təhlükəsizlik tapıntısı yoxdur
 - [ ] Sahibin yazılı buraxılış qərarı
+
+## Task 48: Semestr cədvəli qurucusu
+
+**Description:** Bu gün dərs cədvəlinin sətirləri yalnız əl ilə yazılır (Task 19); Forma №3-dən gələn tədris vahidləri (Task 47) özü cədvələ düşmür. Qurucu semestrin bütün girişlərini bir yerə yığır, toqquşmasız cədvəl layihəsini hesablayır, dekanlıq və kafedralar layihəyə baxır, tədris şöbəsi onu effektiv tarixdən dərc edir. Dizayn: Task 48-in son dizaynı (`f3work/tt-design.md`, repozitoriyadan kənarda; §13-də üç dilim).
+
+Dilim 1 (bu tapşırığın modeli və həlledicisi). Miqrasiyalar `0480`–`0483`: semestrin hazırlığı, vahidin ehtiyacları, qrupun növbəsi, müəllimin və otağın məşğulluq xanaları, həftəlik bloklar (təcrübə, hərbi hazırlıq, bağlı həftələr, məzuniyyət), Forma №3 idxalının nəticəsi, hesablamalar, versiyalar, yerləşdirmələr, yerləşdirilməyənlər, rəylər, qeydlər; `rooms.schedulable`, `rooms.dedicated`; `timetable.meeting_key`, `period`, `version_id`. Universitet ayarlarında `timetable` bölməsi və onun yoxlaması (qanuni 30 saat hədd yalnız aşağı salına bilər). `timetable/domain.py`: həftə dəstinin qrammatikası (`all | odd | even | N[-M],…`) və Task 19 qaydalarının maskalara keçməsi, həftəlik bölgü qaydası, iclaslar, müstəqil yoxlayıcı (H1–H14, H16), skor kartı, plan və Forma №3 saatlarının hesabatı, bütöv dəstdə saat toqquşması. `timetable/solver.py` (təmiz, I/O yoxdur): ilkin quruluş (çıxarma ilə), tavlama (köçürmə, dəyişmə, sökmə və yenidən qurma), kilidlər, istinad versiyasına sabitlik, təmir (`from_week`, keçmiş həftələr dəyişmir), hissə-hissə davam etmə, yerləşdirilməyən iclasın səbəbləri. `tools/ttbench.py` sintetik kafedra və universitet.
+
+Dilim 2: repo, servis, marşrutlar, `timetable.work` və `timetable.health` işləri, dərc (sətirlər, dərslər, rəsmi sənəd, bildiriş), matris, i18n, inteqrasiya testləri. Dilim 3: tədris şöbəsi, dekanlıq, kafedra və müəllim səhifələri, brauzer testləri.
+
+**Acceptance criteria (dilim 1):**
+- [x] `0480`–`0483` cari sxemli, sətirləri olan bazaya tətbiq olunur; mövcud sətirlər dəyişmir, otaq susmaya görə cədvələ açıqdır və ortaqdır, əl ilə yazılmış sətrin iclası yoxdur; semestrdə eyni anda bir aktiv hesablama (`test_0480_to_0483_keep_the_rows_already_there`)
+- [x] `test_privacy.py` yeni şəxs sütunları ilə keçir (inventar, sənəd, ixrac, silmə, tam cədvəl oxunmur); `test_layers.py` `solver.py`-ni təmiz fayllar sırasında yoxlayır (saat, `os`, repo, servis yoxdur)
+- [x] Xüsusiyyət testləri 200 təsadüfi nümunədə keçir: nəticə, quruluşun ortasında kəsilmiş vəziyyət və ləğv olunmuş hesablama yoxlayıcıdan keçir; dərc olunacaq sətirlərdə saat toqquşması yoxdur; həlledicinin xərci skor kartı ilə eynidir; eyni toxum eyni baytlar verir, N iterasiya N/2 + JSON + N/2-yə bərabərdir; saatla dayandırılıb davam etdirilən hesablama eyni nəticəni verir; yerləşdirilməyən iclasın heç bir otaqda heç bir boş qiyməti yoxdur (≤ 12 iclas, tam yoxlama); kilidli yerləşdirmələr qalır, qaydanı pozan kilid yerləşdirilmir; dəyişiklik olmayan təmir heç nəyi köçürmür, bir müəllimin yeni xanasından sonra yalnız həmin müəllimin iclasları köçür; `from_week`-dən əvvəlki həftələrə toxunulmur
+- [x] Qızıl imza Python 3.11, 3.12 və 3.13-də eynidir (3.10 CI-da)
+- [x] Hər sərt qayda yoxlayıcıda pozulmuş və pozulmamış nümunə ilə; həftəlik bölgü cədvəli (6, 7.5, 8, 10, 14, 15, 18, 20, 24, 30, 45, 60 saat); `odd` ilə `1-3` toqquşur; `conflicts_all` cüt-cüt qaydaya bərabərdir; saat hesabatı fərqin səbəbini adlandırır (`test_tt_rules.py`)
+- [x] Real RT + MR payız vahidləri (888 vahid, 956 iclas, sintetik otaqlar, tam model): 0 sərt pozuntu, 0 yerləşdirilməyən (ölçmə repozitoriyadan kənarda; adlar oxunmur və yazılmır)
+- [x] `tests/load/test_tt_perf.py` kafedra sütununa cavab verir (1 250 vahid, 300 qrup, 90 müəllim, 60 otaq): hazırlıq ≤ 1 s, ilk tam layihə ≤ 3 s, 50 000 iterasiya ≤ 30 s, yoxlama və skor kartı ≤ 1 s, yaddaş ≤ 80 MB, 0 sərt pozuntu, 0 yerləşdirilməyən, layihənin yazılması bir qısa tranzaksiyada; universitet sütunu ölçülüb `docs/perf/timetable.md`-də yazılıb
+- [x] Əl ilə yazma yolu əvvəlki kimidir (`test_timetable_conflicts.py` və Task 19 inteqrasiya testləri)
+- [x] `timetable` ayar bölməsi administratorun mövcud ayar marşrutu ilə saxlanır; səhv quruluşlu dəyər (siyahı içində siyahı və ya obyekt) tərcümə olunmuş 400 olur, heç vaxt 500 yox (`test_the_timetable_settings_are_checked`)
+
+**Acceptance criteria (dilim 2 və 3):** dizaynın §13-ü; bu tapşırığın sonrakı commit-lərində buraya köçürülür.
+
+**Verification:**
+- [x] `python -m pytest tests/unit/test_tt_rules.py tests/unit/test_tt_props.py tests/unit/test_timetable_conflicts.py tests/unit/test_layers.py -q`
+- [x] `python -m pytest tests/load/test_tt_perf.py tests/migration/test_schema_migrations.py tests/integration/test_privacy.py -q`
+- [x] `python tools/ttbench.py --units 1250` və `--units 16700 --groups 4000 --teachers 1200 --rooms 800`
+
+**Dependencies:** Task 15, Task 18, Task 19, Task 47 (vahidlər yalnız cədvəllərdən oxunur, oxucunun Python tiplərindən yox)
+**Files likely touched:** `backend/migrations/0480_timetable_inputs.sql`, `0481_rooms_schedulable.sql`, `0482_forma3_imports.sql`, `0483_timetable_versions.sql`, `backend/zeka/core/tenant.py`, `backend/zeka/modules/tenant/service.py`, `backend/zeka/modules/timetable/{domain,solver}.py`, `backend/zeka/modules/identity/repo.py`, `docs/privacy/data-inventory.md`, `tools/ttbench.py`, `docs/perf/timetable.md`, `tests/unit/test_tt_rules.py`, `tests/unit/test_tt_props.py`, `tests/load/test_tt_perf.py`
+**Estimated scope:** XL (üç dilim, hər biri ayrı commit)

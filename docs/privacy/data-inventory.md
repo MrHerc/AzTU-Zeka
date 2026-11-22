@@ -236,10 +236,30 @@ Ayarsız qısa müddətlər: `doc_keys` (5 dəqiqə), `rate_hits` və `login_blo
 | `syllabus_versions.decided_by` | Versiyanı təsdiqləyən | yox: icraçı | saxla | Q-müddət | İ |
 | `teacher_questions.student_id` | Müəllimə öz sualları (forum mövzuları) | bəli | sil | fənn qədər | T |
 | `teaching_units.teacher_id` | Müəllimin tədris vahidləri | bəli | saxla | Q-müddət | T |
+| `forma3_imports.imported_by` | Forma №3 faylını idxal edən | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_availability.updated_by` | Məşğulluq xanasını yazan | yox: icraçı | saxla | semestr qədər | İ |
+| `tt_availability_status.teacher_id` | Müəllimin məşğulluq cədvəlinin təsdiqi və rəhbərin qərarını gözləyən cədvəli | bəli | saxla; gözləyən cədvəl silinir | semestr qədər | T |
+| `tt_availability_status.confirmed_by` | Məşğulluq cədvəlini təsdiq edən | yox: icraçı | saxla | semestr qədər | İ |
+| `tt_availability_status.decided_by` | Həddən artıq cədvələ qərar verən kafedra müdiri | yox: icraçı | saxla | semestr qədər | İ |
+| `tt_blocks.updated_by` | Təcrübə, hərbi hazırlıq və ya məzuniyyət həftələrini yazan | yox: icraçı | saxla | semestr qədər | İ |
+| `tt_dept_status.set_by` | Kafedranın yükünü yekun elan edən | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_group_terms.updated_by` | Qrupun növbəsini yazan | yox: icraçı | saxla | semestr qədər | İ |
+| `tt_notes.author_id` | Cədvəl layihəsinə öz qeydləri | bəli | saxla (müəllif anonimləşir) | Q-müddət | İ |
+| `tt_notes.resolved_by` | Qeydi bağlayan | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_placements.changed_by` | Dərsi əl ilə köçürən | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_reviews.decided_by` | Layihəyə rəy verən | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_runs.requested_by` | Cədvəlin hesablanmasını başladan | yox: icraçı | saxla | `logs_days` | İ |
+| `tt_terms.updated_by` | Semestrin son tarixlərini yazan | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_unit_needs.updated_by` | Tədris vahidinin ehtiyaclarını yazan | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_versions.created_by` | Cədvəl versiyasını yaradan | yox: icraçı | saxla | Q-müddət | İ |
+| `tt_versions.published_by` | Cədvəli dərc edən | yox: icraçı | saxla | Q-müddət | İ |
 | `webhooks.created_by` | Webhook-u yaradan admin | yox: icraçı | saxla | webhook qədər | İ |
 
 Şəxsi sütunu olmayan cədvəllər: `exam_answers` (cavablar `exam_attempts` ilə şəxsə bağlıdır: ixrac yalnız açıqlamadan
-sonra, silmə: saxla), `request_events`, `request_messages`, `support_messages` (yuxarıda). `login_blocks.account` və
+sonra, silmə: saxla), `request_events`, `request_messages`, `support_messages` (yuxarıda). `tt_availability` və
+`tt_blocks` müəllimin öz məşğulluq xanalarını və məzuniyyət həftələrini `subject_id` sütununda saxlayır: ixrac bəli; silmə:
+xanalar və həftələr qalır (cədvəl onlara söykənir), qeyd mətni silinir. Hesablamanın girişi (`tt_runs.input`) yalnız id-lər
+saxlayır: ad və qeyd yoxdur. `login_blocks.account` və
 `rate_hits.key` girişin yazıldığı adı və ya açarı saxlayır, şəxs id-si deyil: 1 gündən sonra silinir. Qalan cədvəllər
 (fənn materialı, cədvəl, otaq, kataloq, ayar) şəxsə aid deyil.
 

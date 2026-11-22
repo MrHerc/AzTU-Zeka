@@ -316,6 +316,24 @@ INVENTORY: dict[tuple[str, str], tuple[str | None, str]] = {
     ("syllabus_versions", "decided_by"): (None, K),
     ("teacher_questions", "student_id"): ("student_id = :uid", D),
     ("teaching_units", "teacher_id"): ("teacher_id = :uid", K),
+    # Task 48: the timetable builder; the teacher's own availability is in VIA, the deciders and authors are kept
+    ("forma3_imports", "imported_by"): (None, K),
+    ("tt_availability", "updated_by"): (None, K),
+    ("tt_availability_status", "teacher_id"): ("teacher_id = :uid", K),
+    ("tt_availability_status", "confirmed_by"): (None, K),
+    ("tt_availability_status", "decided_by"): (None, K),
+    ("tt_blocks", "updated_by"): (None, K),
+    ("tt_dept_status", "set_by"): (None, K),
+    ("tt_group_terms", "updated_by"): (None, K),
+    ("tt_notes", "author_id"): ("author_id = :uid", K),
+    ("tt_notes", "resolved_by"): (None, K),
+    ("tt_placements", "changed_by"): (None, K),
+    ("tt_reviews", "decided_by"): (None, K),
+    ("tt_runs", "requested_by"): (None, K),
+    ("tt_terms", "updated_by"): (None, K),
+    ("tt_unit_needs", "updated_by"): (None, K),
+    ("tt_versions", "created_by"): (None, K),
+    ("tt_versions", "published_by"): (None, K),
     ("webhooks", "created_by"): (None, K),
 }
 # Rows without a person column that belong to the person's own records: a released exam's answers (never the form or
@@ -326,6 +344,8 @@ VIA = {
     "request_events": "request_id IN (SELECT id FROM requests WHERE student_id = :uid)",
     "request_messages": "request_id IN (SELECT id FROM requests WHERE student_id = :uid)",
     "support_messages": "internal = 0 AND ticket_id IN (SELECT id FROM support_tickets WHERE user_id = :uid)",
+    "tt_availability": "subject_type = 'teacher' AND subject_id = :uid",
+    "tt_blocks": "subject_type = 'teacher' AND subject_id = :uid",
 }
 # An attempt's score is in the export only once its exam is released.
 SELECTS = {
@@ -333,14 +353,18 @@ SELECTS = {
                      "CASE WHEN e.status = 'released' THEN a.score END AS score, CASE WHEN e.status = 'released' THEN a.max_score END "
                      "AS max_score FROM exam_attempts a JOIN exams e ON e.id = a.exam_id WHERE a.student_id = :uid ORDER BY a.id",
 }
-# Deleted before the person's own rows: what hangs off them (reports of their club messages, the replies and reports of
-# their forum topics, the messages of their support tickets).
+# Run before the person's own rows: what hangs off them is deleted (reports of their club messages, the replies and
+# reports of their forum topics, the messages of their support tickets), and the free text of the timetable rows that are
+# kept is cleared (a teacher's availability notes, a grid waiting for the head, a leave note; Task 48).
 ERASE_FIRST = (
     "DELETE FROM club_reports WHERE message_id IN (SELECT id FROM club_messages WHERE author_id = :uid)",
     "DELETE FROM qa_reports WHERE topic_id IN (SELECT id FROM teacher_questions WHERE student_id = :uid) "
     "OR reply_id IN (SELECT id FROM qa_replies WHERE author_id = :uid)",
     "DELETE FROM qa_replies WHERE topic_id IN (SELECT id FROM teacher_questions WHERE student_id = :uid)",
     "DELETE FROM support_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id = :uid)",
+    "UPDATE tt_availability SET note = NULL WHERE subject_type = 'teacher' AND subject_id = :uid",
+    "UPDATE tt_availability_status SET pending = NULL, pending_at = NULL WHERE teacher_id = :uid",
+    "UPDATE tt_blocks SET note = NULL WHERE subject_type = 'teacher' AND subject_id = :uid",
 )
 # The users row stays (the kept records point at it) without what identifies or reaches the person; the student number
 # stays as the link to the state register (an owner's decision, docs/privacy/data-inventory.md).

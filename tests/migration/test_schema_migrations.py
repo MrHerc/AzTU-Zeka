@@ -251,3 +251,34 @@ def test_0421_fills_the_active_days_from_the_events_already_logged(tmp_path, mdi
             ("2026-11-18", "student", 7), ("2026-11-18", "teacher", 7), ("2026-11-19", "student", 8)]
     finally:
         c.close()
+
+
+def test_0480_to_0483_keep_the_rows_already_there(tmp_path, mdir):
+    """Task 48: the builder's tables and columns land on a database with rooms and manual timetable rows; the rows stay as
+    they were, a room is schedulable and shared, a manual row has no meeting."""
+    for v, _, path in migrate.discover():
+        if v < 480:
+            put(mdir, path.name, path.read_text(encoding="utf-8"))
+    c = sqlite3.connect(tmp_path / "t.db")
+    try:
+        migrate.apply(c, mdir)
+        c.execute("INSERT INTO rooms(id,building_id,code,number,kind,capacity,created_at,updated_at) VALUES(1,1,'EK-101','101','classroom',30,'t','t')")
+        c.execute("INSERT INTO timetable(id,course_id,weekday,start,end,kind,unit_id,weeks) VALUES(1,1,2,'09:00','10:20','Mühazirə',5,'odd')")
+        c.commit()
+        before = c.execute("SELECT * FROM timetable").fetchall()
+        for v, _, path in migrate.discover():
+            if 480 <= v < 490:
+                put(mdir, path.name, path.read_text(encoding="utf-8"))
+        assert migrate.apply(c, mdir) == [v for v in ALL if 480 <= v < 490]
+        assert c.execute("SELECT schedulable, dedicated FROM rooms").fetchall() == [(1, 0)]
+        assert [r[:len(before[0])] for r in c.execute("SELECT * FROM timetable")] == before
+        assert c.execute("SELECT meeting_key, period, version_id FROM timetable").fetchall() == [(None, None, None)]
+        tables = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'tt_%'")}
+        assert tables == {"tt_terms", "tt_dept_status", "tt_unit_needs", "tt_group_terms", "tt_availability", "tt_availability_status",
+                          "tt_blocks", "tt_runs", "tt_versions", "tt_placements", "tt_unplaced", "tt_reviews", "tt_notes"}
+        run = "INSERT INTO tt_runs(term_id,kind,seed,iter_budget,time_budget_s,requested_by,requested_at) VALUES(1,?,1,1,10,1,'t')"
+        c.execute(run, ("solve",))
+        with pytest.raises(sqlite3.IntegrityError):      # one active run per term, whichever worker asks
+            c.execute(run, ("check",))
+    finally:
+        c.close()

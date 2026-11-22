@@ -1,6 +1,6 @@
 """The admin screen's sections of the university settings (Task 17): read all, check one, save it with an audit entry.
 
-Sections: the rules of ``core.tenant`` (grading, attendance, journal, calendar, registry) in the ``tenant`` setting, and
+Sections: the rules of ``core.tenant`` (grading, attendance, journal, calendar, registry, timetable) in the ``tenant`` setting, and
 the university profile, session limits (Task 11), single sign-on (Task 14), activation codes (Task 16) and the retention
 periods (Task 40: in ``limits``, with the AI settings' chat period) in their own settings. A section is saved only whole
 and only after its check passes.

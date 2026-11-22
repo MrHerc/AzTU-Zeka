@@ -23,7 +23,28 @@ DEFAULTS: dict = {
     "journal": {"cutover_date": None, "edit_hours": 48},   # a teacher corrects a lesson for 48 h after it ends (Task 20)
     "calendar": {"lesson_times": [], "holidays": []},
     "registry": {"prefix": "DOC"},
+    # Task 48: the timetable builder's rules and soft weights; every value is a default until its key is in `confirmed`
+    "timetable": {
+        "days": [1, 2, 3, 4, 5, 6], "pair_hours": 2, "weeks_expected": 15,
+        "shifts": {"morning": [1, 2, 3, 4], "afternoon": [4, 5, 6], "evening": [7, 8]},
+        "max_pairs_day_group": 4, "max_pairs_day_teacher": 5, "max_week_hours_group": 30, "max_week_pairs_teacher": None,
+        "hours_tolerance": 2, "default_need": 30, "travel_default_min": 15, "fixed_slots": [],
+        "weights": {"group_window": 10, "teacher_window": 3, "same_day_course": 8, "lecture_after_seminar": 5, "undesired": 6,
+                    "extra_day": 2, "building_change_group": 6, "building_change_teacher": 3, "saturday": 4, "late_pair": 1,
+                    "room_waste_10": 1, "foreign_building": 2, "stability_time": 50, "stability_room": 5, "stability_weeks": 20,
+                    "move_repair": 1000, "hours_miss": 2, "fair_teacher": 1, "fair_group": 1},
+        "targets": {"hours_fidelity": 980, "group_windows": 50, "teacher_windows": 100, "rooms_waste": 400},
+        "solver": {"construct_ejections": 50, "iter_budget": 50000, "time_budget_s": 600, "chunk_s": 20, "chunk_exam_s": 5,
+                   "atomic_exam_max_s": 10, "stall": 20000, "lns_k": 30},
+        "offsets": {"needs": -28, "groups": -28, "availability": -21, "review": -9, "publish": -7},
+        "availability_cap_pct": 30, "availability_load_factor_pct": 150, "coverage_min_week_hours": 12, "notice_days": 2,
+        "review_required": True, "review_silence": "approved", "official_document": True,
+        "approver": {"title": "Tədris işləri üzrə prorektor", "name": ""},
+        "publish_requires": ["term_dates", "lesson_times", "pattern"], "confirmed": []},
 }
+# the defaults of the timetable section a person can confirm (readiness shows the others as "standart, təsdiqlənməyib")
+TT_CONFIRM = ("term_dates", "lesson_times", "pattern", "shifts", "rooms", "limits", "travel", "fixed_slots", "weights",
+              "availability_cap", "review", "approver")
 SECTIONS = tuple(DEFAULTS)
 TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 PREFIX = re.compile(r"^[0-9A-Za-zƏəİıÖöÜüĞğŞşÇç]{2,12}$")
@@ -62,7 +83,7 @@ def problem(section: str, v) -> dict | None:
     if section not in DEFAULTS or not isinstance(v, dict) or set(v) - set(DEFAULTS[section]):
         return E("Ayarın quruluşu düzgün deyil")
     return {"grading": _grading, "attendance": _attendance, "journal": _journal, "calendar": _calendar,
-            "registry": _registry}[section]({**DEFAULTS[section], **v})
+            "registry": _registry, "timetable": _timetable}[section]({**DEFAULTS[section], **v})
 
 
 def _grading(g: dict) -> dict | None:
@@ -129,6 +150,68 @@ def _calendar(cal: dict) -> dict | None:
 def _registry(r: dict) -> dict | None:
     if not isinstance(r["prefix"], str) or not PREFIX.fullmatch(r["prefix"]):
         return E("Reyestr prefiksi 2–12 hərf və ya rəqəmdir")
+    return None
+
+
+def _int(v, lo: int, hi: int) -> bool:
+    return type(v) is int and lo <= v <= hi
+
+
+def _ints(v, lo: int, hi: int, n: int) -> bool:
+    """A non-empty list of at most n distinct ints in lo..hi."""
+    return isinstance(v, list) and 0 < len(v) <= n and all(_int(x, lo, hi) for x in v) and len(set(v)) == len(v)
+
+
+def _same_keys(v, section: str, key: str) -> bool:
+    return isinstance(v, dict) and set(v) == set(DEFAULTS[section][key])
+
+
+SOLVER_LIMITS = {"construct_ejections": (0, 1000), "iter_budget": (1, 5_000_000), "time_budget_s": (10, 7200),
+                 "chunk_s": (5, 60), "chunk_exam_s": (1, 60), "atomic_exam_max_s": (1, 60), "stall": (100, 10_000_000),
+                 "lns_k": (2, 200)}
+
+
+def _timetable(t: dict) -> dict | None:
+    bad = E("Ayarın quruluşu düzgün deyil")
+    if not _ints(t["days"], 1, 7, 7) or t["days"] != sorted(t["days"]):
+        return E("Dərs günləri 1 (bazar ertəsi) ilə 7 (bazar) arasında təkrarlanmayan rəqəmlərdir")
+    shifts = t["shifts"]
+    if not (isinstance(shifts, dict) and len(shifts) <= 10 and all(
+            isinstance(k, str) and 1 <= len(k) <= 20 and _ints(p, 1, 16, 16) for k, p in shifts.items())):
+        return E("Növbənin dərs cütləri 1 ilə 16 arasındakı nömrələrlə yazılır")
+    if not _int(t["max_week_hours_group"], 1, 30):
+        return E("Qrupun həftəlik auditoriya yükü 30 saatdan çox ola bilməz")
+    if not (_int(t["pair_hours"], 1, 4) and _int(t["weeks_expected"], 1, 20) and _int(t["max_pairs_day_group"], 1, 8)
+            and _int(t["max_pairs_day_teacher"], 1, 8) and (t["max_week_pairs_teacher"] is None or _int(t["max_week_pairs_teacher"], 1, 48))
+            and _num(t["hours_tolerance"]) and 0 <= t["hours_tolerance"] <= 10 and _int(t["default_need"], 1, 1000)
+            and _int(t["travel_default_min"], 0, 120) and _int(t["availability_cap_pct"], 0, 100)
+            and _int(t["availability_load_factor_pct"], 100, 400) and _int(t["coverage_min_week_hours"], 0, 30)
+            and _int(t["notice_days"], 0, 60) and isinstance(t["review_required"], bool) and isinstance(t["official_document"], bool)
+            and t["review_silence"] in ("approved", "pending")):
+        return bad
+    slots = t["fixed_slots"]
+    if not (isinstance(slots, list) and len(slots) <= 50 and all(
+            isinstance(x, dict) and set(x) <= {"weekday", "period", "groups"} and _int(x.get("weekday"), 1, 7)
+            and _int(x.get("period"), 1, 16) and (x.get("groups") is None or _ints(x["groups"], 1, 2**62, 500)) for x in slots)):
+        return bad
+    if not (_same_keys(t["weights"], "timetable", "weights") and all(_int(x, 0, 10_000) for x in t["weights"].values())):
+        return E("Əmsallar 0 ilə 10 000 arasında tam ədədlərdir")
+    if not (_same_keys(t["targets"], "timetable", "targets") and all(_int(x, 0, 1_000_000) for x in t["targets"].values())):
+        return bad
+    sol = t["solver"]
+    if not (_same_keys(sol, "timetable", "solver") and all(_int(sol[k], lo, hi) for k, (lo, hi) in SOLVER_LIMITS.items())):
+        return E("Hesablamanın bir mərhələsi 5 ilə 60 saniyə arasında olmalıdır; həllin digər hədləri tam ədədlərdir")
+    if not (_same_keys(t["offsets"], "timetable", "offsets") and all(_int(x, -365, -1) for x in t["offsets"].values())):
+        return E("Son tarix dərslər başlamazdan neçə gün əvvəl olduğunu göstərən mənfi ədədlə yazılır")
+    ap = t["approver"]
+    if not (_same_keys(ap, "timetable", "approver") and _text(ap["title"], 1, 120) and isinstance(ap["name"], str) and len(ap["name"]) <= 120):
+        return bad
+    for key in ("publish_requires", "confirmed"):
+        v = t[key]
+        if not (isinstance(v, list) and all(isinstance(x, str) and x in TT_CONFIRM for x in v) and len(set(v)) == len(v)):
+            return E("Təsdiq siyahısında naməlum bənd var")
+    if not {"term_dates", "lesson_times", "pattern"} <= set(t["publish_requires"]):
+        return E("Dərc üçün dərs tarixləri, zəng cədvəli və həftəlik bölgü qaydası mütləq təsdiqlənməlidir")
     return None
 
 

@@ -12,7 +12,7 @@ filterwarnings = [
     "error::pytest.PytestUnraisableExceptionWarning",
 ]
 markers = [
-    "slow: tests that spawn a subprocess (backend/run.py start-up checks)",
+    "slow: tests that spawn a subprocess (backend/run.py start-up checks) or measure at scale (query plans, the timetable solver)",
 ]
 
 [tool.ruff]
