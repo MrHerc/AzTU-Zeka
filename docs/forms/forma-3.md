@@ -258,8 +258,11 @@ bloklayan konfliktlə qaytarılır və idxal həmin ştatdan heç nə tətbiq et
   dərslərlə yükün cəmi isə semestrin yenidən hesablanmış cəminə bərabərdir. Bu, birləşdirmə qaydasını da sübut edir.
 - **T4. Sətirlər (yalnız xəbərdarlıq).** Sətrin semestr və il cəmləri saat xanalarından yenidən hesablanır; fərq
   bloklamayan qeyddir. Boş sətir cəmi sıfır sayılır; birləşdirilmiş sətir cəmi örtdüyü sətirlərin cəmi ilə tutuşdurulur.
-- **T5. Faylın sayları.** Dərslərin sayı = məlumat sətirlərindəki sıfırdan fərqli sol yuxarı auditoriya xanalarının
-  sayı; onların saatlarının cəmi.
+- **T5. Faylın sayları.** Kafedranın cəminə daxil olan ştatlar (gizli vərəqdə olmayan və arayış cədvəlinin kənarda
+  qoymadığı, A11) üzrə: dərslərin sayı cədvəldən yenidən sayılan sıfırdan fərqli sol yuxarı auditoriya xanalarının sayına,
+  saatlarının cəmi isə həmin ştatların `Cəmi` sətirlərindəki auditoriya xanalarının cəminə bərabərdir. Hesabatın bütün
+  cəmləri (dərs, saat, digər yük) eyni ştatlar üzrədir; kənarda qalanların dərsi, saatı və yükü ayrıca sətirdə
+  göstərilir. Başqa tədris ilinin ştatı bloklanır, lakin cəmə daxildir (`rt#0!A223`).
 - **T6. Arayış yoxlamaları (fayl səviyyəsində, xəbərdarlıq).** A: blokların illik cəmlərinin cəmi vərəqin cəm sətrinə,
   arayış cədvəlinin hər sətri öz blokunun illik cəminə və auditoriya saatına (doktorantura rəhbərliyi daxil), vakant yük
   bölməsinin cəmi və auditoriya saatı vakansiya bloklarına, `Ümumi cəm` sətri isə arayışın saydığı bütün blokların

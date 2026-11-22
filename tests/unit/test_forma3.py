@@ -244,8 +244,13 @@ def test_g4_a_hidden_sheet_is_read_and_listed_but_never_imported(form_b):
     info = form_b.sheets[6]
     assert (info.state, info.imported, info.units, info.hours) == ("hidden", False, 2, 45)
     assert post(form_b, "#6!B10").hidden and all(u.hidden for u in form_b.units if u.sheet == 6)
-    assert forma3.report(form_b)["units"] == {"count": 24, "hours": 615, "hidden": 2, "ready": 22, "ready_hours": 540, "hourly": 6,
-                                             "vacancy": 3, "joint": 2}
+    r = forma3.report(form_b)
+    assert r["units"] == {"count": 24, "hours": 615, "hidden": 2, "outside": 0, "ready": 22, "ready_hours": 540, "hourly": 6,
+                          "vacancy": 3, "joint": 2}
+    hidden_load = [x for x in form_b.load if x.sheet == 6]
+    assert r["excluded"] == {"posts": ["#6!B10"], "units": 2, "hours": 45, "load_lines": len(hidden_load),
+                             "load_hours": round(sum(x.hours for x in hidden_load), 4)}
+    assert r["load_hours"] == round(sum(x.hours for x in form_b.load if x.sheet != 6), 4), "the hidden sheet's load is not in the totals"
 
 
 def test_g4_a_hidden_row_with_a_value_gets_a_note(form_a):
@@ -723,6 +728,15 @@ def test_k1_an_error_value_in_a_total_row_is_recomputed_and_does_not_block(form_
     assert p.controls == {"T1": True, "T2": True, "T3": True} and not p.blocked and round(p.year_total, 3) == 74.333
 
 
+def test_t5_counts_the_department_s_posts_against_the_grid_and_the_total_rows(form_a, sheets_a):
+    """Checkpoint F review: T5 was built with ok=True and no expected value, and the file totals counted a sheet the summary
+    leaves out (rt#1) and the hidden sheet's load."""
+    t5 = [c for c in form_a.controls if c.check == "T5"]
+    assert [(c.expected, c.found, c.ok) for c in t5] == [(19.0, 19.0, True), (410.0, 410.0, True)], "#1!A4 is outside the totals"
+    form = forma3.read(changed(sheets_a, **{"#0!F17": "45"}))                    # a contact total that the rows do not give
+    assert [(c.expected, c.found, c.ok) for c in form.controls if c.check == "T5"] == [(19.0, 19.0, True), (425.0, 410.0, False)]
+
+
 def test_t3_units_and_load_must_cover_the_totals(form_a, form_b):
     for form in (form_a, form_b):
         for c in form.controls:
@@ -823,7 +837,8 @@ def test_forma3_check_prints_cells_and_counts_and_no_name(capsys):
     import manage
     assert manage.main(["forma3-check", str(FIX / "forma3_blocks.xlsx")]) == 1
     out = capsys.readouterr().out
-    assert "dərslər: 21 (455 auditoriya saatı); tətbiq oluna bilən: 17" in out and "yoxlamalar T1–T3: 6/6" in out
+    assert "dərslər: 19 (410 auditoriya saatı); tətbiq oluna bilən: 17" in out and "yoxlamalar T1–T3: 6/6" in out
+    assert "kafedranın cəminə daxil olmayan: 1 ştat/bölmə (#1!A4) — 2 dərs (45 saat)" in out and "yoxlama T5: 2/2" in out
     assert "BLOK #0!C66  subject_missing" in out and "BLOK #0!A61: 2 dərs" in out and "heç bir qaydaya düşməyən xana: 0" in out
     for word in ("Quliyev", "Həsənova", "Məmmədov", "Əliyeva", "Elektronika", "verdiyim"):
         assert word not in out, word

@@ -1521,10 +1521,36 @@ def read(sheets: list[Sheet]) -> Form:
                                                    cell if any(p.ref == cell for p in form.posts) else None))
                 else:
                     form.notes.append(Note(cell, g.t(r, c)[:200], "hidden_row", _m("hidden_row", x=g.t(r, c))))
-    shown = [u for u in form.units if not u.hidden]
-    form.controls.append(Control("file", "", "T5", None, float(len(shown)), True))
-    form.controls.append(Control("file", "", "T5", None, round(sum(u.hours for u in shown), 4), True))
+    _file_counts(R)
     return form
+
+
+def counted(form: Form) -> set[str]:
+    """The posts in the department's totals (T5, the report): not on a hidden sheet (G4) and not left out of the summary
+    (A11, rt#1). A post of another year (G5) is blocked but still counted: the summary counts rt#0!A223."""
+    outside = {c.post for c in form.conflicts if c.code == "not_in_summary"}
+    return {p.ref for p in form.posts if not p.hidden and p.ref not in outside}
+
+
+def _file_counts(R: _Reader):
+    """T5: the units of the counted posts against the grid itself, recounted (the non-zero top-left contact cells of their
+    data rows), and their hours against the posts' total rows (the contact cells, recomputed where unreadable)."""
+    form, mine = R.form, counted(R.form)
+    cells, total = 0, 0.0
+    for p in form.posts:
+        if p.ref not in mine or p.ref not in R.cols:
+            continue
+        g, cols = R.grids[p.sheet], R.cols[p.ref]
+        contact = [c for c, x in cols.hours.items() if x.role == "contact"]
+        total += sum(R.totals.get(p.ref, {}).get(c, 0.0) for c in contact)
+        for r in range(p.rows[0] - 1, p.rows[1]) if p.rows else ():
+            for c in contact:
+                m = g.cover.get((r, c))
+                cells += bool(tx.number(g.t(r, c))) and (not m or (m[0], m[1]) == (r, c) and m[1] == m[3])
+    units = [u for u in form.units if u.post in mine]
+    hours = round(sum(u.hours for u in units), 4)
+    form.controls.append(Control("file", "", "T5", float(cells), float(len(units)), cells == len(units)))
+    form.controls.append(Control("file", "", "T5", round(total, 4), hours, abs(total - hours) <= TOL))
 
 
 # ---------------------------------------------------------------- the report a person reads before applying the file
@@ -1539,14 +1565,18 @@ def report(form: Form, known_codes: set[str] | None = None) -> dict:
     units: dict[str, list[Unit]] = defaultdict(list)
     for u in form.units:
         units[u.post].append(u)
+    mine = counted(form)                                         # one predicate for every department total below
     load: dict[str, dict] = {}
     for x in form.load:
-        row = load.setdefault(x.kind, {"lines": 0, "hours": 0.0})
-        row["lines"] += 1
-        row["hours"] = round(row["hours"] + x.hours, 4)
+        if x.post in mine:
+            row = load.setdefault(x.kind, {"lines": 0, "hours": 0.0})
+            row["lines"] += 1
+            row["hours"] = round(row["hours"] + x.hours, 4)
     blocked = {p.ref for p in form.posts if p.blocked}
-    shown = [u for u in form.units if not u.hidden]
+    shown = [u for u in form.units if u.post in mine]
     ready = [u for u in shown if u.post not in blocked]
+    left = [u for u in form.units if u.post not in mine]
+    left_load = [x for x in form.load if x.post not in mine]
     return {
         "layout": form.layout, "year": form.year, "department": form.department,
         "sheets": [{"index": s.index, "name": s.name, "state": s.state, "class": s.cls, "imported": s.imported, "reason": s.reason,
@@ -1557,14 +1587,17 @@ def report(form: Form, known_codes: set[str] | None = None) -> dict:
                    "year_conflict": p.year_conflict, "units": len(units[p.ref]), "hours": round(sum(u.hours for u in units[p.ref]), 4),
                    "year_total": round(p.year_total, 4) if p.year_total is not None else None} for p in form.posts],
         "units": {"count": len(shown), "hours": round(sum(u.hours for u in shown), 4), "hidden": sum(u.hidden for u in form.units),
-                  "ready": len(ready), "ready_hours": round(sum(u.hours for u in ready), 4), "hourly": sum(u.hourly for u in shown),
-                  "vacancy": sum(u.vacancy for u in shown), "joint": sum(u.joint for u in shown)},
+                  "outside": sum(not u.hidden for u in left), "ready": len(ready), "ready_hours": round(sum(u.hours for u in ready), 4),
+                  "hourly": sum(u.hourly for u in shown), "vacancy": sum(u.vacancy for u in shown), "joint": sum(u.joint for u in shown)},
+        "excluded": {"posts": [p.ref for p in form.posts if p.ref not in mine], "units": len(left),
+                     "hours": round(sum(u.hours for u in left), 4), "load_lines": len(left_load),
+                     "load_hours": round(sum(x.hours for x in left_load), 4)},
         "conflicts": [{"cell": c.cell, "code": c.code, "message": c.message, "blocking": c.blocking, "post": c.post}
                       for c in sorted(conflicts, key=lambda c: not c.blocking)[:MAX_LISTED]],
         "conflict_count": len(conflicts), "blocking_count": sum(c.blocking for c in conflicts),
         "notes": [{"cell": n.cell, "code": n.code, "message": n.message, "post": n.post} for n in form.notes[:MAX_LISTED]],
         "note_count": len(form.notes),
-        "load": load, "load_hours": round(sum(x.hours for x in form.load), 4),
+        "load": load, "load_hours": round(sum(x.hours for x in form.load if x.post in mine), 4),
         "links": dict(Counter(f"{x.basis}:{x.level}" for x in form.links)),
         "controls": [asdict(c) for c in form.controls if c.scope != "post" or not c.ok],
         "cells": form.cells, "unclassified": form.unclassified,

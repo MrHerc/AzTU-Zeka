@@ -146,6 +146,10 @@ def forma3_check(path: Path, as_json: bool) -> int:
     print(f"dərslər: {u['count']} ({u['hours']:g} auditoriya saatı); tətbiq oluna bilən: {u['ready']} ({u['ready_hours']:g} saat); "
           f"gizli vərəqdə: {u['hidden']}; saat hesabı: {u['hourly']}; vakansiya: {u['vacancy']}; birləşmiş: {u['joint']}")
     print(f"digər yük: {sum(x['lines'] for x in r['load'].values())} sətir, {r['load_hours']:g} saat")
+    x = r["excluded"]
+    if x["posts"]:
+        print(f"kafedranın cəminə daxil olmayan: {len(x['posts'])} ştat/bölmə ({', '.join(x['posts'][:12])}) — {x['units']} dərs "
+              f"({x['hours']:g} saat), digər yük {x['load_lines']} sətir ({x['load_hours']:g} saat)")
     passed = sum(all(p["controls"].get(t) for t in ("T1", "T2", "T3")) for p in r["posts"])
     print(f"yoxlamalar T1–T3: {passed}/{len(r['posts'])} ştat/bölmə keçdi; bloklanıb: {len(bad)}; heç bir qaydaya düşməyən xana: {r['unclassified']}")
     for p in bad:

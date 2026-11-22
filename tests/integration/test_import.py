@@ -112,7 +112,8 @@ def test_forma3_preview_shows_the_readers_report_and_writes_nothing(app_db, load
     assert {p["ref"]: p["status"] for p in f["posts"]} == {"#0!A7": "ok", "#0!A22": "ok", "#0!A48": "ok", "#0!A61": "blocked",
                                                            "#0!A72": "ok", "#1!A4": "blocked"}
     assert all(p["controls"] == {"T1": True, "T2": True, "T3": True} for p in f["posts"])
-    assert (f["units"]["count"], f["units"]["ready"], f["units"]["hourly"], f["units"]["vacancy"]) == (21, 17, 4, 5)
+    assert (f["units"]["count"], f["units"]["ready"], f["units"]["hourly"], f["units"]["vacancy"]) == (19, 17, 4, 3)
+    assert f["excluded"] == {"posts": ["#1!A4"], "units": 2, "hours": 45, "load_lines": 3, "load_hours": 9.3}, "A11: outside the totals"
     blocking = {(c["cell"], c["code"]) for c in f["conflicts"] if c["blocking"]}
     assert blocking == {("#0!C66", "subject_missing"), ("#1!A4", "year_conflict"), ("#1!A4", "not_in_summary")}
     assert all(isinstance(c["message"], str) and c["message"] for c in f["conflicts"]), "messages arrive in the reader's language"
