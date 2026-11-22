@@ -5,7 +5,7 @@ same order, each with the name the check had there. The tests build on each othe
 dashboard is read first, then a plan is sent to the storyline student Murad, who works through it.
 """
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -226,3 +226,38 @@ def test_leadership_insight(leader):
     r = leader.get("/api/analytics")
     # radar: leadership insight
     assert r.status == 200 and any(i.get("link") == "/radar" for i in r.json["insights"])
+
+
+# ---------------------------------------------------------------- Task 42 (PERF-F1): the dashboard reads the periodic summary
+def _db(fn):
+    c = store.connect()
+    try:
+        out = fn(c)
+        c.commit()
+        return out
+    finally:
+        c.close()
+
+
+def test_the_leadership_dashboard_and_the_staff_badge_read_the_summary_never_the_analysis(leader, office, monkeypatch):
+    live = _db(lambda c: (radar.analysis(c).counts(), radar.impact(c, radar.analysis(c))))
+    s = _db(radar.summarize)                     # what the job radar.summary writes every 15 minutes
+    assert {k: s[k] for k in ("high", "watch", "ok", "students", "measured", "improved")} == {
+        **live[0], "measured": live[1]["measured"], "improved": live[1]["improved"]}, "the summary is the live analysis"
+
+    def analysed(*_a, **_k):
+        raise AssertionError("the campus-wide analysis ran in a request")
+    monkeypatch.setattr(radar, "analysis", analysed)
+    when = datetime.fromisoformat(s["at"]).strftime("%d.%m.%Y %H:%M")
+    for lang in ("az", "en"):
+        r = leader.get("/api/analytics", lang=lang)
+        assert r.status == 200, r.text
+        line = next(i for i in r.json["insights"] if i.get("link") == "/radar")
+        assert line["at"] == s["at"] and when in line["text"] and f"{s['high']} " in line["text"], line
+    assert leader.get("/api/badges").json["radar"] == s["high"] and office.get("/api/badges").json["radar"] == s["high"]
+
+    _db(lambda c: c.execute("DELETE FROM settings WHERE key='radar_summary'"))     # before the job's first run
+    line = next(i for i in leader.get("/api/analytics").json["insights"] if i.get("link") == "/radar")
+    assert line["at"] is None and "hesablanmayıb" in line["text"] and "radar" not in leader.get("/api/badges").json
+    monkeypatch.undo()
+    _db(radar.summarize)

@@ -31,15 +31,20 @@ def analytics(req):
     hours = row(c, "SELECT COALESCE(SUM(m.minutes),0) mins FROM academy_progress p JOIN academy_modules m ON m.id=p.module_id WHERE p.status='completed'")["mins"]
     summary = office_summary(req)
     cs = []
+    att_all = {"n": 0, "a": 0, "e": 0}           # Task 42: the campus totals are the courses' sums, not a scan of attendance
     for co in rows(c, "SELECT * FROM courses ORDER BY id"):
-        ats = rows(c, "SELECT a.score, a.max_score FROM attempts a JOIN quizzes q ON q.id=a.quiz_id WHERE q.course_id=? AND a.finished_at IS NOT NULL", (co["id"],))
+        # Task 42: averaged in SQL; a dict per attempt (100 000 on a university's data) took most of a second
+        qa = row(c, "SELECT AVG(100.0 * a.score / a.max_score) avg FROM attempts a JOIN quizzes q ON q.id=a.quiz_id "
+                    "WHERE q.course_id=? AND a.finished_at IS NOT NULL", (co["id"],))
         ins = course_insights(c, co["id"])
-        att = row(c, "SELECT COUNT(*) n, SUM(a.status IN ('present','late')) p FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE l.course_id=?", (co["id"],))
+        att = row(c, "SELECT COUNT(*) n, SUM(a.status IN ('present','late')) p, SUM(a.status='absent') a, SUM(a.status='excused') e "
+                     "FROM attendance a JOIN lessons l ON l.id=a.lesson_id WHERE l.course_id=?", (co["id"],))
+        for k in att_all:
+            att_all[k] += att[k] or 0
         cs.append({"id": co["id"], "name": co["name"], "color": co["color"], "questions": by_course.get(co["id"], 0),
-                   "quiz_avg": round(sum(100 * a["score"] / a["max_score"] for a in ats) / len(ats)) if ats else None,
+                   "quiz_avg": round(qa["avg"]) if qa["avg"] is not None else None,
                    "no_source_rate": ins["no_source_rate"], "positive_rate": ins["positive_rate"],
                    "attendance": round(100 * (att["p"] or 0) / att["n"]) if att["n"] else None})
-    att_all = row(c, "SELECT COUNT(*) n, SUM(status='absent') a, SUM(status='excused') e FROM attendance")
     req_by_type = rows(c, "SELECT t.name, COUNT(r.id) n FROM request_types t LEFT JOIN requests r ON r.type_code=t.code GROUP BY t.code ORDER BY n DESC, t.seq LIMIT 8")
     news = rows(c, "SELECT n.id, n.title, n.kind, (SELECT COUNT(*) FROM news_reads r WHERE r.news_id=n.id) reads, "
                    "(SELECT COUNT(*) FROM news_rsvp v WHERE v.news_id=n.id) rsvp FROM news n ORDER BY reads DESC LIMIT 5")

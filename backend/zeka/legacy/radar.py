@@ -31,7 +31,7 @@ from ..core.i18n import S_, T3, num3
 from ..core import tenant
 from ..modules.directory import service as directory
 from ..modules.identity import privacy
-from .store import J, iso, now, row, rows
+from .store import J, iso, now, row, rows, set_setting, setting
 
 WEIGHTS = {"attendance": 30, "assessment": 30, "concept": 25, "engagement": 15}
 LEVELS = (("high", 50), ("watch", 30), ("ok", 0))
@@ -451,6 +451,22 @@ def analysis(c, course_ids=None) -> Analysis:
 def invalidate():
     with _LOCK:
         _CACHE.clear()
+
+
+def summarize(c) -> dict:
+    """The campus-wide counts and the plans' impact, written by the periodic job ``radar.summary`` (and the demo seed).
+    Task 42 (PERF-F1): the leadership dashboard and the staff's badge read them; analysing every student × course on each
+    open took 6 s on a university's data. The Radar page itself stays live."""
+    an = Analysis(Frame(c))                  # not the cache: a run every 15 minutes would fill it with campus-wide analyses
+    im = impact(c, an)
+    out = {**an.counts(), "measured": im["measured"], "improved": im["improved"], "at": iso(now())}
+    set_setting(c, "radar_summary", out)
+    return out
+
+
+def summary(c) -> dict | None:
+    """The last ``summarize`` result, None before the first one."""
+    return setting(c, "radar_summary")
 
 
 # ---------------------------------------------------------------- support plans

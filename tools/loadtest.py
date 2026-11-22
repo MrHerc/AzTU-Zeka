@@ -19,7 +19,9 @@ Datasets (added on top of the demo seed):
     faculty     2 000 students, 12 000 enrolments, 1 200 timetable rows, 20 000 quiz attempts, 20 000 material chunks
     university  10 000 students, 60 000 enrolments, 6 000 timetable rows, 100 000 quiz attempts, 100 000 material chunks
 
-Output: requests, requests/s, p50/p95/p99 latency, 5xx, 4xx, connection errors.
+Output: requests, requests/s, p50/p95/p99 latency, 5xx, 4xx, connection errors; read/write/mixed add the requests sent
+again on a new connection after the server closed an idle keep-alive one ("reopened", what a browser does) and every
+non-2xx answer by route ("errors_by_route").
 """
 from __future__ import annotations
 
@@ -131,7 +133,8 @@ def sessions(port: int, data: Path) -> tuple[list[str], list[int]]:
     db = sqlite3.connect(data / "campus.db")
     try:
         users = [r[0] for r in db.execute("SELECT username FROM users WHERE role='student' ORDER BY id LIMIT ?", (SESSIONS,))]
-        news = [r[0] for r in db.execute("SELECT id FROM news WHERE status='published' ORDER BY id")]
+        # Task 42: only news a student may open; a teachers-only item answered 404, the script's own error
+        news = [r[0] for r in db.execute("SELECT id FROM news WHERE status='published' AND audience IN ('all','students') ORDER BY id")]
     finally:
         db.close()
     tokens = []
@@ -149,17 +152,18 @@ def sessions(port: int, data: Path) -> tuple[list[str], list[int]]:
     return tokens, news
 
 
-def client(args) -> list[tuple[float, int]]:
+def client(args) -> list[tuple[float, int, str, bool]]:
+    """(latency, status, "METHOD path", reopened) per request; status 0 is a connection error."""
     port, threads, seconds, scenario, tokens, news, seed, think = args
     import threading
-    out: list[tuple[float, int]] = []
+    out: list[tuple[float, int, str, bool]] = []
     lock = threading.Lock()
     stop_at = time.time() + seconds
     mix = MIX[scenario]
 
     def user(n):
         rng = random.Random(seed * 1000 + n)
-        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+        conn, used = http.client.HTTPConnection("127.0.0.1", port, timeout=60), False
         base = {"Cookie": tokens[n % len(tokens)], "X-Lang": "az", "Origin": f"http://127.0.0.1:{port}"}
         mine = []
         while time.time() < stop_at:
@@ -168,14 +172,22 @@ def client(args) -> list[tuple[float, int]]:
             if method != "GET":
                 body = json.dumps({"theme": rng.choice(["light", "dark"])} if path.endswith("prefs") else {})
                 headers["Content-Type"] = "application/json"
+            url = path.format(news=rng.choice(news))
             t = time.perf_counter()
-            try:
-                status = call(conn, method, path.format(news=rng.choice(news)), body, headers)
-            except (OSError, http.client.HTTPException):
-                status = 0
-                conn.close()
-                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
-            mine.append((time.perf_counter() - t, status))
+            status, reopened = 0, False
+            # Task 42: the server closes a keep-alive connection idle for 30 s (a user thinking longer); like a browser,
+            # a request that fails on a reused connection is sent once more on a new one. A new one that fails is an error.
+            for again in (used, False):
+                try:
+                    status, used = call(conn, method, url, body, headers), True
+                    break
+                except (OSError, http.client.HTTPException):
+                    conn.close()
+                    conn, used = http.client.HTTPConnection("127.0.0.1", port, timeout=60), False
+                    reopened = again
+                    if not again:
+                        break
+            mine.append((time.perf_counter() - t, status, f"{method} {path}", reopened))
             if think:                                  # a person reads the page before the next click (exponential pause)
                 time.sleep(min(rng.expovariate(1 / think), stop_at - time.time()) if stop_at > time.time() else 0)
         conn.close()
@@ -342,7 +354,8 @@ def main(argv=None) -> int:
     ap.add_argument("--dataset", choices=sorted(SIZES), default="demo")
     ap.add_argument("--workers", type=int, default=1, help="server processes (backend/run.py --workers)")
     ap.add_argument("--clients", type=int, default=min(4, os.cpu_count() or 1), help="load generator processes")
-    ap.add_argument("--fail-on-errors", action="store_true", help="exit 1 on any 5xx or connection error")
+    ap.add_argument("--fail-on-errors", action="store_true",
+                    help="exit 1 on any 5xx or connection error, and on any 4xx in read/write/mixed (the script sends none it expects)")
     ap.add_argument("--burst", action="store_true", help="exam: no pauses, every student at once (the worst case)")
     ap.add_argument("--proctors", type=int, default=3, help="exam: boards polled every 5 s during the sitting (Task 29)")
     ap.add_argument("--ramp", type=float, help="exam: every student enters within this many seconds (default: the first tenth)")
@@ -404,7 +417,14 @@ def main(argv=None) -> int:
                 jobs = [(port, args.users // k + (1 if i < args.users % k else 0), args.seconds, args.scenario, tokens, news, i, args.think)
                         for i in range(k)]
                 with multiprocessing.get_context("spawn").Pool(k) as pool:
-                    results = [r for part in pool.map(client, jobs) for r in part]
+                    sent = [r for part in pool.map(client, jobs) for r in part]
+                results = [(lat, status) for lat, status, _, _ in sent]
+                failed: dict[str, dict[str, int]] = {}
+                for _, status, route, _ in sent:
+                    if not 200 <= status < 300:
+                        failed.setdefault(route, {}).setdefault(str(status), 0)
+                        failed[route][str(status)] += 1
+                extra = {"reopened": sum(1 for r in sent if r[3]), "errors_by_route": failed}
         finally:
             proc.terminate()
             try:
@@ -416,7 +436,8 @@ def main(argv=None) -> int:
     machine = {"cores": os.cpu_count(), "memory_gb": _memory_gb(), "python": sys.version.split()[0]}
     print(json.dumps({"scenario": args.scenario, "dataset": args.dataset, "users": args.users, "workers": args.workers,
                       "think_s": args.think, "ramp_s": args.ramp, **machine, **rep, **extra}))
-    return 1 if args.fail_on_errors and (rep["5xx"] or rep["conn_errors"] or extra.get("lost") or extra.get("exam_verify")) else 0
+    bad = rep["5xx"] or rep["conn_errors"] or (rep["4xx"] and args.scenario != "exam") or extra.get("lost") or extra.get("exam_verify")
+    return 1 if args.fail_on_errors and bad else 0
 
 
 if __name__ == "__main__":

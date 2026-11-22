@@ -105,8 +105,39 @@ def test_workers_share_the_port_and_a_killed_worker_comes_back(tmp_path):
 
 @pytest.mark.slow
 def test_the_load_tool_runs(capsys):
+    # Task 42: --fail-on-errors also fails on a 4xx here; the script once saved a teachers-only news item (404)
     assert loadtest.main(["--scenario", "mixed", "--users", "8", "--seconds", "2", "--dataset", "demo", "--clients", "2", "--fail-on-errors"]) == 0
-    assert '"5xx": 0' in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert '"5xx": 0' in out and '"4xx": 0' in out and '"errors_by_route": {}' in out
+
+
+def test_the_load_tool_reopens_a_keep_alive_connection_the_server_closed():
+    """Task 42: the server closes a keep-alive connection idle for 30 s; a browser sends the next request again on a new
+    one, and so does the tool, without counting an error. This server closes every connection after one answer."""
+    import http.server
+
+    class OneAnswer(http.server.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"{}")
+            self.close_connection = True         # no "Connection: close": the client believes it may reuse the connection
+
+        def log_message(self, *_a):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), OneAnswer)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        out = loadtest.client((srv.server_address[1], 2, 0.5, "read", ["zeka_sid=x"], [1], 0, 0))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert len(out) > 10 and {r[1] for r in out} == {200}, {r[1] for r in out}
+    assert sum(1 for r in out if r[3]) == len(out) - 2, "every request after a user's first went again on a new connection"
 
 
 def test_a_slow_request_body_never_holds_a_handler_slot(app_db, monkeypatch):

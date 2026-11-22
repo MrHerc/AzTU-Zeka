@@ -22,14 +22,17 @@ def accounts(c, role: str) -> int:
 
 
 def active_weekly(c, role: str, since: str, until: str) -> list[dict]:
-    """Distinct users with an event per week, in sessions acting in ``role``."""
-    return rows(c, f"SELECT {WEEK.format(t='created_at')} AS w, COUNT(DISTINCT user_id) AS n FROM events "
-                   "WHERE created_at>=? AND created_at<=? AND role=? GROUP BY w", (until, since, until, role))
+    """Distinct users with an event per week, in sessions acting in ``role``. Task 42 (AR-F11): counted from their days
+    (``active_days``, one row per person, role and day), not from every event: week 0 is the day of ``until`` and the 6
+    before it."""
+    return rows(c, f"SELECT {WEEK.format(t='day')} AS w, COUNT(DISTINCT user_id) AS n FROM active_days "
+                   "WHERE role=? AND day>? AND day<=? GROUP BY w", (until[:10], role, since[:10], until[:10]))
 
 
 def active_by_role(c, since: str, until: str) -> list[dict]:
-    return rows(c, "SELECT role, COUNT(DISTINCT user_id) AS n FROM events WHERE created_at>=? AND created_at<=? "
-                   "GROUP BY role ORDER BY n DESC, role", (since, until))
+    """Distinct users per role on the days after the day of ``since`` up to the day of ``until`` (``active_days``)."""
+    return rows(c, "SELECT role, COUNT(DISTINCT user_id) AS n FROM active_days WHERE day>? AND day<=? "
+                   "GROUP BY role ORDER BY n DESC, role", (since[:10], until[:10]))
 
 
 def lessons_weekly(c, since: str, until: str, cutover: str | None = None) -> list[dict]:

@@ -9,17 +9,18 @@ Also: the event log (a change and a sign-in leave an event, a read does not) and
 import csv
 import io
 import json
+import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from zeka.core import clock, events
-from zeka.legacy import periodic, store
+from zeka.legacy import common, periodic, store
 from zeka.modules.insight import service
 
 CODES = ["3.5.1", "3.5.3", "5.4.2", "5.4.3", "5.4.4", "5.4.5", "5.4.6", "5.4.7", "5.4.8"]
-COUNTED = ("events", "lessons", "attendance", "requests", "messages", "exams", "academy_progress")   # what the tiles read
+COUNTED = ("events", "active_days", "lessons", "attendance", "requests", "messages", "exams", "academy_progress")   # what the tiles read
 
 
 @pytest.fixture
@@ -83,7 +84,7 @@ def test_every_tile_counts_the_rows_written_for_it(copy):
     # 2 students and 1 teacher active this week; a student active 10 days ago only counts in an earlier week
     for uid, role, d in ((students[0], "student", 1), (students[0], "student", 2), (students[1], "student", 3), (teachers[0], "teacher", 1),
                          (students[2], "student", 10)):
-        copy.execute("INSERT INTO events(user_id,role,action,module,created_at) VALUES(?,?,?,?,?)", (uid, role, "x", "core", at(d)))
+        events.record(copy, uid, role, "x", "core", at=t - timedelta(days=d))
     # 4 lessons held 2 days ago, 3 of them with attendance; a cancelled one and tomorrow's do not count
     day = (t - timedelta(days=2)).date().isoformat()
     lids = [copy.execute("INSERT INTO lessons(course_id,day,start,\"end\",status) VALUES(?,?,?,?,?)", (course, d, "09:00", "10:20", s)).lastrowid
@@ -150,6 +151,65 @@ def test_a_28_day_tile_counts_20_days_back_and_not_30(copy):
                     "request_hours": timedelta(days=28), "request_sla": timedelta(days=28), "cited": timedelta(days=28), "exams": timedelta(days=28)}
 
 
+# ---------------------------------------------------------------- Task 42 (AR-F11, PERF-F1): what the dashboard reads
+def test_the_active_user_tiles_count_days_through_an_index_not_every_event(copy):
+    """A person's 40 events of a day are one active day; the tiles read ``active_days`` by its keys and never ``events``."""
+    for table in ("events", "active_days"):
+        copy.execute(f"DELETE FROM {table}")  # nosec B608
+    t = store.now()
+    uid = copy.execute("SELECT id FROM users WHERE role='student' AND status='active' ORDER BY id LIMIT 1").fetchone()[0]
+    for k in range(40):
+        events.record(copy, uid, "student", "x", "core", at=t - timedelta(minutes=k))
+    events.record(copy, None, "student", "x", "core", at=t)          # an event without a person has no active day
+    assert [tuple(r) for r in copy.execute("SELECT day, role, user_id FROM active_days")] == [(t.date().isoformat(), "student", uid)]
+    ran: list[str] = []
+    copy.set_trace_callback(ran.append)
+    got = {k["key"]: k for k in service.tiles(copy)}
+    roles = service.active_roles(copy)
+    copy.set_trace_callback(None)
+    students = copy.execute("SELECT COUNT(*) FROM users WHERE role='student' AND status='active'").fetchone()[0]
+    assert got["wau_student"]["value"] == round(100 / students, 1) and roles == [{"role": "student", "n": 1}]
+    assert not [s for s in ran if re.search(r"\bFROM events\b", s)], "a tile counted every event"
+    reads = [s for s in ran if "active_days" in s]
+    assert len(reads) == 3, reads                                      # the two weekly tiles and the roles of the week
+    for sql in reads:
+        plan = [r[3] for r in copy.execute("EXPLAIN QUERY PLAN " + sql)]
+        assert any(p.startswith("SEARCH active_days") for p in plan) and not any(p.startswith("SCAN") for p in plan), (sql, plan)
+
+
+def test_the_dashboard_scans_no_attendance_and_still_counts_every_mark(leader, monkeypatch):
+    """The campus attendance is the courses' sums (no scan of the table) and the test averages are computed in SQL; both
+    equal a direct count of the rows."""
+    seen: list[str] = []
+    connect = store.connect
+
+    def traced():
+        c = connect()
+        c.set_trace_callback(seen.append)
+        return c
+    monkeypatch.setattr(store, "connect", traced)
+    monkeypatch.setattr(common, "_TX_GUARD", False)           # the guard puts its own trace callback on the connection
+    a = leader.get("/api/analytics").json
+    monkeypatch.undo()
+    assert [s for s in seen if "FROM courses" in s], "the dashboard's statements were not traced"
+    c = store.connect()
+    try:
+        for sql in dict.fromkeys(s for s in seen if "attendance" in s and s.lstrip().upper().startswith("SELECT")):
+            plan = [r[3] for r in c.execute("EXPLAIN QUERY PLAN " + sql)]
+            assert not [p for p in plan if re.match(r"SCAN (attendance|a)\b", p)], (sql, plan)
+        n, absent, excused = c.execute("SELECT COUNT(*), SUM(status='absent'), SUM(status='excused') FROM attendance").fetchone()
+        per: dict[int, list[float]] = {}
+        for cid, score, mx in c.execute("SELECT q.course_id, a.score, a.max_score FROM attempts a JOIN quizzes q ON q.id=a.quiz_id "
+                                        "WHERE a.finished_at IS NOT NULL"):
+            per.setdefault(cid, []).append(100 * score / mx)
+    finally:
+        c.close()
+    assert a["attendance"] == {"rate": round(100 * (1 - (absent + excused) / n), 1), "absent": absent, "excused": excused}
+    assert {x["id"]: x["quiz_avg"] for x in a["courses"]} == {x["id"]: round(sum(per[x["id"]]) / len(per[x["id"]])) if x["id"] in per else None
+                                                              for x in a["courses"]}
+    assert any(x["quiz_avg"] is not None for x in a["courses"]) and n > 0
+
+
 # ---------------------------------------------------------------- the event log
 def test_a_sign_in_and_a_change_leave_an_event_and_a_read_does_not(app_db):
     s = app_db.client("student")
@@ -181,10 +241,13 @@ def test_a_session_s_first_request_of_a_day_is_a_visit(app_db, monkeypatch):
 def test_the_retention_purge_drops_events_older_than_a_year(copy):
     t = store.now()
     for d in (366, 364):
-        copy.execute("INSERT INTO events(user_id,role,action,module,created_at) VALUES(1,'student','x','core',?)", (store.iso(t - timedelta(days=d)),))
+        events.record(copy, 1, "student", "x", "core", at=t - timedelta(days=d))
     before = copy.execute("SELECT COUNT(*) FROM events").fetchone()[0]
     assert "events 1" in periodic.retention_purge(copy)
     assert copy.execute("SELECT COUNT(*) FROM events").fetchone()[0] == before - 1
+    old = copy.execute("SELECT COUNT(*) FROM active_days WHERE day<?", ((t - timedelta(days=365)).date().isoformat(),)).fetchone()[0]
+    kept = copy.execute("SELECT COUNT(*) FROM active_days WHERE day=?", ((t - timedelta(days=364)).date().isoformat(),)).fetchone()[0]
+    assert old == 0 and kept == 1, "the days of the purged events go with them, the others stay (Task 42)"
     assert copy.execute("SELECT COUNT(*) FROM events WHERE created_at<?", (store.iso(t - timedelta(days=365)),)).fetchone()[0] == 0
 
 

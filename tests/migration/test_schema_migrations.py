@@ -222,3 +222,24 @@ def test_0462_gives_a_demo_database_s_office_the_academic_office_and_leaves_prod
         finally:
             c.close()
             (mdir / src.name).unlink()
+
+
+def test_0391_fills_the_active_days_from_the_events_already_logged(tmp_path, mdir):
+    """Task 42 (AR-F11): a database with a year of events gets their days at once; the tiles count those, not the events."""
+    for v, _, path in migrate.discover():
+        if v < 391:
+            put(mdir, path.name, path.read_text(encoding="utf-8"))
+    c = sqlite3.connect(tmp_path / "t.db")
+    try:
+        migrate.apply(c, mdir)
+        c.executemany("INSERT INTO events(user_id,role,action,module,created_at) VALUES(?,?,'x','core',?)",
+                      [(7, "student", "2026-11-18T09:00:00"), (7, "student", "2026-11-18T17:30:00"), (7, "teacher", "2026-11-18T10:00:00"),
+                       (8, "student", "2026-11-19T08:00:00"), (None, "student", "2026-11-19T08:00:00")])
+        c.commit()
+        src = next(p for v, _, p in migrate.discover() if v == 391)
+        put(mdir, src.name, src.read_text(encoding="utf-8"))
+        migrate.apply(c, mdir)
+        assert c.execute("SELECT day, role, user_id FROM active_days ORDER BY day, role, user_id").fetchall() == [
+            ("2026-11-18", "student", 7), ("2026-11-18", "teacher", 7), ("2026-11-19", "student", 8)]
+    finally:
+        c.close()

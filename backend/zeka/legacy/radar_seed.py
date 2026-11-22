@@ -183,6 +183,7 @@ def seed(c, t0):
     n = len(L)
     if n < 8:                          # first days of a semester: the cohort is too young for storylines
         radar.snapshot_history(c)
+        radar.summarize(c)
         return
     synth = [r["id"] for r in rows(c, "SELECT id FROM users WHERE role='student' AND synthetic=1 ORDER BY id")]
     picks = dict(zip(DEMO_STUDENTS, (synth[4], synth[11], synth[18], synth[27], synth[35], synth[44]), strict=False))
@@ -279,3 +280,4 @@ def seed(c, t0):
            {"az": "Elektrik dövrələrinin nəzəriyyəsi üzrə yeni xəbərdarlıqlar var", "en": "New early warnings in Theory of Electric Circuits",
             "ru": "Новые предупреждения по курсу «Теория электрических цепей»"}, "/radar", t0 - timedelta(hours=3))
     radar.snapshot_history(c)
+    radar.summarize(c)                 # the dashboard's Radar line until the first radar.summary run (Task 42)

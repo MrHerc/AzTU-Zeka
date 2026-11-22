@@ -8,6 +8,8 @@
   each threshold once per object.
 - ``lessons.generate``, daily: the current term's lessons from tomorrow on, as Task 19 makes them (idempotent).
 - ``radar.snapshot``, weekly: this week's Zəka Radar counts, which only the demo seed wrote before.
+- ``radar.summary``, every 15 minutes: the campus-wide Radar counts and the plans' impact that the leadership dashboard
+  and the staff's badge read (Task 42, PERF-F1), with the time they were computed.
 
 Task 26 adds ``exam.autosubmit`` from the exam module.
 """
@@ -48,6 +50,7 @@ def retention_purge(c) -> str:
     notes = purge(c, "notifications", "created_at<?", (iso(t - timedelta(days=keep["notifications_days"])),))
     logged = purge(c, "audit", "ts<?", (iso(t - timedelta(days=keep["audit_days"])),))
     events = purge(c, "events", "created_at<?", (iso(t - KEEP_EVENTS),))
+    c.execute("DELETE FROM active_days WHERE day<?", (iso(t - KEEP_EVENTS)[:10],))   # the days of those events (Task 42); WITHOUT ROWID, so not store.purge
     return (f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions} · job runs {runs} · mails {mails}"
             f" · club messages {club} · webhook deliveries {hooks} · notifications {notes} · audit {logged} · events {events}")
 
@@ -114,9 +117,15 @@ def radar_snapshot(c) -> str:
     return f"week {radar.snapshot_week(c)}"
 
 
+def radar_summary(c) -> str:
+    s = radar.summarize(c)
+    return f"high {s['high']} · watch {s['watch']} · students {s['students']}"
+
+
 jobs.periodic("retention.purge", DAY, retention_purge)
 jobs.periodic("reminders.sla", timedelta(minutes=15), reminders_sla)
 jobs.periodic("lessons.generate", DAY, lessons_generate)
 jobs.periodic("radar.snapshot", timedelta(days=7), radar_snapshot)
+jobs.periodic("radar.summary", timedelta(minutes=15), radar_summary)
 from ..modules.integration import webhooks as _webhooks  # noqa: E402,F401  (Task 37: webhooks.send, attendance.barred)
 from ..modules.exam import service as _exam  # noqa: E402,F401  registers exam.autosubmit (Task 26)

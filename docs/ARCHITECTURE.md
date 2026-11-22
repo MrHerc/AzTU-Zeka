@@ -228,7 +228,7 @@ Seeding has two parts. `store.seed_catalog()` writes the product content every i
 - Roughly 1,850 synthetic tutor exchanges across the courses (per-course weights), with topics, citations and ratings, used by the course insights, the leadership dashboard and the Radar model.
 - E-service requests in every status, including one ready enrolment certificate for the demo student, one revoked document and generated one-page PDFs as medical certificate attachments.
 - Academy progress for the demo teacher, news with registrations and read marks, notifications per role, support tickets and 140 feedback entries.
-- Radar storylines (`radar_seed.seed()`): six generated students of ELM-2105, the demo teacher's course, are given attendance, grades, test attempts and tutor activity that tell a clear story (a high-risk student who stopped attending, a student with concept gaps, a disengaged student, a student with an open support plan whose steps were completed from activity, a student whose plan is completed, a student whose absences are all excused). The tutor answers in these histories are composed by the offline engine. The storylines are skipped while ELM-2105 has fewer than eight lessons (the first days of a semester). In both cases `radar.snapshot_history()` writes the weekly risk snapshots for the past weeks of the semester.
+- Radar storylines (`radar_seed.seed()`): six generated students of ELM-2105, the demo teacher's course, are given attendance, grades, test attempts and tutor activity that tell a clear story (a high-risk student who stopped attending, a student with concept gaps, a disengaged student, a student with an open support plan whose steps were completed from activity, a student whose plan is completed, a student whose absences are all excused). The tutor answers in these histories are composed by the offline engine. The storylines are skipped while ELM-2105 has fewer than eight lessons (the first days of a semester). In both cases `radar.snapshot_history()` writes the weekly risk snapshots for the past weeks of the semester and `radar.summarize()` the dashboard's campus summary.
 
 Generated timestamps for office activity are folded into 09:00 to 17:59 so that requests are not shown as filed at night.
 
@@ -394,7 +394,7 @@ Zəka Radar is an explainable early-warning view: it scores the risk of each stu
 
 **Impact and trend.** `radar.impact()` compares each supported student's current score with the score stored when the plan was sent; plans younger than seven days are not measured, and a plan counts as improved when the score fell by 10 points or more or the level dropped. `radar.trend()` returns the stored weekly snapshots plus the live current week.
 
-**Who sees what.** Teachers see the students of their own courses; office, leader and admin see all courses; leader may not create or close plans. A student sees only the plans written for them, without the score or the drivers. The Radar count in `GET /api/badges` is the number of high-risk students for teachers, office and leader, and the leadership dashboard's first insight is a Radar summary (`leader_insight`).
+**Who sees what.** Teachers see the students of their own courses; office, leader and admin see all courses; leader may not create or close plans. A student sees only the plans written for them, without the score or the drivers. The Radar count in `GET /api/badges` is the number of high-risk students for teachers, office and leader, and the leadership dashboard's first insight is a Radar summary (`leader_insight`). Since Task 42 (PERF-F1) the office's and leader's count and the dashboard's line come from `radar.summarize()`, which the periodic job `radar.summary` runs every 15 minutes (a settings row with the time it was computed, shown in the line); a teacher's count, the Radar page and the student profile are analysed live.
 
 ## 13. Localisation
 
@@ -437,7 +437,7 @@ Routes are hash paths such as `#/student/tutor/1` or `#/office/request/12`, so t
 
 ## 16. Analytics
 
-The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and admin). The feedback and support dashboards (`#/staff/feedback`, `#/staff/support`) read `/api/feedback/summary` and `/api/support/summary`. Since Task 39 every tile of the dashboard is a measured indicator of `modules/insight` (value, 8 weekly points, definition, period, target), and every other number on the page is a count of rows. The accreditation evidence page (`#/leader/evidence`) reads `GET /api/insight/evidence`.
+The leadership dashboard (`#/leader`) reads `GET /api/analytics` (leader and admin). The feedback and support dashboards (`#/staff/feedback`, `#/staff/support`) read `/api/feedback/summary` and `/api/support/summary`. Since Task 39 every tile of the dashboard is a measured indicator of `modules/insight` (value, 8 weekly points, definition, period, target), and every other number on the page is a count of rows. The active-user tiles count `active_days` (one row per person, role and day, written next to every event; Task 42, AR-F11), not every event. The accreditation evidence page (`#/leader/evidence`) reads `GET /api/insight/evidence`.
 
 | Indicator | Source |
 |---|---|

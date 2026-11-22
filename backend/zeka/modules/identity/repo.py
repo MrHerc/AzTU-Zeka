@@ -261,6 +261,7 @@ INVENTORY: dict[tuple[str, str], tuple[str | None, str]] = {
     ("exam_roster", "added_by"): (None, K),
     ("exam_statements", "closed_by"): (None, K),
     ("events", "user_id"): ("user_id = :uid", D),             # Task 39: activity counts, a year
+    ("active_days", "user_id"): ("user_id = :uid", D),        # Task 42: the days of those events, for the active-user tiles
     ("exams", "created_by"): (None, K),
     ("feedback", "user_id"): ("user_id = :uid", D),
     ("files", "owner_id"): ("owner_id = :uid", K),

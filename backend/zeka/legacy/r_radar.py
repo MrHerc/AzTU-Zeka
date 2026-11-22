@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 from . import radar
 from .common import R
@@ -243,15 +244,22 @@ def demo_storyline(req):
 def badge_count(c, u) -> int | None:
     if u["role"] not in ("teacher", "office", "leader"):
         return None
-    ids = [r["id"] for r in rows(c, "SELECT id FROM courses WHERE teacher_id=?", (u["id"],))] if u["role"] == "teacher" else None
-    if u["role"] == "teacher" and not ids:
+    if u["role"] != "teacher":              # Task 42 (PERF-F1): the campus count of the last radar.summary run
+        s = radar.summary(c)
+        return s["high"] if s else None
+    ids = [r["id"] for r in rows(c, "SELECT id FROM courses WHERE teacher_id=?", (u["id"],))]
+    if not ids:
         return 0
     return radar.analysis(c, ids).counts()["high"]
 
 
 def leader_insight(c):
-    an = radar.analysis(c)
-    k, im = an.counts(), radar.impact(c, an)
-    text = E("Zəka Radar: {high} tələbə yüksək risk, {watch} tələbə diqqət siyahısındadır. Dəstək planı alan {m} tələbədən {k}-nin riski azalıb.",
-             high=k["high"], watch=k["watch"], m=im["measured"], k=im["improved"])
-    return {"level": "warn" if k["high"] else "good", "text": text, "link": "/radar"}
+    """The dashboard's Radar line from the last radar.summary run, with the time it was computed (Task 42, PERF-F1)."""
+    s = radar.summary(c)
+    if not s:
+        return {"level": "warn", "text": E("Zəka Radar: kampus üzrə göstəricilər hələ hesablanmayıb. Onları dövri iş «radar.summary» hesablayır."),
+                "link": "/radar", "at": None}
+    text = E("Zəka Radar, {at} tarixinə: {high} tələbə yüksək risk, {watch} tələbə diqqət siyahısındadır. "
+             "Dəstək planı alan {m} tələbədən {k}-nin riski azalıb.",
+             at=datetime.fromisoformat(s["at"]).strftime("%d.%m.%Y %H:%M"), high=s["high"], watch=s["watch"], m=s["measured"], k=s["improved"])
+    return {"level": "warn" if s["high"] else "good", "text": text, "link": "/radar", "at": s["at"]}

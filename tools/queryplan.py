@@ -8,7 +8,7 @@ a student (enter, start, every answer, view, submit) and the proctor board as th
 dashboard and the accreditation evidence (Task 39) as a leader. Records each SQL statement the handlers run and prints,
 as JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
 slowest routes. Exit 1 when a read, mixed or exam route scans one; the leader's routes are reported, not failed: the
-dashboard's Radar summary reads every student's records by design (docs/perf/task42.md).
+dashboard counts every course's rows by design (docs/perf/task42.md). Its Radar line is the periodic job's summary.
 """
 from __future__ import annotations
 

@@ -181,6 +181,7 @@ Ayarsız qısa müddətlər: `doc_keys` (5 dəqiqə), `rate_hits` və `login_blo
 | `exam_roster.added_by` | İstisnanı əlavə edən | yox: icraçı | saxla | Q-müddət | İ |
 | `exam_statements.closed_by` | İmtahan-qiymət cədvəlini bağlayan dekanlıq | yox: icraçı | saxla | Q-müddət | İ |
 | `events.user_id` | Fəaliyyət qeydi: giriş, günün ilk sorğusu, dəyişiklik edən sorğu (rol, modul, vaxt); aktiv istifadəçi və akkreditasiya göstəriciləri | bəli | sil | 365 gün | S, T |
+| `active_days.user_id` | Fəaliyyət qeydlərinin günləri (gün, rol): aktiv istifadəçi göstəriciləri bunları sayır | bəli | sil | 365 gün | S, T |
 | `exams.created_by` | İmtahanı yaradan müəllim | yox: icraçı | saxla | Q-müddət | İ |
 | `feedback.user_id` | Platforma haqqında rəy | bəli | sil | hesab qədər | T |
 | `files.owner_id` | Yüklədiyi fayllar (həkim arayışı, tapşırıq) | bəli (metadata; fayl öz keçidi ilə) | saxla | bağlı qeyd qədər | T, Q |
