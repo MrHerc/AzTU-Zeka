@@ -27,5 +27,6 @@ def test_every_exam_request_and_the_leader_s_sign_in_is_a_step(monkeypatch):
         ("exam", "PUT", "/api/exams/N/answers/N", "zeka_sid=sitting"), ("exam", "PUT", "/api/exams/N/answers/N", "zeka_sid=sitting"),
         ("exam", "GET", "/api/exams/N", "zeka_sid=sitting"), ("exam", "GET", "/api/exams/N/board?after=N", "zeka_sid=proctor"),
         ("exam", "POST", "/api/exams/N/submit", "zeka_sid=sitting"), ("leader", "POST", "/api/auth/demo", ""),
-        ("leader", "GET", "/api/analytics", "zeka_sid=leader"), ("leader", "GET", "/api/insight/evidence", "zeka_sid=leader")]
+        ("leader", "GET", "/api/analytics", "zeka_sid=leader"), ("leader", "GET", "/api/insight/evidence", "zeka_sid=leader"),
+        ("leader", "GET", "/api/radar", "zeka_sid=leader")]
     assert len(seen) - len(later) == 5, "the mixed scenario's read and write routes"
