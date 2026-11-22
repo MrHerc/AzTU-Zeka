@@ -532,6 +532,7 @@ A version is the first 12 hex digits of the SHA-256 of the text consented to. Fo
 
 - Each boolean that is present is one `consents` row with method `portal`, plus the text in `consent_texts` and an audit `consent` entry. A body with neither boolean records `ai: true`.
 - `versions` names the version the page showed. Another version gives `409`, and so does an `external: true` without its version.
+- `external: true` gives `400` while an external AI is enabled but its `vendor` or `country` is empty: the notice would name no recipient. In that state an earlier external AI consent does not count either, and the offline engine answers. `external: false` is always accepted.
 - `ai: false` withdraws the AI study aids' consent and deletes the person's AI chats at once. The audit entry carries `chats_deleted`.
 
 Response: `{"ok": true, "consent_at": ..., ...}` followed by the `GET /api/privacy` fields. `consent_at` mirrors the `ai` consent.

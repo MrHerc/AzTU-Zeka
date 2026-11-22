@@ -27,6 +27,9 @@ FILTERED = {("grades", "user_id"), ("documents", "holder_id"), ("exam_events", "
 KEPT = {"attendance", "attendance_opening", "grades", "grade_changes", "final_grades", "enrollments", "exam_attempts", "exam_roster",
         "exam_events", "exam_forms", "documents", "submissions", "student_status_events", "requests", "consents", "privacy_requests", "audit"}
 GONE = {"messages", "notifications", "sessions", "feedback", "ical_feeds", "recovery_codes", "support_tickets", "news_saved"}
+# an external AI the notice names (review F2: without the service and its country it is not used)
+LLM = {"enabled": True, "provider": "openai", "model": "fake", "api_key": "x", "base_url": "https://x", "vendor": "Nümunə AI MMC",
+       "country": "Almaniya"}
 
 
 def q(sql, args=()):
@@ -153,7 +156,7 @@ def test_the_external_ai_is_called_only_with_a_consent_to_the_current_text(app_d
     s = login_as(app_db, name)
     calls = []
     real = r_learning.search_chunks
-    monkeypatch.setattr(engine, "llm_config", lambda: {"enabled": True, "provider": "openai", "model": "fake", "api_key": "x", "base_url": "https://x"})
+    monkeypatch.setattr(engine, "llm_config", lambda: LLM)
     monkeypatch.setattr(r_learning, "search_chunks", lambda cid, text: [{**h, "score": 5.0} for h in real(cid, text)])
     monkeypatch.setattr(tutor, "llm_tutor", lambda mode, text, hits, *a: calls.append(text) or
                         {"text": "Xarici cavab [1]", "cites": [hits[0]["id"]], "meta": {"mode": mode}})
@@ -174,7 +177,7 @@ def test_the_external_ai_is_called_only_with_a_consent_to_the_current_text(app_d
     assert s.post("/api/consent", {"external": True, "versions": {"external_ai": v1}}).status == 409      # the page showed the old text
     assert s.post("/api/consent", {"external": True, "versions": {"external_ai": v2}}).status == 200
     assert _ask(s).status == 200 and len(calls) == 2
-    assert q("SELECT text FROM consent_texts WHERE version=?", (v2,))[0]["text"].endswith("yeni təchizatçı.\n— · —")   # no service named
+    assert q("SELECT text FROM consent_texts WHERE version=?", (v2,))[0]["text"].endswith("yeni təchizatçı.\nNümunə AI MMC · Almaniya")
     assert s.post("/api/consent", {"external": False}).status == 200            # withdrawn
     assert _ask(s).status == 200 and len(calls) == 2
     history = q("SELECT version, granted, method FROM consents c JOIN users u ON u.id=c.user_id WHERE u.username=? "
@@ -185,7 +188,7 @@ def test_the_external_ai_is_called_only_with_a_consent_to_the_current_text(app_d
 def test_a_teacher_also_needs_the_consent(app_db, monkeypatch):
     calls = []
     real = r_learning.search_chunks
-    monkeypatch.setattr(engine, "llm_config", lambda: {"enabled": True, "provider": "openai", "model": "fake", "api_key": "x", "base_url": "https://x"})
+    monkeypatch.setattr(engine, "llm_config", lambda: LLM)
     monkeypatch.setattr(r_learning, "search_chunks", lambda cid, text: [{**h, "score": 5.0} for h in real(cid, text)])
     monkeypatch.setattr(tutor, "llm_tutor", lambda mode, text, hits, *a: calls.append(text) or {"text": "ok [1]", "cites": [hits[0]["id"]], "meta": {"mode": mode}})
     t = app_db.client("teacher")
@@ -203,7 +206,7 @@ def test_nothing_leaves_for_the_external_ai_unmasked_even_with_masking_off(app_d
     """Checkpoint F (SA-F5): the consent text promises masked questions; the masking toggle only changes the offline engine."""
     calls = []
     real = r_learning.search_chunks
-    monkeypatch.setattr(engine, "llm_config", lambda: {"enabled": True, "provider": "openai", "model": "fake", "api_key": "x", "base_url": "https://x"})
+    monkeypatch.setattr(engine, "llm_config", lambda: LLM)
     monkeypatch.setattr(r_learning, "search_chunks", lambda cid, text: [{**h, "score": 5.0} for h in real(cid, text)])
     monkeypatch.setattr(tutor, "llm_tutor", lambda mode, text, hits, hist, *a: calls.append((text, hist)) or
                         {"text": "ok [1]", "cites": [hits[0]["id"]], "meta": {"mode": mode}})
@@ -320,6 +323,29 @@ def test_the_notice_names_the_external_service_and_a_new_service_asks_again(app_
     monkeypatch.setitem(cfg, "country", "ABŞ")
     assert privacy.version("external_ai") != v1 and not _allowed(s.user["id"])
     assert s.post("/api/consent", {"external": True, "versions": {"external_ai": v1}}).status == 409
+
+
+def test_an_external_service_the_notice_does_not_name_is_not_used(app_db, monkeypatch):
+    """Review F2: the consent text says the notice names the service and its country (Art. 14). While either is empty the
+    external AI consent cannot be given, an earlier one does not count, and the offline engine answers."""
+    calls = []
+    real = r_learning.search_chunks
+    monkeypatch.setattr(engine, "llm_config", lambda: {"enabled": True, "provider": "openai", "model": "fake", "api_key": "x",
+                                                       "base_url": "https://x", "vendor": "Nümunə AI MMC"})       # no country
+    monkeypatch.setattr(r_learning, "search_chunks", lambda cid, text: [{**h, "score": 5.0} for h in real(cid, text)])
+    monkeypatch.setattr(tutor, "llm_tutor", lambda mode, text, hits, *a: calls.append(text) or {"text": "ok [1]", "cites": [hits[0]["id"]], "meta": {"mode": mode}})
+    t = app_db.client("teacher")
+    v = privacy.version("external_ai")
+    r = t.post("/api/consent", {"ai": True, "external": True, "versions": {"external_ai": v}})
+    assert r.status == 400 and "ölkəsi" in r.json["error"], r.text
+    assert t.post("/api/consent", {"ai": True, "external": True, "versions": {"external_ai": v}}, lang="en").json["error"] != r.json["error"]
+    run("INSERT INTO consents(user_id,purpose,version,granted,method,lang,at) VALUES(?,'external_ai',?,1,'portal','az',?)",
+        (t.user["id"], v, store.iso(store.now())))                    # given before this rule
+    assert t.post("/api/consent", {"ai": True}).status == 200
+    r = _ask(t)
+    assert r.status == 200 and calls == [] and r.json["answer"]["meta"].get("note"), r.text
+    assert not _allowed(t.user["id"])
+    assert t.post("/api/consent", {"external": False}).status == 200          # a withdrawal is always possible
 
 
 def test_the_radar_risk_score_is_in_the_student_s_own_export(app_db):

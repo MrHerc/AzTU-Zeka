@@ -44,6 +44,13 @@ def service() -> dict:
     return {"enabled": cfg["enabled"], "vendor": cfg.get("vendor") or None, "country": cfg.get("country") or None}
 
 
+def named() -> bool:
+    """Whether the notice names the external service and its country. The consent text says it does, and a consent to
+    "— · —" names no recipient (Art. 14): until both are set the external AI is not used (review F2)."""
+    s = service()
+    return bool(s["vendor"] and s["country"])
+
+
 def consent_text(purpose: str) -> str:
     """The text a consent is given to. The external AI's carries the service and country the notice names, so another
     service is a new version and the consents to the old one stop (Qərarlar, data-inventory.md)."""
@@ -58,14 +65,17 @@ def version(purpose: str) -> str:
 
 
 def allowed(c, uid: int, purpose: str = "external_ai") -> bool:
-    """Whether the person's current choice for ``purpose`` is a consent to the current text."""
+    """Whether the person's current choice for ``purpose`` is a consent to the current text (and, for the external AI, to a
+    service the notice names)."""
+    if purpose == "external_ai" and not named():
+        return False
     r = repo.consent_of(c, uid, purpose)
     return bool(r and r["granted"] and r["version"] == version(purpose))
 
 
 def consenting(c, purpose: str = "ai") -> set[int]:
     """Everyone for whom ``allowed(c, uid, purpose)`` holds, in one query: Zəka Radar reads tutor activity only for them."""
-    return repo.consenting(c, purpose, version(purpose))
+    return set() if purpose == "external_ai" and not named() else repo.consenting(c, purpose, version(purpose))
 
 
 def state(c, u: dict | None) -> dict:
@@ -95,6 +105,8 @@ def record(c, u: dict, body, lang: str) -> tuple[str, object]:
         return "stale", E("Razılıq mətni yenilənib: səhifəni yeniləyib mətni yenidən oxuyun")
     if choices.get("external_ai") and "external_ai" not in shown:     # Checkpoint F (SF-F9): the record proves the text shown
         return "stale", E("Razılıq mətni yenilənib: səhifəni yeniləyib mətni yenidən oxuyun")
+    if choices.get("external_ai") and service()["enabled"] and not named():      # review F2
+        return "invalid", E("Xarici AI xidmətinin adı və ya ölkəsi məxfilik bildirişində göstərilməyib: bu razılığı hələ vermək olmur")
     at = iso(now())
     for p, granted in choices.items():
         repo.add_consent(c, u["id"], p, version(p), granted, "portal", lang, at, consent_text(p))

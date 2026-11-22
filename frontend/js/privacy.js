@@ -35,6 +35,8 @@ export async function privacyNotice() {
 document.addEventListener("click", (e) => { const a = e.target.closest("[data-privacy-notice]"); if (a) { e.preventDefault(); privacyNotice(); } });
 
 const current = (x) => !!(x && x.consent && x.consent.granted && x.consent.current);
+// An external AI the notice does not name (service or country empty) takes no consent: the server refuses it (review F2)
+const unnamed = (p) => p.external_ai.enabled && !(p.external_ai.vendor && p.external_ai.country);
 
 // The AI tutor and the campus assistant are optional study aids: their page asks for the consent when the person has
 // none to the current text, and "not now" leaves only them closed. Resolves whether the consent is already in place;
@@ -55,7 +57,7 @@ export async function aiConsent(onGiven) {
           ${infoTip(t("Söhbətlər universitet platformasında {n} gün saxlanılır. Hər sənədə baxış audit jurnalına yazılır.", { n: p.retention.chats_days }))}</li>
       </ul>
       <label class="check"><input type="checkbox" id="c1"> ${ai.text}</label>
-      <label class="check"><input type="checkbox" id="c2" ${current(ext) ? "checked" : ""}> ${ext.text} <span class="tiny muted">(${t("istəyə görə")})</span></label>
+      <label class="check"><input type="checkbox" id="c2" ${unnamed(p) ? "disabled" : current(ext) ? "checked" : ""}> ${ext.text} <span class="tiny muted">(${t("istəyə görə")})</span></label>
       <span class="tiny muted">${t("Razılığı istənilən vaxt “Profil” bölməsində geri götürə bilərsiniz.")} <a href="#" data-privacy-notice>${t("Məxfilik bildirişi")}</a></span></div>`,
     actions: [{ label: t("İndi yox"), cls: "btn-ghost" }, { label: t("Qəbul edirəm"), cls: "btn-primary", onClick: async (w) => {
       if (!w.querySelector("#c1").checked) { toast(t("AI köməkçilərindən istifadə üçün birinci razılıq lazımdır"), "err"); return false; }
@@ -79,7 +81,7 @@ export async function privacyCard(box) {
     const reqs = p.requests || [], pending = reqs.some((r) => r.status === "pending");
     mount(box, html`${p.purposes.map((x) => html`<div class="set-row"><div><span class="small">${x.text}</span><div class="small muted">${consentLine(x)}</div></div>
           ${current(x) ? html`<button class="btn btn-sm btn-ghost" data-consent="${x.id}" data-version="${x.version}" data-grant="0">${t("Geri götür")}</button>`
-            : html`<button class="btn btn-sm" data-consent="${x.id}" data-version="${x.version}" data-grant="1">${t("Razılıq ver")}</button>`}</div>`)}
+            : html`<button class="btn btn-sm" data-consent="${x.id}" data-version="${x.version}" data-grant="1" ${x.id === "external_ai" && unnamed(p) ? "disabled" : ""}>${t("Razılıq ver")}</button>`}</div>`)}
       <ul class="consent-list"><li>${ic("shield", 15)} <span>${t("Şəxsi məlumatlar AI xidmətlərinə göndərilməzdən əvvəl maskalanır.")}</span></li>
         <li>${ic("lock", 15)} <span>${t("Tələbə məlumatları ilə AI modeli öyrədilmir.")}</span></li>
         <li>${ic("eye", 15)} <span>${t("Tibbi və sosial sənədlərə yalnız dekanlıq baxa bilər; hər baxış audit jurnalına yazılır.")}</span></li></ul>

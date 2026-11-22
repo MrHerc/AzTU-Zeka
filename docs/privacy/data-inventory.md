@@ -319,8 +319,9 @@ onları LLM ayarlarından götürür: `config.json`-da `llm.vendor` və `llm.cou
 **Səbəb.** 14-cü maddə ekvivalent qoruması olmayan ölkəyə ötürməni yalnız şəxsin razılığı ilə qəbul edir. Belə
 razılıq konkret alıcıya və ölkəyə verilməlidir. Adı mətnin özünə yazmaq hər xidmət dəyişikliyində tərcümələri ilə yeni
 mətn tələb edərdi. Ayardan gələn ad eyni nəticəni verir: ad dəyişəndə razılıq yenə dayanır. Xarici LLM qoşulub, amma
-ad və ya ölkə yazılmayıbsa, bildiriş "göstərilməyib" yazır. Yerləşdirmə runbook-u hər iki dəyəri doldurmağı tələb edir
-(`docs/runbooks/deploy.md`).
+ad və ya ölkə yazılmayıbsa, bildiriş "göstərilməyib" yazır və xarici AI işlənmir: razılıq verilə bilmir, əvvəl verilmiş
+razılıq sayılmır, suala oflayn mühərrik cavab verir (`privacy.named`, rəy F2). Yerləşdirmə runbook-u hər iki dəyəri
+doldurmağı tələb edir (`docs/runbooks/deploy.md`).
 
 **Qərarı nə dəyişə bilər.** Universitet ölkə daxilində işləyən model seçə bilər (G-Cloud və ya öz serveri). Onda
 `country` "Azərbaycan" olur və 14-cü maddə tətbiq olunmur. Razılıq yenə soruşulur, çünki versiya dəyişir.
