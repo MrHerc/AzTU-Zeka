@@ -448,15 +448,15 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
             conflicts.append({"row": u.anchor, "reason": reason})
             refused.add(u.anchor)
             continue
-        sid = _key("f3", u.teacher or "", u.subject_key, u.semester, u.kind, sorted(x["code"] for x in u.groups), u.hourly, u.vacancy)
-        seen[sid] = seen.get(sid, 0) + 1
-        if seen[sid] > 1:                                # R4: the same class written again is a separate class, never summed
-            sid = _key(sid, seen[sid])
-        items.append(Item(0, "teaching_load", sid, {
+        content = _key("f3", u.teacher or "", u.subject_key, u.semester, u.kind, sorted(x["code"] for x in u.groups), u.hourly, u.vacancy)
+        seen[content] = seen.get(content, 0) + 1
+        if seen[content] > 1:                            # R4: the same class written again is a separate class, never summed
+            content = _key(content, seen[content])
+        items.append(Item(0, "teaching_load", _key("f3", u.anchor), {
             "course_id": course, "kind": u.kind, "subgroup": None, "teacher_id": teacher, "hours": u.hours,
             "students": u.students_total or None, "pay": "hourly" if u.hourly else "staff", "vacancy": int(u.vacancy),
             "post_ref": u.post, "anchor": u.anchor}, groups=sorted({groups[forma3.norm(x["code"])] for x in u.groups}),
-            extra={"where": u.anchor}))
+            extra={"where": u.anchor, "aliases": [content]}))
     report = forma3.report(form, known_codes={k for k in groups}, refused=refused)
     return items, report
 
@@ -494,9 +494,28 @@ def _new(it: Item) -> dict:
     return {**it.values, **({"groups": it.groups} if it.link in UNIT_LINKS else {})}
 
 
+def _unit_links(ctx: Context, items: list[Item]) -> dict[int, dict | None]:
+    """X21: a Forma №3 unit is keyed on its anchor cell, with its content (teacher, subject, groups, ordinal) as an alias.
+    It finds its row by its content first (a row inserted above moves every anchor), then by its anchor (a corrected
+    teacher, subject or group, a filled vacancy), and never takes a row another unit of the file has already found."""
+    links, out, taken = ctx.links["teaching_load"], {}, set()
+    mine = [it for it in items if it.link == "teaching_load"]
+    for by_content in (True, False):
+        for it in mine:
+            if out.get(id(it)) is not None:
+                continue
+            ids = it.extra.get("aliases", []) if by_content else [it.source_id]
+            hit = next((links[s] for s in ids if s in links and links[s]["row_id"] not in taken), None)
+            if hit is not None:
+                taken.add(hit["row_id"])
+            out[id(it)] = hit
+    return out
+
+
 def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, errors: list):
+    units = _unit_links(ctx, items) if "teaching_load" in ctx.links else {}
     for it in items:
-        link = ctx.links[it.link].get(it.source_id)
+        link = units[id(it)] if it.link == "teaching_load" else ctx.links[it.link].get(it.source_id)
         rid = link["row_id"] if link and link["row_id"] in ctx.rows[it.link] else None
         it.row_id = rid or (it.natural if it.natural in ctx.rows[it.link] else None)
         if it.link == "users" and it.row_id and ctx.rows["users"][it.row_id]["role"] not in IMPORTED_ROLES:
@@ -515,6 +534,9 @@ def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, er
             continue
         new_hash, cur_hash = domain.row_hash(_new(it)), domain.row_hash(cur)
         it.extra["cur_hash"] = cur_hash
+        if it.link == "teaching_load" and link and link["source_hash"] != cur_hash:     # an older key of the same row
+            own = (ctx.links[it.link].get(k) for k in (it.source_id, *it.extra.get("aliases", [])))
+            link = next((x for x in own if x and x["row_id"] == link["row_id"] and x["source_hash"] == cur_hash), link)
         if new_hash == cur_hash:
             it.action = "unchanged" if link and link["source_hash"] == new_hash else "relink"
         elif link and cur_hash == link["source_hash"]:

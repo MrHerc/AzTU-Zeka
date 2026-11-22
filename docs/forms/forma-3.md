@@ -291,8 +291,12 @@ auditoriya saatı; B quruluşlu faylda 1 245 dərs və 29 783,5 saat, onlardan 1
 - Vakansiya dərsi müəllimsiz yazılır (`teacher_id` boş, `vacancy = 1`). Hər tədris vahidi ödənişi (`pay`: `staff`,
   `hourly`), ştatın ünvanını (`post_ref`) və lövbər xanasını (`anchor`) saxlayır (`0470_forma3_units.sql`).
 - Qrup kodunun sonluğundan yarımqrup düzəldilmir (`subgroup` boşdur).
-- Eyni açarlı (müəllim, fənn, semestr, növ, qruplar, ödəniş) iki dərs iki ayrı tədris vahididir: saatlar toplanmır,
-  ikincisi fayldakı sırası ilə fərqləndirilir. Eyni faylın təkrar idxalı heç nəyi dəyişmir.
+- Tədris vahidinin idxal açarı lövbər xanasıdır (X21); məzmun açarı (müəllim, fənn, semestr, növ, qruplar, ödəniş və
+  fayldakı sıra) onun ikinci adıdır. Təkrar idxalda vahid əvvəlcə məzmununa görə tapılır (yuxarıya sətir əlavə olunubsa,
+  lövbərlər sürüşür), sonra lövbərinə görə (düzəldilmiş müəllim, fənn, qrup, doldurulmuş vakansiya); faylın başqa
+  vahidinin tapdığı sətri heç vaxt götürmür. Beləliklə bir xana üçün ikinci vahid yazılmır və yük iki dəfə sayılmır.
+- Eyni məzmunlu iki dərs iki ayrı tədris vahididir: saatlar toplanmır, ikincisi fayldakı sırası ilə fərqləndirilir. Eyni
+  faylın təkrar idxalı heç nəyi dəyişmir; əvvəlki halına qaytarılmış fayl yeniləmədir, konflikt deyil.
 
 ## 12. Kafedranın cavablandıracağı suallar
 

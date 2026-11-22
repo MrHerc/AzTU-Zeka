@@ -386,3 +386,42 @@ def test_the_screen_import_refuses_the_migration_history_kinds(admin):
         r = imp(admin, kind, "x.csv", b"userSourcedId,kind,orderNo,orderDate,effectiveDate\nOLD-1,expulsion,X-1,2026-11-18,2026-11-19\n")
         assert r.status == 400 and "manage.py" in r.json["error"], (kind, r.status, r.json)
     assert q("SELECT COUNT(*) n FROM student_status_events")[0]["n"] == before
+
+
+def _edited(data: bytes, part: str, *pairs: tuple[str, str]) -> bytes:
+    """The workbook with text replaced inside one of its XML parts (a department correcting its file)."""
+    import zipfile
+    src, out = zipfile.ZipFile(io.BytesIO(data)), io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        for name in src.namelist():
+            body = src.read(name)
+            for old, new in pairs if name == part else ():
+                assert old.encode() in body, old
+                body = body.replace(old.encode(), new.encode())
+            z.writestr(name, body)
+    return out.getvalue()
+
+
+def test_forma3_a_corrected_file_updates_each_anchor_s_unit_and_never_adds_a_second(app_db, load_world):
+    """X21, Checkpoint F review: the key was the content (teacher, subject, groups), so filling a vacancy in a file already
+    applied wrote a second unit for the same cell and the load was counted twice. The key is the anchor cell now."""
+    admin = app_db.client("admin")
+    load(admin, "forma3_sheets.xlsx", "f3-v")
+    def post3():
+        rows = q("SELECT DISTINCT u.id, u.anchor, u.teacher_id, u.vacancy FROM teaching_units u JOIN import_links l ON l.row_id=u.id "
+                 "AND l.kind='teaching_load' WHERE l.source_system='f3-v' AND u.post_ref='#3!B10' ORDER BY u.anchor")
+        return [(x["id"], x["anchor"], x["teacher_id"], x["vacancy"]) for x in rows]
+    vacant = post3()
+    assert [(x[1], x[2], x[3]) for x in vacant] == [("#3!AA11", None, 1), ("#3!Z11", None, 1)]
+    original = (FIX / "forma3_sheets.xlsx").read_bytes()
+    filled = _edited(original, "xl/worksheets/sheet4.xml", ("<t>VAKANSİYA (Bakalavr)  </t>", "<t>baş müəllim Həsənova Leyla Akif qızının</t>"),
+                     ("<t>RİYAZİYYAT</t>", "<t>1 ŞTAT</t>"))
+    r = imp(admin, "teaching-load", "f.xlsx", filled, source="f3-v")
+    assert r.status == 200, r.text
+    assert (r.json["inserted"], r.json["updated"]) == (0, 2)
+    teacher = load_world["teachers"]["l.hesenova"]
+    assert post3() == [(x[0], x[1], teacher, 0) for x in vacant], "one unit per anchor: the same rows, now with the teacher"
+    back = imp(admin, "teaching-load", "f.xlsx", original, source="f3-v")
+    assert (back.json["inserted"], back.json["updated"]) == (0, 2), "a file put back is an update, never a conflict"
+    assert sorted(x["row"] for x in back.json["conflicts"]) == ["#2!AA11", "#2!AA12", "#7!H11"]
+    assert post3() == vacant, "and back again"
