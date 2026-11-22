@@ -500,6 +500,7 @@ def test_r3_r4_every_valued_contact_cell_is_one_unit_and_a_repeat_is_another_cla
 def test_r5_a_row_with_hours_and_no_group_keeps_its_unit_and_blocks_the_post(form_b):
     u = unit(form_b, "#5!Z11")
     assert (u.hours, u.groups, u.flags) == (60, [], [{"flag": "group_missing", "cell": "#5!C11"}])
+    assert u.students_total == 10, "the row's own student count is kept for when a person adds the group"
     assert [(c.cell, c.blocking) for c in codes(form_b.conflicts, code="group_missing")] == [("#5!C11", True)]
     assert post(form_b, "#5!B10").blocked and not post(form_b, "#5!B14").blocked, "the hourly sub-section of the sheet is not affected"
 

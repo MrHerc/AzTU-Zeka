@@ -628,7 +628,8 @@ def _rows(R: _Reader, g: Grid, post: Post, cols: Cols, r0: int, r1: int, total: 
             if col.role == "contact":
                 u = Unit(post.ref, g.i, post.teacher, post.pay == "hourly", post.vacancy, post.fraction, me["subject"],
                          tx.subject_key(me["subject"]), tx.subject_core(me["subject"]), col.sem or "", col.kind, v, groups,
-                         sum(x["students"] or 0 for x in groups), len(groups) > 1, g.ref(r, c), g.mref(r, c), [x + 1 for x in rows],
+                         sum(x["students"] or 0 for x in groups) if groups else int(me["students"]) if _int(me["students"]) else 0,
+                         len(groups) > 1, g.ref(r, c), g.mref(r, c), [x + 1 for x in rows],
                          hidden=post.hidden)
                 if not groups:                                    # R5
                     u.flags.append({"flag": "group_missing", "cell": g.ref(r, cols.group)})
