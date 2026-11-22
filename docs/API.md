@@ -1324,6 +1324,8 @@ Vocabularies:
 
 Early warning: a risk score per student and course from attendance, grades, test attempts and tutor activity, the reasons behind it, and support plans that a teacher or the dean's office sends to the student.
 
+Tutor activity (the counts and topics of tutor questions and practice answers, never their text) is read only for a student with a current `ai` consent (Privacy above). Without it that part is left out: no engagement points for "no tutor questions", the student is not counted in the course's median of tutor questions, and a plan has no `practice` or `tutor` step and its `read` steps link to the course page instead of the tutor. Refusing or withdrawing the consent never raises the score.
+
 | Method | Path | Access | Purpose |
 |---|---|---|---|
 | `GET` | `/api/radar` | `teacher`, `office`, `leader`, `admin` | Dashboard for the courses in scope |

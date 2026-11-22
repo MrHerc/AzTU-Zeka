@@ -260,6 +260,37 @@ def test_the_ai_helpers_answer_only_with_the_current_consent_and_a_withdrawal_cl
     assert client.post("/api/consent", {"ai": True}).status == 200 and _ask(client).status == 200     # given again
 
 
+def test_refusing_the_ai_consent_does_not_raise_the_radar_score(app_db):
+    """Review F1: a refusal or a withdrawal of the AI study aids' consent has no effect on the rest of the portal
+    (data-inventory.md, R). Zəka Radar reads tutor activity only with the consent: without it the student gets no
+    'no tutor questions' points, no nudge to the tutor and no plan step that sends them to a page that refuses them."""
+    t = app_db.client("teacher")
+
+    def prof(sid):
+        r = t.get(f"/api/radar/student/{sid}?course=1")
+        assert r.status == 200, r.text
+        return r.json["profile"]
+
+    def eng(p):
+        return next(d for d in p["drivers"] if d["key"] == "engagement")
+
+    ids = [r["id"] for r in q("SELECT u.id FROM users u JOIN enrollments e ON e.user_id=u.id WHERE e.course_id=1 AND u.role='student' "
+                               "AND u.synthetic=1 ORDER BY u.id")]
+    sid, before = next((x, p) for x in ids for p in [prof(x)] if p["stats"]["engagement"]["asks_14d"]
+                       and p["stats"]["engagement"]["median_asks"] >= 1 and eng(p)["points"] == 0)
+    s = login_as(app_db, q("SELECT username FROM users WHERE id=?", (sid,))[0]["username"])
+    assert s.post("/api/consent", {"ai": False, "versions": {"ai": privacy.version("ai")}}).status == 200
+    after = prof(sid)
+    assert eng(after)["points"] == 0 and not any("tutor" in e for e in eng(after)["evidence"]), eng(after)
+    assert after["score"] <= before["score"] and (after["recommendation"] or {}).get("kind") != "nudge"
+    for kind in ("plan", "nudge"):
+        r = t.post(f"/api/radar/student/{sid}/plan", {"course_id": 1, "kind": kind, "preview": True})
+        assert r.status in (200, 422), r.text
+        steps = r.json["plan"]["steps"] if r.status == 200 else []
+        assert not [x for x in steps if x["kind"] in ("tutor", "practice") or "/student/tutor" in x["link"]], steps
+    assert s.post("/api/consent", {"ai": True}).status == 200
+
+
 def test_a_new_ai_text_asks_again(app_db, monkeypatch):
     s = app_db.client("student")
     assert s.post("/api/consent", {"ai": True}).status == 200 and _ask(s).status == 200

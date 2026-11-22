@@ -107,6 +107,14 @@ Səbəblər:
    - Profildə razılığı geri götürmək olar. Geri götürmə şəxsin AI söhbətlərini (`messages`) dərhal silir və auditə
      yazılır (`consent`, `chats_deleted`). Əvvəl təsdiq pəncərəsi bunu xəbər verir.
    - Mətn dəyişəndə versiya dəyişir, köhnə razılıq qüvvədən düşür və AI səhifəsi razılığı yenidən soruşur.
+   - Zəka Radar tutor söhbətlərindən yalnız sualların sayını və mövzusunu, məşq cavablarının düzgün olub-olmadığını oxuyur,
+     mətni oxumur. Bunu yalnız cari `ai` razılığı olan tələbə üçün edir: söhbətlər bu razılıqla toplanır, ona görə bu
+     oxumanın əsası da R-dir. Razılığı olmayan tələbədə tutor hissəsi neytraldır: "tutora sual yoxdur" balı yoxdur, tələbə
+     fənnin tutor mediyanına sayılmır, dəstək planında tutora aparan addım (məşq, "AI tutora qayıdın") olmur, oxu addımı
+     isə fənn səhifəsinə aparır. Davamiyyət, qiymət və test cəhdləri Radar-a T əsasında düşür. Beləliklə, imtina və geri
+     götürmə risk balını qaldırmır (`backend/zeka/legacy/radar.py`, `Frame.ai`; test:
+     `test_refusing_the_ai_consent_does_not_raise_the_radar_score`). Açıq sual: `ai` razılığının mətni Radar-ı ayrıca
+     adlandırmır; hüquqşünas mətnin bu oxumanı əhatə etdiyini təsdiqləməlidir.
    - Demo bazasında demo şəxslərin razılığı əvvəlcədən yazılıb (`store.seed`). Prod heç kimi yaratmır: hər real
      istifadəçi razılığı öz seçimi ilə verir.
 4. **Qərarı nə dəyişə bilər.** Universitet AI tutoru tədrisin məcburi hissəsi edərsə (məsələn, fənn proqramında
@@ -186,7 +194,7 @@ Ayarsız qısa müddətlər: `doc_keys` (5 dəqiqə), `rate_hits` və `login_blo
 | `interventions.created_by` | Planı yazan müəllim | yox: icraçı | saxla | plan qədər | İ |
 | `lessons.teacher_id` | Müəllimin dərsləri | bəli | saxla | Q-müddət | T |
 | `materials.uploaded_by` | Materialı yükləyən | yox: icraçı | saxla | fənn qədər | İ |
-| `messages.user_id` | AI tutor və kampus köməkçisi söhbətləri | bəli | sil; `ai` razılığı geri götürüləndə də dərhal silinir | `chats_days` | R |
+| `messages.user_id` | AI tutor və kampus köməkçisi söhbətləri; Zəka Radar yalnız cari `ai` razılığı ilə tutor suallarının sayını və mövzusunu oxuyur (mətni yox) | bəli | sil; `ai` razılığı geri götürüləndə də dərhal silinir | `chats_days` | R |
 | `migration_files.imported_by` | Köhnə sistemin faylını yükləyən işçi (Task 38) | yox: icraçı | saxla | Q-müddət | İ |
 | `news.author_id` | Xəbərin müəllifi (işçi) | yox: icraçı | saxla | xəbər qədər | İ |
 | `news_reads.user_id` | Oxunmuş xəbərlər | bəli | sil | hesab qədər | T |

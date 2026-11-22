@@ -63,6 +63,11 @@ def allowed(c, uid: int, purpose: str = "external_ai") -> bool:
     return bool(r and r["granted"] and r["version"] == version(purpose))
 
 
+def consenting(c, purpose: str = "ai") -> set[int]:
+    """Everyone for whom ``allowed(c, uid, purpose)`` holds, in one query: Zəka Radar reads tutor activity only for them."""
+    return repo.consenting(c, purpose, version(purpose))
+
+
 def state(c, u: dict | None) -> dict:
     """The purposes with their current texts and, for a signed-in person, their choices and deletion requests."""
     out: dict = {"purposes": [], "retention": retention(c), "operator": (setting(c, "university", {}) or {}).get("name"),

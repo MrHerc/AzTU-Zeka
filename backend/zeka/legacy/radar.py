@@ -10,7 +10,9 @@ attended after the plan was sent.
 Model (0–100 points): attendance 30 · assessment 30 · concept gaps 25 · engagement 15.
 Levels: ``high`` ≥ 50, ``watch`` ≥ 30, otherwise ``ok``. Signals built on little data are scaled down by a confidence factor,
 so the first weeks of a semester (two lessons, one absence) never raise a false alarm. Excused absences never count.
-Privacy: the model reads topics and counts of tutor questions, never their text; students never see a risk score.
+Privacy: the model reads topics and counts of tutor questions, never their text, and only of a student with a current
+``ai`` consent: without it the tutor part is left out, so a refusal never raises the score (review F1,
+docs/privacy/data-inventory.md); students never see a risk score.
 
 All user-facing phrasing goes through ``T3`` (returned as {az, en, ru}); course topics and material quotes stay in the
 language of the material.
@@ -28,6 +30,7 @@ from . import engine
 from ..core.i18n import S_, T3, num3
 from ..core import tenant
 from ..modules.directory import service as directory
+from ..modules.identity import privacy
 from .store import J, iso, now, row, rows
 
 WEIGHTS = {"attendance": 30, "assessment": 30, "concept": 25, "engagement": 15}
@@ -112,9 +115,10 @@ class Frame:
                     (_dt(a["finished_at"]), a["score"] / a["max_score"], J(a["details"], []) or [], a["title"]))
         for v in self.attempts.values():
             v.sort(key=lambda x: x[0] or self.now)
+        self.ai = privacy.consenting(c, "ai")              # the tutor chats are read only on the AI consent (review F1)
         self.msgs: dict[tuple, list] = {}
         for m in rows(c, "SELECT user_id, course_id, role, meta, created_at FROM messages WHERE channel='tutor' ORDER BY id"):
-            if m["course_id"] in self.courses:
+            if m["course_id"] in self.courses and m["user_id"] in self.ai:
                 self.msgs.setdefault((m["user_id"], m["course_id"]), []).append((_dt(m["created_at"]), m["role"], J(m["meta"], {}) or {}))
         self._cohort: dict = {}
 
@@ -126,7 +130,8 @@ class Frame:
             asks, tried = [], 0
             studs = self.enrolled.get(cid, [])
             for sid in studs:
-                asks.append(sum(1 for ts, role, _m in self.msgs.get((sid, cid), []) if role == "user" and ts and since < ts <= as_of))
+                if sid in self.ai:                         # only those who may use the tutor
+                    asks.append(sum(1 for ts, role, _m in self.msgs.get((sid, cid), []) if role == "user" and ts and since < ts <= as_of))
                 tried += any(ts and ts <= as_of for ts, _p, _d, _t in self.attempts.get((sid, cid), []))
             self._cohort[key] = {"median_asks": statistics.median(asks) if asks else 0, "attempt_share": tried / len(studs) if studs else 0}
         return self._cohort[key]
@@ -261,7 +266,7 @@ def _engagement(frame: Frame, sid: int, cid: int, as_of: datetime) -> dict:
     ats = [a for a in frame.attempts.get((sid, cid), []) if a[0] and a[0] <= as_of]
     co = frame.cohort(cid, as_of)
     value, ev = 0.0, []
-    if n14 == 0 and (co["median_asks"] >= 1 or before >= 3):
+    if sid in frame.ai and n14 == 0 and (co["median_asks"] >= 1 or before >= 3):
         value += 0.6
         ev.append(T3("Son 14 gündə tutora sual yoxdur (qrup mediyanı: {m})", m=num3(co["median_asks"], 0)))
     if not ats and co["attempt_share"] >= 0.5:
@@ -425,7 +430,7 @@ def fingerprint(c) -> tuple:
     r = row(c, "SELECT (SELECT COUNT(*) FROM messages WHERE channel='tutor') m1, (SELECT COALESCE(MAX(id),0) FROM messages) m2, "
                "(SELECT COUNT(*) FROM attempts WHERE finished_at IS NOT NULL) a, (SELECT COUNT(*) FROM attendance WHERE status='absent') ab, "
                "(SELECT COUNT(*) FROM attendance WHERE status='excused') ex, (SELECT COALESCE(SUM(score),0) FROM grades) g, "
-               "(SELECT COUNT(*) FROM enrollments) en, (SELECT COUNT(*) FROM lessons) le")
+               "(SELECT COUNT(*) FROM enrollments) en, (SELECT COUNT(*) FROM lessons) le, (SELECT COALESCE(MAX(id),0) FROM consents) co")
     return tuple(r.values())
 
 
@@ -468,6 +473,7 @@ def build_plan(c, prof: dict, course: dict, kind: str = "plan", note: str = "", 
     """Turn a diagnosis into concrete, cited steps. Topics come from the concept gaps, else from the lessons the student missed."""
     when = when or now()
     cid = course["id"]
+    ai = privacy.allowed(c, prof["student_id"], "ai")     # no step sends a student without the AI consent to the tutor (review F1)
     topics = [g["topic"] for g in prof["gaps"] if g["score"] >= 1.0][:2]
     source = "gaps"
     if not topics:
@@ -480,8 +486,11 @@ def build_plan(c, prof: dict, course: dict, kind: str = "plan", note: str = "", 
             hits = engine.INDEX["chunks"].search(topic, k=2, where=lambda m, c_=cid: m["course_id"] == c_)
             cites = [{"id": h["id"], "material": h["material"], "heading": h["heading"], "snippet": engine.plain(h["text"])[:200]} for h in hits[:2]]
             steps.append({"kind": "read", "topic": topic, "title": T3("Mövzunu təkrarlayın: {topic}", topic=topic),
-                          "text": T3("Mühazirənin göstərilən hissəsini oxuyun, sonra tutordan qısa izah istəyin."),
-                          "cites": cites, "link": tutor_link(cid, topic, "explain"), "done": False})
+                          "text": T3("Mühazirənin göstərilən hissəsini oxuyun, sonra tutordan qısa izah istəyin.") if ai
+                          else T3("Mühazirənin göstərilən hissəsini oxuyun."),
+                          "cites": cites, "link": tutor_link(cid, topic, "explain") if ai else f"/student/course/{cid}", "done": False})
+            if not ai:
+                continue
             qhits = engine.INDEX["questions"].search(topic, k=4, where=lambda m, c_=cid: m["course_id"] == c_ and m["status"] == "approved")
             qids = [h["id"] for h in qhits if h["id"] in approved][:3]
             steps.append({"kind": "practice", "topic": topic, "title": T3("Məşq: {topic}", topic=topic),
@@ -498,12 +507,12 @@ def build_plan(c, prof: dict, course: dict, kind: str = "plan", note: str = "", 
                       "text": T3("{date}, {time} · {room} — dərsdən sonra.", date=nxt["date"][8:10] + "." + nxt["date"][5:7] + "." + nxt["date"][:4],
                                  time=nxt["start"], room=nxt["room"]) if nxt else T3("Vaxt müəllimlə razılaşdırılacaq."),
                       "when": nxt, "link": f"/student/course/{cid}", "done": False})
-    if kind == "nudge":
+    if kind == "nudge" and ai:
         steps.append({"kind": "tutor", "title": T3("AI tutora qayıdın"), "text": T3("Fənn üzrə istənilən sualı verin — cavablar müəllimin materiallarına əsaslanır."),
                       "link": f"/student/tutor/{cid}", "done": False})
-        if prof["stats"]["engagement"]["attempts"] == 0:
-            steps.append({"kind": "quiz", "title": T3("Məşq testini həll edin"), "text": T3("Fənn üzrə ilk məşq testini həll edin — nəticə fərdi tövsiyələr üçün istifadə olunur."),
-                          "link": "/student/quizzes", "done": False})
+    if kind == "nudge" and prof["stats"]["engagement"]["attempts"] == 0:
+        steps.append({"kind": "quiz", "title": T3("Məşq testini həll edin"), "text": T3("Fənn üzrə ilk məşq testini həll edin — nəticə fərdi tövsiyələr üçün istifadə olunur."),
+                      "link": "/student/quizzes", "done": False})
     due = when + timedelta(days=14 if kind in ("plan", "consult") else 7)
     titles = {"plan": S_("Fərdi dəstək planı · {course}"), "consult": S_("Konsultasiya və məşq · {course}"), "nudge": S_("Fənnə qayıdış · {course}"),
               "office": S_("Davamiyyət üzrə dəstək · {course}")}

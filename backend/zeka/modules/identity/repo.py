@@ -380,6 +380,12 @@ def consent_of(c, uid: int, purpose: str):
     return row(c, "SELECT * FROM consents WHERE user_id=? AND purpose=? ORDER BY id DESC LIMIT 1", (uid, purpose))
 
 
+def consenting(c, purpose: str, version: str) -> set[int]:
+    """Everyone whose newest choice of a purpose is a consent to ``version`` (``consent_of`` for all people at once)."""
+    return {r["user_id"] for r in rows(c, "SELECT user_id FROM consents k WHERE purpose=? AND granted=1 AND version=? AND id="
+                                          "(SELECT MAX(id) FROM consents WHERE user_id=k.user_id AND purpose=?)", (purpose, version, purpose))}
+
+
 def add_consent(c, uid: int, purpose: str, version: str, granted: bool, method: str, lang: str, at: str, text: str):
     c.execute("INSERT OR IGNORE INTO consent_texts(version,purpose,text,first_at) VALUES(?,?,?,?)", (version, purpose, text, at))
     c.execute("INSERT INTO consents(user_id,purpose,version,granted,method,lang,at) VALUES(?,?,?,?,?,?,?)",

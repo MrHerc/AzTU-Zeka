@@ -863,16 +863,17 @@ def seed(c):
     notify(c, nigar, "request", T3("Yeni müraciətlər"), T3("Bu gün {n} yeni müraciət daxil olub", n=4), "/office", t0 - timedelta(hours=2))
     notify(c, nigar, "sla", T3("{n} müraciətin icra müddəti keçib", n=2), T3("Növbədə qırmızı rənglə işarələnib"), "/office", t0 - timedelta(hours=1))
     notify(c, uid["rektorluq"], "report", T3("Həftəlik pilot hesabatı hazırdır"), T3("Göstəricilərin {n}-si hədəfdədir", n=7), "/leader", t0 - timedelta(hours=8))
-    from . import support
-    support.seed(c, uid, t0)
-    from . import radar_seed
-    radar_seed.seed(c, t0)
-    # Task 40: the demo's people have consented to the AI study aids (the profile withdraws it); prod seeds nobody
+    # Task 40: the demo's people have consented to the AI study aids (the profile withdraws it); prod seeds nobody.
+    # Before the Radar seed: Radar reads tutor activity only on this consent (review F1)
     from ..modules.identity import privacy      # here: it imports this module
     ai = privacy.version("ai")
     c.execute("INSERT OR IGNORE INTO consent_texts(version,purpose,text,first_at) VALUES(?,'ai',?,?)", (ai, privacy.PURPOSES["ai"], stamp))
     c.execute("UPDATE users SET consent_at=COALESCE(consent_at, ?)", (stamp,))
     c.execute("INSERT INTO consents(user_id,purpose,version,granted,method,lang,at) SELECT id,'ai',?,1,'portal','az',consent_at FROM users", (ai,))
+    from . import support
+    support.seed(c, uid, t0)
+    from . import radar_seed
+    radar_seed.seed(c, t0)
     audit(c, None, "seed", "system", "Demo məlumatları yaradıldı")
 
 
