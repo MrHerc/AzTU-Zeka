@@ -16,7 +16,7 @@ import pytest
 
 import loadtest
 from zeka.core import web
-from zeka.legacy import engine
+from zeka.legacy import engine, store
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -109,6 +109,20 @@ def test_the_load_tool_runs(capsys):
     assert loadtest.main(["--scenario", "mixed", "--users", "8", "--seconds", "2", "--dataset", "demo", "--clients", "2", "--fail-on-errors"]) == 0
     out = capsys.readouterr().out
     assert '"5xx": 0' in out and '"4xx": 0' in out and '"errors_by_route": {}' in out
+
+
+def test_the_load_tool_saves_only_news_a_student_may_open(app_db, student, monkeypatch):
+    """Task 42: the script once saved the teachers-only news item; the server answered 404, the 4xx of the mixed test.
+    Two seconds of load seldom pick that one item, so the selection itself is checked."""
+    monkeypatch.setattr(loadtest, "SESSIONS", 1)
+    news = loadtest.sessions(app_db.port, store.DATA)[1]
+    c = store.connect()
+    try:
+        hidden = [r["id"] for r in c.execute("SELECT id FROM news WHERE status='published' AND audience='teachers'")]
+    finally:
+        c.close()
+    assert hidden and news and not set(hidden) & set(news), (hidden, news)
+    assert {n: student.get(f"/api/news/{n}").status for n in news} == dict.fromkeys(news, 200)
 
 
 def test_the_load_tool_reopens_a_keep_alive_connection_the_server_closed():
