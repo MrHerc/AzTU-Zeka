@@ -881,10 +881,22 @@ def _names(text: str) -> list[str]:
 
 
 def _same_person(a: str, b: str) -> bool:
-    """Two written names of one person: at least two words (surname and name) agree, order free, one letter forgiven."""
+    """A written name ``a`` (a summary row, a counterpart cell, a supervisor) of the person ``b`` (a staff line's name,
+    surname first). A8: people share surnames and names, so ``b``'s surname must be in ``a`` and so must one more of
+    ``b``'s words, each word of ``a`` used once; the order of ``a`` is free (the counterpart cells write the name first)
+    and one letter is forgiven. A surname written alone matches its surname."""
     wa, wb = _words(a), _words(b)
-    hits = sum(any(_near(x, y) for y in wb) for x in wa)
-    return hits >= 2 or (hits == 1 and len(wa) == 1 and bool(wb))
+    if not wa or not wb:
+        return False
+    rest, hits = list(wa), 0
+    for n, y in enumerate(wb):
+        x = next((x for x in rest if _near(x, y)), None)
+        if x is None and n == 0:
+            return False
+        if x is not None:
+            rest.remove(x)
+            hits += 1
+    return hits >= 2 or len(wa) == 1
 
 
 # ---------------------------------------------------------------- layout A (A1–A13)

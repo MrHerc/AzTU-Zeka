@@ -639,6 +639,22 @@ def test_o1_counterparts_are_spread_over_a_merge_and_cross_checked(form_b):
     assert unit(form_b, "#1!H11").counterparts[0]["name"] == "t.ü.f.d., dosent Quliyev Elçin Rauf oğlu", "a degree's comma does not split a name"
 
 
+@pytest.mark.parametrize("a, b, same", [
+    ("Məmmədov Tural Akif oğlu", "Məmmədov Tural Akif oğlu", True),
+    ("Məmmədov Tural", "Məmmədov Tural Akif oğlu", True),
+    ("Tural Məmmədov", "Məmmədov Tural Akif oğlu", True),                 # the counterpart cells write the name first
+    ("Mənmədov Tural Akif oğlu", "Məmmədov Tural Akif oğlu", True),       # one letter forgiven
+    ("t.e.d., prof. Məmmədov Tural Akif oğlu", "Məmmədov Tural Akif oğlu", True),
+    ("Məmmədov", "Məmmədov Tural Akif oğlu", True),
+    ("Məmmədov Tural Akif oğlu", "Həsənov Akif Tural oğlu", False),       # same name and patronymic, another surname
+    ("Məmmədov Tural Tural oğlu", "Həsənov Kamal Tural oğlu", False),     # one word of b is never matched twice
+    ("Həsənov Kamal Tural oğlu", "Məmmədov Tural Tural oğlu", False),
+    ("Məmmədov Kamal Rauf oğlu", "Məmmədov Tural Akif oğlu", False),      # A8: a shared surname alone joins nobody
+])
+def test_a8_same_person_needs_the_surname_and_one_more_word_matched_once(a, b, same):
+    assert forma3._same_person(a, b) is same
+
+
 def test_o1_a_counterpart_nobody_in_the_file_matches_is_a_note(sheets_b):
     form = forma3.read(changed(sheets_b, **{"#1!AT11": "Uydurmayev Anar, dosent Quliyev Elçin Rauf oğlu"}))
     assert len(unit(form, "#1!H11").counterparts) == 2
