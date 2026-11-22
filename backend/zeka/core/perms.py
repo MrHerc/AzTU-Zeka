@@ -25,6 +25,10 @@ PERMS: dict[str, tuple[str, ...]] = {
     "students.status": ("academic_office",),
     "students.status.read": ("academic_office", "admin", "office", "leader"),
     "timetable.manage": ("admin", "academic_office"),     # timetable rows, making lessons, cancelling and moving them (Task 19)
+    # Task 48: the builder's inputs, readiness and published versions, scoped (faculty, department, course); publishing a
+    # version is the official act of an unscoped academic office, never the administrator's (design C2, question Q4)
+    "timetable.prepare": ("academic_office", "office", "dept_head", "admin"),
+    "timetable.publish": ("academic_office",),
     # Task 20: attendance after the teacher's window, imported rows and opening balances, a lesson's substitute teacher;
     # a department head scoped to departments acts on their courses only
     "journal.correct": ("dept_head", "admin"),

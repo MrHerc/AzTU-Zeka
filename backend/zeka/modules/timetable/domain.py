@@ -13,6 +13,7 @@ from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 
 from ...core.i18n import E
+from ..directory.domain import ROOM_KINDS
 
 TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 WEEKS = ("all", "odd", "even")          # week 1 is the week (Monday to Sunday) of the term's first teaching day
@@ -742,3 +743,249 @@ def calendar(events: list[dict], *, tzid: str, offset: str, host: str, stamp: da
         lines.append("END:VEVENT")
     lines.append("END:VCALENDAR")
     return "".join(x + "\r\n" for line in lines for x in _fold(line))
+
+
+# ---------------------------------------------------------------- the builder's service rules (Task 48, slice 2)
+AVAIL_LEVELS = ("unavailable", "undesired", "preferred")
+MODES = ("in_person", "online")
+SPLITS = ("whole", "split")
+MAX_DURATION = 4                          # pairs of one meeting
+TERM_KEYS = ("practice", "reserved_weeks", "fixed_slots", "online")      # per-term confirmations (tt_terms.confirmed)
+ROOM_CODES = ("no_room", "capacity", "room_fit", "room_clash", "room_unavailable", "travel")
+
+
+def term_weeks(term: dict | None) -> int:
+    """The teaching weeks of a term: week 1 holds teaching_start, the last one teaching_end; 0 without valid dates."""
+    try:
+        first, last = date.fromisoformat(term["teaching_start"]), date.fromisoformat(term["teaching_end"])  # type: ignore[index]
+    except (TypeError, ValueError, KeyError):
+        return 0
+    return week_no(last, first) if last >= first else 0
+
+
+def pair_span(times: list[list[str]], period: int, duration: int) -> tuple[str, str] | None:
+    """Clock times of ``duration`` pairs from pair ``period`` (1-based); None off the bell schedule."""
+    if period < 1 or duration < 1 or period + duration - 1 > len(times):
+        return None
+    return times[period - 1][0], times[period + duration - 2][1]
+
+
+def pairs_of(times: list[list[str]], start: str, end: str) -> tuple[int, int] | None:
+    """(first pair, number of pairs) a clock-time row overlaps: a manual row as an obstacle of the builder."""
+    hit = [i + 1 for i, (a, b) in enumerate(times) if a < end and start < b]
+    return (hit[0], hit[-1] - hit[0] + 1) if hit else None
+
+
+def weekly_pairs(units: list[dict], settings: dict, n: int) -> int:
+    """A teacher's pairs in an average teaching week: the form hours of their units over pair hours and weeks, rounded up."""
+    hours = sum(float(u.get("hours") or 0) for u in units if (u.get("hours") or 0) > 0)
+    return math.ceil(hours / (settings["pair_hours"] * n) - 1e-9) if n > 0 and hours > 0 else 0
+
+
+def availability_input(cells, days: list[int], periods: int, n: int) -> tuple[list[dict], dict | None]:
+    """A teacher's or a room's whole grid from a request: one cell per (weekday, period) of the teaching week, a level, a
+    week set (default all) and an optional note."""
+    bad = E("Məşğulluq cədvəlinin xanası düzgün deyil")
+    if not isinstance(cells, list) or len(cells) > len(days) * periods:
+        return [], bad
+    out, seen = [], set()
+    for x in cells:
+        if not isinstance(x, dict):
+            return [], bad
+        wd, p, level, weeks, note = x.get("weekday"), x.get("period"), x.get("level"), x.get("weeks", "all"), x.get("note")
+        if (type(wd) is not int or wd not in days or type(p) is not int or not 1 <= p <= periods or level not in AVAIL_LEVELS
+                or not isinstance(weeks, str) or not week_mask(weeks, n) or (note is not None and not isinstance(note, str))):
+            return [], bad
+        if (wd, p) in seen:
+            return [], E("Eyni xana iki dəfə yazılıb")
+        seen.add((wd, p))
+        out.append({"weekday": wd, "period": p, "level": level, "weeks": week_text(week_mask(weeks, n), n),
+                    "note": " ".join((note or "").split())[:200] or None})
+    return sorted(out, key=lambda c: (c["weekday"], c["period"])), None
+
+
+def availability_feedback(cells: list[dict], pairs: int, settings: dict, days: int, periods: int) -> dict:
+    """The live meter and the cap (D18): at most ``availability_cap_pct`` % of the teaching cells unavailable, and free
+    cells at least ``availability_load_factor_pct`` % of the weekly pairs. ``over_cap``: cells beyond the cap (0: within)."""
+    total = days * periods
+    un = sum(1 for c in cells if c["level"] == "unavailable")
+    needed = math.ceil(pairs * settings["availability_load_factor_pct"] / 100 - 1e-9)
+    over = max(0, un - total * settings["availability_cap_pct"] // 100, needed - (total - un))
+    return {"cells": total, "unavailable": un, "unavailable_pct": un * 100 // total if total else 0, "free_cells": total - un,
+            "weekly_pairs": pairs, "needed_cells": needed, "over_cap": over}
+
+
+def needs_input(body: dict, unit: dict, settings: dict, n: int, rooms: set[int]) -> tuple[dict, dict | None]:
+    """What a unit needs from a room and a week (tt_unit_needs) from a request body; absent keys keep the default."""
+    bad = E("Vahidin tələbləri düzgün yazılmayıb")
+    kinds, ids, need, reason = body.get("room_kinds"), body.get("room_ids"), body.get("need"), body.get("need_reason")
+    dur, mode, pat, split = body.get("duration", 1), body.get("mode", "in_person"), body.get("pattern"), body.get("split")
+    if kinds is not None and not (isinstance(kinds, list) and 0 < len(kinds) <= len(ROOM_KINDS)
+                                  and all(isinstance(k, str) and k in ROOM_KINDS for k in kinds) and len(set(kinds)) == len(kinds)):
+        return {}, bad
+    if ids is not None and not (isinstance(ids, list) and 0 < len(ids) <= 50 and all(type(r) is int for r in ids)
+                                and len(set(ids)) == len(ids)):
+        return {}, bad
+    if ids is not None and not set(ids) <= rooms:
+        return {}, E("Seçilən otaq tapılmadı")
+    if need is not None and not (type(need) is int and 1 <= need <= 2000):
+        return {}, bad
+    reason = " ".join(reason.split()) if isinstance(reason, str) else ""
+    if need is not None and not 3 <= len(reason) <= 300:
+        return {}, E("Yer sayını dəyişəndə səbəbini yazın")
+    if type(dur) is not int or not 1 <= dur <= MAX_DURATION or mode not in MODES or (split is not None and split not in SPLITS):
+        return {}, bad
+    if pat is not None:
+        if not (isinstance(pat, list) and 0 < len(pat) <= 10 and all(isinstance(w, str) and week_mask(w, n) for w in pat)):
+            return {}, E("Həftələrin bölgüsü düzgün yazılmayıb")
+        planned = sum(week_mask(w, n).bit_count() for w in pat) * settings["pair_hours"] * dur
+        form = float(unit.get("hours") or 0)
+        if abs(planned - form) > settings["hours_tolerance"]:
+            return {}, E("Bu bölgü {planned} saat verir, Forma №3-də isə {hours} saatdır: fərq {tol} saatdan çox ola bilməz",
+                         planned=planned, hours=f"{form:g}", tol=f"{settings['hours_tolerance']:g}")
+        pat = [week_text(week_mask(w, n), n) for w in pat]
+    return {"room_kinds": kinds, "room_ids": sorted(ids) if ids is not None else None, "need": need,
+            "need_reason": reason if need is not None else None, "duration": dur, "mode": mode, "pattern": pat, "split": split}, None
+
+
+def _line(code: str, level: str, blocks: list[str], found: int = 0, of: int = 0, samples=(), fix: str = "",
+          confirm_key: str | None = None) -> dict:
+    return {"code": code, "level": level, "blocks": blocks, "found": found, "of": of, "samples": list(samples)[:20],
+            "fix": fix, "confirm_key": confirm_key}
+
+
+def readiness(facts: dict, settings: dict, today: str) -> list[dict]:
+    """The readiness checklist of a term (design §7.2; the lines of slice 2). Pure and total: a missing fact is a
+    warning, never ok. ``blocks`` names what a line stops: "run" (a solver run) or "publish"."""
+    conf = set(settings.get("confirmed") or [])
+    need = set(settings.get("publish_requires") or [])
+    out = []
+    n = facts.get("weeks") or 0
+    term_ok = bool(facts.get("term")) and 1 <= n <= 20
+    blocks = ([] if term_ok else ["run", "publish"]) + ([] if "term_dates" in conf or "term_dates" not in need or not term_ok else ["publish"])
+    out.append(_line("term_dates", "block" if blocks else ("warn" if n != settings["weeks_expected"] or "term_dates" not in conf else "ok"),
+                     blocks, n, settings["weeks_expected"], fix="/admin/directory", confirm_key="term_dates"))
+    out.append(_line("pattern", "block" if "pattern" in need and "pattern" not in conf else ("warn" if "pattern" not in conf else "ok"),
+                     ["publish"] if "pattern" in need and "pattern" not in conf else [], fix="/admin/settings", confirm_key="pattern"))
+    stored = facts.get("lesson_times") or []
+    times = stored or DEFAULT_TIMES
+    missing = sorted({p for ps in settings["shifts"].values() for p in ps if p > len(times)})
+    blocks = (["run", "publish"] if missing else []) + (["publish"] if not missing and "lesson_times" in need and (not stored or "lesson_times" not in conf) else [])
+    out.append(_line("lesson_times", "block" if blocks else ("warn" if "lesson_times" not in conf else "ok"), blocks,
+                     len(stored), len(times), missing, fix="/admin/settings", confirm_key="lesson_times"))
+    groups, no_shift = facts.get("groups") or [], facts.get("groups_no_shift") or []
+    out.append(_line("group_shifts", "warn" if no_shift else "ok", [], len(no_shift), len(groups), no_shift, fix="/office/timetable"))
+    rooms = [r for r in facts.get("rooms") or [] if r.get("schedulable", 1) and (r.get("capacity") or 0) > 0]
+    over = facts.get("units_over_room") or []
+    out.append(_line("rooms", "block" if not rooms else ("warn" if over else "ok"), [] if rooms else ["run"], len(over),
+                     len(facts.get("units") or []), over, fix="/admin/directory"))
+    unconf, pending = facts.get("teachers_unconfirmed") or [], facts.get("pending") or []
+    due = facts.get("availability_due") or ""
+    late = bool(unconf) and bool(due) and today > due
+    out.append(_line("availability_late" if late else "availability", "warn" if unconf or pending else "ok", [], len(unconf),
+                     len(facts.get("teachers") or []), unconf, fix="/dept/timetable"))
+    if pending:
+        out.append(_line("availability_pending", "warn", [], len(pending), len(facts.get("teachers") or []), pending, fix="/dept/timetable"))
+    no_groups = facts.get("units_no_groups") or []
+    out.append(_line("unit_groups", "warn" if no_groups else "ok", [], len(no_groups), len(facts.get("units") or []), no_groups,
+                     fix="/admin/directory"))
+    vac = facts.get("units_no_teacher") or []
+    out.append(_line("vacancies", "warn" if vac else "ok", [], len(vac), len(facts.get("units") or []), vac, fix="/dept/timetable"))
+    left = [k for k in ("shifts", "rooms", "limits", "travel", "fixed_slots", "weights", "availability_cap") if k not in conf]
+    if "travel" in left and len({r.get("building_id") for r in rooms}) <= 1:
+        left.remove("travel")                       # one building: no travel time to confirm
+    out.append(_line("defaults", "warn" if left else "ok", [], len(left), 0, left, fix="/admin/timetable/build"))
+    return out
+
+
+def gate(lines: list[dict], action: str) -> list[dict]:
+    """The readiness lines that stop ``action`` ("run" or "publish")."""
+    return [x for x in lines if action in x["blocks"]]
+
+
+def published_row(p: dict, times: list[list[str]], pair_hours: int) -> dict | None:
+    """The timetable row values a placement publishes as (None when its pairs are off the bell schedule)."""
+    span = pair_span(times, p["period"], p["duration"])
+    if span is None:
+        return None
+    return {"meeting_key": p["meeting_key"], "unit_id": p["unit_id"], "weekday": p["weekday"], "period": p["period"],
+            "start": span[0], "end": span[1], "weeks": p["weeks"], "room_id": p.get("room_id"),
+            "academic_hours": min(MAX_HOURS, pair_hours * p["duration"])}
+
+
+PUBLISHED_COLS = ("weekday", "period", "start", "end", "weeks", "room_id", "academic_hours")
+
+
+def publish_plan(published: list[dict], wanted: list[dict]) -> dict:
+    """Rows to keep, update, deactivate and insert, matched by meeting_key (manual rows, without a key, are never in it).
+    ``published``: the active rows {id, meeting_key, ...PUBLISHED_COLS}; ``wanted``: published_row values. Sorted by key."""
+    have = {r["meeting_key"]: r for r in published if r.get("meeting_key")}
+    want = {w["meeting_key"]: w for w in wanted}
+    out: dict[str, list] = {"unchanged": [], "update": [], "deactivate": [], "insert": []}
+    for k in sorted(set(have) | set(want)):
+        h, w = have.get(k), want.get(k)
+        if h is None:
+            out["insert"].append(w)
+        elif w is None:
+            out["deactivate"].append(h["id"])
+        elif any(h.get(c) != w.get(c) for c in PUBLISHED_COLS) or h.get("unit_id") != w["unit_id"]:
+            out["update"].append({**w, "id": h["id"]})
+        else:
+            out["unchanged"].append(h["id"])
+    return out
+
+
+def _mine(found: list[dict], key: str) -> list[dict]:
+    return [v for v in found if key in v["keys"]]
+
+
+def move_problems(problem: dict, placements: list[dict], to: dict) -> list[dict]:
+    """The hard violations a placement would take part in at value ``to`` (key, weekday, period, duration, weeks,
+    room_id), checked against its neighbourhood: the other placements and obstacles of its teacher, groups and room."""
+    others = [p for p in placements if p["key"] != to["key"]]
+    return _mine(check(problem, [*others, to]), to["key"])
+
+
+def _room_busy(problem: dict, others: list[dict], room_id: int, wd: int, p: int, dur: int, mask: int) -> bool:
+    n = problem["weeks"]
+    span = set(range(p, p + dur))
+    for o in [*others, *(problem.get("obstacles") or [])]:
+        if (o.get("room_id") == room_id and o["weekday"] == wd and week_mask(o["weeks"], n) & mask
+                and span & set(range(o["period"], o["period"] + (o.get("duration") or 1)))):
+            return True
+    return False
+
+
+def options(problem: dict, placements: list[dict], key: str) -> list[dict]:
+    """Every slot of the week for a placed meeting with its week set kept: [{weekday, period, room_id, reasons}], reasons
+    the codes of the hard rules the slot breaks (empty: feasible, with the room it would take: the current one when it
+    is free, else the smallest free one that fits). Time rules are checked first; rooms only for slots whose time is free."""
+    meetings, _ = meetings_of(problem)
+    m = next((x for x in meetings if x["key"] == key), None)
+    cur = next((x for x in placements if x["key"] == key), None)
+    if m is None or cur is None:
+        return []
+    n, times = problem["weeks"], lesson_times(problem)
+    mask = week_mask(cur["weeks"], n)
+    others = [x for x in placements if x["key"] != key]
+    fitting = sorted((r for r in problem.get("rooms") or [] if room_fits(m, r)),
+                     key=lambda r: (r["id"] != cur.get("room_id"), r.get("capacity") or 0, r["id"]))
+    out = []
+    for wd in problem["settings"]["days"]:
+        for p in range(1, len(times) - m["duration"] + 2):
+            cand = {**cur, "weekday": wd, "period": p, "duration": m["duration"], "room_id": None}
+            found = [v["code"] for v in move_problems(problem, others, cand)]
+            reasons = sorted({c for c in found if c not in ROOM_CODES or m["online"]})
+            room = None
+            if not reasons and not m["online"]:
+                free = [r["id"] for r in fitting if not _room_busy(problem, others, r["id"], wd, p, m["duration"], mask)]
+                reasons = ["no_room"] if not fitting else ["rooms_busy"] if not free else []
+                for rid in free[:3]:
+                    found = sorted({v["code"] for v in move_problems(problem, others, {**cand, "room_id": rid})})
+                    if not found:
+                        room, reasons = rid, []
+                        break
+                    reasons = found
+            out.append({"weekday": wd, "period": p, "room_id": room, "reasons": reasons,
+                        "current": (wd, p) == (cur["weekday"], cur["period"])})
+    return out

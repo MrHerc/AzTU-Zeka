@@ -10,7 +10,7 @@ from zeka.core import clock, jobs
 from zeka.legacy import periodic, store  # noqa: F401  periodic registers the jobs
 
 EXPECTED = ["attendance.barred", "exam.autosubmit", "lessons.generate", "outbox.send", "radar.snapshot", "radar.summary", "reminders.sla",
-            "retention.purge", "webhooks.send"]
+            "retention.purge", "timetable.work", "webhooks.send"]
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_each_job_runs_once_when_its_interval_passes_and_not_before(copy):
     t0 = clock.now()
     first = jobs.run_due(copy, "test", t0, names=EXPECTED)
     assert first == [(n, "ok") for n in EXPECTED], first
-    assert jobs.run_due(copy, "test", t0 + timedelta(seconds=30), names=EXPECTED) == [], "the shortest interval is a minute"
+    assert jobs.run_due(copy, "test", t0 + timedelta(seconds=20), names=EXPECTED) == [], "the shortest interval is 30 s (timetable.work)"
     later = jobs.run_due(copy, "test", t0 + timedelta(days=8), names=EXPECTED)
     assert later == [(n, "ok") for n in EXPECTED], "every interval has passed once more: each runs once"
     assert all(copy.execute("SELECT COUNT(*) FROM job_runs WHERE name=? AND status='ok'", (n,)).fetchone()[0] == 2 for n in EXPECTED)

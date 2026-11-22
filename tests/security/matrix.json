@@ -1257,6 +1257,146 @@
   "perm": "directory.read",
   "slow": false
  },
+ "GET /api/timetable/build/{term:int}": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/build/{term:int}/groups": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/build/{term:int}/readiness": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/build/{term:int}/teachers/{uid:int}/availability": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/timetable/build/{term:int}/units": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/build/{term:int}/versions": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/runs/{id:int}": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "GET /api/timetable/settings": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/versions/{id:int}/grid": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/versions/{id:int}/placements/{pid:int}/options": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "GET /api/timetable/versions/{id:int}/scorecard": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "GET /api/timetable/versions/{id:int}/unplaced": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
  "GET /api/tools": {
   "access": [
    "admin",
@@ -2452,6 +2592,52 @@
   "perm": "timetable.manage",
   "slow": false
  },
+ "POST /api/timetable/build/{term:int}/runs": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/timetable/build/{term:int}/teachers/{uid:int}/availability/confirm": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/timetable/build/{term:int}/teachers/{uid:int}/availability/decide": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "POST /api/timetable/build/{term:int}/teachers/{uid:int}/availability/reopen": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
  "POST /api/timetable/generate": {
   "access": [
    "academic_office",
@@ -2460,6 +2646,45 @@
   "audit_read": null,
   "demo": false,
   "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/timetable/runs/{id:int}/cancel": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/timetable/versions/{id:int}/lock": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/timetable/versions/{id:int}/placements/{pid:int}/move": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "POST /api/timetable/versions/{id:int}/publish": {
+  "access": [
+   "academic_office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.publish",
   "slow": false
  },
  "POST /api/timetable/{id:int}/deactivate": {
@@ -2694,6 +2919,62 @@
   "audit_read": null,
   "demo": false,
   "perm": null,
+  "slow": false
+ },
+ "PUT /api/timetable/build/{term:int}/groups": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
+ "PUT /api/timetable/build/{term:int}/plan": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "PUT /api/timetable/build/{term:int}/teachers/{uid:int}/availability": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "PUT /api/timetable/settings": {
+  "access": [
+   "academic_office",
+   "admin"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.manage",
+  "slow": false
+ },
+ "PUT /api/timetable/units/{id:int}/needs": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
   "slow": false
  },
  "PUT /api/timetable/{id:int}": {

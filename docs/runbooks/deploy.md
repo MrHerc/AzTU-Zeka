@@ -63,6 +63,8 @@ Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_ho
 
 E-poçt `outbox` cədvəli ilə gedir: hər dəqiqə `outbox.send` işi vaxtı çatan məktubları alıcının dilində göndərir. Relə əlçatmazdırsa məktub itmir, 1, 2, 4 ... dəqiqədən sonra (ən çox 6 saat) yenidən cəhd olunur; 8 cəhddən sonra `failed` qalır. Vəziyyət: `python backend/manage.py jobs status` və `SELECT status, COUNT(*) FROM outbox GROUP BY status`.
 
+Semestr cədvəlinin hesablamaları və dərci (Task 48) `timetable.work` işi ilə, hər 30 saniyədə bir hissə gedir. `--workers N` ilə iş icraçısı ayrıca prosesdir və həlledici sorğulara mane olmur; tək prosesdə o, sorğularla eyni prosessor nüvəsini bölüşür, ona görə prod-da `--workers 2` və ya daha çox işlədin. Vəziyyət: `SELECT id, kind, status, progress, error FROM tt_runs WHERE status IN ('queued','running')`.
+
 ## TLS
 
 - Susmaya görə Caddy sertifikatı ACME (Let's Encrypt) ilə alır. Bunun üçün 80 və 443 portları internetdən açıq olmalıdır.

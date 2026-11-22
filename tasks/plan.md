@@ -147,7 +147,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] T42 E2E, əlçatanlıq və yük testi
 - [ ] T43 Runbook-lar
 - [ ] T44 Buraxılış
-- [ ] T48 Semestr cədvəli qurucusu: dilim 1 (model, miqrasiyalar, həlledici) tamamlanıb; dilim 2 (servis, iş, dərc) və dilim 3 (səhifələr) qalır
+- [ ] T48 Semestr cədvəli qurucusu: dilim 1 (model, miqrasiyalar, həlledici) və dilim 2 (servis, marşrutlar, `timetable.work`, redaktor, dərc) tamamlanıb; rəy, rəsmi sənəd, çap, ixrac, təmir və dilim 3 (səhifələr) qalır
 
 ### Checkpoint F · saat 72 — buraxılış qapısı
 - [ ] SPEC-dəki bütün Success Criteria təsdiqlənib və ya istisna yazılı qeyd olunub

@@ -55,7 +55,7 @@ def _unit_id(body) -> int | None:
 
 
 def create_row(c, user, body):
-    """('ok', id) | ('invalid', reason) | ('conflict', clashes)."""
+    """('ok', id) | ('invalid', reason) | ('conflict', clashes) | ('busy', None): the term's timetable is being published."""
     values, problem = domain.row_input(body)
     if not problem:
         problem = domain.times_problem(values["start"], values["end"])
@@ -64,6 +64,8 @@ def create_row(c, user, body):
     u = repo.unit(c, _unit_id(body) or 0)
     if not u or not u["active"]:
         return "invalid", E("Tədris vahidi tapılmadı")
+    if repo.publishing(c, u["term_id"]):
+        return "busy", None
     cand = {**values, "id": None, "unit_id": u["id"], "teacher_id": u["teacher"], "subgroup": u["subgroup"]}
     clashes = row_clashes(c, cand, u["term_id"])
     if clashes:
@@ -82,6 +84,8 @@ def update_row(c, user, rid: int, body):
     cur = repo.row_by_id(c, rid)
     if not cur or not cur["active"]:
         return "missing", None
+    if repo.publishing(c, cur["term_id"]):
+        return "busy", None
     values, problem = domain.row_input(body, partial=True)
     merged = {**cur, **values}
     problem = problem or domain.times_problem(merged["start"], merged["end"])
@@ -124,6 +128,8 @@ def deactivate_row(c, user, rid: int) -> str:
     cur = repo.row_by_id(c, rid)
     if not cur or not cur["active"]:
         return "missing"
+    if repo.publishing(c, cur["term_id"]):
+        return "busy"
     repo.deactivate_row(c, rid, iso(now()))
     if repo.drop_future_lessons(c, rid, _today()):
         _tell(c, cur, _today(), T3("Dərs cədvəldən çıxarıldı: {course}", course=cur["course"]), "")
@@ -150,7 +156,11 @@ def lessons_of(c, user, first: str, last: str) -> list[dict]:
 
 
 def term_rows(c, term_id: int | None) -> list[dict]:
-    return repo.term_rows(c, term_id)
+    """A term's active rows; a row a builder version published carries ``from``, the version's effective date (Task 48):
+    its lessons are never made before it."""
+    rs = repo.term_rows(c, term_id)
+    eff = repo.effective_of(c, sorted({r["version_id"] for r in rs if r.get("version_id")}))
+    return [{**r, "from": eff[r["version_id"]]} if r.get("version_id") in eff else r for r in rs]
 
 
 def make_lessons(c, rows_: list[dict], t: dict, start_from: date | None = None) -> int:
@@ -161,7 +171,10 @@ def make_lessons(c, rows_: list[dict], t: dict, start_from: date | None = None) 
     for r in rows_:
         if not r or not r["unit_id"]:
             continue
-        for d in domain.lesson_dates(r, t, holidays, start_from):
+        first = start_from
+        if r.get("from"):
+            first = max(first, date.fromisoformat(r["from"])) if first else date.fromisoformat(r["from"])
+        for d in domain.lesson_dates(r, t, holidays, first):
             day = d.isoformat()
             values.append((r["course_id"], day, r["start"], r["end"], r["kind"], r["room"], r["room_id"], r["unit_id"], r["teacher_id"],
                            r["academic_hours"], r["id"], day, r["start"], stamp))
@@ -172,7 +185,7 @@ def generate(c, user, term_id: int | None) -> tuple[str, dict | None]:
     t = term(c, term_id)
     if not t:
         return "missing", None
-    rs = repo.term_rows(c, t["id"])
+    rs = term_rows(c, t["id"])
     created = make_lessons(c, rs, t)
     audit(c, user["id"] if user else None, "lessons_made", "term", f"{t['code']} · {created}")
     return "ok", {"created": created, "rows": sum(1 for r in rs if r["unit_id"]), "without_unit": sum(1 for r in rs if not r["unit_id"]),

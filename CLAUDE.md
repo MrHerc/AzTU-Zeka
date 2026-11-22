@@ -32,13 +32,13 @@ python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1748 tests, about 8 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1782 tests, about 11 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
 python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset faculty [--workers 4]   # docs/perf/baseline.md
 python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty [--burst]      # Task 27: lost answers must be 0
-python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes (must be none)
+python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes and the timetable builder's (must be none)
 python tools/eval_assistant.py tests/eval/assistant_az.jsonl   # campus assistant: 50 questions, at least 45 right (Task 32)
 python tools/ttbench.py --units 1250 [--groups 300 --teachers 90 --rooms 60 --iters 50000]   # timetable solver timings (Task 48, docs/perf/timetable.md)
 
@@ -172,6 +172,14 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   golden signature in `tests/unit/test_tt_props.py` changes with any solver change: recompute it on purpose). Its state
   never holds a hard violation; `domain.check` is the independent checker and `domain.scorecard` must equal the
   solver's running cost. Week sets are bit masks (`domain.week_mask`/`week_text`: `all | odd | even | N[-M],...`).
+- **Timetable builder (Task 48, slice 2).** `modules/timetable/builder.py` is the builder's service (no SQL: its SQL is
+  in `repo.py`, `test_layers.py`), routes under `/api/timetable/build/{term}` and `/api/timetable/versions/{id}`.
+  `scope_of()` gives what a role covers; every id outside it is 404. No request computes a term: runs (`precheck`,
+  `solve`, `check`, `publish`) are `tt_runs` rows worked by the job `timetable.work` (30 s), one per term at a time.
+  A move is checked live against its neighbourhood, then `bump_rev` (optimistic lock) inside one short write. A
+  publication runs check → rows → drop → lessons → notify → done, each batch with its cursor in one transaction;
+  while it runs, hand-written rows answer 409. A row a version published carries the version's effective date:
+  `make_lessons` never makes its lessons earlier. Units with hand-written rows stay out of runs (no adoption yet).
 - **Time.** Use `store.now()` (naive Baku wall clock, `ZEKA_TZ`) or `clock.now()` (aware UTC); `datetime.now()` and
   `date.today()` fail lint outside `backend/zeka/core/clock.py`. `tests/conftest.py` anchors the suite's today at
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test

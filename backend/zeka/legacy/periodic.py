@@ -10,6 +10,8 @@
 - ``radar.snapshot``, weekly: this week's Zəka Radar counts, which only the demo seed wrote before.
 - ``radar.summary``, every 15 minutes: the campus-wide Radar counts and the plans' impact that the leadership dashboard
   and the staff's badge read (Task 42, PERF-F1), with the time they were computed.
+- ``timetable.work``, every 30 seconds: one chunk of the timetable builder's oldest active run (snapshot, solve, check,
+  or a step of a publication; Task 48).
 
 Task 26 adds ``exam.autosubmit`` from the exam module.
 """
@@ -113,6 +115,11 @@ def lessons_generate(c) -> str:
     return f"{t['code']} · lessons {made}"
 
 
+def timetable_work(c) -> str:
+    from ..modules.timetable import builder                  # here: that module imports the legacy layer
+    return builder.work(c)
+
+
 def radar_snapshot(c) -> str:
     return f"week {radar.snapshot_week(c)}"
 
@@ -127,5 +134,6 @@ jobs.periodic("reminders.sla", timedelta(minutes=15), reminders_sla)
 jobs.periodic("lessons.generate", DAY, lessons_generate)
 jobs.periodic("radar.snapshot", timedelta(days=7), radar_snapshot)
 jobs.periodic("radar.summary", timedelta(minutes=15), radar_summary)
+jobs.periodic("timetable.work", timedelta(seconds=30), timetable_work)
 from ..modules.integration import webhooks as _webhooks  # noqa: E402,F401  (Task 37: webhooks.send, attendance.barred)
 from ..modules.exam import service as _exam  # noqa: E402,F401  registers exam.autosubmit (Task 26)

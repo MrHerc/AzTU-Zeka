@@ -7,7 +7,8 @@ that 1 200 students sat (``bulk_exam``: every exam table above --min-rows), serv
 each: every route of the mixed scenario (READ and WRITE) as a student; the exam scenario as a student (enter, start, every
 answer, view, submit) and the proctor board as the course's teacher; as a leader, the leadership dashboard (its one
 request, /api/analytics: its Radar line and card are the periodic job's summary), the accreditation evidence (Task 39) and
-the Radar page (/api/radar, the live campus-wide analysis). Records each SQL statement the handlers run and prints, as
+the Radar page (/api/radar, the live campus-wide analysis); and as the academic office, the timetable builder's read
+routes and one move (Task 48) over a term whose builder tables all hold more than --min-rows rows (``bulk_timetable``). Records each SQL statement the handlers run and prints, as
 JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
 slowest routes. Exit 1 when a read, mixed or exam route scans one; the leader's routes are reported, not failed: the
 dashboard counts every course's rows and the Radar page reads every student's records by design (docs/perf/task42.md).
@@ -62,7 +63,7 @@ def _sid(set_cookie: str, step: str) -> str:
     return m.group(0)
 
 
-def _routes(student: str, news: list[int], exam: tuple[int, list[str], str]):
+def _routes(student: str, news: list[int], exam: tuple[int, list[str], str], tt: dict):
     """(scenario, method, path, cookie, body) in order. The caller sends each step and passes its answer back with
     ``send((set_cookie, body))``: the exam's steps need the session and the questions of the earlier ones. Every request
     is a step, so each one is timed and its statements carry its scenario (Checkpoint F, PY-F5)."""
@@ -82,6 +83,17 @@ def _routes(student: str, news: list[int], exam: tuple[int, list[str], str]):
     yield "leader", "GET", "/api/analytics", leader, None
     yield "leader", "GET", "/api/insight/evidence", leader, None
     yield "leader", "GET", "/api/radar", leader, None
+    back, _ = yield "timetable", "POST", "/api/auth/demo", "", {"role": "office"}
+    back, _ = yield "timetable", "POST", "/api/me/role", _sid(back, "timetable: demo login"), {"role": "academic_office"}
+    ao, term, vid = _sid(back, "timetable: academic office"), tt["term"], tt["version"]
+    b, v = f"/api/timetable/build/{term}", f"/api/timetable/versions/{vid}"
+    for path in (b, f"{b}/readiness", f"{b}/units", f"{b}/groups", f"{b}/versions", f"{b}/teachers/{tt['teacher']}/availability",
+                 f"{v}/grid?group_id={tt['group']}", f"{v}/grid?teacher_id={tt['teacher']}", f"{v}/grid?room_id={tt['room']}",
+                 f"{v}/unplaced", f"{v}/scorecard", f"{v}/placements/{tt['placement']['id']}/options", "/api/timetable/settings"):
+        yield "timetable", "GET", path, ao, None
+    p = tt["placement"]
+    yield "timetable", "POST", f"{v}/placements/{p['id']}/move", ao, {"weekday": p["weekday"], "period": p["period"],
+                                                                      "room_id": p["room_id"], "rev": 0}
 
 
 BULK = 1200
@@ -114,6 +126,53 @@ def bulk_exam(data: Path, eid: int, n: int = BULK) -> None:
         db.close()
 
 
+def bulk_timetable(data: Path, n: int = 3000) -> dict:
+    """A draft of the current term over ``n`` synthetic units (1 200 teachers, 150 groups, the demo's rooms): placements,
+    unplaced meetings, unit needs, availability cells and statuses, group shifts, every builder table above --min-rows
+    (Task 48). A group's units take distinct slots, at most 4 a day, odd and even weeks in turn; the first unit is online, so the move
+    the scenario sends (to its own slot) passes every rule. Ids only, no real name."""
+    db = sqlite3.connect(data / "campus.db")
+    try:
+        t = "2026-09-01T09:00:00"
+        term = db.execute("SELECT id FROM academic_terms WHERE active=1 ORDER BY teaching_start DESC LIMIT 1").fetchone()[0]
+        dep = db.execute("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(1,'QPT','Yük kafedrası',1,?,?)",
+                         (t, t)).lastrowid
+        db.executemany("INSERT INTO study_groups(name,year,faculty_id,active) VALUES(?,2025,1,1)", [(f"QP-{g}",) for g in range(150)])
+        groups = [r[0] for r in db.execute("SELECT id FROM study_groups WHERE name LIKE 'QP-%' ORDER BY id")]
+        db.executemany("INSERT INTO users(username,full_name,role,title,color,department_id) VALUES(?,?,'teacher','','#333',?)",
+                       [(f"qp_t{i}", f"Yük müəllimi {i}", dep) for i in range(1200)])
+        teachers = [r[0] for r in db.execute("SELECT id FROM users WHERE username LIKE 'qp_t%' ORDER BY id")]
+        db.executemany("INSERT INTO courses(code,name,teacher_id,credits,color,department_id,term_id,active,created_at,updated_at) "
+                       "VALUES(?,?,?,5,'#777',?,?,1,?,?)", [(f"QP-{k}", f"Yük fənni {k}", teachers[k % 300], dep, term, t, t) for k in range(300)])
+        courses = [r[0] for r in db.execute("SELECT id FROM courses WHERE code LIKE 'QP-%' ORDER BY id")]
+        db.executemany("INSERT INTO teaching_units(course_id,kind,teacher_id,active,created_at,updated_at,hours,students) "
+                       "VALUES(?,'seminar',?,1,?,?,15,20)", [(courses[i % 300], teachers[i % 1200], t, t) for i in range(n)])
+        units = [r[0] for r in db.execute("SELECT u.id FROM teaching_units u JOIN courses co ON co.id=u.course_id WHERE co.code LIKE 'QP-%' ORDER BY u.id")]
+        db.executemany("INSERT INTO teaching_unit_groups(unit_id,group_id) VALUES(?,?)", [(u, groups[i % 150]) for i, u in enumerate(units)])
+        rooms = [r[0] for r in db.execute("SELECT id FROM rooms WHERE active=1 ORDER BY id")]
+        vid = db.execute("INSERT INTO tt_versions(term_id,status,rev,checked_rev,violations,score,scope,unplaced,created_by,created_at) "
+                         "VALUES(?,'draft',0,0,0,'{}','{\"all\":true}',?,1,?)", (term, n // 2, t)).lastrowid
+        db.executemany("INSERT INTO tt_placements(version_id,meeting_key,unit_id,part,weekday,period,duration,weeks,room_id,locked,origin) "
+                       "VALUES(?,?,?,0,?,?,1,?,?,0,'solver')",
+                       [(vid, f"{u}:0", u, 1 + (i // 150) % 6, 1 + (i // 900) % 4, ("odd", "even")[(i // 150) % 2], rooms[i % len(rooms)] if i else None)
+                        for i, u in enumerate(units)])
+        db.executemany("INSERT INTO tt_unplaced(version_id,meeting_key,unit_id,reasons) VALUES(?,?,?,'[]')", [(vid, f"{u}:1", u) for u in units[: n // 2]])
+        db.executemany("INSERT INTO tt_unit_needs(unit_id,duration,mode) VALUES(?,1,?)", [(u, "online" if not i else "in_person")
+                                                                                         for i, u in enumerate(units[: n // 2])])
+        db.executemany("INSERT INTO tt_availability(term_id,subject_type,subject_id,weekday,period,weeks,level,updated_by,updated_at) "
+                       "VALUES(?,'teacher',?,?,?,'all','undesired',1,?)", [(term, x, d, p, t) for x in teachers for d in (5, 6) for p in (5, 6)])
+        db.executemany("INSERT INTO tt_availability_status(term_id,teacher_id,confirmed_at) VALUES(?,?,?)", [(term, x, t) for x in teachers])
+        db.executemany("INSERT INTO tt_group_terms(term_id,group_id,shift) VALUES(?,?,'morning')", [(term, g) for g in groups])
+        db.executemany("INSERT INTO tt_runs(term_id,kind,status,seed,iter_budget,time_budget_s,requested_by,requested_at) "
+                       "VALUES(?,'precheck','done',0,0,0,1,?)", [(term, t)] * 1200)
+        db.commit()
+        p = db.execute("SELECT id, weekday, period, room_id FROM tt_placements WHERE version_id=? ORDER BY id LIMIT 1", (vid,)).fetchone()
+        return {"term": term, "version": vid, "group": groups[0], "teacher": teachers[0], "room": rooms[0],
+                "placement": {"id": p[0], "weekday": p[1], "period": p[2], "room_id": p[3]}}
+    finally:
+        db.close()
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--dataset", choices=sorted(loadtest.SIZES), default="university")
@@ -125,6 +184,7 @@ def main(argv=None) -> int:
         loadtest.build_dataset(data, args.dataset)       # sets ZEKA_DATA before store is imported
         exam = loadtest.exam_setup(data, 1)
         bulk_exam(data, exam[0])
+        tt = bulk_timetable(data)
         from zeka.core import web
         from zeka.legacy import api, store
         seen: list[str] = []
@@ -143,7 +203,7 @@ def main(argv=None) -> int:
         port = srv.server_address[1]
         try:
             tokens, news = loadtest.sessions(port, data)
-            steps, answer = _routes(tokens[0], news, exam), None
+            steps, answer = _routes(tokens[0], news, exam, tt), None
             while True:
                 try:
                     name, method, path, cookie, body = steps.send(answer)
@@ -155,7 +215,7 @@ def main(argv=None) -> int:
                                "ms": round((time.perf_counter() - t) * 1000), "statements": len(seen) - first})
                 origin.update({sql: name for sql in seen[first:] if sql not in origin})
                 if status != 200:
-                    raise SystemExit(f"{name}: {method} {path}: HTTP {status}")
+                    raise SystemExit(f"{name}: {method} {path}: HTTP {status}: {raw[:300].decode('utf-8', 'replace')}")
                 answer = back, raw
         finally:
             srv.shutdown()
@@ -173,7 +233,8 @@ def main(argv=None) -> int:
             db.close()
     timing.sort(key=lambda r: -r["ms"])
     print(json.dumps({"dataset": args.dataset, "statements": len(set(seen)), "scenarios": sorted({r["scenario"] for r in timing}),
-                      "exam_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("exam")}, "scans": bad, "slowest": timing[:8]},
+                      "exam_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("exam")},
+                      "tt_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("tt_")}, "scans": bad, "slowest": timing[:8]},
                      ensure_ascii=False, indent=1))
     return 1 if any(k != "leader" for k in bad) else 0
 
