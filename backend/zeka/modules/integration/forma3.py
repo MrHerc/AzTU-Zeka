@@ -1192,6 +1192,9 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
     section: str | None = None
     linked: set[str] = set()
     extra = 0
+    units_of: dict[str, list[Unit]] = defaultdict(list)
+    for u in form.units:
+        units_of[u.post].append(u)
     for r in range(h + 1, g.h):
         filled = g.filled(r)
         extra += sum(c > last_c for c in filled)
@@ -1235,14 +1238,17 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
             form.controls.append(Control("post", post.ref, "T6", round(want, 4), round(post.contact_hours + doctoral, 4),
                                          abs(want - post.contact_hours - doctoral) <= TOL_SUM))
         said = "hourly" if post.pay == "hourly" else "consultant" if post.consultant else post.employment
-        if said not in (None, "substitute-unspecified", section):
+        silent = said in (None, "substitute-unspecified") and section in ("main", "internal", "external")   # the line only lacks the word
+        if said != section and not silent:
             form.notes.append(Note(post.ref, "", "summary_category", _m("summary_category", x=section), post.ref))
         if section == "hourly":
             post.pay = "hourly"
         elif section == "consultant":
             post.consultant = True
         else:
-            post.employment = section
+            post.employment, post.pay = section, "staff"
+        for u in units_of.get(post.ref, []):                     # the section decides the pay of the post's classes too
+            u.hourly = post.pay == "hourly"
         if degree_c is not None and g.t(r, degree_c) and (post.degree or post.position):
             theirs, mine = _titles_of(g.t(r, degree_c)), _titles_of(f"{post.degree or ''} {post.position or ''}")
             if not mine <= theirs and not theirs <= mine:

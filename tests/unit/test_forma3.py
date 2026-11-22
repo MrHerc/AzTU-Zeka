@@ -366,6 +366,19 @@ def test_a7_the_summary_sheet_gives_the_staff_category_and_the_t6_sums(form_a):
     assert codes(form_a.notes, code="summary_list")
 
 
+def test_a7_the_summary_s_hourly_section_makes_the_classes_hourly_and_says_the_difference(sheets_a):
+    """Checkpoint F review: only the post turned hourly; its classes kept the staff line's pay, so the import wrote them as
+    staff, and a staff line without a kind word gave no note."""
+    form = forma3.read(changed(sheets_a, **{"#0!A72": "0,5 ştat - müəllim, Əliyeva Nigar Samir qızı"}))
+    p = post(form, "#0!A72")
+    assert (p.pay, p.fraction) == ("hourly", 0.5) and [u.hourly for u in form.units if u.post == p.ref] == [True, True]
+    assert [n.post for n in codes(form.notes, code="summary_category")] == ["#0!A72"]
+    form = forma3.read(changed(sheets_a, **{"#0!A7": "saat hesabı - dosent, Quliyev Elçin Rauf oğlu"}))
+    p = post(form, "#0!A7")
+    assert p.pay == "staff" and not any(u.hourly for u in form.units if u.post == p.ref), "the summary section wins both ways"
+    assert [n.post for n in codes(form.notes, code="summary_category")] == ["#0!A7"]
+
+
 def test_a7_a_summary_row_without_a_formula_is_linked_by_total_and_name(sheets_a):
     plain = copy.deepcopy(sheets_a)
     plain[3].formulas.clear()
