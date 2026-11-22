@@ -256,6 +256,9 @@ bloklayan konfliktlə qaytarılır və idxal həmin ştatdan heç nə tətbiq et
 - **T2. Semestrlər.** H6 bərabərlikləri.
 - **T3. Dərslər və yük cəmi örtür.** Semestr və növ üzrə dərs saatlarının cəmi `Cəmi` sətrinin auditoriya xanasına,
   dərslərlə yükün cəmi isə semestrin yenidən hesablanmış cəminə bərabərdir. Bu, birləşdirmə qaydasını da sübut edir.
+  Bu oxuyucuda T3 T1-dən irəli gəlir: dəyəri olan hər sol yuxarı saat xanası düz bir dərs və ya bir yük sətri olur. Ona
+  görə T3 faylı deyil, oxuyucunun özünü yoxlayır: sətirlərlə yoxlamalar arasında itən və ya iki dəfə sayılan dərs ştatı
+  bloklayır (test: `test_t3_a_unit_the_reader_lost_fails_t3_while_t1_holds`).
 - **T4. Sətirlər (yalnız xəbərdarlıq).** Sətrin semestr və il cəmləri saat xanalarından yenidən hesablanır; fərq
   bloklamayan qeyddir. Boş sətir cəmi sıfır sayılır; birləşdirilmiş sətir cəmi örtdüyü sətirlərin cəmi ilə tutuşdurulur.
 - **T5. Faylın sayları.** Kafedranın cəminə daxil olan ştatlar (gizli vərəqdə olmayan və arayış cədvəlinin kənarda

@@ -744,6 +744,20 @@ def test_t3_units_and_load_must_cover_the_totals(form_a, form_b):
                 assert c.ok and c.expected == c.found == sum(u.hours for u in form.units if u.post == c.ref)
 
 
+def test_t3_a_unit_the_reader_lost_fails_t3_while_t1_holds(sheets_b, monkeypatch):
+    """Checkpoint F review: for this reader T3 follows from T1 on any input (every valued top-left hour cell becomes exactly
+    one unit or load line), so it guards the reader itself: a unit lost between the rows and the controls must block."""
+    real = forma3._controls
+
+    def losing(R, g, p, cols, r0, total, sums, units, loads, vals):
+        return real(R, g, p, cols, r0, total, sums, units[1:] if p.ref == "#0!B10" else units, loads, vals)
+    monkeypatch.setattr(forma3, "_controls", losing)
+    form = forma3.read(sheets_b)
+    p = post(form, "#0!B10")
+    assert p.controls == {"T1": True, "T2": True, "T3": False} and p.blocked
+    assert [c.post for c in codes(form.conflicts, code="t3")] == ["#0!B10"]
+
+
 def test_t4_a_per_row_total_that_differs_is_only_a_note_and_a_merged_one_is_summed(form_a, sheets_a):
     assert not codes(form_a.notes, code="row_total"), "the merged R25:R32 is compared with the sum over its rows"
     form = forma3.read(changed(sheets_a, **{"#0!R11": "1"}))
