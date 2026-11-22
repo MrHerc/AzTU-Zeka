@@ -54,6 +54,11 @@ TITLES = {   # readiness lines, publish gate and slot reasons: one catalogue key
     "pattern_weeks": S_("Həftələr vahidin bölgüsünə uyğun deyil"), "past": S_("Keçmiş həftələr dəyişdirilə bilməz"),
     "locked": S_("Yerləşdirmə kilidlidir"), "unknown_meeting": S_("Dərs vahidin cari saatlarına uyğun deyil"),
     "duplicate": S_("Dərs iki dəfə yerləşdirilib"),
+    # why the solver left a meeting unplaced (solver.explain), counted over the slots of the week
+    "slot_rules": S_("Növbə, universitet tədbiri və ya müəllimin məşğul vaxtı imkan vermir"),
+    "blocked_weeks": S_("Bütün həftələr təcrübə və ya başqa səbəblə dərsdən azaddır"),
+    "teacher_busy": S_("Müəllim başqa dərsdədir"), "group_busy": S_("Qrup başqa dərsdədir"), "day_limit": S_("Günlük cüt həddi aşılır"),
+    "locked_infeasible": S_("Kilidli yerləşdirmə qaydalara uyğun deyil"), "free": S_("Boş vaxt var, amma axtarış onu tapmadı"),
 }
 
 
@@ -243,6 +248,8 @@ def start_page(c, user, tid: int) -> dict:
     vs = [v for v in repo.versions(c, tid) if manages(user) or v["status"] in VISIBLE_PREPARE]
     run = repo.active_run(c, tid) if manages(user) else None
     return {"term": {k: t[k] for k in ("id", "code", "name", "teaching_start", "teaching_end")}, "weeks": domain.term_weeks(t),
+            "manages": manages(user), "can_publish": perms.has(user["role"], "timetable.publish") and scope_of(c, user)["all"],
+            "notice_days": settings(c)["notice_days"], "term_confirmed": J((repo.tt_term(c, tid) or {}).get("confirmed"), []) or [],
             "dues": r["dues"], "run_blocked": r["run_blocked"], "publish_blocked": r["publish_blocked"],
             "warnings": sum(1 for x in r["lines"] if x["level"] == "warn"), "versions": len(vs), "published_id": pub["id"] if pub else None,
             "run": run_out(run) if run else None}
@@ -312,6 +319,27 @@ def units(c, user, tid: int, department_id: int | None, offset: int) -> dict:
                        "groups": groups.get(u["id"], []), "needs": _needs_out(needs.get(u["id"]))} for u in page]}
 
 
+def teachers(c, user, tid: int, department_id: int | None) -> dict:
+    """The teachers' board: everyone teaching a unit of the term in the caller's scope, with their grid's state."""
+    t, s = term(c, tid), scope_of(c, user)
+    if department_id is not None and not _covers_department(c, s, department_id):
+        raise HTTPError(404, "Kafedra tapılmadı")
+    us = [u for u in repo.term_units(c, t["id"]) if u["teacher_id"] and covers(s, u) and (department_id is None or u["department_id"] == department_id)]
+    ids = sorted({u["teacher_id"] for u in us})
+    names, status, due = repo.user_names(c, ids), repo.availability_status(c, t["id"]), dues(c, t)["availability"]
+    cells: dict[int, int] = {}
+    for a in repo.subjects_availability(c, t["id"], "teacher", ids):
+        cells[a["subject_id"]] = cells.get(a["subject_id"], 0) + 1
+    out = []
+    for x in ids:
+        st = status.get(x) or {}
+        out.append({"id": x, "full_name": names.get(x, ""), "units": sum(1 for u in us if u["teacher_id"] == x), "cells": cells.get(x, 0),
+                    "confirmed_at": st.get("confirmed_at"), "pending": bool(st.get("pending")), "pending_at": st.get("pending_at"),
+                    "reopened_until": st.get("reopened_until"), "over_cap_cells": st.get("over_cap_cells"),
+                    "late": not st.get("confirmed_at") and _today() > due})
+    return {"due": due, "items": sorted(out, key=lambda x: (x["full_name"], x["id"]))}
+
+
 def put_needs(c, user, uid: int, body) -> dict:
     u = unit_for(c, user, uid)
     if not u["term_id"]:
@@ -377,7 +405,9 @@ def availability(c, user, tid: int, uid: int) -> dict:
     return {"teacher": {"id": who["id"], "full_name": who["full_name"]}, "cells": cells, "feedback": _feedback(c, t, uid, cells),
             "status": {"confirmed_at": st.get("confirmed_at"), "pending": J(st.get("pending")), "pending_at": st.get("pending_at"),
                        "reopened_until": st.get("reopened_until"), "over_cap_cells": st.get("over_cap_cells"), "decided_at": st.get("decided_at")},
-            "due": dues(c, t)["availability"], "days": days, "periods": periods}
+            "due": dues(c, t)["availability"], "days": days, "periods": periods, "times": bell(c)[1][:periods],
+            "cap_pct": settings(c)["availability_cap_pct"], "load_pct": settings(c)["availability_load_factor_pct"],
+            "editable": _today() <= dues(c, t)["availability"] or (st.get("reopened_until") or "") >= _today() or user["id"] != uid}
 
 
 def put_availability(c, user, tid: int, uid: int, body) -> dict:
@@ -761,17 +791,16 @@ def grid(c, user, vid: int, group_id: int | None, teacher_id: int | None, room_i
     for x in items:
         span = domain.pair_span(times, x["period"], x["duration"]) or ("", "")
         out.append({**x, "start": span[0], "end": span[1], "groups": [info[g]["name"] for g in names.get(x["unit_id"], []) if g in info]})
-    return {"version": _version_out(v), "items": out}
+    return {"version": _version_out(v), "items": out, "times": times, "days": settings(c)["days"]}
 
 
 def unplaced(c, user, vid: int) -> list[dict]:
     v = version_for(c, user, vid)
     s = scope_of(c, user)
     items = repo.unplaced(c, v["id"])
-    if not s["all"]:
-        ok = {u["id"] for u in repo.units_by_id(c, sorted({x["unit_id"] for x in items})) if covers(s, u)}
-        items = [x for x in items if x["unit_id"] in ok]
-    return [{**x, "reasons": titled(J(x["reasons"], []) or [])} for x in items]
+    us = {u["id"]: u for u in repo.units_by_id(c, sorted({x["unit_id"] for x in items})) if covers(s, u)}
+    return [{**x, **{k: us[x["unit_id"]][k] for k in ("course", "kind", "teacher_id", "subgroup")}, "reasons": titled(J(x["reasons"], []) or [])}
+            for x in items if x["unit_id"] in us]
 
 
 def scorecard(c, user, vid: int) -> dict:

@@ -1,0 +1,56 @@
+/* The timetable builder (Task 48): readiness, availability grids, the version editor and its print view.
+   A state is always text plus colour; colour alone never carries it. */
+.tt-summary { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.tt-reasons { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12.5px; }
+.tt-reasons li { display: flex; gap: 6px; align-items: baseline; margin: 2px 0; }
+.tt-confirm { gap: 8px 18px; }
+.tt-runform .field { min-width: 140px; }
+
+/* availability grid */
+.tt-avail td, .tt-avail th { text-align: center; padding: 4px; }
+.tt-cell { width: 100%; min-width: 74px; min-height: 40px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 2px; padding: 4px; }
+.tt-cell:disabled { cursor: not-allowed; opacity: .75; }
+.tt-cell.lv-unavailable { background: var(--red-50); color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, var(--border)); }
+.tt-cell.lv-undesired { background: var(--amber-50); color: var(--amber); border-style: dashed; }
+.tt-cell.lv-preferred { background: var(--green-50); color: var(--green); }
+.tt-cell.sel { outline: 2px solid var(--focus); outline-offset: 1px; }
+.tt-cell-more { align-items: flex-end; gap: 12px; padding: 10px; background: var(--surface-2); border-radius: 10px; }
+
+/* version editor */
+.tt-vgrid { grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
+.tt-grid { table-layout: fixed; min-width: 760px; }
+.tt-grid th:first-child { width: 86px; }
+.tt-grid td.tt-slot { vertical-align: top; padding: 4px; height: 64px; }
+.tt-item { position: relative; display: flex; gap: 2px; border: 1px solid var(--border); border-left: 3px solid var(--blue, #2563eb); border-radius: 8px;
+  background: var(--surface); margin-bottom: 4px; }
+.tt-item[draggable="true"] { cursor: grab; }
+.tt-item.locked { border-left-color: var(--muted); background: var(--surface-3); }
+.tt-item.sel { outline: 2px solid var(--focus); }
+.tt-item-b { flex: 1; min-width: 0; text-align: left; border: 0; background: transparent; padding: 5px 6px; display: flex; flex-direction: column; gap: 1px;
+  font-size: 12px; color: var(--text); cursor: pointer; }
+.tt-item-b b { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+.tt-lock { border: 0; background: transparent; color: var(--muted); padding: 4px; cursor: pointer; align-self: flex-start; }
+.tt-lock[aria-pressed="true"] { color: var(--text); }
+.tt-why { display: block; font-size: 11px; line-height: 1.3; }
+.moving .tt-slot.ok { background: var(--green-50); cursor: pointer; }
+.moving .tt-slot.ok .tt-why { color: var(--green); }
+.moving .tt-slot.no { background: repeating-linear-gradient(135deg, var(--red-50) 0 6px, transparent 6px 12px); }
+.moving .tt-slot.no .tt-why { color: var(--red); }
+.moving .tt-slot.cur { background: var(--surface-3); }
+.tt-slot.cursor { outline: 3px solid var(--focus); outline-offset: -3px; }
+.tt-draftmark { display: none; }
+.tt-status { margin: 0; padding: 0 18px 10px; min-height: 1.4em; }
+
+@media (max-width: 980px) {
+  .tt-vgrid { grid-template-columns: minmax(0, 1fr); }
+  .tt-cell { min-width: 54px; }
+}
+
+@media print {
+  .tt-vgrid { display: block; }
+  .tt-vgrid > .stack, #vr-run, .tt-lock, .ph-actions, .seg, #vr-pick, #vr-lockall { display: none !important; }
+  .tt-grid { min-width: 0; font-size: 10px; }
+  .tt-draftmark { display: block; position: fixed; top: 40%; left: 0; right: 0; text-align: center; font-size: 120px; font-weight: 800;
+    color: rgba(0, 0, 0, .08); transform: rotate(-30deg); pointer-events: none; }
+}

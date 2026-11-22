@@ -165,11 +165,16 @@ def test_a_grid_above_the_cap_waits_for_a_decision(app_db, office_ao, world):
     pending = teacher.put(path, {"cells": many})
     assert pending.status == 200 and pending.json["status"] == "pending" and pending.json["feedback"]["over_cap"] == 2
     assert len(teacher.get(path).json["cells"]) == 1                     # the solver never reads a pending grid
+    board = {x["id"]: x for x in office_ao.get(f"{B}/teachers?department_id={world['dep']}").json["items"]}
+    assert board[me]["pending"] and board[me]["cells"] == 1 and board[me]["full_name"] and set(world["teachers"]) <= set(board)
+    assert teacher.get(f"{B}/teachers").status == 403                                         # the board is for the builders
     assert teacher.post(f"{path}/decide", {"approve": True}).status == 403                   # route: teachers do not decide
     assert office_ao.post(f"{path}/decide", {"approve": "yes"}).status == 400
     ok = office_ao.post(f"{path}/decide", {"approve": True})
     assert ok.status == 200 and ok.json["over_cap_cells"] == 2
     assert len(teacher.get(path).json["cells"]) == 12
+    after = {x["id"]: x for x in office_ao.get(f"{B}/teachers").json["items"]}[me]
+    assert not after["pending"] and after["cells"] == 12 and after["over_cap_cells"] == 2
     assert teacher.post(f"{path}/confirm", {}).status == 200
     assert q("SELECT 1 FROM notifications WHERE user_id=? AND link='/teacher/availability'", (me,))
 
@@ -196,6 +201,9 @@ def test_a_head_of_another_department_sees_nothing_of_this_one(app_db, world):
     assert stranger.get(f"{B}/teachers/{world['teachers'][0]}/availability").status == 404
     assert stranger.get(f"{B}/readiness?department_id={world['dep']}").status == 404
     assert stranger.get(f"{B}/units").json["total"] == 0
+    assert stranger.get(f"{B}/teachers").json["items"] == []
+    assert stranger.get(f"{B}/teachers?department_id={world['dep']}").status == 404
+    assert not stranger.get(B).json["can_publish"] and not stranger.get(B).json["manages"]
     assert stranger.post(f"{B}/teachers/{world['rauf']}/availability/decide", {"approve": False}).status == 404
 
 
@@ -283,6 +291,7 @@ def test_publishing_needs_a_check_the_confirmations_and_the_right_numbers(office
     v = q("SELECT * FROM tt_versions WHERE id=?", (vid,))[0]
     body = {"effective_from": EFF, "accept_unplaced": v["unplaced"], "override_reason": "Rəy mərhələsi səhifələrlə gələcək"}
     assert app_db.client("admin").post(f"/api/timetable/versions/{vid}/publish", body).status == 403   # admin never publishes
+    assert office_ao.get(B).json["can_publish"] and not app_db.client("admin").get(B).json["can_publish"]     # the page's button
     gate = office_ao.post(f"/api/timetable/versions/{vid}/publish", {**body, "accept_unplaced": v["unplaced"] + 1, "override_reason": ""})
     assert gate.status == 409
     assert {"unchecked", "unconfirmed", "readiness", "unplaced_count", "review"} <= {x["code"] for x in gate.json["gate"]}

@@ -215,6 +215,13 @@ def user_unit(c, uid: int):
                   "LEFT JOIN departments d ON d.id=u.department_id WHERE u.id=?", (uid,))
 
 
+def user_names(c, ids: list[int]) -> dict[int, str]:
+    out: dict[int, str] = {}
+    for part in _chunks(sorted(ids)):
+        out.update({r["id"]: r["full_name"] for r in rows(c, f"SELECT id, full_name FROM users WHERE id IN ({_in(part)})", tuple(part))})  # nosec B608
+    return out
+
+
 def term_units(c, term_id: int) -> list[dict]:
     """The active teaching units of a term's active courses, with their department and faculty."""
     return rows(c, f"SELECT {UNIT_COLS} FROM {UNIT_FROM} WHERE co.term_id=? AND co.active=1 AND u.active=1 ORDER BY u.id",  # nosec B608

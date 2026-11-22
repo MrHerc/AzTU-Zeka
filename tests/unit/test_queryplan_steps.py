@@ -33,7 +33,7 @@ def test_every_exam_request_and_the_leader_s_sign_in_is_a_step(monkeypatch):
         ("leader", "GET", "/api/radar", "zeka_sid=leader"), ("timetable", "POST", "/api/auth/demo", ""),
         ("timetable", "POST", "/api/me/role", "zeka_sid=leader")] + [("timetable", "GET", x, "zeka_sid=ao") for x in (
         "/api/timetable/build/N", "/api/timetable/build/N/readiness", "/api/timetable/build/N/units", "/api/timetable/build/N/groups",
-        "/api/timetable/build/N/versions", "/api/timetable/build/N/teachers/N/availability", "/api/timetable/versions/N/grid?group_id=N",
+        "/api/timetable/build/N/versions", "/api/timetable/build/N/teachers", "/api/timetable/build/N/teachers/N/availability", "/api/timetable/versions/N/grid?group_id=N",
         "/api/timetable/versions/N/grid?teacher_id=N", "/api/timetable/versions/N/grid?room_id=N", "/api/timetable/versions/N/unplaced",
         "/api/timetable/versions/N/scorecard", "/api/timetable/versions/N/placements/N/options", "/api/timetable/settings")] + [
         ("timetable", "POST", "/api/timetable/versions/N/placements/N/move", "zeka_sid=ao")]

@@ -226,6 +226,11 @@ def tt_save_groups(req):
     return builder.put_groups(req.db, req.user, req.params["term"], req.json())
 
 
+@R("GET", B + "/teachers", perm="timetable.prepare")
+def tt_teachers(req):
+    return builder.teachers(req.db, req.user, req.params["term"], _int(req, "department_id"))
+
+
 @R("GET", AV, roles=GRID_ROLES)
 def tt_availability(req):
     return builder.availability(req.db, req.user, req.params["term"], req.params["uid"])

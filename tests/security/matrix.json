@@ -1293,6 +1293,18 @@
   "perm": "timetable.prepare",
   "slow": false
  },
+ "GET /api/timetable/build/{term:int}/teachers": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
  "GET /api/timetable/build/{term:int}/teachers/{uid:int}/availability": {
   "access": [
    "academic_office",

@@ -11,7 +11,8 @@ import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "e2e" / "a11y.js"
 PAGES = ("sign-in", "student-home", "student-schedule", "tutor", "e-services", "teacher-home", "teacher-course",
-         "office-requests", "leader-dashboard", "admin-settings")
+         "office-requests", "leader-dashboard", "admin-settings",
+         "timetable-builder", "dept-timetable", "teacher-availability", "faculty-timetable")      # Task 48
 
 
 def _node_has(expr: str) -> bool:
@@ -30,6 +31,10 @@ pytestmark = [pytest.mark.skipif(not _node_has("require('playwright')"), reason=
 @pytest.fixture(scope="module")
 def seen(app_db):
     course = app_db.client("teacher").get("/api/courses").json[0]["id"]
+    teacher = app_db.client("teacher")                     # the demo teacher heads the faculty's departments for dept-timetable
+    faculty = app_db.client("admin").get("/api/directory/faculties").json["items"][0]["id"]
+    assert app_db.client("admin").post(f"/api/admin/users/{teacher.user['id']}/roles",
+                                       {"role": "dept_head", "scope_type": "faculty", "scope_id": faculty}).status == 200
     run = subprocess.run([shutil.which("node"), str(SCRIPT), app_db.url, str(course)], capture_output=True, text=True, timeout=600)
     assert run.stdout.strip(), run.stderr
     out = json.loads(run.stdout.strip().splitlines()[-1])

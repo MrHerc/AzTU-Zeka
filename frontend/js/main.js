@@ -23,6 +23,8 @@ import "./apps.js";
 import "./admin-import.js";
 import "./admin-settings.js";
 import "./timetable-admin.js";
+import "./timetable-prep.js";
+import "./timetable-build.js";
 import "./journal.js";
 import { privacyCard } from "./privacy.js";
 import { demoButton } from "./demo.js";
