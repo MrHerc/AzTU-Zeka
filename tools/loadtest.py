@@ -46,6 +46,7 @@ WRITE = [(70, "PUT", "/api/me/prefs"), (30, "POST", "/api/news/{news}/save")]
 MIX = {"read": READ, "write": WRITE, "mixed": [(w * 0.8, m, p) for w, m, p in READ] + [(w * 0.2, m, p) for w, m, p in WRITE], "exam": []}
 EXAM_QUESTIONS = 10    # per form, drawn from 30 exam questions
 SESSIONS = 25          # the demo login allows 30 per client per minute
+TIMEOUT = 60           # seconds a virtual user waits for an answer
 
 
 def build_dataset(data: Path, name: str) -> None:
@@ -163,7 +164,7 @@ def client(args) -> list[tuple[float, int, str, bool]]:
 
     def user(n):
         rng = random.Random(seed * 1000 + n)
-        conn, used = http.client.HTTPConnection("127.0.0.1", port, timeout=60), False
+        conn, used = http.client.HTTPConnection("127.0.0.1", port, timeout=TIMEOUT), False
         base = {"Cookie": tokens[n % len(tokens)], "X-Lang": "az", "Origin": f"http://127.0.0.1:{port}"}
         mine = []
         while time.time() < stop_at:
@@ -176,16 +177,17 @@ def client(args) -> list[tuple[float, int, str, bool]]:
             t = time.perf_counter()
             status, reopened = 0, False
             # Task 42: the server closes a keep-alive connection idle for 30 s (a user thinking longer); like a browser,
-            # a request that fails on a reused connection is sent once more on a new one. A new one that fails is an error.
+            # a request whose reused connection was closed before any answer is sent once more on a new one. A timeout,
+            # any other failure, or a failure on a new connection is an error, never sent again.
             for again in (used, False):
                 try:
                     status, used = call(conn, method, url, body, headers), True
                     break
-                except (OSError, http.client.HTTPException):
+                except (OSError, http.client.HTTPException) as e:
                     conn.close()
-                    conn, used = http.client.HTTPConnection("127.0.0.1", port, timeout=60), False
-                    reopened = again
-                    if not again:
+                    conn, used = http.client.HTTPConnection("127.0.0.1", port, timeout=TIMEOUT), False
+                    reopened = again and isinstance(e, (BrokenPipeError, ConnectionResetError))   # RemoteDisconnected is one
+                    if not reopened:
                         break
             mine.append((time.perf_counter() - t, status, f"{method} {path}", reopened))
             if think:                                  # a person reads the page before the next click (exponential pause)

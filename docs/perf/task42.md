@@ -102,9 +102,11 @@ bağlantı xətası.
   (`core/web.py`, `timeout = 30`). Düşünmə vaxtı eksponensialdır (orta 5 s): fasilələrin e⁻⁶ ≈ 0,25 %-i 30 saniyədən
   uzundur; 600 saniyədə təxminən 120 000 sorğuda bu, təxminən 300 hal deməkdir. Xətalar marşrutlar arasında onların
   payına mütənasib bölünürdü. Brauzer belə halda sorğunu yeni bağlantıda yenidən göndərir; alət də indi belə edir:
-  təkrar istifadə olunan bağlantıda alınmayan sorğu bir dəfə yeni bağlantıda göndərilir və `reopened` kimi sayılır. Yeni
-  bağlantıda alınmayan sorğu isə xətadır. Bu, serverin qüsuru deyil: boş bağlantının bağlanması boş qalan axınları azad
-  edir.
+  server təkrar istifadə olunan bağlantını cavabsız bağlayıbsa (`RemoteDisconnected`, `BrokenPipeError`,
+  `ConnectionResetError`), sorğu bir dəfə yeni bağlantıda göndərilir və `reopened` kimi sayılır. Vaxt aşımı (60 s
+  ərzində cavab yoxdur), başqa hər xəta və yeni bağlantıda alınmayan sorğu isə bağlantı xətasıdır və təkrar
+  göndərilmir (`POST /api/news/{id}/save` dəyişdirici əməliyyatdır). Bu, serverin qüsuru deyil: boş bağlantının
+  bağlanması boş qalan axınları azad edir.
 
 Alət indi hər qeyri-2xx cavabı marşrut üzrə göstərir (`errors_by_route`). `--fail-on-errors` read, write və mixed
 ssenarilərində 4xx olduqda da 1 qaytarır: skript gözlənilən 4xx göndərmir.
@@ -114,6 +116,9 @@ Nəticə (eyni maşın; ölçmə zamanı maşında başqa iş də gedirdi, yük 
 | Sorğu sayı | Sorğu/s | p50 | p95 | p99 | 5xx | 4xx | Bağlantı xətası | Yeni bağlantıda təkrar | Çıxış kodu |
 |---|---|---|---|---|---|---|---|---|---|
 | 120 784 | 201 | 9 ms | 37 ms | 256 ms | 0 | 0 | 0 | 296 | 0 |
+
+Bu ölçmədə alət vaxt aşımından sonra da sorğunu təkrar göndərirdi (Checkpoint F, F2-də düzəldilib); ölçmə yeni qayda
+ilə təkrarlanmayıb. p99 256 ms olduğundan 60 saniyəlik vaxt aşımı ehtimalı azdır, amma bu, ölçü ilə sübut olunmayıb.
 
 ### İmtahan
 

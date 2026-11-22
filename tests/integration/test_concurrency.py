@@ -154,6 +154,45 @@ def test_the_load_tool_reopens_a_keep_alive_connection_the_server_closed():
     assert sum(1 for r in out if r[3]) == len(out) - 2, "every request after a user's first went again on a new connection"
 
 
+def test_the_load_tool_counts_a_request_never_answered_and_does_not_send_it_again(monkeypatch):
+    """Task 42: only a reused connection closed before any answer is sent again, as a browser does. A request the server
+    did not answer within the client's timeout is a connection error, sent once (POST /api/news/{id}/save toggles).
+    This server holds every connection's second request past the timeout."""
+    import http.server
+    received = [0]
+
+    class SecondHangs(http.server.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+        served = 0                               # per connection: one handler object serves a keep-alive connection
+
+        def do_GET(self):
+            received[0] += 1
+            self.served += 1
+            if self.served == 2:
+                time.sleep(1.5)
+            try:
+                self.send_response(200)
+                self.send_header("Content-Length", "2")
+                self.end_headers()
+                self.wfile.write(b"{}")
+            except OSError:                      # the client gave up and closed the connection
+                pass
+
+        def log_message(self, *_a):
+            pass
+
+    monkeypatch.setattr(loadtest, "TIMEOUT", 0.5)
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), SecondHangs)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        out = loadtest.client((srv.server_address[1], 1, 1.2, "read", ["zeka_sid=x"], [1], 0, 0))
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert [r[1] for r in out][:2] == [200, 0] and not any(r[3] for r in out), out
+    assert received[0] == len(out), "a request that timed out was sent again"
+
+
 def test_a_slow_request_body_never_holds_a_handler_slot(app_db, monkeypatch):
     monkeypatch.setattr(web, "QUEUE_WAIT", 1.0)
     token = re.search(r"zeka_sid=([^;]+)", app_db.client().post("/api/auth/demo", {"role": "student"}).headers["Set-Cookie"]).group(1)
