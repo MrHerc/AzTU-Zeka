@@ -374,7 +374,7 @@ def test_a7_the_summary_sheet_gives_the_staff_category_and_the_t6_sums(form_a):
         ("#0!A7", "main", "staff"), ("#0!A22", "external", "staff"), ("#0!A48", None, "staff"), ("#0!A61", None, "hourly"),
         ("#0!A72", None, "hourly")]
     t6 = [c for c in form_a.controls if c.check == "T6" and c.scope == "post"]
-    assert len(t6) == 9 and all(c.ok for c in t6), "four people (total and contact hours) and the vacancy section"
+    assert len(t6) == 10 and all(c.ok for c in t6), "four people and the vacancy section, each by total and contact hours"
     assert [n.post for n in codes(form_a.notes, code="summary_position")] == ["#0!A22"], "müəllim vs baş müəllim"
     assert codes(form_a.notes, code="summary_list")
 
@@ -392,11 +392,24 @@ def test_a7_the_summary_s_hourly_section_makes_the_classes_hourly_and_says_the_d
     assert [n.post for n in codes(form.notes, code="summary_category")] == ["#0!A7"]
 
 
+def test_t6_the_vacancy_section_s_contact_cell_and_the_grand_total_are_checked(sheets_a):
+    """Checkpoint F review: rt#4!H58 (vacancy contact + doctoral) and the grand totals G59, H59 were never compared (K6)."""
+    def failing(**cells):
+        form = forma3.read(changed(sheets_a, **{"#3!A15": "Ümumi cəm", "#3!G15": "714.97", "#3!H15": "570", **cells}))
+        t6 = [c for c in form.controls if c.check == "T6"]
+        assert {c.ref for c in t6 if c.scope == "file"} == {"#3!G15", "#3!H15"}
+        return sorted((c.scope, c.ref) for c in t6 if not c.ok)
+    assert failing() == [], "Σ year totals 714.96 within 0.02 of the typed 714.97; contact 570 = 430 + 140 (doctoral counted)"
+    assert failing(**{"#3!H14": "999"}) == [("post", "#0!A48")]
+    assert failing(**{"#3!G15": "99999"}) == [("file", "#3!G15")]
+    assert failing(**{"#3!H15": "1"}) == [("file", "#3!H15")]
+
+
 def test_a7_a_summary_row_without_a_formula_is_linked_by_total_and_name(sheets_a):
     plain = copy.deepcopy(sheets_a)
     plain[3].formulas.clear()
     form = forma3.read(plain)
-    assert post(form, "#0!A22").employment == "external" and len([c for c in form.controls if c.check == "T6" and c.scope == "post"]) == 9
+    assert post(form, "#0!A22").employment == "external" and len([c for c in form.controls if c.check == "T6" and c.scope == "post"]) == 10
 
 
 def test_a11_a_form_sheet_outside_the_summary_is_read_and_refused(form_a):

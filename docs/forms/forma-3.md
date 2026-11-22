@@ -262,7 +262,9 @@ bloklayan konfliktlə qaytarılır və idxal həmin ştatdan heç nə tətbiq et
   sayı; onların saatlarının cəmi.
 - **T6. Arayış yoxlamaları (fayl səviyyəsində, xəbərdarlıq).** A: blokların illik cəmlərinin cəmi vərəqin cəm sətrinə,
   arayış cədvəlinin hər sətri öz blokunun illik cəminə və auditoriya saatına (doktorantura rəhbərliyi daxil), vakant yük
-  bölməsinin cəmi vakansiya blokuna bərabərdir (fərq ən çoxu 0,02).
+  bölməsinin cəmi və auditoriya saatı vakansiya bloklarına, `Ümumi cəm` sətri isə arayışın saydığı bütün blokların
+  illik cəmlərinin və auditoriya saatlarının (doktorantura daxil) cəminə bərabərdir (fərq ən çoxu 0,02; K6: yazılmış
+  `G57` səbəbindən `G59` 0,0133 fərqlənir).
 - **K1. `Cəmi` sətrində xəta dəyəri.** T1 və T2 oxuna bilən xanalar üzrə aparılır, xəta xanası sətirlərdən yenidən
   hesablanır və bloklamayan konflikt yazılır.
 - **K2–K5.** Köhnəlmiş və ya səhv diapazonlu düsturlar dəyər oxunuşuna təsir etmir (həqiqət sətirlərdən hesablanan

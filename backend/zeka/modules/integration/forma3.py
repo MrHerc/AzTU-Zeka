@@ -1230,9 +1230,14 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
     section: str | None = None
     linked: set[str] = set()
     extra = 0
+    grand: int | None = None
     units_of: dict[str, list[Unit]] = defaultdict(list)
     for u in form.units:
         units_of[u.post].append(u)
+    doctoral: dict[str, float] = defaultdict(float)
+    for x in form.load:
+        if x.kind == "doctoral":
+            doctoral[x.post] += x.hours
     for r in range(h + 1, g.h):
         filled = g.filled(r)
         extra += sum(c > last_c for c in filled)
@@ -1244,6 +1249,9 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
             section = hit
             continue
         total = tx.number(g.t(r, total_c))
+        if first.startswith(key("Ümumi cəm")) and total is not None:
+            grand = r                                             # the department's grand total: a file control (K6)
+            continue
         if section == "vacancy":
             if first.startswith(key("Cəmi")) and total is not None:
                 vac = [p for p in a_posts.values() if p.vacancy and p.sheet in R.sheet_totals]
@@ -1251,6 +1259,11 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
                 for p in vac:
                     linked.add(p.ref)
                     form.controls.append(Control("post", p.ref, "T6", round(total, 4), round(found, 4), abs(total - found) <= TOL_SUM))
+                if contact_c is not None and vac:                 # the section's contact cell counts doctoral load too (H58)
+                    want = tx.number(g.t(r, contact_c)) or 0.0
+                    found = sum(p.contact_hours + doctoral[p.ref] for p in vac)
+                    for p in vac:
+                        form.controls.append(Control("post", p.ref, "T6", round(want, 4), round(found, 4), abs(want - found) <= TOL_SUM))
             continue
         name = g.t(r, name_c)
         if total is None or not name or not g.t(r, g.filled(r)[0]).isdigit() or section is None:
@@ -1271,10 +1284,9 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
         ok = post.year_total is not None and abs(post.year_total - total) <= TOL_SUM
         form.controls.append(Control("post", post.ref, "T6", round(total, 4), post.year_total, ok))
         if contact_c is not None:                                 # the summary's contact hours also count doctoral supervision
-            doctoral = sum(x.hours for x in form.load if x.post == post.ref and x.kind == "doctoral")
             want = tx.number(g.t(r, contact_c)) or 0.0
-            form.controls.append(Control("post", post.ref, "T6", round(want, 4), round(post.contact_hours + doctoral, 4),
-                                         abs(want - post.contact_hours - doctoral) <= TOL_SUM))
+            found = post.contact_hours + doctoral[post.ref]
+            form.controls.append(Control("post", post.ref, "T6", round(want, 4), round(found, 4), abs(want - found) <= TOL_SUM))
         said = "hourly" if post.pay == "hourly" else "consultant" if post.consultant else post.employment
         silent = said in (None, "substitute-unspecified") and section in ("main", "internal", "external")   # the line only lacks the word
         if said != section and not silent:
@@ -1291,6 +1303,13 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
             theirs, mine = _titles_of(g.t(r, degree_c)), _titles_of(f"{post.degree or ''} {post.position or ''}")
             if not mine <= theirs and not theirs <= mine:
                 form.notes.append(Note(post.ref, "", "summary_position", _m("summary_position", x=g.t(r, degree_c)), post.ref))
+    if grand is not None and linked:                              # T6, K6: the grand total against every block the summary counts
+        mine = [p for p in a_posts.values() if p.ref in linked]
+        want, found = tx.number(g.t(grand, total_c)) or 0.0, sum(p.year_total or 0.0 for p in mine)
+        form.controls.append(Control("file", g.ref(grand, total_c), "T6", round(want, 4), round(found, 4), abs(want - found) <= TOL_SUM))
+        if contact_c is not None:
+            want, found = tx.number(g.t(grand, contact_c)) or 0.0, sum(p.contact_hours + doctoral[p.ref] for p in mine)
+            form.controls.append(Control("file", g.ref(grand, contact_c), "T6", round(want, 4), round(found, 4), abs(want - found) <= TOL_SUM))
     if extra:
         form.notes.append(Note(f"#{g.i}", "", "summary_list", _m("summary_list", x=extra)))
     if linked:
