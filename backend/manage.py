@@ -1,5 +1,5 @@
 """Administration commands:  python backend/manage.py status | migrate | create-admin | backup | restore | import |
-reconcile | activation-codes | export | jobs | exam-verify | import-routes  (--help for each)"""
+reconcile | activation-codes | export | jobs | exam-verify | import-routes | forma3-check  (--help for each)"""
 import argparse
 import os
 import re
@@ -71,7 +71,13 @@ def main(argv=None) -> int:
     rt.add_argument("--building", required=True, help="building code")
     rt.add_argument("--nodes", required=True, help="CSV: code,kind,floor,room,label (kind: entrance, corridor, stairs, lift, door)")
     rt.add_argument("--edges", required=True, help="CSV: from,to,length_m,step_free")
+    f3 = sub.add_parser("forma3-check", help="check a department's Forma №3 file before uploading it: controls, counts and "
+                                             "conflicts by cell; reads only the file, no database (Task 47)")
+    f3.add_argument("file", help="the department's XLSX file")
+    f3.add_argument("--json", action="store_true", help="the whole report as JSON (it holds the names written in the file)")
     args = ap.parse_args(argv)
+    if args.cmd == "forma3-check":
+        return forma3_check(Path(args.file), args.json)
     if args.cmd == "import-routes":
         return import_routes(args.building, Path(args.nodes), Path(args.edges))
     if args.cmd == "exam-verify":
@@ -109,6 +115,75 @@ def main(argv=None) -> int:
     finally:
         c.close()
     return 0
+
+
+def forma3_check(path: Path, as_json: bool) -> int:
+    """0: every visible post can be applied; 1: at least one post is blocked (or a control fails); 2: the file cannot be
+    read. The default output names cells only (``#<sheet index>!<cell>``): no person's name and no cell text."""
+    import json
+    from zeka.modules.integration import forma3
+    try:
+        form = forma3.read(tables.xlsx_sheets(path.read_bytes()))
+    except OSError as ex:
+        print(f"error: {ex}", file=sys.stderr)
+        return 2
+    except (tables.TableError, forma3.FormError) as ex:
+        print(f"error: {ex.args[0]}", file=sys.stderr)
+        return 2
+    r = forma3.report(form)
+    if not form.posts:
+        print("error: Faylda Forma №3 tədris yükü tapılmadı", file=sys.stderr)
+        return 2
+    bad = [p for p in r["posts"] if p["status"] == "blocked"]
+    if as_json:
+        print(json.dumps({k: (_az_deep(v)) for k, v in r.items()}, ensure_ascii=False, indent=1))
+        return 1 if bad else 0
+    u = r["units"]
+    print(f"quruluş {r['layout']} · tədris ili {r['year']} · vərəq {len(r['sheets'])} · ştat/bölmə {len(r['posts'])}")
+    for sh in r["sheets"]:
+        if not sh["imported"]:
+            print(f"  vərəq #{sh['index']}: {sh['class']}, {sh['state']} — idxal olunmur ({sh['units']} dərs, {sh['hours']:g} saat)")
+    print(f"dərslər: {u['count']} ({u['hours']:g} auditoriya saatı); tətbiq oluna bilən: {u['ready']} ({u['ready_hours']:g} saat); "
+          f"gizli vərəqdə: {u['hidden']}; saat hesabı: {u['hourly']}; vakansiya: {u['vacancy']}; birləşmiş: {u['joint']}")
+    print(f"digər yük: {sum(x['lines'] for x in r['load'].values())} sətir, {r['load_hours']:g} saat")
+    x = r["excluded"]
+    if x["posts"]:
+        print(f"kafedranın cəminə daxil olmayan: {len(x['posts'])} ştat/bölmə ({', '.join(x['posts'][:12])}) — {x['units']} dərs "
+              f"({x['hours']:g} saat), digər yük {x['load_lines']} sətir ({x['load_hours']:g} saat)")
+    passed = sum(all(p["controls"].get(t) for t in ("T1", "T2", "T3")) for p in r["posts"])
+    print(f"yoxlamalar T1–T3: {passed}/{len(r['posts'])} ştat/bölmə keçdi; bloklanıb: {len(bad)}; heç bir qaydaya düşməyən xana: {r['unclassified']}")
+    for p in bad:
+        failed = ", ".join(t for t in ("T1", "T2", "T3") if not p["controls"].get(t)) or "-"
+        print(f"  BLOK {p['ref']}: {p['units']} dərs, {p['hours']:g} saat tətbiq olunmur; keçməyən yoxlama: {failed}")
+    for check in ("T4", "T5", "T6"):
+        mine = [c for c in form.controls if c.check == check]
+        if mine:
+            print(f"yoxlama {check}: {sum(c.ok for c in mine)}/{len(mine)} keçdi")
+    for c in r["controls"]:
+        if not c["ok"]:
+            print(f"  YOXLAMA {c['check']} {c['ref']}: gözlənilən {c['expected']}, tapılan {c['found']}")
+    print(f"konfliktlər: {r['conflict_count']} (bloklayan: {r['blocking_count']})")
+    for c in r["conflicts"]:
+        print(f"  {'BLOK' if c['blocking'] else 'qeyd'} {c['cell']}  {c['code']}: {_bare(forma3.MSG[c['code']])}")
+    codes: dict = {}
+    for n in form.notes:
+        codes.setdefault(n.code, []).append(n.cell)
+    print(f"qeydlər: {r['note_count']}")
+    for code, cells in sorted(codes.items(), key=lambda x: -len(x[1])):
+        print(f"  {len(cells):4d}  {code}: {_bare(forma3.MSG[code])}")
+        print(f"        {', '.join(cells[:12])}{' …' if len(cells) > 12 else ''}")
+    return 1 if bad or any(not c["ok"] for c in r["controls"]) else 0
+
+
+def _bare(template: str) -> str:
+    """A message with its values left out: the default output of forma3-check shows no cell text."""
+    return re.sub(r"\{\w+\}", "…", template)
+
+
+def _az_deep(v):
+    if isinstance(v, dict):
+        return v["az"] if set(v) >= {"az", "en", "ru"} and isinstance(v["az"], str) else {k: _az_deep(x) for k, x in v.items()}
+    return [_az_deep(x) for x in v] if isinstance(v, list) else v
 
 
 def exam_verify(eid: int, root: str | None) -> int:

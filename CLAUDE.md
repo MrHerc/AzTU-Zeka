@@ -29,10 +29,11 @@ python backend/manage.py export --kind grades|attendance|oneroster|registry|stat
 python backend/manage.py jobs status | run          # periodic jobs (Task 36): each job's last run; run what is due now
 python backend/manage.py exam-verify ID [--root HEX]  # an exam's hash chain, frozen answers and scores (Task 30)
 python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv   # a building's route graph (Task 31)
+python backend/manage.py forma3-check FILE.xlsx [--json]   # a department's Forma №3 before upload: controls, counts, conflicts by cell (Task 47)
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1782 tests, about 11 min; uses a temp database, never touches data/
+python -m pytest -q                               # 1817 tests, about 8 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -157,6 +158,12 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   (`attendance`, `results`, `status-events`) written by `modules/migration/loaders.py` through the owning module's
   service. A writing import refuses while an exam is open (`--force`, audited) and a file over 199 999 rows
   (`tools/etl/run.py` splits). `manage.py reconcile` re-reads the wave's logged files (`migration_files`) as a dry run.
+- **Forma №3 (Task 47).** `integration/forma3.py` is pure: `read(sheets) -> Form` (posts, units, load lines, links, notes,
+  conflicts, controls T1–T6); the rules and their ids are `docs/forms/forma-3.md`. A semester is the columns between the
+  `Cəmi` columns, a unit is a valued top-left contact cell and its groups are the rows its merge covers; nothing is read
+  from a sheet's name or a row's position. The import applies only posts that pass T1–T3 with no blocking conflict;
+  every non-empty cell must end somewhere (`Form.unclassified == 0`). The departments' real files hold staff names and
+  never enter the repository: tests use `tests/fixtures/make_fixtures.py`, places are named by cell ref only.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - **Measured indicators (Task 39).** The leadership tiles and the accreditation evidence page (`/leader/evidence`) are
@@ -201,7 +208,7 @@ superseded by this branch.
 AzTU is **replacing all of its existing systems** with this product (not an overlay). Read these before adding features:
 
 - `SPEC.md` — objective, replacement matrix, capability map (stable module ids), target layout, code style, boundaries, success criteria.
-- `tasks/plan.md` and `tasks/todo.md` — 6 phases, 46 tasks with acceptance criteria and verification commands, migration waves,
+- `tasks/plan.md` and `tasks/todo.md` — 6 phases, 47 tasks with acceptance criteria and verification commands, migration waves,
   record owner per entity. `docs/review/plan-review-2026-11-16.md` — the 24 review findings and the fixes applied.
 - `docs/CODEMAP.md` — what the current code really does, with file:line evidence and a capability inventory.
 - `docs/research/` — market, law, SEB and NIST research, verbatim; `docs/report/zeka-vahid-hesabat.html` — the unified report.

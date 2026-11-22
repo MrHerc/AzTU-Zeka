@@ -206,6 +206,17 @@ since the import and the file says otherwise is a conflict: it is listed with it
 transaction and the report gives `lock_ms`. An import never changes an account whose role is not student or teacher,
 and never creates an account from Forma №3 (an unknown teacher, course or group is a conflict).
 
+A `teaching-load` answer also carries `forma3`, the reader's report (Task 47, `docs/forms/forma-3.md`): `layout`, `year`,
+`sheets` (class, state, whether imported and why), `posts` (`ref`, teacher or vacancy, `pay`, `status` = `ok` | `blocked` |
+`hidden`, `controls` T1–T3, units and hours), `units` (counts of the posts in the department's totals: all, `ready`,
+`hourly`, `vacancy`, `joint`, and `refused`, the units the registry cannot place, which `ready` leaves out; and `hidden`,
+`outside` for the rest), `excluded` (the posts outside the totals: a hidden
+sheet or a block the summary leaves out, with their units, hours and load lines),
+`conflicts` and `notes` (cell ref, code, message; at most 500 each, with `conflict_count`, `blocking_count`,
+`note_count`), `load` (lines and hours per kind, of the counted posts), `controls` (file and sheet checks, and failed post checks) and
+`unclassified`. Units of a blocked or hidden post are never planned; a vacancy unit is written with no teacher
+(`vacancy` 1); each unit keeps `pay`, `post_ref` and `anchor`. A file that is not a form is a 400.
+
 ### API keys, webhooks and the apps page (Task 37)
 
 | Method | Path | Who | Purpose |

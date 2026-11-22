@@ -8,7 +8,7 @@ Source spec: `SPEC.md` · Tapşırıqlar: `tasks/todo.md` · Vəziyyət: **təsd
 icra olunan sillabus, SEB ilə imtahan, otaq tapan köməkçi, müəllimə sual, klublar, idxal və kəsid alətləri.
 Bir fakültə 72-ci saatda real məlumatla işə başlayır. Qalan fakültələr eyni alətlərlə dalğa-dalğa keçir.
 
-İş 6 mərhələ, 46 tapşırıqdır (T01–T46; T45 Faza 3-də, T46 Faza 5-dədir). Fazalar 1–6 nömrələnir; Faza 1 bünövrədir. Hər tapşırıq bir şaquli dilimdir: sxem, servis, marşrut, interfeys, test.
+İş 6 mərhələ, 47 tapşırıqdır (T01–T47; T45 Faza 3-də, T46 Faza 5-də, T47 Faza 6-dadır). Fazalar 1–6 nömrələnir; Faza 1 bünövrədir. Hər tapşırıq bir şaquli dilimdir: sxem, servis, marşrut, interfeys, test.
 Hər mərhələ yoxlama nöqtəsi ilə bağlanır. Nöqtə keçilməsə növbəti mərhələ başlamır.
 
 ## Architecture Decisions
@@ -147,6 +147,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] T42 E2E, əlçatanlıq və yük testi
 - [ ] T43 Runbook-lar
 - [ ] T44 Buraxılış
+- [x] T47 Forma №3 oxuyucusu kafedraların real fayllarına görə (2026-11-22; `docs/forms/forma-3.md`; yoxlamanın təsdiqlənmiş 16 tapıntısı düzəldilib)
 - [ ] T48 Semestr cədvəli qurucusu: dilim 1 (model, miqrasiyalar, həlledici), dilim 2 (servis, marşrutlar, `timetable.work`, redaktor, dərc) və dilim 3 (tədris şöbəsi, dekanlıq, kafedra və müəllim səhifələri, brauzer testi) tamamlanıb; üç dilimin rəyində təsdiqlənən 29 qeyd düzəldilib (həlledici F1–F7, təhlükəsizlik TT-SEC-1–4, səhifələr UX1–UX14, dil L1–L5); rəy, rəsmi sənəd, çap vərəqləri, bloklar, ixrac və təmir qalır
 
 ### Checkpoint F · saat 72 — buraxılış qapısı

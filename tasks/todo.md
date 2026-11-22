@@ -1080,6 +1080,37 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 **Files likely touched:** `infra/.env` (serverdə), `docs/runbooks/release-v1.md`, `docs/perf/target.md`
 **Estimated scope:** S
 
+## Task 47: Forma №3 oxuyucusu kafedraların real fayllarına görə
+
+**Description:** Köhnə oxuyucu iki kafedranın real faylında işləmirdi: B quruluşlu faylın 97 vərəqindən 0 sətir oxuyurdu; A quruluşunda bütün yaz mühazirələrini payıza yazır, 33 ştat sətrindən 15-ni görmür, birləşmiş məşğələni bir qrupa kəsirdi. Oxuyucu yenidən yazılır: `read(sheets) -> Form` (giriş-çıxışsız) ştatları, dərsləri, yük sətirlərini, əlaqə təkliflərini, qeydləri, konfliktləri və T1–T6 hesab yoxlamalarını qaytarır. Qaydalar `docs/forms/forma-3.md`-dədir (G, H, A, B, R, J, O, P, L, T, K nömrələri kodda və testlərdə eynidir): vərəq məzmununa görə təsnif olunur; blok və bölmə quruluşa görə tapılır; semestr `Cəmi` sütunları arasındakı mövqedir, yazı yalnız təsdiqləyir, `Cəmi` sətri hesabla sübut edir; dərs dəyəri olan sol yuxarı auditoriya xanasıdır, qrupları birləşdirmənin örtdüyü sətirlərdir; fənn yalnız sətirdən və ya onun şaquli birləşdirməsindən götürülür; saat hesabı bölmələri oxunur və işarələnir; vakansiyanın müəllimi yoxdur; qrup kodunda yarımqrup yoxdur; gizli vərəq siyahıya düşür, idxal olunmur; heç bir dolu xana səssiz qalmır. İdxal bloklanmış ştatın (bloklayan konflikt, fərqli tədris ili, keçməyən T1–T3) dərslərini tətbiq etmir və hesabatda göstərir; vakansiya dərsi müəllimsiz yazılır; tədris vahidi ödənişi, ştatın ünvanını və lövbər xanasını saxlayır. Real fayllar repoya düşmür; testlər uydurma nümunələrlə işləyir.
+
+**Acceptance criteria:**
+- [x] İki real faylda (yalnız lokal): A quruluşu — əsas vərəqdə 348 dərs, 7 942 auditoriya saatı (yaz mühazirələri 49, saat hesabı 14 dərs / 345 saat, vakansiya 9 dərs / 240 saat); B quruluşu — 1 245 dərs, 29 783,5 saat, gizli vərəqdəki 12 dərs siyahıda, idxala 1 233; saat hesabı 210 dərs / 5 100 saat, vakansiya 41 dərs / 1 035 saat
+- [x] Hər ştat və bölmə T1–T3-dən keçir (A: 34/34, B: 164/164); `#REF!` olan `Cəmi` xanaları sətirlərdən hesablanır və bloklamır; heç bir qaydaya düşməyən xana 0-dır
+- [x] Uydurma nümunələr hər iki quruluşu və X23 hallarını daşıyır (iki sətirli başlıq, sürüşmüş semestr yazısı, «ştat» sözü olmayan ştat sətri, «oğlu/qızı» olmayan ad, birləşmiş məşğələ, 8 qruplu birləşmiş məşğələ, birləşdirilmiş yük xanası, saat hesabı bloku və bölməsi, vakansiya, gizli vərəq, yazısız cəm, boş bölmə, `#REF!` cəm, boş cəm xanası, boşluqlu qrup kodu, AT başlığının səhv yazılışı, pozulmuş başlıq, fənni boş sətir, qrupu boş sətir, boş güzgü birləşdirməsi); hər nümunənin qızıl sayları testdədir
+- [x] Hər qaydanın nömrəsi adında və ya izahında olan testi var (`tests/unit/test_forma3.py`); təsadüfi korlanmış forma yalnız konflikt və ya `FormError` verir, heç vaxt 500
+- [x] İdxalın ilkin baxışı oxuyucunun hesabatını qaytarır və səhifə onu göstərir: ştat üzrə vəziyyət və yoxlamalar, konfliktlər xana ünvanı ilə, qeydlər, yük cəmləri; bloklanmış ştatın dərsləri yazılmır; vakansiya `teacher_id` boş və `vacancy = 1` ilə yazılır; təkrar idxal heç nəyi dəyişmir
+- [x] `python backend/manage.py forma3-check FAYL [--json]` yoxlamaları, sayları və konfliktləri xana ünvanı ilə çap edir; adi çıxışda ad və xana mətni yoxdur
+- [x] `docs/forms/forma-3.md` qaydaları və kafedranın cavablandıracağı 19 sualı rəsmi Azərbaycan dilində verir
+- [x] Yeni mətnlər tərcümə olunub: `tools/i18n.py stats` 100 %, `lint` 72
+
+**Yoxlamadan sonra (2026-11-22, təsdiqlənmiş 16 tapıntı):**
+- [x] T5 həqiqi yoxlamadır: kafedranın cəminə daxil olan ştatların dərsləri cədvəldən yenidən sayılan xanalarla, saatları isə `Cəmi` sətirlərinin auditoriya xanaları ilə tutuşdurulur; hesabatın bütün cəmləri eyni ştatlar üzrədir, kənarda qalanlar ayrıca sətirdə göstərilir (A: 348 dərs / 7 942 saat, vakansiya 9, digər yük 548 sətir; B: 1 233 dərs / 29 528,5 saat, digər yük 2 117 sətir)
+- [x] T6 vakant yük bölməsinin auditoriya xanasını və `Ümumi cəm` sətrini də yoxlayır (A: 69/69)
+- [x] Oxunuş pis sətirlərin sayına görə xəttidir: 20 000 pis sətir 20 saniyədən az çəkir (əvvəl 80 saniyə)
+- [x] Tədris vahidinin idxal açarı lövbər xanasıdır, məzmun açarı onun ikinci adıdır: doldurulmuş vakansiya ikinci vahid yazmır, əvvəlki halına qaytarılmış fayl konflikt vermir
+- [x] Arayış cədvəlinin saat hesabı bölməsi blokun dərslərinin ödənişini də təyin edir; iki ad yalnız soyad və daha bir söz uyğun gələndə bir şəxsdir; vərəqin adı `E4` ilə söz-söz müqayisə olunur; dəyəri olan hər gizli sətir göstərilir
+- [x] Məlumat sətrindəki xəta dəyəri konfliktdir; qrupu olub dərsi olmayan vərəq `no_units` alır; qrupu yazılmayan dərs sətrin tələbə sayını saxlayır; ilkin baxışın «tətbiq oluna bilən» sayı yazılanla eynidir; gizli vərəqin idxal olunmadığını test sübut edir; T3-ün oxuyucunun özünü yoxladığı yazılıb və testi var
+
+**Verification:**
+- [x] `python -m pytest tests/unit/test_forma3.py tests/integration/test_import.py tests/integration/test_checkpoint_b.py -q`
+- [x] `python backend/manage.py forma3-check tests/fixtures/forma3_blocks.xlsx`
+- [x] `ruff check . && mypy`; `node --check frontend/js/admin-import.js`
+
+**Dependencies:** Task 16, Task 23
+**Files likely touched:** `backend/zeka/modules/integration/forma3.py`, `forma3_text.py`, `tables.py`, `importer.py`, `repo.py`, `backend/migrations/0470_forma3_units.sql`, `backend/manage.py`, `frontend/js/admin-import.js`, `docs/forms/forma-3.md`, `tests/fixtures/make_fixtures.py`, `tests/unit/test_forma3.py`, `tests/integration/test_import.py`
+**Estimated scope:** L
+
 ## Checkpoint F: buraxılış qapısı
 
 - [ ] SPEC-dəki bütün Success Criteria təsdiqlənib və ya istisna yazılı qeyd olunub

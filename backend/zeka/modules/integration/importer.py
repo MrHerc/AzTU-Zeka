@@ -42,7 +42,8 @@ TARGETS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "unit_teachers": ("teaching_units", ("teacher_id",), "id"),
     "enrollments": ("enrollments", ("user_id", "course_id", "group_id", "subgroup", "begin_date", "end_date"), "rowid"),
     "timetable": ("timetable", ("course_id", "weekday", "start", "end", "kind", "room"), "id"),
-    "teaching_load": ("teaching_units", ("course_id", "kind", "subgroup", "teacher_id", "hours", "students"), "id"),
+    "teaching_load": ("teaching_units", ("course_id", "kind", "subgroup", "teacher_id", "hours", "students", "pay", "vacancy", "post_ref",
+                                         "anchor"), "id"),
     "rooms": ("rooms", ("code", "number", "name", "building_id", "floor", "kind", "capacity", "accessible"), "id"),
     "attendance_opening": ("attendance_opening", ("student_id", "course_id", "term_id", "held_hours", "unexcused_hours",
                                                   "excused_hours", "as_of"), "id"),
@@ -408,49 +409,56 @@ def _teacher(idx: dict, name: str) -> int | None:
 
 def _course_for(c, cache: dict, subject: str, semester: str) -> int | None:
     if "courses" not in cache:
-        cache["courses"] = [dict(r) for r in c.execute("SELECT co.id, co.name, t.name term, t.code term_code FROM courses co "
-                                                       "LEFT JOIN academic_terms t ON t.id=co.term_id WHERE co.active=1")]
-    same = [x for x in cache["courses"] if forma3.norm(x["name"]) == forma3.norm(subject)]
+        cache["courses"] = [dict(r) for r in repo.active_courses(c)]
+    want = forma3.tx.subject_key(subject)
+    same = [x for x in cache["courses"] if forma3.tx.subject_key(x["name"]) == want]
     if len(same) > 1:
         same = [x for x in same if semester in forma3.norm(f"{x['term'] or ''} {x['term_code'] or ''}")]
     return same[0]["id"] if len(same) == 1 else None
 
 
-def _plan_load(c, filename: str, data: bytes, conflicts: list) -> list[Item]:
+def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Item], dict]:
+    """The form's units as import items, and the reader's report (docs/forms/forma-3.md). A unit is planned only when its
+    post passed the arithmetic controls and holds no blocking conflict; a hidden sheet is listed, never planned; a vacancy
+    unit has no teacher (``teacher_id`` NULL, ``vacancy`` 1)."""
     if not (filename or "").lower().endswith(".xlsx"):
         raise tables.TableError("Forma №3 XLSX faylı olmalıdır")
-    lines, skipped = forma3.read(tables.xlsx_sheets(data))
-    conflicts += [{"row": f"{sheet}!{n}", "reason": reason} for sheet, n, reason in skipped]
-    if not lines and not skipped:
+    try:
+        form = forma3.read(tables.xlsx_sheets(data))
+    except forma3.FormError as ex:
+        raise tables.TableError(ex.args[0]) from None
+    if not form.posts:
         raise tables.TableError("Faylda Forma №3 tədris yükü tapılmadı")
     people = _person_index(c)
-    groups = {forma3.norm(k): v for k, v in repo.by_column(c, "study_groups", "name").items()}
+    groups = {forma3.norm(forma3.tx.group_code(k)): v for k, v in repo.by_column(c, "study_groups", "name").items()}
+    blocked = {p.ref for p in form.posts if p.blocked}
     cache: dict = {}
-    items = []
-    for ln in lines:
-        where = f"{ln.sheet}!{ln.row}"
-        teacher = _teacher(people, ln.teacher)
-        course = _course_for(c, cache, ln.subject, ln.semester)
-        missing = [g for g, _ in ln.groups if forma3.norm(g) not in groups]
-        reason = (_missing("Müəllim", ln.teacher) if not teacher else _missing("Fənn", ln.subject) if not course
+    items: list[Item] = []
+    seen: dict[str, int] = {}
+    refused: set[str] = set()                            # units the registry cannot place: never counted as ready
+    for u in form.units:
+        if u.hidden or u.post in blocked:
+            continue
+        teacher = None if u.vacancy else _teacher(people, u.teacher or "")
+        course = _course_for(c, cache, u.subject_raw, u.semester)
+        missing = [x["code_raw"] for x in u.groups if forma3.norm(x["code"]) not in groups]
+        reason = (_missing("Müəllim", u.teacher) if not teacher and not u.vacancy else _missing("Fənn", u.subject_raw) if not course
                   else _missing("Qrup", ", ".join(missing)) if missing else None)
         if reason:
-            conflicts.append({"row": where, "reason": reason})
+            conflicts.append({"row": u.anchor, "reason": reason})
+            refused.add(u.anchor)
             continue
-        subgroup = ln.groups[0][1] if len(ln.groups) == 1 else None
-        sid = _key(ln.sheet, ln.teacher, ln.subject, ln.semester, ln.kind, sorted(f"{g} {s or ''}" for g, s in ln.groups))
-        items.append(Item(0, "teaching_load", sid, {"course_id": course, "kind": ln.kind, "subgroup": subgroup, "teacher_id": teacher,
-                                                     "hours": ln.hours, "students": ln.students},
-                          groups=sorted({groups[forma3.norm(g)] for g, _ in ln.groups}), extra={"where": where}))
-    seen: dict[str, Item] = {}
-    for it in items:                                   # the same unit twice in one form: its hours add up, and it is said
-        if it.source_id in seen:
-            seen[it.source_id].values["hours"] += it.values["hours"]
-            conflicts.append({"row": it.extra["where"], "reason": E("Eyni tədris vahidi formada təkrarlanır: saatlar toplandı ({x})",
-                                                                    x=seen[it.source_id].extra["where"])})
-        else:
-            seen[it.source_id] = it
-    return list(seen.values())
+        content = _key("f3", u.teacher or "", u.subject_key, u.semester, u.kind, sorted(x["code"] for x in u.groups), u.hourly, u.vacancy)
+        seen[content] = seen.get(content, 0) + 1
+        if seen[content] > 1:                            # R4: the same class written again is a separate class, never summed
+            content = _key(content, seen[content])
+        items.append(Item(0, "teaching_load", _key("f3", u.anchor), {
+            "course_id": course, "kind": u.kind, "subgroup": None, "teacher_id": teacher, "hours": u.hours,
+            "students": u.students_total or None, "pay": "hourly" if u.hourly else "staff", "vacancy": int(u.vacancy),
+            "post_ref": u.post, "anchor": u.anchor}, groups=sorted({groups[forma3.norm(x["code"])] for x in u.groups}),
+            extra={"where": u.anchor, "aliases": [content]}))
+    report = forma3.report(form, known_codes={k for k in groups}, refused=refused)
+    return items, report
 
 
 # ---------------------------------------------------------------- comparing
@@ -486,9 +494,29 @@ def _new(it: Item) -> dict:
     return {**it.values, **({"groups": it.groups} if it.link in UNIT_LINKS else {})}
 
 
+def _unit_links(ctx: Context, items: list[Item]) -> dict[int, dict | None]:
+    """X21: a Forma №3 unit is keyed on its anchor cell, with its content (teacher, subject, groups, ordinal) as an alias.
+    It finds its row by its content first (a row inserted above moves every anchor), then by its anchor (a corrected
+    teacher, subject or group, a filled vacancy), and never takes a row another unit of the file has already found."""
+    links, taken = ctx.links["teaching_load"], set()
+    out: dict[int, dict | None] = {}
+    mine = [it for it in items if it.link == "teaching_load"]
+    for by_content in (True, False):
+        for it in mine:
+            if out.get(id(it)) is not None:
+                continue
+            ids = it.extra.get("aliases", []) if by_content else [it.source_id]
+            hit = next((links[s] for s in ids if s in links and links[s]["row_id"] not in taken), None)
+            if hit is not None:
+                taken.add(hit["row_id"])
+            out[id(it)] = hit
+    return out
+
+
 def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, errors: list):
+    units = _unit_links(ctx, items) if "teaching_load" in ctx.links else {}
     for it in items:
-        link = ctx.links[it.link].get(it.source_id)
+        link = units[id(it)] if it.link == "teaching_load" else ctx.links[it.link].get(it.source_id)
         rid = link["row_id"] if link and link["row_id"] in ctx.rows[it.link] else None
         it.row_id = rid or (it.natural if it.natural in ctx.rows[it.link] else None)
         if it.link == "users" and it.row_id and ctx.rows["users"][it.row_id]["role"] not in IMPORTED_ROLES:
@@ -507,6 +535,9 @@ def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, er
             continue
         new_hash, cur_hash = domain.row_hash(_new(it)), domain.row_hash(cur)
         it.extra["cur_hash"] = cur_hash
+        if it.link == "teaching_load" and link and link["source_hash"] != cur_hash:     # an older key of the same row
+            own = (ctx.links[it.link].get(k) for k in (it.source_id, *it.extra.get("aliases", [])))
+            link = next((x for x in own if x and x["row_id"] == link["row_id"] and x["source_hash"] == cur_hash), link)
         if new_hash == cur_hash:
             it.action = "unchanged" if link and link["source_hash"] == new_hash else "relink"
         elif link and cur_hash == link["source_hash"]:
@@ -619,8 +650,10 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     started = time.monotonic()
     errors: list = []
     conflicts: list = []
+    more: dict = {}                                     # teaching-load: the reader's report for the screen and the CLI
     if kind == "teaching-load":
-        items = _plan_load(c, filename, data, conflicts)
+        items, form_report = _plan_load(c, filename, data, conflicts)
+        more = {"forma3": form_report}
         ctx = Context(c, source, ("teaching_load",))
         total = len(items) + len(conflicts)
     else:
@@ -648,7 +681,7 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     _uniques(kind, ctx, items, errors)
     warnings = _held_check(c, items) if kind == "attendance-opening" else []
     if errors or dry_run:
-        out = {**_report(kind, source, total, items, errors, conflicts, dry_run, None, started), "warnings": warnings,
+        out = {**_report(kind, source, total, items, errors, conflicts, dry_run, None, started), **more, "warnings": warnings,
                "checksums": _checksums(items), "hours": _hours(items) if kind in ("attendance", "attendance-opening") else {}}
         if detail:                                    # the reconciliation's sample and difference list (Task 38)
             out["items"] = [{"row": it.row, "source_id": it.source_id, "link": it.link, "row_id": it.row_id, "action": it.action,
@@ -679,7 +712,8 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
                                           f"={counts['unchanged']} !{len(conflicts)}")
         if going:
             audit(c, user_id, "import_forced", kind, f"{source} · {filename} · exams open: {going}")
-        report = {**_report(kind, source, total, items, [], conflicts, False, time.monotonic() - lock, started), "warnings": warnings}
+        report = {**_report(kind, source, total, items, [], conflicts, False, time.monotonic() - lock, started), **more,
+                  "warnings": warnings}
         if on_written:
             on_written(c, report)
         c.commit()
