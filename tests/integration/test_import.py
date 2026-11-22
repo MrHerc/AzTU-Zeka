@@ -159,6 +159,7 @@ def test_forma3_layout_b_hidden_hourly_vacancy_and_repeated_classes(app_db, load
     assert sorted(x["row"] for x in rep["conflicts"]) == ["#2!AA11", "#2!AA12", "#7!H11"], "unknown teachers are listed, never created"
     assert (rep["forma3"]["units"]["ready"], rep["forma3"]["units"]["refused"]) == (19, 3), "the preview promises what is written"
     assert not [a for a in got if a.startswith(("#6!", "#5!Z", "#5!AA"))], "G4: the hidden sheet; R5/R2: the blocked section"
+    assert not [x for x in rep["conflicts"] if x["row"].startswith("#6!")], "the hidden sheet's unit is placeable: only G4 skips it"
     assert {p["ref"]: p["status"] for p in rep["forma3"]["posts"]}["#6!B10"] == "hidden"
     assert got["#0!F11"]["groups"] == sorted(g[x] for x in ("6526e1", "6526e2", "6526e3")), "J1"
     assert [got[a]["groups"] for a in ("#1!H11", "#1!H12", "#1!H13")] == [[g["6526e1"]], [g["6526e2"]], [g["6526e3"]]], \

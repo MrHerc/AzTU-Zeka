@@ -407,8 +407,8 @@ def forma3_sheets() -> bytes:
             {"B": "Calculus II", "D": 10, "Z": 60, "AF": 5},
             {"C": "6524r", "D": 12, "AA": 15}]},
         {"label": "Saat hesabı", "data": [{"B": "Ehtimal nəzəriyyəsi", "C": "6525a", "D": 25, "G": 30}]}])
-    hidden = sheet_b("Məmmədov T.", "Məmmədov Tural Vaqif oğlunun", [                  # hidden, another year: listed only (G4)
-        {"label": "0,5 ŞTAT ", "data": [{"B": "Xətti cəbr", "C": "6525a", "D": 25, "F": 30, "G": 15}]}], year="2025/2026", state="hidden")
+    hidden = sheet_b("Quliyev Elçin", "Quliyev Elçin Rauf oğlunun", [     # hidden, of the file's year, a known teacher: listed only (G4)
+        {"label": "0,5 ŞTAT ", "data": [{"B": "Xətti cəbr", "C": "6525a", "D": 25, "F": 30, "G": 15}]}], state="hidden")
     stranger = sheet_b("Naməlum N.N.", "müəllim Naməlum Nazim Nadir oğlunun", [       # a teacher the registry does not hold
         {"label": "1 Ştat", "data": [{"B": "Fizika-1", "C": "6526e 1", "D": 30, "H": 15}]}])
     return xlsx([first, second, third, vacancy, vacancy2, broken, hidden, stranger])

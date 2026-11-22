@@ -216,7 +216,7 @@ def test_t5_golden_counts_of_the_layout_b_fixture(form_b):
     assert (len(f.units), len(shown), sum(u.hours for u in shown)) == (26, 24, 615)
     assert by_kind(f) == {("payiz", "lecture"): 7, ("payiz", "seminar"): 7, ("payiz", "lab"): 4, ("yaz", "lecture"): 3, ("yaz", "seminar"): 5}
     assert (sum(u.hourly for u in shown), sum(u.vacancy for u in shown), sum(u.joint for u in shown)) == (6, 3, 2)
-    assert len(f.posts) == 12 and [p.ref for p in f.posts if p.blocked] == ["#5!B10", "#6!B10"]
+    assert len(f.posts) == 12 and [p.ref for p in f.posts if p.blocked] == ["#5!B10"]
     assert all(p.controls == {"T1": True, "T2": True, "T3": True} for p in f.posts)
     assert f.unclassified == 0
 
@@ -244,6 +244,7 @@ def test_g4_a_hidden_sheet_is_read_and_listed_but_never_imported(form_b):
     info = form_b.sheets[6]
     assert (info.state, info.imported, info.units, info.hours) == ("hidden", False, 2, 45)
     assert post(form_b, "#6!B10").hidden and all(u.hidden for u in form_b.units if u.sheet == 6)
+    assert not post(form_b, "#6!B10").blocked and not post(form_b, "#6!B10").year_conflict, "only its being hidden keeps it out"
     r = forma3.report(form_b)
     assert r["units"] == {"count": 24, "hours": 615, "hidden": 2, "outside": 0, "refused": 0, "ready": 22, "ready_hours": 540, "hourly": 6,
                           "vacancy": 3, "joint": 2}
