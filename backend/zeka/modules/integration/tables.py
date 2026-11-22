@@ -38,6 +38,11 @@ class Sheet:
     name: str
     rows: list[list[str]]
     merges: list[tuple[int, int, int, int]] = field(default_factory=list)     # (row1, col1, row2, col2), 0-based
+    state: str = "visible"                                                    # visible | hidden | veryHidden
+    hidden_rows: set[int] = field(default_factory=set)                        # 0-based rows with hidden="1"
+    # (row, col) -> the cell's formula text without "="; "" for a cell that repeats a shared formula. Values are
+    # always the cached ones: a formula is never evaluated, it only explains where a number comes from (Task 47).
+    formulas: dict[tuple[int, int], str] = field(default_factory=dict)
 
 
 def _filled(row) -> bool:
@@ -102,6 +107,9 @@ def _sheets(z: zipfile.ZipFile) -> list[Sheet]:
         seen.add(path)
         root = _xml(_zip_read(z, path, budget))
         grid: dict[int, dict[int, str]] = {}
+        formulas: dict[tuple[int, int], str] = {}
+        hidden = {int(x.get("r")) - 1 for x in root.iter(NS + "row")
+                  if x.get("hidden") in ("1", "true") and (x.get("r") or "").isdigit()}
         for c in root.iter(NS + "c"):
             r, col = _cell(c.get("r"))
             if r >= MAX_ROWS or col >= MAX_COLS:
@@ -115,6 +123,9 @@ def _sheets(z: zipfile.ZipFile) -> list[Sheet]:
                 value = v.text if v is not None and v.text else ""
             if value:
                 grid.setdefault(r, {})[col] = value
+            f = c.find(NS + "f")
+            if f is not None:
+                formulas[(r, col)] = (f.text or "")[:500]
         width = 1 + max((max(cols) for cols in grid.values()), default=0)
         height = 1 + max(grid, default=-1)
         cells += width * height
@@ -126,7 +137,8 @@ def _sheets(z: zipfile.ZipFile) -> list[Sheet]:
             a, _, b = (m.get("ref") or "").partition(":")
             (r1, c1), (r2, c2) = _cell(a), _cell(b or a)
             merges.append((r1, c1, r2, c2))
-        out.append(Sheet(s.get("name") or "", rows, merges))
+        state = s.get("state") if s.get("state") in ("hidden", "veryHidden") else "visible"
+        out.append(Sheet(s.get("name") or "", rows, merges, state, {r for r in hidden if r < height}, formulas))
     return out
 
 

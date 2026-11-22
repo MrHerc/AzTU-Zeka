@@ -8,7 +8,7 @@ Source spec: `SPEC.md` · Tapşırıqlar: `tasks/todo.md` · Vəziyyət: **təsd
 icra olunan sillabus, SEB ilə imtahan, otaq tapan köməkçi, müəllimə sual, klublar, idxal və kəsid alətləri.
 Bir fakültə 72-ci saatda real məlumatla işə başlayır. Qalan fakültələr eyni alətlərlə dalğa-dalğa keçir.
 
-İş 6 mərhələ, 46 tapşırıqdır (T01–T46; T45 Faza 3-də, T46 Faza 5-dədir). Fazalar 1–6 nömrələnir; Faza 1 bünövrədir. Hər tapşırıq bir şaquli dilimdir: sxem, servis, marşrut, interfeys, test.
+İş 6 mərhələ, 47 tapşırıqdır (T01–T47; T45 Faza 3-də, T46 Faza 5-də, T47 Faza 6-dadır). Fazalar 1–6 nömrələnir; Faza 1 bünövrədir. Hər tapşırıq bir şaquli dilimdir: sxem, servis, marşrut, interfeys, test.
 Hər mərhələ yoxlama nöqtəsi ilə bağlanır. Nöqtə keçilməsə növbəti mərhələ başlamır.
 
 ## Architecture Decisions
@@ -147,6 +147,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] T42 E2E, əlçatanlıq və yük testi
 - [ ] T43 Runbook-lar
 - [ ] T44 Buraxılış
+- [x] T47 Forma №3 oxuyucusu kafedraların real fayllarına görə (2026-11-22; `docs/forms/forma-3.md`)
 
 ### Checkpoint F · saat 72 — buraxılış qapısı
 - [ ] SPEC-dəki bütün Success Criteria təsdiqlənib və ya istisna yazılı qeyd olunub

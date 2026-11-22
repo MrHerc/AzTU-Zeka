@@ -40,6 +40,12 @@ def by_column(c, name: str, col: str) -> dict:
     return {r["v"]: r["id"] for r in rows(c, f"SELECT {col} AS v, id FROM {name} WHERE {col} IS NOT NULL")}  # nosec B608
 
 
+def active_courses(c) -> list[dict]:
+    """The active courses with their term, for matching a form's subjects (Forma №3)."""
+    return rows(c, "SELECT co.id, co.name, t.name term, t.code term_code FROM courses co "
+                   "LEFT JOIN academic_terms t ON t.id=co.term_id WHERE co.active=1")
+
+
 def insert(c, name: str, values: dict) -> int:
     return c.execute(f"INSERT INTO {name}({', '.join(values)}) VALUES({', '.join('?' * len(values))})",  # nosec B608 - constants
                      tuple(values.values())).lastrowid

@@ -229,19 +229,16 @@ FORM = [["1,0 ştat - dosent, Quliyev Elçin Rauf oğlu"], ["", "", "", "", "pay
 
 
 def test_b4_b5_forma3_reports_every_cell_and_row_it_cannot_use():
-    lines, skipped = forma3.read(_form(FORM, [(1, 4, 1, 5)]))
-    reasons = [r["az"] for _, _, r in skipped]
-    assert not lines, lines
-    assert any(x.startswith("Tələbə sayı oxunmadı") for x in reasons), reasons
-    assert sum(x.startswith("Saat oxunmadı") for x in reasons) == 2, reasons
-    assert "Saatı olan sətirdə qrup yazılmayıb" in reasons, reasons
+    form = forma3.read(_form(FORM, [(1, 4, 1, 5)]))
+    found = {(c.cell, c.code) for c in form.conflicts if c.blocking}
+    assert {("#0!D5", "students_text"), ("#0!E5", "hours_text"), ("#0!F5", "hours_text"), ("#0!B6", "group_missing")} <= found, found
+    assert not form.unclassified and all(p.blocked for p in form.posts), "inf, 1e30 and nan are never hours; nothing is applied"
 
 
-def test_b5_a_column_without_a_semester_is_reported():
-    rows = [r[:] for r in FORM]
-    rows[1] = ["", "", "", "", "I SEMESTR", ""]
-    _, skipped = forma3.read(_form(rows, [(1, 4, 1, 5)]))
-    assert any(r["az"].startswith("Sütunun semestri tapılmadı") for _, _, r in skipped), skipped
+def test_b5_a_header_that_does_not_close_its_semesters_refuses_the_post():
+    """Task 47 (H3): a semester is the columns up to a «Cəmi» column, so a header without one is refused, not guessed."""
+    form = forma3.read(_form(FORM, [(1, 4, 1, 5)]))
+    assert ("#0!C3", "header_incomplete", True) in {(c.cell, c.code, c.blocking) for c in form.conflicts}
 
 
 def test_b6_reported_rows_are_the_rows_of_the_file(app_db):

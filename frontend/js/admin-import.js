@@ -15,6 +15,56 @@ const readFile = (f) => new Promise((ok, bad) => {
   r.readAsDataURL(f);
 });
 
+// Forma №3 (Task 47): what the reader found, so the dean's office can correct the file before applying it.
+const LOAD = () => ({ consultation: t("Məsləhət"), credit: t("Məqbul"), exam: t("İmtahan"), exam_prep: t("İmtahan suallarının hazırlanması"),
+  course_project: t("Kurs layihəsi (işi)"), essay: t("Referat"), master_work: t("Magistrların işi"),
+  master_supervision: t("Magistr dissertasiyasına rəhbərlik"), master_consulting: t("Magistr dissertasiyası üzrə məsləhət"),
+  research: t("Tədqiqat işinin aparılması"), project_management: t("Layihələrin idarə olunması"), practice: t("Təcrübə"),
+  phd_teaching: t("Aspirantlara dərs"), doctoral: t("Doktorantura"), state_exam: t("Dövlət attestasiya komissiyası"),
+  graduation: t("Buraxılış işi"), class_visits: t("Müəllimlərin dərslərdə iştirakı"), other_load: t("Digər dərs yükü"),
+  other_department: t("Digər kafedranın dərs yükü") });
+
+function forma3(f) {
+  const tile = (n, label, tone = "") => html`<div class="stat"><b class="${tone}">${n}</b><span class="small muted">${label}</span></div>`;
+  const blocked = f.posts.filter((p) => p.status === "blocked");
+  const status = (p) => p.status === "ok" ? html`<span class="badge b-green">${t("Tətbiq oluna bilər")}</span>`
+    : p.status === "hidden" ? html`<span class="badge">${t("Gizli vərəq: idxal olunmur")}</span>` : html`<span class="badge b-red">${t("Bloklanıb")}</span>`;
+  const checks = (p) => ["T1", "T2", "T3"].map((k) => html`<span class="badge ${p.controls[k] ? "b-green" : "b-red"}">${k} ${p.controls[k] ? "✓" : "✗"}</span> `);
+  const who = (p) => p.vacancy ? t("Vakansiya") + (p.vacancy_area ? ` (${p.vacancy_area})` : "") : p.teacher || "—";
+  const skipped = f.sheets.filter((x) => !x.imported);
+  const labels = LOAD();
+  return html`<div class="card mt"><div class="card-h"><h3>${ic("list", 17)} ${t("Forma №3: oxunuşun hesabatı")}</h3>
+      <span class="badge ${blocked.length ? "b-red" : "b-green"}">${blocked.length ? t("{n} ştat və ya bölmə bloklanıb", { n: blocked.length }) : t("Bütün yoxlamalar keçdi")}</span></div>
+    <div class="card-b stack">
+      <p class="small muted" style="margin:0">${t("Tədris ili: {y} · quruluş: {l} · vərəq: {n}", { y: f.year || "—", l: f.layout || "—", n: f.sheets.length })}</p>
+      <div class="row wrap">${tile(f.units.count, t("dərs"))}${tile(f.units.ready, t("tətbiq oluna bilən"), "ok")}${tile(f.units.count - f.units.ready, t("bloklanmış"), blocked.length ? "warn" : "")}
+        ${tile(f.units.joint, t("birləşmiş dərs"))}${tile(f.units.hourly, t("saat hesabı"))}${tile(f.units.vacancy, t("vakansiya"))}${tile(f.units.hidden, t("gizli vərəqdə"))}</div>
+      ${blocked.length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bloklanmış ştatın və ya bölmənin dərsləri tətbiq olunmur. Fayldakı xananı düzəldib yenidən yoxlayın.")}</div></div>` : ""}
+      ${f.unclassified ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("{n} xana heç bir qaydaya uyğun gəlmədi; onlar qeydlərdə göstərilib.", { n: f.unclassified })}</div></div>` : ""}
+      <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Müəllim")}</th><th>${t("Ödəniş")}</th><th>${t("Vəziyyət")}</th>
+        <th>${t("Yoxlamalar")}</th><th>${t("Dərs")}</th><th>${t("Auditoriya saatı")}</th><th>${t("İllik cəm")}</th></tr></thead><tbody>
+        ${f.posts.map((p) => html`<tr><td>${p.ref}</td><td>${who(p)}</td><td>${p.pay === "hourly" ? t("Saat hesabı") : t("Ştat")}${p.fraction ? ` · ${p.fraction}` : ""}</td>
+          <td>${status(p)}${p.year_conflict ? html` <span class="badge b-amber">${t("Tədris ili fərqlidir")}</span>` : ""}</td><td>${checks(p)}</td>
+          <td>${p.units}</td><td>${p.hours}</td><td>${p.year_total ?? "—"}</td></tr>`)}</tbody></table></div>
+      ${f.controls.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Yoxlama")}</th><th>${t("Xana")}</th><th>${t("Gözlənilən")}</th><th>${t("Tapılan")}</th><th></th></tr></thead><tbody>
+        ${f.controls.map((c) => html`<tr><td>${c.check}</td><td>${c.ref || t("Fayl")}</td><td>${c.expected ?? "—"}</td><td>${c.found ?? "—"}</td>
+          <td><span class="badge ${c.ok ? "b-green" : "b-red"}">${c.ok ? "✓" : "✗"}</span></td></tr>`)}</tbody></table></div>` : ""}
+      ${f.conflict_count ? html`<h4 style="margin:0">${t("Konfliktlər: {n} (bloklayan: {b})", { n: f.conflict_count, b: f.blocking_count })}</h4>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Növ")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
+        ${f.conflicts.map((c) => html`<tr><td>${c.cell}</td><td><span class="badge ${c.blocking ? "b-red" : "b-amber"}">${c.blocking ? t("Bloklayır") : t("Xəbərdarlıq")}</span></td>
+          <td>${c.message}</td></tr>`)}</tbody></table></div>` : ""}
+      ${f.note_count ? html`<details><summary>${t("Qeydlər: {n}", { n: f.note_count })}</summary>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Qeyd")}</th></tr></thead><tbody>
+        ${f.notes.map((n) => html`<tr><td>${n.cell}</td><td>${n.message}</td></tr>`)}</tbody></table></div></details>` : ""}
+      <details><summary>${t("Dərs olmayan yük: {h} saat", { h: f.load_hours })}</summary>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Yükün növü")}</th><th>${t("Sətir")}</th><th>${t("Saat")}</th></tr></thead><tbody>
+        ${Object.entries(f.load).map(([k, v]) => html`<tr><td>${labels[k] || k}</td><td>${v.lines}</td><td>${v.hours}</td></tr>`)}</tbody></table></div></details>
+      ${skipped.length ? html`<details><summary>${t("İdxal olunmayan vərəqlər: {n}", { n: skipped.length })}</summary>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Vərəq")}</th><th>${t("Səbəb")}</th><th>${t("Dərs")}</th></tr></thead><tbody>
+        ${skipped.map((x) => html`<tr><td>#${x.index} ${x.name}</td><td>${x.reason}</td><td>${x.units}</td></tr>`)}</tbody></table></div></details>` : ""}
+    </div></div>`;
+}
+
 function report(r) {
   const tile = (n, label, tone = "") => html`<div class="stat"><b class="${tone}">${n}</b><span class="small muted">${label}</span></div>`;
   return html`<div class="card mt"><div class="card-h"><h3>${ic("list", 17)} ${r.written ? t("İdxal olundu") : r.error_count ? t("Fayl idxal olunmadı") : t("Yoxlamanın nəticəsi")}</h3>
@@ -31,7 +81,7 @@ function report(r) {
       ${(r.warnings || []).length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bu sətirlər yazılır, amma yoxlanmalıdır.")}</div></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.warnings.slice(0, 500).map((x) => html`<tr><td>${x.row}</td><td>${x.reason}</td></tr>`)}</tbody></table></div>` : ""}
-    </div></div>`;
+    </div></div>${r.forma3 ? forma3(r.forma3) : ""}`;
 }
 
 route("/admin/import", async (el) => {

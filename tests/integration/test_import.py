@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.make_fixtures import xlsx
 from zeka.core import security
 from zeka.legacy import store
 from zeka.modules.identity import domain as identity
@@ -55,64 +56,134 @@ def fast_hash(monkeypatch):
     monkeypatch.setattr(identity, "N", 2 ** 4)
 
 
-# ---------------------------------------------------------------- Forma №3
+# ---------------------------------------------------------------- Forma №3 (Task 47, docs/forms/forma-3.md)
 @pytest.fixture(scope="module")
 def load_world(app_db):
-    """The teachers, courses and groups the synthetic Forma №3 names."""
+    """The registry the synthetic forms meet: most of their teachers, courses and groups, and on purpose not all of them."""
     admin = app_db.client("admin")
     fid = admin.get("/api/directory/faculties").json["items"][0]["id"]
-    groups = {g: admin.post("/api/directory/groups", {"name": g, "year": 2025, "faculty_id": fid}).json["id"]
-              for g in ("651a", "652a", "653a")}
+    groups = {}
+    for g in ("6524a1", "6524a2", "6524a3", "6523a1", "6523a2", "6525e", "6525r", "6524r", "6526e1", "6526e2", "6526e3", "6525a", "M656a",
+              "6325r"):
+        r = admin.post("/api/directory/groups", {"name": g, "year": 2025, "faculty_id": fid})
+        assert r.status == 200, r.text
+        groups[g] = r.json["id"]
     c = db()
     try:
         teachers = {}
-        for name, patronymic, username in (("Elçin Quliyev", "Rauf oğlu", "e.quliyev"), ("Leyla Həsənova", "Akif qızı", "l.hesenova")):
+        for name, patronymic, username in (("Elçin Quliyev", "Rauf oğlu", "e.quliyev"), ("Leyla Həsənova", "Akif qızı", "l.hesenova"),
+                                           ("Nigar Əliyeva", "Samir qızı", "n.eliyeva")):
             teachers[username] = c.execute("INSERT INTO users(username,full_name,patronymic,role,synthetic) VALUES(?,?,?,'teacher',1)",
                                            (username, name, patronymic)).lastrowid
         c.commit()
     finally:
         c.close()
-    courses = {n: admin.post("/api/directory/courses", {"code": code, "name": n, "credits": 5}).json["id"]
-               for code, n in (("ALQ-F3", "Alqoritmlər"), ("VB-F3", "Verilənlər bazaları"), ("FIZ-F3", "Fizika"))}
+    courses = {}
+    for i, n in enumerate(("Alqoritmlər", "Verilənlər bazaları", "Fizika", "Texniki xarici dil (rus dili)", "İFS: Siqnalların emalı",
+                           "Elektronika", "Riyazi analiz-1", "Riyazi analiz-2", "Xətti cəbr", "Fizika-1", "Diskret riyaziyyat",
+                           "Ədədi üsullar", "Ehtimal nəzəriyyəsi")):
+        r = admin.post("/api/directory/courses", {"code": f"F3-{i}", "name": n, "credits": 5})
+        assert r.status == 200, r.text
+        courses[n] = r.json["id"]
     return {"groups": groups, "teachers": teachers, "courses": courses}
 
 
-def units(course_id):
-    out = []
-    for u in q("SELECT * FROM teaching_units WHERE course_id=? ORDER BY id", (course_id,)):
+def units(source):
+    out = {}
+    for u in q("SELECT u.* FROM teaching_units u JOIN import_links l ON l.row_id=u.id AND l.kind='teaching_load' "
+               "WHERE l.source_system=? ORDER BY u.id", (source,)):
         u["groups"] = sorted(r["group_id"] for r in q("SELECT group_id FROM teaching_unit_groups WHERE unit_id=?", (u["id"],)))
-        out.append(u)
+        out[u["anchor"]] = u
     return out
 
 
-@pytest.mark.parametrize("fixture, source", [("forma3_blocks.xlsx", "f3-a"), ("forma3_sheets.xlsx", "f3-b")])
-def test_forma3_gives_the_expected_teaching_units(app_db, load_world, fixture, source):
+def load(admin, fixture, source, dry_run=False):
+    r = imp(admin, "teaching-load", fixture, (FIX / fixture).read_bytes(), source=source, dry_run=dry_run)
+    assert r.status == 200, r.text
+    return r.json
+
+
+def test_forma3_preview_shows_the_readers_report_and_writes_nothing(app_db, load_world):
+    """The preview: per post ok / blocked / hidden with its controls, the conflicts by cell, the notes and load totals."""
+    rep = load(app_db.client("admin"), "forma3_blocks.xlsx", "f3-a", dry_run=True)
+    f = rep["forma3"]
+    assert rep["written"] is False and not units("f3-a")
+    assert (f["layout"], f["year"], f["unclassified"]) == ("A", "2026/2027", 0)
+    assert {p["ref"]: p["status"] for p in f["posts"]} == {"#0!A7": "ok", "#0!A22": "ok", "#0!A48": "ok", "#0!A61": "blocked",
+                                                           "#0!A72": "ok", "#1!A4": "blocked"}
+    assert all(p["controls"] == {"T1": True, "T2": True, "T3": True} for p in f["posts"])
+    assert (f["units"]["count"], f["units"]["ready"], f["units"]["hourly"], f["units"]["vacancy"]) == (21, 17, 4, 5)
+    blocking = {(c["cell"], c["code"]) for c in f["conflicts"] if c["blocking"]}
+    assert blocking == {("#0!C66", "subject_missing"), ("#1!A4", "year_conflict"), ("#1!A4", "not_in_summary")}
+    assert all(isinstance(c["message"], str) and c["message"] for c in f["conflicts"]), "messages arrive in the reader's language"
+    assert f["note_count"] and f["load"]["exam"]["lines"] and f["load_hours"] > 0
+    assert [s["class"] for s in f["sheets"] if not s["imported"]] == ["empty", "summary", "list"]
+    listed = {x["row"]: x["reason"] for x in rep["conflicts"]}
+    assert rep["inserted"] == 9 and listed["#0!U54"].startswith("Fənn tapılmadı"), "a subject the registry lacks is listed"
+    assert len(listed) == 8 and listed["#0!F26"].startswith("Müəllim tapılmadı"), \
+        "two people of the registry share this name and «Akifovna» cannot tell them apart: listed, never guessed"
+    there = imp(app_db.client("admin", lang="en"), "teaching-load", "a.xlsx", (FIX / "forma3_blocks.xlsx").read_bytes(), source="f3-a", dry_run=True).json["forma3"]
+    assert next(c["message"] for c in there["conflicts"] if c["code"] == "year_conflict").startswith("The academic year")
+
+
+def test_forma3_layout_a_applies_only_the_posts_that_passed(app_db, load_world):
     admin = app_db.client("admin")
     users_before = q("SELECT COUNT(*) n FROM users")[0]["n"]
-    r = imp(admin, "teaching-load", fixture, (FIX / fixture).read_bytes(), source=source)
-    assert r.status == 200, r.text
-    rep = r.json
+    rep = load(admin, "forma3_blocks.xlsx", "f3-a")
     g, t, co = load_world["groups"], load_world["teachers"], load_world["courses"]
-    alq = [u for u in units(co["Alqoritmlər"]) if u["id"] in {lk["row_id"] for lk in q(
-        "SELECT row_id FROM import_links WHERE source_system=?", (source,))}]
-    lecture = [u for u in alq if u["kind"] == "lecture"]
-    assert len(lecture) == 1 and lecture[0]["groups"] == sorted(g.values()), "one lecture stream for every group"
-    assert lecture[0]["hours"] == 30 and lecture[0]["teacher_id"] == t["e.quliyev"]
-    seminars = {u["groups"][0]: u["teacher_id"] for u in alq if u["kind"] == "seminar"}
-    assert set(seminars) == {g["651a"], g["652a"]}
-    second = t["l.hesenova"] if source == "f3-b" else t["e.quliyev"]      # layout B names another teacher for 652a
-    assert seminars[g["652a"]] == second
-    labs = sorted(u["subgroup"] for u in alq if u["kind"] == "lab")
-    assert labs == [1, 2] and all(u["groups"] == [g["653a"]] for u in alq if u["kind"] == "lab")
-    assert {(u["kind"]) for u in units(co["Verilənlər bazaları"])} >= {"lecture", "seminar"}
-    assert any(u["kind"] == "lab" and u["teacher_id"] == t["l.hesenova"] for u in units(co["Fizika"]))
-    assert all(u["hours"] != 99 for u in alq), "the SAAT HESABI / saat hesabı rows are not units"
-    assert rep["inserted"] == 8 and rep["error_count"] == 0
-    if source == "f3-b":
-        assert [x["row"] for x in rep["conflicts"]] == ["Naməlum N.N.!9"], "an unknown teacher is reported, not created"
-    assert q("SELECT COUNT(*) n FROM users")[0]["n"] == users_before
-    again = imp(admin, "teaching-load", fixture, (FIX / fixture).read_bytes(), source=source).json
-    assert again["inserted"] == again["updated"] == 0 and again["unchanged"] == 8
+    got = units("f3-a")
+    assert rep["written"] and rep["inserted"] == len(got) == 9
+    assert not [a for a in got if a.startswith("#1!") or a in ("#0!F65", "#0!G65")], "X21: a blocked post applies nothing"
+    lecture = got["#0!E11"]                                         # J1: one lecture for the three groups its merge covers
+    assert (lecture["kind"], lecture["hours"], lecture["teacher_id"], lecture["students"]) == ("lecture", 30, t["e.quliyev"], 75)
+    assert lecture["groups"] == sorted(g[x] for x in ("6524a1", "6524a2", "6524a3"))
+    assert got["#0!F11"]["groups"] == sorted((g["6524a1"], g["6524a2"])) and got["#0!F13"]["groups"] == [g["6524a3"]], "J2"
+    assert got["#0!S14"]["course_id"] == co["Verilənlər bazaları"]
+    assert all(u["subgroup"] is None for u in got.values()), "G7: a group's suffix is never a subgroup"
+    vacant = got["#0!S53"]                                          # P3: unassigned load, not a missing teacher
+    assert (vacant["teacher_id"], vacant["vacancy"], vacant["pay"], vacant["post_ref"]) == (None, 1, "staff", "#0!A48")
+    assert (got["#0!F76"]["pay"], got["#0!F76"]["teacher_id"], got["#0!F76"]["vacancy"]) == ("hourly", t["n.eliyeva"], 0), "P2"
+    assert q("SELECT COUNT(*) n FROM users")[0]["n"] == users_before, "the form never creates a person"
+    again = load(admin, "forma3_blocks.xlsx", "f3-a")
+    assert (again["inserted"], again["updated"], again["unchanged"]) == (0, 0, 9)
+
+
+def test_forma3_layout_b_hidden_hourly_vacancy_and_repeated_classes(app_db, load_world):
+    admin = app_db.client("admin")
+    rep = load(admin, "forma3_sheets.xlsx", "f3-b")
+    g, t = load_world["groups"], load_world["teachers"]
+    got = units("f3-b")
+    assert rep["inserted"] == len(got) == 19
+    assert sorted(x["row"] for x in rep["conflicts"]) == ["#2!AA11", "#2!AA12", "#7!H11"], "unknown teachers are listed, never created"
+    assert not [a for a in got if a.startswith(("#6!", "#5!Z", "#5!AA"))], "G4: the hidden sheet; R5/R2: the blocked section"
+    assert {p["ref"]: p["status"] for p in rep["forma3"]["posts"]}["#6!B10"] == "hidden"
+    assert got["#0!F11"]["groups"] == sorted(g[x] for x in ("6526e1", "6526e2", "6526e3")), "J1"
+    assert [got[a]["groups"] for a in ("#1!H11", "#1!H12", "#1!H13")] == [[g["6526e1"]], [g["6526e2"]], [g["6526e3"]]], \
+        "G7: «6526e 1» is the group 6526e1, and its lab is its own class"
+    assert all(u["subgroup"] is None for u in got.values())
+    assert got["#0!F11"]["teacher_id"] == t["e.quliyev"] and got["#1!H12"]["teacher_id"] == t["l.hesenova"], "X9: the owner teaches"
+    assert got["#0!Z14"]["course_id"] == load_world["courses"]["Riyazi analiz-2"], "G6: «- 2» and «-2» are one subject"
+    assert (got["#1!F15"]["hours"], got["#1!F16"]["hours"]) == (30, 15) and got["#1!F15"]["id"] != got["#1!F16"]["id"], \
+        "R4: the same class written twice is two classes, never one with the hours added"
+    assert (got["#0!G24"]["pay"], got["#0!G24"]["post_ref"], got["#0!F20"]["pay"]) == ("hourly", "#0!B23", "staff")
+    assert [(got[a]["teacher_id"], got[a]["vacancy"], got[a]["pay"]) for a in ("#3!Z11", "#4!F11")] == [(None, 1, "staff"), (None, 1, "hourly")]
+    assert got["#5!G15"]["teacher_id"] == t["n.eliyeva"], "the hourly section of a sheet whose first section is blocked still applies"
+    again = load(admin, "forma3_sheets.xlsx", "f3-b")
+    assert (again["inserted"], again["updated"], again["unchanged"]) == (0, 0, 19)
+
+
+def test_forma3_refuses_a_file_that_is_no_form_with_a_translated_400(app_db):
+    admin = app_db.client("admin")
+    for name, data in (("x.xlsx", b"PK\x03\x04 not a workbook"), ("x.xlsx", (FIX / "users_10k.csv").read_bytes()[:4000]),
+                       ("x.csv", b"a,b\n1,2\n")):
+        r = imp(admin, "teaching-load", name, data, source="f3-x", dry_run=True)
+        assert r.status == 400 and r.json["error"], (name, r.status, r.text)
+    c = db()
+    try:
+        with pytest.raises(importer.tables.TableError, match="tapılmadı"):
+            importer.run(c, "teaching-load", "f3-x", "list.xlsx", xlsx([("Siyahı", [["Ad", "Saat"], ["Nümunə", "30"]], [])]))
+    finally:
+        c.close()
 
 
 # ---------------------------------------------------------------- users, all or nothing, conflicts
