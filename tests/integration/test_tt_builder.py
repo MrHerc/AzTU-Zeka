@@ -433,3 +433,135 @@ def test_the_daily_lessons_job_never_makes_a_lesson_before_the_effective_date(wo
     assert early == []                                                     # the new time only from the second effective date
     assert q("SELECT COUNT(*) n FROM lessons l JOIN timetable t ON t.id=l.timetable_id WHERE t.version_id=? AND l.day<?",
              (world["vid"], EFF))[0]["n"] == 0
+
+
+# ---------------------------------------------------------------- review of slices 1-3 (tasks/todo.md, Task 48)
+def _manual_row(office_ao, unit):
+    """A hand-written row for ``unit`` on a free afternoon (POST /api/timetable checks every clash)."""
+    for wd in (6, 5, 4, 3):
+        for st, en in (("15:05", "16:25"), ("16:35", "17:55"), ("18:05", "19:25")):
+            r = office_ao.post("/api/timetable", {"unit_id": unit, "weekday": wd, "start": st, "end": en, "room": "X", "weeks": "all",
+                                                  "academic_hours": 2})
+            if r.status == 200:
+                return r.json
+    raise AssertionError("no free afternoon for a hand-written row")
+
+
+def _solve(office_ao, seed):
+    s = office_ao.post(f"{B}/runs", {"kind": "solve", "budget": 300, "seed": seed})
+    assert s.status == 200, s.text
+    run_jobs()
+    run = office_ao.get(f"/api/timetable/runs/{s.json['id']}").json
+    assert run["status"] == "done", run
+    return run
+
+
+def _publish(office_ao, vid, eff):
+    v = q("SELECT * FROM tt_versions WHERE id=?", (vid,))[0]
+    r = office_ao.post(f"/api/timetable/versions/{vid}/publish", {"effective_from": eff, "accept_unplaced": v["unplaced"],
+                                                                   "override_reason": "Sınaq üçün dərc edilir"})
+    assert r.status == 200, r.text
+    return r.json["id"]
+
+
+def test_a_unit_with_a_hand_written_row_keeps_its_builder_rows_through_a_publication(office_ao, world):
+    """TT-SEC-2: the run keeps the unit out and treats its rows as obstacles, so the publication must not drop them."""
+    u, eff = world["units"][0], "2026-12-07"
+    builder_rows = q("SELECT id FROM timetable WHERE unit_id=? AND active=1 AND meeting_key IS NOT NULL", (u,))
+    assert builder_rows
+    _manual_row(office_ao, u)
+    run = _solve(office_ao, 17)
+    assert u in run["report"]["kept_manual"]
+    rid = _publish(office_ao, run["version_id"], eff)
+    run_jobs()
+    assert q("SELECT status FROM tt_runs WHERE id=?", (rid,))[0]["status"] == "done"
+    ids = tuple(x["id"] for x in builder_rows)
+    assert q(f"SELECT COUNT(*) n FROM timetable WHERE active=1 AND id IN ({','.join('?' * len(ids))})", ids)[0]["n"] == len(ids)
+    assert q(f"SELECT COUNT(*) n FROM lessons WHERE day>=? AND timetable_id IN ({','.join('?' * len(ids))})", (eff, *ids))[0]["n"] > 0
+
+
+def test_a_publication_failing_after_its_check_retries_and_keeps_the_term_locked(office_ao, world, monkeypatch):
+    """TT-SEC-1: three errors in a row after the rows step used to leave the version published and its lessons stale."""
+    import sqlite3
+
+    from zeka.modules.timetable import repo as ttrepo
+    vid, eff = _solve(office_ao, 19)["version_id"], "2026-12-14"
+    p = q("SELECT p.* FROM tt_placements p JOIN timetable t ON t.meeting_key=p.meeting_key AND t.active=1 WHERE p.version_id=? "
+          "ORDER BY p.id LIMIT 1", (vid,))[0]
+    opts = office_ao.get(f"/api/timetable/versions/{vid}/placements/{p['id']}/options").json
+    to = next(o for o in opts["options"] if not o["reasons"] and not o["current"])
+    assert office_ao.post(f"/api/timetable/versions/{vid}/placements/{p['id']}/move",
+                          {"weekday": to["weekday"], "period": to["period"], "room_id": to["room_id"], "rev": opts["rev"]}).status == 200
+    assert office_ao.post(f"{B}/runs", {"kind": "check", "version_id": vid}).status == 200
+    run_jobs()
+    row = q("SELECT * FROM timetable WHERE meeting_key=? AND active=1", (p["meeting_key"],))[0]
+    rid = _publish(office_ao, vid, eff)
+
+    def boom(*a, **k):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(ttrepo, "drop_lessons_from", boom)
+    c = store.connect()
+    try:
+        for _ in range(6):
+            builder.work(c)
+    finally:
+        c.close()
+    r = office_ao.get(f"/api/timetable/runs/{rid}").json
+    assert r["status"] == "running" and r["progress"]["step"] == "drop", r
+    assert r["error"] and "OperationalError" not in r["error"] and "OperationalError" in r["progress"]["detail"]
+    assert q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND title LIKE '%yarımçıq%'", (office_ao.user["id"],))[0]["n"] == 1
+    assert office_ao.put(f"/api/timetable/{row['id']}", {"room": "Y"}).status == 409          # the term stays locked
+    monkeypatch.undo()
+    run_jobs()
+    done = q("SELECT status, error FROM tt_runs WHERE id=?", (rid,))[0]
+    assert (done["status"], done["error"]) == ("done", None)
+    moved = q("SELECT * FROM timetable WHERE id=?", (row["id"],))[0]
+    stale = q("SELECT COUNT(*) n FROM lessons WHERE timetable_id=? AND day>=? AND start<>?", (row["id"], eff, moved["start"]))[0]["n"]
+    assert (moved["weekday"], moved["period"]) == (to["weekday"], to["period"]) and stale == 0
+
+
+def test_a_faculty_scoped_office_reaches_no_draft_or_run_of_another_faculty(app_db, office_ao, world):
+    """TT-SEC-3: an academic office of another faculty edits, reads and cancels nothing of this one."""
+    c = store.connect()
+    now = store.iso(store.now())
+    f2 = c.execute("INSERT INTO faculties(code,name,active,created_at,updated_at) VALUES('F2X','İkinci fakültə',1,?,?)", (now, now)).lastrowid
+    c.commit()
+    c.close()
+    admin, uid = app_db.client("admin"), app_db.client("leader").user["id"]
+    assert admin.post(f"/api/admin/users/{uid}/roles", {"role": "academic_office", "scope_type": "faculty", "scope_id": f2}).status == 200
+    ao2 = app_db.client("leader")
+    assert ao2.post("/api/me/role", {"role": "academic_office"}).status == 200
+    s = office_ao.post(f"{B}/runs", {"kind": "solve", "budget": 300, "seed": 13})
+    assert s.status == 200 and ao2.get(f"/api/timetable/runs/{s.json['id']}").status == 404
+    run_jobs()
+    vid = q("SELECT version_id FROM tt_runs WHERE id=?", (s.json["id"],))[0]["version_id"]
+    p = q("SELECT * FROM tt_placements WHERE version_id=? AND room_id IS NOT NULL ORDER BY id LIMIT 1", (vid,))[0]
+    rev = q("SELECT rev FROM tt_versions WHERE id=?", (vid,))[0]["rev"]
+    base = f"/api/timetable/versions/{vid}"
+    assert ao2.get(f"{base}/placements/{p['id']}/options").status == 404
+    assert ao2.post(f"{base}/placements/{p['id']}/move", {"weekday": 1, "period": 1, "room_id": p["room_id"], "rev": rev}).status == 404
+    assert ao2.post(f"{base}/lock", {"ids": [p["id"]], "locked": True, "rev": rev}).status == 404
+    assert ao2.get(f"{base}/grid?room_id={p['room_id']}").json["items"] == []
+    assert ao2.get(f"{base}/unplaced").json == []
+    assert q("SELECT rev FROM tt_versions WHERE id=?", (vid,))[0]["rev"] == rev
+    s2 = office_ao.post(f"{B}/runs", {"kind": "precheck"})
+    assert ao2.post(f"/api/timetable/runs/{s2.json['id']}/cancel", {}).status == 404
+    run_jobs()
+    assert q("SELECT status FROM tt_runs WHERE id=?", (s2.json["id"],))[0]["status"] == "done"
+    world["draft"] = vid
+
+
+def test_malformed_shifts_and_periods_answer_their_own_400(office_ao, world):
+    """TT-SEC-4: a list or an object where a shift or a building id goes, and a negative period, ended in the catch-all."""
+    g = world["groups"][0]
+    for item in ({"group_id": g, "shift": ["morning"]}, {"group_id": g, "shift": {"a": 1}}, {"group_id": g, "home_building_id": [1]},
+                 {"group_id": g, "home_building_id": {"x": 1}}):
+        r = office_ao.put(f"{B}/groups", {"items": [item]})
+        assert r.status == 400 and "növbəsi" in r.json["error"], (item, r.text)
+    vid = world["draft"]
+    p = q("SELECT * FROM tt_placements WHERE version_id=? ORDER BY id LIMIT 1", (vid,))[0]
+    rev = q("SELECT rev FROM tt_versions WHERE id=?", (vid,))[0]["rev"]
+    for wd, period in ((1, -3), (1, 0), (1, 99), (0, 1), (8, 1)):
+        r = office_ao.post(f"/api/timetable/versions/{vid}/placements/{p['id']}/move", {"weekday": wd, "period": period, "rev": rev})
+        assert r.status == 400 and "Yeni vaxtı" in r.json["error"], (wd, period, r.text)

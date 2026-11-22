@@ -1,0 +1,5 @@
+{
+ "Dərcin bu mərhələsi alınmadı: iş onu özü təkrarlayır, bu müddətdə semestrin cədvəli kilidli qalır": "Этот этап публикации не выполнен. Задание повторит его автоматически; до тех пор расписание семестра заблокировано",
+ "Hesablama sistem xətası ilə dayandı: onu yenidən başladın, xəta təkrarlansa, inzibatçıya bildirin": "Расчёт остановлен из-за системной ошибки. Запустите его снова; если ошибка повторится, сообщите администратору",
+ "Cədvəlin dərci yarımçıq qalıb: iş onu təkrarlayır": "Публикация расписания не завершена: задание повторяет её"
+}

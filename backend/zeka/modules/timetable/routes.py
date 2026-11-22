@@ -268,7 +268,7 @@ def tt_start_run(req):
 
 @R("GET", "/api/timetable/runs/{id:int}", perm="timetable.manage")
 def tt_run(req):
-    return builder.get_run(req.db, req.params["id"])
+    return builder.get_run(req.db, req.user, req.params["id"])
 
 
 @R("POST", "/api/timetable/runs/{id:int}/cancel", perm="timetable.manage")

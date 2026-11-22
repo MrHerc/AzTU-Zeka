@@ -374,7 +374,8 @@ def put_groups(c, user, tid: int, body) -> dict:
     for x in items:
         gid = x.get("group_id") if isinstance(x, dict) else None
         shift, bld = (x.get("shift"), x.get("home_building_id")) if isinstance(x, dict) else (None, None)
-        if type(gid) is not int or (shift is not None and shift not in shifts) or (bld is not None and bld not in buildings):
+        if (type(gid) is not int or (shift is not None and (not isinstance(shift, str) or shift not in shifts))
+                or (bld is not None and (type(bld) is not int or bld not in buildings))):
             raise HTTPError(400, "Qrupun növbəsi və ya binası düzgün deyil")
         group_for(c, user, t, gid, write=True)
         clean.append((gid, shift, bld))
@@ -539,7 +540,8 @@ def run_out(r: dict) -> dict:
     return {**{k: r[k] for k in ("id", "term_id", "kind", "base_version_id", "version_id", "effective_from", "status", "cancel", "seed",
                                  "iter_budget", "time_budget_s", "iterations", "cpu_ms", "stopped", "error", "requested_by", "requested_at",
                                  "started_at", "finished_at")},
-            "scope": J(r["scope"], {}), "params": J(r["params"], {}), "progress": J(r["progress"], {})}
+            "scope": J(r["scope"], {}), "params": J(r["params"], {}), "progress": J(r["progress"], {}),
+            "error": J(r["error"], r["error"])}         # older rows hold a plain text
 
 
 def start_run(c, user, tid: int, body) -> dict:
@@ -584,18 +586,26 @@ def start_run(c, user, tid: int, body) -> dict:
     return run_out(repo.run(c, rid))
 
 
-def get_run(c, rid: int) -> dict:
-    r = repo.run(c, rid, blobs=True)
-    if not r:
+def _run_for(c, user, rid: int, blobs: bool = False) -> dict:
+    """A run the caller's scope covers: a university-wide run only to an unscoped holder, a run of departments to one that
+    covers each of them (an id outside the scope answers 404, design §7.1)."""
+    r = repo.run(c, rid, blobs=blobs)
+    s = scope_of(c, user)
+    sc = (J(r["scope"], {}) or {}) if r else {}
+    deps = [] if sc.get("all") else sc.get("departments") or []
+    if not r or not (s["all"] or (deps and all(_covers_department(c, s, d) for d in deps))):
         raise HTTPError(404, "Hesablama tapılmadı")
+    return r
+
+
+def get_run(c, user, rid: int) -> dict:
+    r = _run_for(c, user, rid, blobs=True)
     rep = _unz(r["report"]) or {}
     return {**run_out(r), "report": {k: (v[:200] if isinstance(v, list) else v) for k, v in rep.items()}}
 
 
 def cancel_run(c, user, rid: int) -> dict:
-    r = repo.run(c, rid)
-    if not r:
-        raise HTTPError(404, "Hesablama tapılmadı")
+    r = _run_for(c, user, rid)
     if r["status"] not in ("queued", "running") or r["kind"] == "publish":
         raise HTTPError(409, "Bu hesablama dayandırıla bilməz")
     repo.update_run(c, rid, cancel=1)
@@ -614,6 +624,11 @@ def _tx(c, fn):
         c.rollback()
         raise
     return out, round((time.monotonic() - t0) * 1000)
+
+
+def _err(message: dict) -> str:
+    """A run's error as stored: the message in every language (run_out reads it back; ``localize`` picks one)."""
+    return json.dumps(message, ensure_ascii=False)
 
 
 def _progress(r: dict, **v) -> str:
@@ -642,17 +657,26 @@ def work(c) -> str:
         else:
             out = _solve_step(c, r, budget, busy, sol)
         if r["fails"]:                                         # three failures in a row fail a run, not three in its life
-            _tx(c, lambda: repo.update_run(c, r["id"], fails=0))
+            _tx(c, lambda: repo.update_run(c, r["id"], fails=0, error=None))
         return out
     except Exception as ex:                                    # noqa: BLE001  a failing run is recorded on the run itself
         c.rollback()
-        fails, error = r["fails"] + 1, f"{type(ex).__name__}: {ex}"[:500]
-        failed = fails >= 3
-        _tx(c, lambda: repo.update_run(c, r["id"], fails=fails, error=error,
+        fails, detail = r["fails"] + 1, f"{type(ex).__name__}: {ex}"[:500]
+        # a publication past its check may have written rows already: it never gives up half applied, it retries from its
+        # stored step and cursor and keeps the term locked (design §8.2)
+        r = repo.run(c, r["id"]) or r                         # its steps may have moved on within this call
+        holding = r["kind"] == "publish" and (J(r["progress"], {}) or {}).get("step", "check") != "check"
+        failed = fails >= 3 and not holding
+        error = _err(T3("Dərcin bu mərhələsi alınmadı: iş onu özü təkrarlayır, bu müddətdə semestrin cədvəli kilidli qalır") if holding
+                     else T3("Hesablama sistem xətası ilə dayandı: onu yenidən başladın, xəta təkrarlansa, inzibatçıya bildirin"))
+        _tx(c, lambda: repo.update_run(c, r["id"], fails=fails, error=error, progress=_progress(r, detail=detail),
                                        **({"status": "failed", "finished_at": iso(now()), "state": None} if failed else {})))
         if failed:
             CACHE.pop(r["id"], None)
             _tx(c, lambda: notify(c, [r["requested_by"]], "timetable", T3("Cədvəl hesablaması alınmadı"), "", "/admin/timetable/build"))
+        elif holding and fails == 3:
+            _tx(c, lambda: notify(c, [r["requested_by"]], "timetable", T3("Cədvəlin dərci yarımçıq qalıb: iş onu təkrarlayır"), "",
+                                  "/admin/timetable/build"))
         return f"run {r['id']}: error {fails}"
 
 
@@ -783,7 +807,7 @@ def grid(c, user, vid: int, group_id: int | None, teacher_id: int | None, room_i
         group_for(c, user, t, group_id, write=False)
     elif teacher_id is not None:
         teacher_for(c, user, t, teacher_id, write=False)
-    items = repo.grid(c, vid, group_id, teacher_id, room_id)
+    items = _in_scope(c, user, repo.grid(c, vid, group_id, teacher_id, room_id))
     _, times = bell(c)
     names = repo.groups_of_units(c, sorted({x["unit_id"] for x in items}))
     info = repo.groups_info(c, sorted({g for v_ in names.values() for g in v_}))
@@ -842,16 +866,26 @@ def _neighbourhood(c, v: dict, t: dict, p: dict, extra_rooms: tuple = ()) -> tup
     return problem, [_as_meeting(x) for x in pls]
 
 
-def _placement(c, vid: int, pid: int) -> dict:
+def _placement(c, user, vid: int, pid: int) -> dict:
+    """A placement of a unit in the caller's scope (a faculty's academic office never edits another faculty's units)."""
     p = repo.placement(c, vid, pid)
-    if not p:
+    if not p or not covers(scope_of(c, user), (repo.units_by_id(c, [p["unit_id"]]) or [{}])[0]):
         raise HTTPError(404, "Yerləşdirmə tapılmadı")
     return p
 
 
+def _in_scope(c, user, items: list[dict]) -> list[dict]:
+    """The items (with ``unit_id``) of units the caller's scope covers."""
+    s = scope_of(c, user)
+    if s["all"]:
+        return items
+    ok = {u["id"] for u in repo.units_by_id(c, sorted({x["unit_id"] for x in items if x.get("unit_id")})) if covers(s, u)}
+    return [x for x in items if x.get("unit_id") in ok]
+
+
 def options(c, user, vid: int, pid: int) -> dict:
     v = version_for(c, user, vid)
-    p = _placement(c, vid, pid)
+    p = _placement(c, user, vid, pid)
     problem, pls = _neighbourhood(c, v, term(c, v["term_id"]), p)
     opts = domain.options(problem, pls, p["meeting_key"])
     return {"placement": p, "rev": v["rev"], "options": [{**o, "reasons": titled([{"code": x} for x in o["reasons"]], slot=True)} for o in opts]}
@@ -869,11 +903,12 @@ def move(c, user, vid: int, pid: int, body) -> dict:
     the optimistic lock on ``rev`` inside one short write (design §7.4)."""
     v = version_for(c, user, vid)
     _editable(c, v)
-    p = _placement(c, vid, pid)
+    p = _placement(c, user, vid, pid)
     rev = body.integer("rev", None)
     wd, period = body.integer("weekday", None), body.integer("period", None)
     room = body.get("room_id", p["room_id"])
-    if rev is None or wd is None or period is None or (room is not None and (type(room) is not int or room < 1)):
+    if (rev is None or wd is None or period is None or not 1 <= wd <= 7 or not 1 <= period <= len(bell(c)[1])
+            or (room is not None and (type(room) is not int or room < 1))):
         raise HTTPError(400, "Yeni vaxtı, otağı və versiyanın düzəliş nömrəsini göndərin")
     if rev != v["rev"]:
         raise HTTPError(409, "Layihə dəyişib: səhifəni yeniləyin")
@@ -899,6 +934,11 @@ def lock(c, user, vid: int, body) -> dict:
     ids, locked, rev = body.ids("ids", 2000), body.get("locked"), body.integer("rev", None)
     if not ids or not isinstance(locked, bool) or rev is None:
         raise HTTPError(400, "Yerləşdirmələri, kilidin vəziyyətini və versiyanın düzəliş nömrəsini göndərin")
+    if not scope_of(c, user)["all"]:                     # only placements of units in the caller's scope
+        mine = {x["id"] for x in _in_scope(c, user, repo.placements(c, vid))}
+        ids = [i for i in ids if i in mine]
+        if not ids:
+            raise HTTPError(404, "Yerləşdirmə tapılmadı")
     if not repo.bump_rev(c, vid, rev):
         raise HTTPError(409, "Layihə dəyişib: səhifəni yeniləyin")
     n = repo.set_locked(c, vid, ids, locked, user["id"], iso(now()))
@@ -1001,7 +1041,7 @@ def _p_check(c, r: dict) -> str:
         return _fail(c, r, [x["code"] for x in gate], "gate: " + ", ".join(x["code"] for x in gate))
     c.execute("BEGIN")
     try:
-        problem, _ = snapshot(c, t, J(v["scope"], {"all": True}))
+        problem, kept = snapshot(c, t, J(v["scope"], {"all": True}))
         pls = repo.placements(c, v["id"])
         trows = repo.term_rows(c, t["id"])
         units_ = {u["id"]: u for u in repo.term_units(c, t["id"])}
@@ -1018,7 +1058,9 @@ def _p_check(c, r: dict) -> str:
     if any(w is None for w in wanted):
         return _fail(c, r, ["duration"], "a placement is off the bell schedule")
     s = _scope_from_run(J(v["scope"], {"all": True}))
-    published = [x for x in trows if x["meeting_key"] and x["unit_id"] in units_ and covers(s, units_[x["unit_id"]])]
+    # a unit with hand-written rows was kept out of the run: its builder rows are obstacles and stay (design §16.4)
+    published = [x for x in trows if x["meeting_key"] and x["unit_id"] in units_ and x["unit_id"] not in set(kept)
+                 and covers(s, units_[x["unit_id"]])]
     plan = domain.publish_plan(published, wanted)                                 # type: ignore[arg-type]
     replaced = {x["id"] for x in plan["update"]} | set(plan["deactivate"])
     slots = [{"id": f"k:{w['meeting_key']}", "weekday": w["weekday"], "start": w["start"], "end": w["end"], "weeks": w["weeks"],

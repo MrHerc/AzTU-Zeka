@@ -1,0 +1,5 @@
+{
+ "Dərcin bu mərhələsi alınmadı: iş onu özü təkrarlayır, bu müddətdə semestrin cədvəli kilidli qalır": "This publishing step failed. The job will retry it automatically; the term's timetable stays locked until then",
+ "Hesablama sistem xətası ilə dayandı: onu yenidən başladın, xəta təkrarlansa, inzibatçıya bildirin": "The run stopped because of a system error. Start it again; if the error recurs, tell the administrator",
+ "Cədvəlin dərci yarımçıq qalıb: iş onu təkrarlayır": "Timetable publishing is incomplete: the job is retrying it"
+}
