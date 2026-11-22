@@ -52,7 +52,7 @@ bərabərdir; panel və nişan analizi çağırmır; xülasə yoxdursa, sətir b
 bərabərdir).
 
 **AR-F11: aktiv istifadəçi göstəriciləri.** `insight/repo.active_weekly` və `active_by_role` 8 həftənin hər hadisə
-sətri üzrə `COUNT(DISTINCT user_id)` edirdi. `0391_active_days.sql` `active_days(day, role, user_id)` cədvəlini yaradır
+sətri üzrə `COUNT(DISTINCT user_id)` edirdi. `0421_active_days.sql` `active_days(day, role, user_id)` cədvəlini yaradır
 və mövcud hadisələrdən doldurur; `core/events.py` hər hadisənin yanında `INSERT OR IGNORE` ilə bir sətir yazır (şəxs,
 rol və gün üzrə ən çoxu bir). Göstəricilər bu cədvəli açarı ilə oxuyur. Həftə indi tam günlərlə sayılır: bu gün və ondan
 əvvəlki 6 gün (əvvəl saniyəsinədək son 7 × 24 saat idi); tərif («Son 7 gündə …») dəyişməyib. Sətirlər hadisələrlə
@@ -69,7 +69,7 @@ birlikdə 365 gündən sonra silinir; şəxs silinəndə onunla birlikdə silini
 | Son 7 gün, rollar üzrə | 83 ms | 11 ms | `SEARCH active_days USING COVERING INDEX idx_active_days_day (day>? AND day<?)` |
 
 `tests/integration/test_insight.py` planları `EXPLAIN QUERY PLAN` ilə yoxlayır (`SEARCH active_days`, `SCAN` yoxdur,
-`events` oxunmur), `tests/migration/test_schema_migrations.py` isə `0391`-in mövcud hadisələrdən doldurulmasını.
+`events` oxunmur), `tests/migration/test_schema_migrations.py` isə `0421`-in mövcud hadisələrdən doldurulmasını.
 
 ## Xaos (`tests/integration/test_chaos.py`)
 

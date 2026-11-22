@@ -1,4 +1,5 @@
 """Schema migration engine (backend/zeka/core/migrate.py) and its use by store.init() (tasks/todo.md, Task 4)."""
+import re
 import sqlite3
 
 import pytest
@@ -30,6 +31,13 @@ ALL = [v for v, _, _ in migrate.discover()]      # every file in backend/migrati
 
 def versions(c):
     return [r[0] for r in c.execute("SELECT version FROM schema_migrations ORDER BY version")]
+
+
+def test_a_task_s_file_never_takes_a_lower_task_s_number():
+    """tasks/todo.md: NNNN = task × 10; a file may come later than its range (Task 35 → 0365), never earlier."""
+    for v, name, path in migrate.discover():
+        m = re.match(r"-- Task (\d+)\b", path.read_text(encoding="utf-8"))
+        assert not m or v // 10 >= int(m.group(1)), f"{v:04d}_{name}.sql is Task {m and m.group(1)}'s file"
 
 
 def test_applies_in_number_order_once(conn, mdir):
@@ -224,10 +232,10 @@ def test_0462_gives_a_demo_database_s_office_the_academic_office_and_leaves_prod
             (mdir / src.name).unlink()
 
 
-def test_0391_fills_the_active_days_from_the_events_already_logged(tmp_path, mdir):
+def test_0421_fills_the_active_days_from_the_events_already_logged(tmp_path, mdir):
     """Task 42 (AR-F11): a database with a year of events gets their days at once; the tiles count those, not the events."""
     for v, _, path in migrate.discover():
-        if v < 391:
+        if v < 421:
             put(mdir, path.name, path.read_text(encoding="utf-8"))
     c = sqlite3.connect(tmp_path / "t.db")
     try:
@@ -236,7 +244,7 @@ def test_0391_fills_the_active_days_from_the_events_already_logged(tmp_path, mdi
                       [(7, "student", "2026-11-18T09:00:00"), (7, "student", "2026-11-18T17:30:00"), (7, "teacher", "2026-11-18T10:00:00"),
                        (8, "student", "2026-11-19T08:00:00"), (None, "student", "2026-11-19T08:00:00")])
         c.commit()
-        src = next(p for v, _, p in migrate.discover() if v == 391)
+        src = next(p for v, _, p in migrate.discover() if v == 421)
         put(mdir, src.name, src.read_text(encoding="utf-8"))
         migrate.apply(c, mdir)
         assert c.execute("SELECT day, role, user_id FROM active_days ORDER BY day, role, user_id").fetchall() == [
