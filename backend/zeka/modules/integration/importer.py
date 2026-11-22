@@ -13,6 +13,7 @@ import math
 import secrets
 import sqlite3
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import timedelta
 
@@ -407,11 +408,14 @@ def _teacher(idx: dict, name: str) -> int | None:
     return None
 
 
-def _course_for(c, cache: dict, subject: str, semester: str) -> int | None:
+def _course_for(c, cache: dict, subject: str, semester: str, department: int | None = None) -> int | None:
+    """The course of a subject: the only one of that name, else the one of the file's department, else of the semester."""
     if "courses" not in cache:
         cache["courses"] = [dict(r) for r in repo.active_courses(c)]
     want = forma3.tx.subject_key(subject)
     same = [x for x in cache["courses"] if forma3.tx.subject_key(x["name"]) == want]
+    if len(same) > 1 and department:                    # a subject two departments teach: each file means its own course
+        same = [x for x in same if x["department_id"] == department] or same
     if len(same) > 1:
         same = [x for x in same if semester in forma3.norm(f"{x['term'] or ''} {x['term_code'] or ''}")]
     return same[0]["id"] if len(same) == 1 else None
@@ -436,11 +440,16 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
     items: list[Item] = []
     seen: dict[str, int] = {}
     refused: set[str] = set()                            # units the registry cannot place: never counted as ready
-    for u in form.units:
-        if u.hidden or u.post in blocked:
-            continue
-        teacher = None if u.vacancy else _teacher(people, u.teacher or "")
-        course = _course_for(c, cache, u.subject_raw, u.semester)
+    placed = [u for u in form.units if not (u.hidden or u.post in blocked)]
+    teachers = {u.anchor: None if u.vacancy else _teacher(people, u.teacher or "") for u in placed}
+    # the file's department: the one most of its units' teachers belong to (none on a tie); it tells apart a subject
+    # that two departments teach in the same term (acceptance on the departments' real files, Tasks 47-48)
+    of = repo.departments_of(c, [t for t in teachers.values() if t])
+    deps = Counter(of[t] for t in teachers.values() if t and of.get(t)).most_common(2)
+    department = deps[0][0] if deps and (len(deps) == 1 or deps[0][1] > deps[1][1]) else None
+    for u in placed:
+        teacher = teachers[u.anchor]
+        course = _course_for(c, cache, u.subject_raw, u.semester, department)
         missing = [x["code_raw"] for x in u.groups if forma3.norm(x["code"]) not in groups]
         reason = (_missing("Müəllim", u.teacher) if not teacher and not u.vacancy else _missing("Fənn", u.subject_raw) if not course
                   else _missing("Qrup", ", ".join(missing)) if missing else None)

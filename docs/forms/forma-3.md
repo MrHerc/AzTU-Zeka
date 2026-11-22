@@ -288,6 +288,8 @@ auditoriya saatı; B quruluşlu faylda 1 245 dərs və 29 783,5 saat, onlardan 1
 - Müəllim, fənn və qruplar reyestrdə axtarılır; tapılmayan dərs konflikt kimi lövbər xanası ilə siyahıya düşür. Forma
   heç vaxt istifadəçi, fənn və ya qrup yaratmır. Reyestrdə eyni adlı iki şəxs varsa və fayldakı ad onları ayırmırsa,
   dərs «müəllim tapılmadı» kimi göstərilir; seçim ehtimalla edilmir.
+- Eyni adlı fənni eyni semestrdə iki kafedra keçirsə (reyestrdə iki kurs), faylın kafedrasının kursu götürülür: faylın
+  dərslərinin çoxunu deyən müəllimlərin kafedrası (bərabərlikdə kafedra yoxdur və kurs semestrə görə seçilir).
 - Vakansiya dərsi müəllimsiz yazılır (`teacher_id` boş, `vacancy = 1`). Hər tədris vahidi ödənişi (`pay`: `staff`,
   `hourly`), ştatın ünvanını (`post_ref`) və lövbər xanasını (`anchor`) saxlayır (`0470_forma3_units.sql`).
 - Qrup kodunun sonluğundan yarımqrup düzəldilmir (`subgroup` boşdur).

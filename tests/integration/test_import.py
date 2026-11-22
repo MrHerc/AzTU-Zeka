@@ -426,3 +426,25 @@ def test_forma3_a_corrected_file_updates_each_anchor_s_unit_and_never_adds_a_sec
     assert (back.json["inserted"], back.json["updated"]) == (0, 2), "a file put back is an update, never a conflict"
     assert sorted(x["row"] for x in back.json["conflicts"]) == ["#2!AA11", "#2!AA12", "#7!H11"]
     assert post3() == vacant, "and back again"
+
+
+def test_forma3_a_subject_two_departments_teach_goes_to_the_files_department(app_db, load_world):
+    """Acceptance on the departments' real files (Tasks 47-48): one subject was taught by two departments in the same term,
+    so its name matched two courses and every unit of it was refused in both files as «Fənn tapılmadı». The file's
+    department (the one most of its teachers belong to) tells the two courses apart."""
+    admin = app_db.client("admin")
+    fid = admin.get("/api/directory/faculties").json["items"][0]["id"]
+    deps = [admin.post("/api/directory/departments", {"faculty_id": fid, "code": f"F3D{k}", "name": f"Sınaq kafedrası {k}"}).json["id"]
+            for k in (1, 2)]
+    mine, other = (admin.post("/api/directory/courses", {"code": f"F3-ALQ-{k}", "name": "Alqoritmlər", "credits": 5, "department_id": d}).json["id"]
+                   for k, d in enumerate(deps))
+    c = db()
+    try:
+        c.execute("UPDATE users SET department_id=? WHERE id=?", (deps[0], load_world["teachers"]["e.quliyev"]))
+        c.commit()
+    finally:
+        c.close()
+    rep = load(admin, "forma3_blocks.xlsx", "f3-dep")
+    got = units("f3-dep")
+    assert not [x for x in rep["conflicts"] if x["row"] in ("#0!E11", "#0!F11", "#0!F13")], rep["conflicts"]
+    assert {got[a]["course_id"] for a in ("#0!E11", "#0!F11", "#0!F13")} == {mine} != {other}

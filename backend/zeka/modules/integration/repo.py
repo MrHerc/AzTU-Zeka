@@ -42,8 +42,15 @@ def by_column(c, name: str, col: str) -> dict:
 
 def active_courses(c) -> list[dict]:
     """The active courses with their term, for matching a form's subjects (Forma №3)."""
-    return rows(c, "SELECT co.id, co.name, t.name term, t.code term_code FROM courses co "
+    return rows(c, "SELECT co.id, co.name, co.department_id, t.name term, t.code term_code FROM courses co "
                    "LEFT JOIN academic_terms t ON t.id=co.term_id WHERE co.active=1")
+
+
+def departments_of(c, ids) -> dict[int, int | None]:
+    """{user id: department id} of these people."""
+    ids = sorted(set(ids))
+    return {r["id"]: r["department_id"] for r in rows(c, f"SELECT id, department_id FROM users WHERE id IN ({','.join('?' * len(ids))})",  # nosec B608
+                                                        tuple(ids))} if ids else {}
 
 
 def insert(c, name: str, values: dict) -> int:
