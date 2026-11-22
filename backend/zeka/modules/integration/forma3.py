@@ -1490,6 +1490,18 @@ def read(sheets: list[Sheet]) -> Form:
                     R.note(g, r, c, "unclassified", x=g.t(r, c))
                 tally[g.used[(r, c)]] += 1
     form.cells = dict(tally)
+    said = {n.cell for n in form.notes if n.code == "hidden_row"}  # G4: a hidden row with a value is said, whatever the row is
+    for g, cl in zip(grids, classes, strict=True):
+        for r in sorted(g.sheet.hidden_rows) if cl.startswith("form-") else ():
+            for c in g.filled(r):
+                cell = g.ref(r, c)
+                if cell in said:
+                    continue
+                if g.used.get((r, c)) in ("post", "header"):     # a hidden staff line, label or header row: the person must look
+                    form.conflicts.append(Conflict(cell, "hidden_row", _m("hidden_row", x=g.t(r, c)[:120]), False,
+                                                   cell if any(p.ref == cell for p in form.posts) else None))
+                else:
+                    form.notes.append(Note(cell, g.t(r, c)[:200], "hidden_row", _m("hidden_row", x=g.t(r, c))))
     shown = [u for u in form.units if not u.hidden]
     form.controls.append(Control("file", "", "T5", None, float(len(shown)), True))
     form.controls.append(Control("file", "", "T5", None, round(sum(u.hours for u in shown), 4), True))

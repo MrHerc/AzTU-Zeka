@@ -79,7 +79,8 @@ Oxuyucu `read(sheets) -> Form` qaytarır. Formanın gördüyü hər şey aşağ�
 - **G3. Vərəq məzmununa görə təsnif olunur.** `form-A`, `form-B`, arayış cədvəli (`summary`), müəllimlərin siyahısı
   (`list`), boş vərəq (`empty`), qalanı `unknown` (hesabatda göstərilir). Vərəqin adı heç nəyi həll etmir.
 - **G4. Gizli vərəq və sətir.** Gizli vərəq oxunur, dərsləri və saatları ilə siyahıda göstərilir, lakin idxal olunmur.
-  Dəyəri olan gizli sətir qeyd alır.
+  Dəyəri olan hər gizli sətir qeyd alır: məlumat, cəm və ayırıcı sətirlər qeyd, gizli başlıq, ştat sətri və bölmə
+  başlığı isə bloklamayan konflikt alır, çünki onları şəxs görməlidir.
 - **G5. Tədris ili.** Hər ştatın tədris ili oxunur (A: ştat sətrinin üstündəki üç başlıq sətrindən il yazılanı; B:
   `AE4`). Faylın ili çoxluğun ilidir. Başqa ili olan ştat oxunur, `year_conflict` alır və bloklanır; səssiz atılmır.
 - **G6. Müqayisə açarları.** Fənn adı müqayisə üçün kiçik hərfə çevrilir (Latın `I` = `İ`), boşluqlar yığılır, tire

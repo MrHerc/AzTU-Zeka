@@ -253,6 +253,19 @@ def test_g4_a_hidden_row_with_a_value_gets_a_note(form_a):
     assert [n.cell for n in notes] == ["#0!AJ41"] and not [n for n in codes(form_a.notes, code="outside") if n.cell == "#0!AJ41"]
 
 
+def test_g4_a_hidden_staff_line_header_or_separator_row_is_said_too(sheets_a):
+    """Checkpoint F review: only a post's hidden data rows were noted; a hidden title row, staff line or header row was read
+    as if it were visible."""
+    hidden = copy.deepcopy(sheets_a)
+    hidden[0].hidden_rows |= {4, 6, 8, 16, 17}                   # the year title, A7's staff line, its header, its total, an empty row
+    form = forma3.read(hidden)
+    said = {(c.cell, c.blocking, c.post) for c in codes(form.conflicts, code="hidden_row")}
+    assert said >= {("#0!A5", False, None), ("#0!A7", False, "#0!A7"), ("#0!A9", False, None)}
+    assert {n.cell for n in codes(form.notes, code="hidden_row")} >= {"#0!AJ41", "#0!A17", "#0!E17"}
+    assert not [x for x in (*form.notes, *form.conflicts) if x.code == "hidden_row" and x.cell[3:].lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ") == "18"]
+    assert form.unclassified == 0 and not post(form, "#0!A7").blocked
+
+
 def test_x20_the_xlsx_reader_gives_state_hidden_rows_and_formula_text(sheets_a, sheets_b):
     assert [s.state for s in sheets_b].count("hidden") == 1 and sheets_b[6].state == "hidden"
     assert sheets_a[0].hidden_rows == {40} and sheets_a[1].hidden_rows == set()
