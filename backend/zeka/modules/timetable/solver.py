@@ -86,15 +86,19 @@ class Model:
         # obstacles: items N.. with their resources and room
         future = domain.future_mask(problem)
         self.obstacles = []
+        self.offgrid = []        # obstacles on a weekday the run does not use: they count in the week limits and windows only
         for o in problem.get("obstacles") or []:
             mask = domain.week_mask(o["weeks"], self.n) & future
-            if o["weekday"] not in self.days or not mask:
+            if not mask:
                 continue
             first = o["period"] - 1
             last = min(self.P, first + (o.get("duration") or 1))
             if first < 0 or first >= last:
                 continue
             res = sorted({c for g, s in o["groups"] for c in cells_of(g, s)} | ({rid(("t", o["teacher_id"]))} if o.get("teacher_id") else set()))
+            if o["weekday"] not in self.days:
+                self.offgrid.append({"weekday": o["weekday"], "p": first, "dur": last - first, "mask": mask, "res": res})
+                continue
             ri = self.room_index.get(o.get("room_id"), NONE) if not o.get("online") else NONE
             self.obstacles.append({"key": o["key"], "slot": self.days.index(o["weekday"]) * self.P + first, "dur": last - first,
                                    "mask": mask, "res": res, "room": ri})
@@ -185,6 +189,8 @@ def precheck(model: Model) -> list[dict]:
             fit = [model.cap[k] for k, r in enumerate(model.rooms) if r["kind"] in m["kinds"] and r.get("schedulable", 1)]
             if not set(m["kinds"]) & kinds_seen or not fit:
                 out.append({"code": "no_room_kind", "key": m["key"]})
+            elif max(fit) >= m["need"]:      # large enough rooms exist, but are dedicated to other units or not on its list
+                out.append({"code": "room_reserved", "key": m["key"]})
             else:
                 out.append({"code": "no_room_capacity", "key": m["key"], "need": m["need"], "max": max(fit)})
         if m["variants"] and not model.values[i]:
@@ -194,10 +200,17 @@ def precheck(model: Model) -> list[dict]:
         for r in ([model.teacher[i]] if model.teacher[i] != NONE else []) + model.cells[i]:
             load[r] = load.get(r, 0) + model.pairs[i]
     names = sorted(model.res, key=lambda k: model.res[k])
+    t_un, blocks = domain._avail(model.problem, "teacher", "unavailable"), domain._blocks(model.problem)
+    weeks = domain.future_mask(model.problem)
     for r in sorted(load):
         key = names[r]
-        if key[0] == "t" and load[r] > min(model.S, st["max_pairs_day_teacher"] * model.D) * n:
-            out.append({"code": "teacher_overload", "teacher_id": key[1], "pair_weeks": load[r]})
+        if key[0] == "t":
+            # the (pair, week) cells the teacher can teach in: not unavailable, not blocked, within the day limit
+            free = weeks & ~blocks.get(("teacher", key[1]), 0)
+            cells = sum((free & ~t_un.get((key[1], wd, p + 1), 0)).bit_count() for wd in model.days for p in range(model.P))
+            available = min(cells, min(model.S, st["max_pairs_day_teacher"] * model.D) * n)
+            if load[r] > available:
+                out.append({"code": "teacher_overload", "teacher_id": key[1], "pair_weeks": load[r], "available": available})
         if key[0] == "g" and load[r] * st["pair_hours"] > st["max_week_hours_group"] * n:
             out.append({"code": "group_over_law", "group_id": key[1], "subgroup": key[2], "hours": load[r] * st["pair_hours"] // n})
     # room supply: pair-weeks of in-person meetings that need at least c seats against rooms of c seats or more
@@ -263,6 +276,15 @@ class Search:
             bits = ((1 << o["dur"]) - 1) << p
             for r in o["res"]:
                 self.soft += self._window_weight(r) * self._prof_add(r * mo.D + day, o["mask"], bits)
+                self._count_add(self.weekc[r], o["mask"], o["dur"])
+        off: dict[tuple[int, int], int] = {}     # (resource, weekday) -> its day profile, kept after the grid's
+        for o in mo.offgrid:
+            bits = ((1 << o["dur"]) - 1) << o["p"]
+            for r in o["res"]:
+                if (r, o["weekday"]) not in off:
+                    off[(r, o["weekday"])] = len(self.prof)
+                    self.prof.append([[mo.full, 0]])
+                self.soft += self._window_weight(r) * self._prof_add(off[(r, o["weekday"])], o["mask"], bits)
                 self._count_add(self.weekc[r], o["mask"], o["dur"])
 
     # ---------------------------------------------------------------- incremental structures
@@ -452,6 +474,7 @@ class Search:
         if k != NONE:
             for q in range(d):
                 x = k * mo.S + s + q
+                assert not self.rocc[x] & mask, "a room taken twice"     # XOR below would free the other holder's weeks
                 self.rocc[x] ^= mask
                 self.rholders.setdefault(x, []).append(i)
                 if self.rocc[x] == mo.full:
@@ -609,13 +632,13 @@ def run(model: Model, state: dict | None = None, *, until_iter: int | None = Non
             j = model.value_at[i].get((s, vi))
             ok = j is not None and se.time_ok(i, s, mask)
             k = model.room_index.get(room_id, NONE) if room_id is not None else NONE
-            if ok and not model.online[i]:
-                if room_id is None:
-                    r = se.pick_room(i, s, mask)
-                    ok, k = r is not None, r[0] if r else NONE
-                else:
-                    ok = (k != NONE and model.room_bits[i] >> k & 1 == 1 and se.required_building(i, s, mask) in (None, model.bld[k])
-                          and not any(se.rocc[k * model.S + s + q] & mask for q in range(model.dur[i])))
+            # a lock keeps its exact value, room included: an online meeting with a room, or an in-person one without
+            # (the unit's mode changed after the lock), fails and stays unplaced as the checker would flag it
+            if ok and model.online[i]:
+                ok = room_id is None
+            elif ok:
+                ok = (k != NONE and model.room_bits[i] >> k & 1 == 1 and se.required_building(i, s, mask) in (None, model.bld[k])
+                      and not any(se.rocc[k * model.S + s + q] & mask for q in range(model.dur[i])))
             if ok and j is not None:
                 se.add(i, j, k)
             else:
@@ -842,8 +865,15 @@ def explain(model: Model, se: Search, i: int) -> dict:
     m = mo.meetings[i]
     counts: dict[str, int] = {}
     blockers: dict[str, dict[str, int]] = {}
-    if i in mo.locked:
-        counts["locked_infeasible"] = 1
+    if i in mo.locked:      # the search never moves a locked meeting: only its locked value explains it
+        s, mask, _ = mo.locked[i]
+        reasons = [{"code": "locked_infeasible", "slots": 1, "with": []}]
+        vals = [(j, vi) for j, (ss, vi, _) in enumerate(mo.values[i]) if ss == s and mo.variants[i][vi] == mask]
+        code, who = _slot_reason(mo, se, i, s, vals) if 0 <= s < mo.S else ("day", [])
+        if code != "free":
+            reasons.append({"code": code, "slots": 1, "with": sorted({mo.meetings[x]["key"] if x < mo.N else mo.obstacles[x - mo.N]["key"]
+                                                                       for x in who})[:3]})
+        return {"key": m["key"], "reasons": reasons}
     for s in range(mo.S):
         day, p = divmod(s, mo.P)
         if p + mo.dur[i] > mo.P:

@@ -426,7 +426,8 @@ def check(problem: dict, placements: list[dict]) -> list[dict]:
     blocks = _blocks(problem)
     t_un, r_un = _avail(problem, "teacher", "unavailable"), _avail(problem, "room", "unavailable")
     locked = {x["key"]: x for x in problem.get("locked") or []}
-    past = ((1 << n) - 1) & ~future_mask(problem)
+    future = future_mask(problem)
+    past = ((1 << n) - 1) & ~future
 
     def v(code, keys, wd=None, p=None, mask=None):
         out.append({"code": code, "keys": sorted(keys), "slot": None if wd is None else [wd, p],
@@ -448,7 +449,8 @@ def check(problem: dict, placements: list[dict]) -> list[dict]:
             v("past", [k], wd, p0, mask & past)
         if k in locked:
             lk = locked[k]
-            if (lk["weekday"], lk["period"], week_mask(lk["weeks"], n), lk.get("room_id")) != (wd, p0, mask, it["room_id"]):
+            # a repair keeps a lock in its future weeks only, as the solver does
+            if (lk["weekday"], lk["period"], week_mask(lk["weeks"], n) & future, lk.get("room_id")) != (wd, p0, mask, it["room_id"]):
                 v("locked", [k], wd, p0)
         for g in m["groups"]:
             allowed = _shift_periods(problem, groups.get(g))
