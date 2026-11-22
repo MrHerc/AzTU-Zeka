@@ -496,6 +496,7 @@ class _Reader:
         self.totals: dict[str, dict[int, float]] = {}             # post ref -> its total row by column (recomputed where unreadable)
         self.cols: dict[str, Cols] = {}                           # post ref -> its columns
         self.sheet_totals: dict[int, int] = {}                    # layout A: sheet -> the row of the department totals
+        self.said: set[tuple] = set()                             # the conflicts already said: a membership test, not a list scan
 
     def note(self, g: Grid, r: int, c: int, code: str, post: Post | None = None, cell: str | None = None, **p):
         text = g.t(r, c)
@@ -505,7 +506,9 @@ class _Reader:
     def conflict(self, g: Grid, r: int, c: int, code: str, blocking: bool, post: Post | None = None, cell: str | None = None,
                  data: dict | None = None, **p):
         new = Conflict(cell or g.ref(r, c), code, _m(code, **p), blocking, post.ref if post else None, data or {})
-        if new not in self.form.conflicts:                        # a row with two classes names its bad cell once
+        seen = (new.cell, new.code, new.blocking, new.post, repr(new.message), repr(new.data))
+        if seen not in self.said:                                 # a row with two classes names its bad cell once
+            self.said.add(seen)
             self.form.conflicts.append(new)
         g.use(r, c, "conflict")
 
@@ -535,6 +538,7 @@ def _rows(R: _Reader, g: Grid, post: Post, cols: Cols, r0: int, r1: int, total: 
     form, hours = R.form, cols.hours
     info: dict[int, dict] = {}
     vals: dict[int, dict[int, float]] = {}
+    above = "—"                                                   # the last subject seen so far, for the subject_missing message
     for r in range(r0, r1):
         filled = g.filled(r)
         if not filled:
@@ -579,7 +583,9 @@ def _rows(R: _Reader, g: Grid, post: Post, cols: Cols, r0: int, r1: int, total: 
             texts = []
         for c in texts:
             R.conflict(g, r, c, "hours_text", True, post, x=g.t(r, c))
-        info[r] = {"subject": subject, "group": group, "students": d, "d_text": d_text, "seq": g.t(r, cols.seq), "hidden": hidden}
+        info[r] = {"subject": subject, "group": group, "students": d, "d_text": d_text, "seq": g.t(r, cols.seq), "hidden": hidden,
+                   "above": above}
+        above = subject or above
         vals[r] = row
     sums: dict[int, float] = defaultdict(float)
     class_sems: dict[int, set] = defaultdict(set)                 # row -> semesters in which it has a class (own or merged)
@@ -606,8 +612,7 @@ def _rows(R: _Reader, g: Grid, post: Post, cols: Cols, r0: int, r1: int, total: 
         if info[r]["subject"] or r in missing_said:
             return
         missing_said.add(r)
-        above = next((info[x]["subject"] for x in range(r - 1, r0 - 1, -1) if x in info and info[x]["subject"]), "—")
-        R.conflict(g, r, c, "subject_missing", True, post, cell=g.ref(r, cols.subject), x=above)
+        R.conflict(g, r, c, "subject_missing", True, post, cell=g.ref(r, cols.subject), x=info[r]["above"])
 
     for r, row in vals.items():
         me = info[r]

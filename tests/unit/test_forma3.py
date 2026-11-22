@@ -665,6 +665,34 @@ def test_merges_that_cover_too_many_cells_are_refused_not_expanded():
         forma3.read([tables.Sheet("S", rows, [(0, 0, 1999, 149), (0, 0, 1999, 149)])])
 
 
+def layout_b_sheet(sheets_b, rows_data, merges=()):
+    """Sheet #0 of the layout-B fixture cut after its section label (row 10), with the given data rows ({column: value})."""
+    s = copy.deepcopy(sheets_b[0])
+    width = 46
+    s.rows = [r[:] + [""] * (width - len(r)) for r in s.rows[:10]]
+    for d in rows_data:
+        row = [""] * width
+        for c, v in d.items():
+            row[c] = v
+        s.rows.append(row)
+    s.merges = [m for m in s.merges if m[0] < 10] + list(merges)
+    s.formulas = {}
+    return s
+
+
+def test_many_bad_rows_are_read_in_linear_time(sheets_b):
+    """Checkpoint F review: a conflict was compared with every conflict before it and a row without a subject looked back
+    over every row above, so 20 000 bad rows took over a minute while the request held a handler slot."""
+    import time
+    rows = [{2: f"6526a{i % 9}", 3: "x", 5: "30"} for i in range(20_000)]       # no subject, an unreadable student count
+    sheet = layout_b_sheet(sheets_b, rows)
+    t = time.monotonic()
+    form = forma3.read([sheet])
+    assert time.monotonic() - t < 20
+    assert len(codes(form.conflicts, code="subject_missing")) == len(codes(form.conflicts, code="students_text")) == 20_000
+    assert codes(form.conflicts, code="subject_missing")[1].message["az"].endswith("—)"), "no subject above: the message says so"
+
+
 def test_a_sheet_with_a_header_and_nothing_else_does_not_crash():
     form = forma3.read([tables.Sheet("S", [["Sıra sayı", "Qruplar", "Fənlər"]])])
     assert form.units == [] and form.posts == [] and form.unclassified == 0
