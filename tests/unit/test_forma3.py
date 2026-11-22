@@ -245,7 +245,7 @@ def test_g4_a_hidden_sheet_is_read_and_listed_but_never_imported(form_b):
     assert (info.state, info.imported, info.units, info.hours) == ("hidden", False, 2, 45)
     assert post(form_b, "#6!B10").hidden and all(u.hidden for u in form_b.units if u.sheet == 6)
     r = forma3.report(form_b)
-    assert r["units"] == {"count": 24, "hours": 615, "hidden": 2, "outside": 0, "ready": 22, "ready_hours": 540, "hourly": 6,
+    assert r["units"] == {"count": 24, "hours": 615, "hidden": 2, "outside": 0, "refused": 0, "ready": 22, "ready_hours": 540, "hourly": 6,
                           "vacancy": 3, "joint": 2}
     hidden_load = [x for x in form_b.load if x.sheet == 6]
     assert r["excluded"] == {"posts": ["#6!B10"], "units": 2, "hours": 45, "load_lines": len(hidden_load),

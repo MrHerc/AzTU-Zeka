@@ -37,7 +37,8 @@ function forma3(f) {
       <span class="badge ${blocked.length ? "b-red" : "b-green"}">${blocked.length ? t("{n} ştat və ya bölmə bloklanıb", { n: blocked.length }) : t("Bütün yoxlamalar keçdi")}</span></div>
     <div class="card-b stack">
       <p class="small muted" style="margin:0">${t("Tədris ili: {y} · quruluş: {l} · vərəq: {n}", { y: f.year || "—", l: f.layout || "—", n: f.sheets.length })}</p>
-      <div class="row wrap">${tile(f.units.count, t("dərs"))}${tile(f.units.ready, t("tətbiq oluna bilən"), "ok")}${tile(f.units.count - f.units.ready, t("bloklanmış"), blocked.length ? "warn" : "")}
+      <div class="row wrap">${tile(f.units.count, t("dərs"))}${tile(f.units.ready, t("tətbiq oluna bilən"), "ok")}${tile(f.units.count - f.units.ready - (f.units.refused || 0), t("bloklanmış"), blocked.length ? "warn" : "")}
+        ${f.units.refused ? tile(f.units.refused, t("reyestrdə tapılmayan"), "warn") : ""}
         ${tile(f.units.joint, t("birləşmiş dərs"))}${tile(f.units.hourly, t("saat hesabı"))}${tile(f.units.vacancy, t("vakansiya"))}${tile(f.units.hidden, t("gizli vərəqdə"))}</div>
       ${f.excluded && f.excluded.posts.length ? html`<p class="small muted" style="margin:0">${t("Kafedranın cəminə daxil olmayan ştat və bölmələr: {p} — dərs: {u} ({h} saat), digər yük: {l} saat",
         { p: f.excluded.posts.join(", "), u: f.excluded.units, h: f.excluded.hours, l: f.excluded.load_hours })}</p>` : ""}

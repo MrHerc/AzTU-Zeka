@@ -112,7 +112,8 @@ def test_forma3_preview_shows_the_readers_report_and_writes_nothing(app_db, load
     assert {p["ref"]: p["status"] for p in f["posts"]} == {"#0!A7": "ok", "#0!A22": "ok", "#0!A48": "ok", "#0!A61": "blocked",
                                                            "#0!A72": "ok", "#1!A4": "blocked"}
     assert all(p["controls"] == {"T1": True, "T2": True, "T3": True} for p in f["posts"])
-    assert (f["units"]["count"], f["units"]["ready"], f["units"]["hourly"], f["units"]["vacancy"]) == (19, 17, 4, 3)
+    assert (f["units"]["count"], f["units"]["ready"], f["units"]["hourly"], f["units"]["vacancy"]) == (19, 9, 4, 3)
+    assert f["units"]["refused"] == 8, "ready is what the import writes (9 below); the rest is not in this registry"
     assert f["excluded"] == {"posts": ["#1!A4"], "units": 2, "hours": 45, "load_lines": 3, "load_hours": 9.3}, "A11: outside the totals"
     blocking = {(c["cell"], c["code"]) for c in f["conflicts"] if c["blocking"]}
     assert blocking == {("#0!C66", "subject_missing"), ("#1!A4", "year_conflict"), ("#1!A4", "not_in_summary")}
@@ -156,6 +157,7 @@ def test_forma3_layout_b_hidden_hourly_vacancy_and_repeated_classes(app_db, load
     got = units("f3-b")
     assert rep["inserted"] == len(got) == 19
     assert sorted(x["row"] for x in rep["conflicts"]) == ["#2!AA11", "#2!AA12", "#7!H11"], "unknown teachers are listed, never created"
+    assert (rep["forma3"]["units"]["ready"], rep["forma3"]["units"]["refused"]) == (19, 3), "the preview promises what is written"
     assert not [a for a in got if a.startswith(("#6!", "#5!Z", "#5!AA"))], "G4: the hidden sheet; R5/R2: the blocked section"
     assert {p["ref"]: p["status"] for p in rep["forma3"]["posts"]}["#6!B10"] == "hidden"
     assert got["#0!F11"]["groups"] == sorted(g[x] for x in ("6526e1", "6526e2", "6526e3")), "J1"

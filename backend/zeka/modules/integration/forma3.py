@@ -1557,10 +1557,12 @@ def _file_counts(R: _Reader):
 MAX_LISTED = 500
 
 
-def report(form: Form, known_codes: set[str] | None = None) -> dict:
+def report(form: Form, known_codes: set[str] | None = None, refused: set[str] | None = None) -> dict:
     """What the import preview and ``manage.py forma3-check`` show: per post ok / blocked / hidden with its controls,
-    the conflicts and notes by cell, the load-line totals. A group code the registry knows is never "looks wrong" (G7)."""
+    the conflicts and notes by cell, the load-line totals. A group code the registry knows is never "looks wrong" (G7);
+    ``refused``: anchors of units the import cannot place in the registry, so they are not "ready"."""
     known = known_codes or set()
+    refused = refused or set()
     conflicts = [c for c in form.conflicts if not (c.code == "code_wrong" and key(c.data.get("code", "")) in known)]
     units: dict[str, list[Unit]] = defaultdict(list)
     for u in form.units:
@@ -1574,7 +1576,7 @@ def report(form: Form, known_codes: set[str] | None = None) -> dict:
             row["hours"] = round(row["hours"] + x.hours, 4)
     blocked = {p.ref for p in form.posts if p.blocked}
     shown = [u for u in form.units if u.post in mine]
-    ready = [u for u in shown if u.post not in blocked]
+    ready = [u for u in shown if u.post not in blocked and u.anchor not in refused]
     left = [u for u in form.units if u.post not in mine]
     left_load = [x for x in form.load if x.post not in mine]
     return {
@@ -1587,7 +1589,7 @@ def report(form: Form, known_codes: set[str] | None = None) -> dict:
                    "year_conflict": p.year_conflict, "units": len(units[p.ref]), "hours": round(sum(u.hours for u in units[p.ref]), 4),
                    "year_total": round(p.year_total, 4) if p.year_total is not None else None} for p in form.posts],
         "units": {"count": len(shown), "hours": round(sum(u.hours for u in shown), 4), "hidden": sum(u.hidden for u in form.units),
-                  "outside": sum(not u.hidden for u in left), "ready": len(ready), "ready_hours": round(sum(u.hours for u in ready), 4),
+                  "outside": sum(not u.hidden for u in left), "refused": sum(u.anchor in refused for u in shown), "ready": len(ready), "ready_hours": round(sum(u.hours for u in ready), 4),
                   "hourly": sum(u.hourly for u in shown), "vacancy": sum(u.vacancy for u in shown), "joint": sum(u.joint for u in shown)},
         "excluded": {"posts": [p.ref for p in form.posts if p.ref not in mine], "units": len(left),
                      "hours": round(sum(u.hours for u in left), 4), "load_lines": len(left_load),

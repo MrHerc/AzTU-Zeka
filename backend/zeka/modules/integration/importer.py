@@ -435,6 +435,7 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
     cache: dict = {}
     items: list[Item] = []
     seen: dict[str, int] = {}
+    refused: set[str] = set()                            # units the registry cannot place: never counted as ready
     for u in form.units:
         if u.hidden or u.post in blocked:
             continue
@@ -445,6 +446,7 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
                   else _missing("Qrup", ", ".join(missing)) if missing else None)
         if reason:
             conflicts.append({"row": u.anchor, "reason": reason})
+            refused.add(u.anchor)
             continue
         sid = _key("f3", u.teacher or "", u.subject_key, u.semester, u.kind, sorted(x["code"] for x in u.groups), u.hourly, u.vacancy)
         seen[sid] = seen.get(sid, 0) + 1
@@ -455,7 +457,7 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
             "students": u.students_total or None, "pay": "hourly" if u.hourly else "staff", "vacancy": int(u.vacancy),
             "post_ref": u.post, "anchor": u.anchor}, groups=sorted({groups[forma3.norm(x["code"])] for x in u.groups}),
             extra={"where": u.anchor}))
-    report = forma3.report(form, known_codes={k for k in groups})
+    report = forma3.report(form, known_codes={k for k in groups}, refused=refused)
     return items, report
 
 

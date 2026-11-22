@@ -209,7 +209,8 @@ and never creates an account from Forma №3 (an unknown teacher, course or grou
 A `teaching-load` answer also carries `forma3`, the reader's report (Task 47, `docs/forms/forma-3.md`): `layout`, `year`,
 `sheets` (class, state, whether imported and why), `posts` (`ref`, teacher or vacancy, `pay`, `status` = `ok` | `blocked` |
 `hidden`, `controls` T1–T3, units and hours), `units` (counts of the posts in the department's totals: all, `ready`,
-`hourly`, `vacancy`, `joint`; and `hidden`, `outside` for the rest), `excluded` (the posts outside the totals: a hidden
+`hourly`, `vacancy`, `joint`, and `refused`, the units the registry cannot place, which `ready` leaves out; and `hidden`,
+`outside` for the rest), `excluded` (the posts outside the totals: a hidden
 sheet or a block the summary leaves out, with their units, hours and load lines),
 `conflicts` and `notes` (cell ref, code, message; at most 500 each, with `conflict_count`, `blocking_count`,
 `note_count`), `load` (lines and hours per kind, of the counted posts), `controls` (file and sheet checks, and failed post checks) and
