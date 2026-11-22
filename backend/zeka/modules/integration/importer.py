@@ -498,7 +498,8 @@ def _unit_links(ctx: Context, items: list[Item]) -> dict[int, dict | None]:
     """X21: a Forma №3 unit is keyed on its anchor cell, with its content (teacher, subject, groups, ordinal) as an alias.
     It finds its row by its content first (a row inserted above moves every anchor), then by its anchor (a corrected
     teacher, subject or group, a filled vacancy), and never takes a row another unit of the file has already found."""
-    links, out, taken = ctx.links["teaching_load"], {}, set()
+    links, taken = ctx.links["teaching_load"], set()
+    out: dict[int, dict | None] = {}
     mine = [it for it in items if it.link == "teaching_load"]
     for by_content in (True, False):
         for it in mine:
