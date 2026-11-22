@@ -1304,11 +1304,11 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
             if not mine <= theirs and not theirs <= mine:
                 form.notes.append(Note(post.ref, "", "summary_position", _m("summary_position", x=g.t(r, degree_c)), post.ref))
     if grand is not None and linked:                              # T6, K6: the grand total against every block the summary counts
-        mine = [p for p in a_posts.values() if p.ref in linked]
-        want, found = tx.number(g.t(grand, total_c)) or 0.0, sum(p.year_total or 0.0 for p in mine)
+        blocks = [p for p in a_posts.values() if p.ref in linked]
+        want, found = tx.number(g.t(grand, total_c)) or 0.0, sum(p.year_total or 0.0 for p in blocks)
         form.controls.append(Control("file", g.ref(grand, total_c), "T6", round(want, 4), round(found, 4), abs(want - found) <= TOL_SUM))
         if contact_c is not None:
-            want, found = tx.number(g.t(grand, contact_c)) or 0.0, sum(p.contact_hours + doctoral[p.ref] for p in mine)
+            want, found = tx.number(g.t(grand, contact_c)) or 0.0, sum(p.contact_hours + doctoral[p.ref] for p in blocks)
             form.controls.append(Control("file", g.ref(grand, contact_c), "T6", round(want, 4), round(found, 4), abs(want - found) <= TOL_SUM))
     if extra:
         form.notes.append(Note(f"#{g.i}", "", "summary_list", _m("summary_list", x=extra)))
