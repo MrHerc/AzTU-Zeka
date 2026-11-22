@@ -4,6 +4,7 @@
   python tools/i18n.py extract           write i18n/source/{ui,server,content}.json and i18n/todo/<chunk>.json (untranslated)
   python tools/i18n.py build             merge i18n/<lang>/*.json into frontend/locales/<lang>.json and backend/zeka/core/locales/<lang>.json
   python tools/i18n.py stats             coverage per language
+  python tools/i18n.py rename MAP.json [--apply]   rewrite Azerbaijani keys and move their translations (dry run by default)
 
 Translation files: i18n/en/*.json and i18n/ru/*.json, each a flat object {"<az source>": "<translation>"}.
 A value may be an object of plural forms when the source contains {n}: {"one": "...", "other": "..."} (en) or
@@ -179,6 +180,12 @@ def tokenize(src, base=0, line_of=None):
     return toks
 
 
+def _is_t_arg(toks, k):
+    """True when toks[k] is the first argument of a bare t(…) call."""
+    return (k >= 2 and toks[k - 1].kind == "p" and toks[k - 1].val == "(" and toks[k - 2].kind == "id" and toks[k - 2].val == "t"
+            and not (k >= 3 and toks[k - 3].kind == "p" and toks[k - 3].val == "."))
+
+
 def js_scan(path: Path):
     """Yield ('key', text, line) for t() source strings and ('raw', text, line, why) for untranslated UI text."""
     src = path.read_text(encoding="utf-8")
@@ -199,8 +206,7 @@ def js_scan(path: Path):
     def walk(code, base):
         toks = tokenize(code, base, line_of)
         for k, tk in enumerate(toks):
-            is_t_arg = (k >= 2 and toks[k - 1].kind == "p" and toks[k - 1].val == "(" and toks[k - 2].kind == "id" and toks[k - 2].val == "t"
-                        and not (k >= 3 and toks[k - 3].kind == "p" and toks[k - 3].val == "."))
+            is_t_arg = _is_t_arg(toks, k)
             if tk.kind == "str":
                 if is_t_arg:
                     out.append(("key", tk.val, tk.line))
@@ -255,25 +261,14 @@ def py_scan(path: Path):
             first = node.body[0]
             if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
                 doc_nodes.add(id(first.value))
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            fn = node.func.id if isinstance(node.func, ast.Name) else node.func.attr if isinstance(node.func, ast.Attribute) else ""
-            args = node.args
-            target = None
-            if fn in MARK_FUNCS and args:
-                target = args[0]
-            elif fn == "HTTPError" and len(args) >= 2:
-                target = args[1]
-            elif fn in ("ValueError", "RuntimeError", "TableError") and args:
-                target = args[0]
-            if target is not None:
-                if isinstance(target, ast.Constant) and isinstance(target.value, str):
-                    keys.append((target.value, node.lineno))
-                    marked.add(id(target))
-                elif isinstance(target, ast.JoinedStr):
-                    raws.append(("f-string in " + fn, (ast.get_source_segment(src, target) or "")[:120], node.lineno))
-                    marked.add(id(target))
-    implicit = path.name.startswith("r_") or path.name in ("common.py", "docs.py", "support.py", "tutor.py", "web.py")
+    for node, fn, target in _py_targets(tree):
+        if isinstance(target, ast.Constant) and isinstance(target.value, str):
+            keys.append((target.value, node.lineno))
+            marked.add(id(target))
+        elif isinstance(target, ast.JoinedStr):
+            raws.append(("f-string in " + fn, (ast.get_source_segment(src, target) or "")[:120], node.lineno))
+            marked.add(id(target))
+    implicit = _implicit_file(path)
     for node in ast.walk(tree):
         if isinstance(node, ast.JoinedStr) and id(node) not in marked:
             lits = "".join(v.value for v in node.values if isinstance(v, ast.Constant) and isinstance(v.value, str))
@@ -283,12 +278,33 @@ def py_scan(path: Path):
             for v in node.values:
                 marked.add(id(v))
         elif isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in marked and id(node) not in doc_nodes and implicit:
-            text = node.value
-            if AZ_LETTERS.search(text) and len(text) < 400 and text.count("\n") < 4 \
-                    and not re.match(r"\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|WITH)\b", text, re.I) \
-                    and "\\b" not in text and "(?" not in text and not text.startswith(("/", "<")):
-                keys.append((text, getattr(node, "lineno", 0)))  # implicit: translated by exact match in responses
+            if _implicit_text(node.value):
+                keys.append((node.value, getattr(node, "lineno", 0)))  # implicit: translated by exact match in responses
     return keys, raws
+
+
+def _py_targets(tree):
+    """Yield (call, function name, argument node) for every argument the extractor reads as a translation key."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            fn = node.func.id if isinstance(node.func, ast.Name) else node.func.attr if isinstance(node.func, ast.Attribute) else ""
+            args = node.args
+            if fn in MARK_FUNCS and args:
+                yield node, fn, args[0]
+            elif fn == "HTTPError" and len(args) >= 2:
+                yield node, fn, args[1]
+            elif fn in ("ValueError", "RuntimeError", "TableError") and args:
+                yield node, fn, args[0]
+
+
+def _implicit_file(path: Path) -> bool:
+    return path.name.startswith("r_") or path.name in ("common.py", "docs.py", "support.py", "tutor.py", "web.py")
+
+
+def _implicit_text(text: str) -> bool:
+    return bool(AZ_LETTERS.search(text)) and len(text) < 400 and text.count("\n") < 4 \
+        and not re.match(r"\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|WITH)\b", text, re.I) \
+        and "\\b" not in text and "(?" not in text and not text.startswith(("/", "<"))
 
 
 # ============================================================== content extraction
@@ -299,12 +315,15 @@ SKIP_KEYS = {"code", "key", "icon", "color", "tone", "url", "link", "href", "pre
              "step_roles", "effect"}
 
 
-def content_strings():
-    out = {}
+def content_strings(reads: dict | None = None):
+    """Translatable content strings; `reads`, when given, counts how many times each one is read."""
+    out: dict = {}
 
     def add(s, where):
         if isinstance(s, str) and WORDS.search(s) and not re.match(r"https?://|/[a-z]", s):
             out.setdefault(s, where)
+            if reads is not None:
+                reads[s] = reads.get(s, 0) + 1
 
     def walk(v, path, where, skip_subtrees=()):
         if any(path.startswith(p) for p in skip_subtrees):
@@ -510,6 +529,274 @@ def stats():
             print(f"{lg} {name}: {len(d) - len(miss)}/{len(d)}" + (f"  e.g. {miss[:3]}" if miss else ""))
 
 
+# ============================================================== rename (Task 20)
+JSON_STR = re.compile(r'"(?:[^"\\\n]|\\.)*"')
+CONTENT_READ = ("seed.json", "academy.json", "tools.json", "news.json", "guide.json")    # the files content_strings() reads
+
+
+def _line(text: str, pos: int) -> int:
+    return text.count("\n", 0, pos) + 1
+
+
+def _py_lit(text: str, quote: str) -> str:
+    body = text.replace("\\", "\\\\").replace(quote, "\\" + quote).replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+    return quote + body + quote
+
+
+def _py_replacement(seg: str, new: str) -> str:
+    """Source for `new` in the shape of the literal `seg`: its quote, and as many pieces as its implicit concatenation."""
+    import io
+    import tokenize as tk
+    full = "(" + seg + ")"
+    toks = [t for t in tk.generate_tokens(io.StringIO(full).readline) if t.type == tk.STRING]
+    quote = "'" if seg.lstrip("rRuU").startswith("'") else '"'
+    if len(toks) < 2:
+        return _py_lit(new, quote)
+    lines = full.splitlines(keepends=True)
+
+    def at(rc):
+        return sum(len(x) for x in lines[:rc[0] - 1]) + rc[1]
+    vals = [ast.literal_eval(t.string) for t in toks]
+    old_len, done = sum(len(v) for v in vals) or 1, 0
+    cuts: list[int] = []
+    for v in vals[:-1]:                                  # cut the new text after a space near each old boundary
+        done += len(v)
+        sp = new.find(" ", round(done / old_len * len(new)))
+        cuts.append(max(len(new) if sp < 0 else sp + 1, cuts[-1] if cuts else 0))
+    parts = [new[a:b] for a, b in zip([0, *cuts], [*cuts, len(new)], strict=True)]
+    out = []
+    for i, part in enumerate(parts):
+        out.append(_py_lit(part, quote))
+        if i < len(parts) - 1:
+            out.append(full[at(toks[i].end):at(toks[i + 1].start)])
+    return "".join(out)
+
+
+def _py_literals(path: Path, src: str, test: bool):
+    """(start, end, value, context) of every str constant outside f-strings, as character offsets. Context: 'key' (an
+    argument the extractor reads, or an implicit key), 'test', or 'other' (an unrelated literal: a compared value, a
+    dict key, a subscript, a docstring, or any literal the extractor does not read)."""
+    tree = ast.parse(src)
+    raw = src.encode("utf-8")
+    starts = [0] + [m.end() for m in re.finditer(b"\n", raw)]
+
+    def char(line, col):
+        b = starts[line - 1] + col
+        return len(raw[:b].decode("utf-8"))
+    inner = {id(v) for n in ast.walk(tree) if isinstance(n, ast.JoinedStr) for v in n.values}     # an f-string's own text
+    keys = {id(t) for _, _, t in _py_targets(tree)}
+    other: set[int] = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Compare):
+            for x in [n.left, *n.comparators]:
+                other.update(id(y) for y in [x, *getattr(x, "elts", [])])
+        elif isinstance(n, ast.Dict):
+            other.update(id(k) for k in n.keys if k is not None)
+        elif isinstance(n, ast.Subscript):
+            other.add(id(n.slice))
+        if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)) and n.body:
+            first = n.body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+                other.add(id(first.value))
+    implicit = _implicit_file(path)
+    out = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in inner and n.end_lineno is not None:
+            ctx = ("test" if test else "key" if id(n) in keys else "other" if id(n) in other
+                   else "key" if implicit and _implicit_text(n.value) else "other")
+            out.append((char(n.lineno, n.col_offset), char(n.end_lineno, n.end_col_offset or 0), n.value, ctx))
+    return out
+
+
+def _js_literals(src: str, test: bool):
+    out = []
+
+    def walk(code, base):
+        toks = tokenize(code, base)
+        for k, tk in enumerate(toks):
+            ctx = "test" if test else "key" if _is_t_arg(toks, k) else "other"
+            if tk.kind == "str":
+                out.append((tk.start, tk.end, tk.val, ctx))
+            elif tk.kind == "tpl":
+                if not tk.exprs:
+                    out.append((tk.start, tk.end, tk.parts[0], ctx))
+                for expr, off in tk.exprs:
+                    walk(expr, off)
+    walk(src, 0)
+    return out
+
+
+def _json_literals(src: str, read: bool):
+    out = []
+    for m in JSON_STR.finditer(src):
+        is_key = src[m.end():m.end() + 40].lstrip().startswith(":")
+        out.append((m.start(), m.end(), json.loads(m.group()), "other" if is_key or not read else "content"))
+    return out
+
+
+def _literal(kind: str, seg: str, new: str) -> str:
+    if kind == "py":
+        return _py_replacement(seg, new)
+    if kind == "json":
+        return json.dumps(new, ensure_ascii=False)
+    q = seg[0]
+    body = new.replace("\\", "\\\\").replace(q, "\\" + q).replace("\n", "\\n")
+    return q + (body.replace("${", "\\${") if q == "`" else body) + q
+
+
+def _scan_files():
+    """Every file the rename reads: (path, kind, text, literals); kind 'other' files are only searched for notes."""
+    files = []
+    for top in ("backend", "frontend", "tests", "content"):
+        for f in sorted((ROOT / top).rglob("*")):
+            if not f.is_file() or "__pycache__" in f.parts or "locales" in f.parts:
+                continue
+            try:
+                text = f.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            test = top == "tests"
+            if f.suffix == ".py":
+                files.append((f, "py", text, _py_literals(f, text, test)))
+            elif f.suffix == ".js":
+                files.append((f, "js", text, _js_literals(text, test)))
+            elif f.suffix == ".json" and top == "content":
+                files.append((f, "json", text, _json_literals(text, f.parent == CONTENT and f.name in CONTENT_READ)))
+            elif f.suffix in (".json", ".jsonl", ".sql", ".md", ".html", ".csv", ".txt"):
+                files.append((f, "other", text, []))
+    return files
+
+
+def _tr_dump(d: dict, inline: bool, nl: bool = True) -> str:
+    if inline:              # one line per key, plural objects inline: the style of most catalogue files
+        return "{\n" + ",\n".join(f" {json.dumps(k, ensure_ascii=False)}: {json.dumps(v, ensure_ascii=False)}" for k, v in d.items()) + "\n}\n"
+    return json.dumps(d, ensure_ascii=False, indent=1) + ("\n" if nl else "")
+
+
+def _tr_files(lang):
+    out = []
+    for f in sorted((I18N / lang).glob("*.json")):
+        text = f.read_text(encoding="utf-8")
+        d = json.loads(text)
+        out.append({"path": f, "d": d, "inline": text == _tr_dump(d, True), "nl": text.endswith("\n"), "dirty": False})
+    return out
+
+
+def _tr_rename(files, old, new, val, keep_old, lang):
+    """Move, merge or change one translation in a language's files; returns what was done ('' for nothing)."""
+    has_old = [f for f in files if old in f["d"]]
+    if new != old:
+        if not has_old and val is None:
+            return ""
+        val = val if val is not None else has_old[-1]["d"][old]
+        has_new = [f for f in files if new in f["d"]]
+        did = "merged" if has_new else "copied" if keep_old else "moved"
+        if has_new and (keep_old or not has_old) and all(f["d"][new] == val for f in has_new):
+            return ""                                # done already (a second run)
+        for f in has_new:                            # the new key exists already: the two keys merge
+            if f["d"][new] != val:
+                f["d"][new], f["dirty"] = val, True
+        if not has_new and not has_old:
+            has_new = [_tr_spare(files, lang)]
+            has_new[0]["d"][new] = val
+        for f in has_old:
+            if keep_old and not has_new:
+                f["d"][new] = val
+            elif not keep_old and has_new:
+                del f["d"][old]
+            elif not keep_old:
+                f["d"] = {(new if k == old else k): (val if k == old else v) for k, v in f["d"].items()}
+            f["dirty"] = True
+        return did
+    if val is None:
+        return ""
+    did = ""
+    for f in has_old or [_tr_spare(files, lang)]:
+        if f["d"].get(old) != val:
+            f["d"][old], f["dirty"], did = val, True, "changed"
+    return did
+
+
+def _tr_spare(files, lang):
+    """The language's file for translations that had no file yet."""
+    spare = I18N / lang / "language-20.json"
+    for f in files:
+        if f["path"] == spare:
+            f["dirty"] = True
+            return f
+    files.append({"path": spare, "d": {}, "inline": True, "nl": True, "dirty": True})
+    return files[-1]
+
+
+def rename(mapping_path, apply=False):
+    """Rewrite Azerbaijani keys and their translations from a mapping {old: {"az": new | null, "en": … | null,
+    "ru": … | null, "only": [repo paths]?}} (null: keep). A key that also occurs as an unrelated literal, or inside a
+    longer content string, is refused and nothing of it is written. With "only", code is rewritten in those files alone
+    and the old key keeps its translations. Prints what it does; a dry run unless apply. Running it twice changes nothing."""
+    mapping = json.loads(Path(mapping_path).read_text(encoding="utf-8"))
+    files = _scan_files()
+    reads: dict = {}
+    content_strings(reads)
+    index: dict = {}
+    whole: dict = {}
+    for i, (_, _, _, lits) in enumerate(files):
+        for j, lit in enumerate(lits):
+            index.setdefault(lit[2], []).append((i, j))
+            if lit[3] == "content":
+                whole[lit[2]] = whole.get(lit[2], 0) + 1
+    edits: dict = {}
+    tr = {lg: _tr_files(lg) for lg in LANGS}
+    total = {"renamed": 0, "refused": 0, "code": 0, "tests": 0, "translations": 0}
+    for old, m in mapping.items():
+        new = m.get("az") or old
+        only = {ROOT / p for p in m.get("only") or ()}
+        hits = [(i, j) for i, j in index.get(old, ()) if not only or files[i][0] in only]
+        if new != old and (hits or any(old in f["d"] for lg in LANGS for f in tr[lg])):
+            bad = [(i, j) for i, j in hits if files[i][3][j][3] == "other"]
+            if bad:
+                where = ", ".join(f"{files[i][0].relative_to(ROOT)}:{_line(files[i][2], files[i][3][j][0])}" for i, j in bad[:4])
+                print(f"REFUSED {old[:70]!r}: also an unrelated literal at {where}")
+                total["refused"] += 1
+                continue
+            if not only and reads.get(old, 0) != whole.get(old, 0):
+                print(f"REFUSED {old[:70]!r}: content reads it {reads[old]} time(s), {whole.get(old, 0)} as a whole string")
+                total["refused"] += 1
+                continue
+            for i, j in hits:
+                edits.setdefault(i, []).append((files[i][3][j], new))
+            ncode = sum(1 for i, j in hits if files[i][3][j][3] != "test")
+            total["code"] += ncode
+            total["tests"] += len(hits) - ncode
+            total["renamed"] += 1
+            places = sorted({str(files[i][0].relative_to(ROOT)) for i, _ in hits})
+            print(f"RENAME {old[:60]!r} -> {new[:60]!r}: {ncode} in code, {len(hits) - ncode} in tests ({', '.join(places[:5])})")
+            inside = sorted({str(f.relative_to(ROOT)) for i, (f, _, text, _) in enumerate(files)
+                             if len(old) >= 8 and old in text and all(i != a for a, _ in hits)})
+            if inside:
+                print(f"  NOTE inside other text, not rewritten: {', '.join(inside[:6])}")
+        for lg in LANGS:
+            did = _tr_rename(tr[lg], old, new, m.get(lg), bool(only), lg)
+            if did:
+                total["translations"] += 1
+                print(f"  {lg}: {did}")
+    for i, lst in edits.items():
+        f, kind, text, _ = files[i]
+        for (start, end, _, _), new in sorted(lst, key=lambda x: -x[0][0]):
+            text = text[:start] + _literal(kind, text[start:end], new) + text[end:]
+        if kind == "py":
+            ast.parse(text)                          # a rewrite never leaves a file that does not parse
+        if apply:
+            f.write_text(text, encoding="utf-8")
+    for lg in LANGS:
+        for f in tr[lg]:
+            if f["dirty"] and apply:
+                f["path"].write_text(_tr_dump(f["d"], f["inline"], f["nl"]), encoding="utf-8")
+    print(f"{'APPLIED' if apply else 'DRY RUN (add --apply to write)'}: {total['renamed']} key(s) renamed, {total['refused']} refused, "
+          f"{total['code']} code and {total['tests']} test literal(s), {total['translations']} translation(s) moved or changed, "
+          f"{len(edits)} file(s)")
+    return total
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "stats"
     if cmd == "lint":
@@ -518,5 +805,7 @@ if __name__ == "__main__":
         extract()
     elif cmd == "build":
         build()
+    elif cmd == "rename" and len(sys.argv) > 2:
+        rename(sys.argv[2], apply="--apply" in sys.argv[3:])
     else:
         stats()
