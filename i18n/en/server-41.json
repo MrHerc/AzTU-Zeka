@@ -47,7 +47,7 @@
  "Semestr yazıları yoxdur; semestr sütunların düzülüşünə görə təyin edildi": "There are no semester labels; the semester was determined from the order of the columns",
  "Müəllimin ata adı «oğlu» və ya «qızı» ilə yazılmayıb: {x}": "The teacher's patronymic is not written with «oğlu» or «qızı»: {x}",
  "Müəllimin adından sonra mötərizədə qeyd var: {x}": "There is a note in brackets after the teacher's name: {x}",
- "Vərəqin adındakı söz vərəqin xanalarında yoxdur: {x}": "A word in the sheet's name appears in none of its cells: {x}",
+ "Vərəqin adı vərəqin məzmununa uyğun gəlmir: {x}": "The sheet's name does not match its contents: {x}",
  "Vərəqdə yük yoxdur": "The sheet holds no load",
  "Qrupun tələbə sayı sətirlərdə fərqlidir: {x} — {y}": "The group's number of students differs between rows: {x} — {y}",
  "Dərs sətrində tələbə sayı yazılmayıb: {x}": "A class row gives no number of students: {x}",

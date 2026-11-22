@@ -47,7 +47,7 @@
  "Semestr yazıları yoxdur; semestr sütunların düzülüşünə görə təyin edildi": "Подписей семестров нет; семестр определён по расположению столбцов",
  "Müəllimin ata adı «oğlu» və ya «qızı» ilə yazılmayıb: {x}": "Отчество преподавателя записано без «oğlu» или «qızı»: {x}",
  "Müəllimin adından sonra mötərizədə qeyd var: {x}": "После имени преподавателя есть примечание в скобках: {x}",
- "Vərəqin adındakı söz vərəqin xanalarında yoxdur: {x}": "Слова из названия листа нет ни в одной его ячейке: {x}",
+ "Vərəqin adı vərəqin məzmununa uyğun gəlmir: {x}": "Название листа не соответствует его содержимому: {x}",
  "Vərəqdə yük yoxdur": "На листе нет нагрузки",
  "Qrupun tələbə sayı sətirlərdə fərqlidir: {x} — {y}": "Число студентов группы различается по строкам: {x} — {y}",
  "Dərs sətrində tələbə sayı yazılmayıb: {x}": "В строке занятия не указано число студентов: {x}",

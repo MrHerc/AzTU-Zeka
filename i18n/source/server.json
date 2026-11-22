@@ -911,7 +911,7 @@
  "Semestr yazıları yoxdur; semestr sütunların düzülüşünə görə təyin edildi": "forma3.py:92",
  "Müəllimin ata adı «oğlu» və ya «qızı» ilə yazılmayıb: {x}": "forma3.py:93",
  "Müəllimin adından sonra mötərizədə qeyd var: {x}": "forma3.py:94",
- "Vərəqin adındakı söz vərəqin xanalarında yoxdur: {x}": "forma3.py:95",
+ "Vərəqin adı vərəqin məzmununa uyğun gəlmir: {x}": "forma3.py:95",
  "Vərəqdə yük yoxdur": "forma3.py:96",
  "Qrupun tələbə sayı sətirlərdə fərqlidir: {x} — {y}": "forma3.py:97",
  "Dərs sətrində tələbə sayı yazılmayıb: {x}": "forma3.py:98",

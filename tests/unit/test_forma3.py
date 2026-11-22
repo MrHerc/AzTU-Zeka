@@ -451,6 +451,20 @@ def test_g9_a_sheet_whose_group_rows_give_nothing_is_a_conflict_not_a_zero_load(
     assert not codes(form.notes, code="zero_load")
 
 
+@pytest.mark.parametrize("name, tokens", [
+    ("Kərimov Rəşad 0,5 ştat", []), ("Rəşad Kərimov", []), ("Kərimov R.", []),
+    ("Kərimov Rəşad saathesabı", ["saathesabı"]),   # the sheet has no hourly section
+    ("Kərimov Samir", ["Samir"]),                   # the patronymic in place of the given name (B2, mr#83)
+    ("Kərimov Ora", ["Ora"]),                       # a word is never found as a piece of another cell's text ("Laboratoriya")
+    ("Kərimov Rəşad (sabah)", ["sabah"]),           # a bracket's word only needs some cell to repeat it
+])
+def test_b2_the_sheet_name_is_compared_with_the_teacher_cell_word_by_word(name, tokens):
+    sheet = mk.sheet_b(name, "müəllim Kərimov Rəşad Samir oğlunun", [{"label": "0.5  ŞTAT", "gap": 2, "data": []}])
+    form = forma3.read(tables.xlsx_sheets(mk.xlsx([sheet])))
+    assert form.posts[0].sheet_name_tokens == tokens
+    assert len(codes(form.notes, code="sheet_name")) == (1 if tokens else 0)
+
+
 # ---------------------------------------------------------------- rows, classes, merges (G1, G2, R1–R6, J1–J7)
 def test_j1_a_merged_lecture_is_one_class_for_every_group_it_covers(form_a, form_b):
     stream = unit(form_a, "#0!E11")

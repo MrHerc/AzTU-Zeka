@@ -50,8 +50,8 @@ Oxuyucu `read(sheets) -> Form` qaytarır. Formanın gördüyü hər şey aşağ�
   sətirləri, `Cəmi` sətri, müəllimin adı (fayldakı kimi və adlıq halda), elmi dərəcə, vəzifə, ştat vahidi (`1`, `0,5`),
   iş növü (`main` — əsas iş yeri, `internal` — daxili əvəzçi, `external` — kənar əvəzçi, `substitute-unspecified` —
   yalnız «əvəzçi»; yazılmayıbsa boş qalır, ehtimal edilmir), ödəniş (`staff` — ştat, `hourly` — saat hesabı), vakansiya və
-  onun sahəsi, məsləhətçi professor, tədris ili və onun fərqli olması, ikinci ştat (B), vərəqin adında olub xanalarda
-  olmayan sözlər.
+  onun sahəsi, məsləhətçi professor, tədris ili və onun fərqli olması, ikinci ştat (B), vərəqin adında olub vərəqə
+  uyğun gəlməyən sözlər.
 - **Dərs (unit)**: bir semestrin bir mühazirəsi, məşğələsi və ya laboratoriyası. Ştat, müəllim (vakansiyada boş), saat
   hesabı işarəsi, fənn (fayldakı mətn və müqayisə açarı), semestr (`payiz`, `yaz`), növ, saat (xanadakı kimi: `7.5`, `14`,
   `20` yuvarlaqlaşdırılmır), qruplar (`kod`, tələbə sayı, sətir), tələbələrin cəmi, birləşmiş olması, lövbər xana (saatın
@@ -154,8 +154,10 @@ Oxuyucu `read(sheets) -> Form` qaytarır. Formanın gördüyü hər şey aşağ�
 - **B1–B2. Müəllim `E4` xanasındandır.** Elmi dərəcə və vəzifə sözləri atılır; yiyəlik hal adlıq hala gətirilir
   (`oğlunun` → `oğlu`, `qızının` → `qızı`); bitişik yazılmış ad və ata adı ayrılır; ata adı olmayan ad yol veriləndir və
   qeyd olunur. Mətn `vakansiya` ilə başlayırsa, müəllim yoxdur; mötərizədəki və ya sondakı mətn vakansiyanın sahəsidir.
-  Şəxsin adından sonrakı mötərizə ştatın qeydidir. Vərəqin adı ilə `E4` sözlərin çoxluğu kimi müqayisə olunur;
-  uyğunsuzluq qeyddir.
+  Şəxsin adından sonrakı mötərizə ştatın qeydidir. Vərəqin adındakı şəxs sözləri `E4`-dəki soyad və adla (adda nə qədər
+  söz varsa) bütöv söz kimi, sırasız, bir hərf fərqi bağışlanmaqla, inisial isə hərfinə görə müqayisə olunur; ata adı
+  adın yerində yazılıbsa (`mr#83`), uyğunsuzluqdur. Ştat vahidi, `ştat`, saat hesabı sözləri və mötərizədəki sözlər
+  (`(sabah)`) vərəqin hansısa xanasında təkrarlanmalıdır. Hər uyğunsuzluq qeyddir.
 - **B3–B4. Bölmələr.** Bölmə başlığı B xanasından AS və ya AT-yə qədər birləşdirilmiş, qrupu və saatı olmayan sətirdir.
   Boşluqsuz yazılışı `saathesab` ilə başlayan başlıq saat hesabıdır; `ştat` sözü olan başlıq ştatdır
   (`[əsas iş yeri üzrə] ştat vahidi ştat [iş növü]`). Hər ikisi olmayan başlıq yalnız vakansiya vərəqində sahə adıdır;

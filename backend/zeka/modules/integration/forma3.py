@@ -92,7 +92,7 @@ MSG = {
     "labels_absent": S_("Semestr yazıları yoxdur; semestr sütunların düzülüşünə görə təyin edildi"),
     "no_patronymic": S_("Müəllimin ata adı «oğlu» və ya «qızı» ilə yazılmayıb: {x}"),
     "person_suffix": S_("Müəllimin adından sonra mötərizədə qeyd var: {x}"),
-    "sheet_name": S_("Vərəqin adındakı söz vərəqin xanalarında yoxdur: {x}"),
+    "sheet_name": S_("Vərəqin adı vərəqin məzmununa uyğun gəlmir: {x}"),
     "zero_load": S_("Vərəqdə yük yoxdur"),
     "students_differ": S_("Qrupun tələbə sayı sətirlərdə fərqlidir: {x} — {y}"),
     "students_missing": S_("Dərs sətrində tələbə sayı yazılmayıb: {x}"),
@@ -1090,7 +1090,7 @@ def _sheet_b(R: _Reader, g: Grid, hidden: bool, consensus: dict[int, str]) -> li
         return (k in used_words or (len(k) <= 2 and any(x.startswith(k) for x in used_words))
                 or ((len(k) >= 3 or k[:1].isdigit()) and any(k in t for t in squeezed)))
 
-    name_tokens = [w for w in re.findall(r"[^\W_]+(?:[.,]\d+)?", g.sheet.name) if not repeated(w)]
+    name_tokens = _sheet_name_tokens(g.sheet.name, who.name if who is not None else None, repeated)
     start = (numbers if numbers is not None else band[-1]) + 1
     foot = next((r for r in range(start, g.h) if any(FOOTER in key(g.t(r, c)) for c in g.filled(r))), None)
     end = foot if foot is not None else g.h
@@ -1161,6 +1161,32 @@ def _sheet_b(R: _Reader, g: Grid, hidden: bool, consensus: dict[int, str]) -> li
     if who_at and name_tokens and posts:
         R.form.notes.append(Note(posts[0].ref, "", "sheet_name", _m("sheet_name", x=", ".join(name_tokens)), posts[0].ref))
     return posts
+
+
+NOT_NAME = {key(x) for x in ("ştat", "saat", "hesabı", "saathesabı")}
+
+
+def _sheet_name_tokens(name: str, person: str | None, repeated) -> list[str]:
+    """B2: the words of a sheet's name that do not fit the sheet. The person's words are compared with the teacher cell's
+    surname and given name (as many of its words as the name has), as whole words, order free, one letter forgiven, an
+    initial by its letter; a fraction, ``ştat``, the hourly words and a bracket's words (``(sabah)``) only need some cell
+    of the sheet to repeat them. Without a person (a vacancy) every word takes the cell test."""
+    brackets = " ".join(re.findall(r"\(([^)]*)\)", name))
+    words = re.findall(r"[^\W_]+(?:[.,]\d+)?", re.sub(r"\([^)]*\)?", " ", name))
+    meta = [w for w in words if not tx.WORD.fullmatch(w) or key(w) in NOT_NAME] + re.findall(r"[^\W_]+(?:[.,]\d+)?", brackets)
+    names = [w for w in words if tx.WORD.fullmatch(w) and key(w) not in NOT_NAME]
+    out = [w for w in meta if not repeated(w)]
+    if person is None:
+        return [w for w in names if not repeated(w)] + out
+    rest = _words(person)[:max(2, len(names))]
+    for w in names:
+        k = key(w)
+        hit = next((x for x in rest if _near(k, x) or (len(k) <= 2 and x.startswith(k))), None)
+        if hit is None:
+            out.insert(0, w)
+        else:
+            rest.remove(hit)
+    return out
 
 
 # ---------------------------------------------------------------- sheets (G3) and the file
