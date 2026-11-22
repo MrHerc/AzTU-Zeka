@@ -1,11 +1,11 @@
 {
- "Məqbul": "Credit test",
+ "Məqbul": "Pass/fail test",
  "İmtahan suallarının hazırlanması": "Preparing exam questions",
  "Kurs layihəsi (işi)": "Course project (paper)",
  "Referat": "Essay",
  "Magistrların işi": "Master's students' work",
  "Magistr dissertasiyasına rəhbərlik": "Master's dissertation supervision",
- "Magistr dissertasiyası üzrə məsləhət": "Master's dissertation consulting",
+ "Magistr dissertasiyası üzrə məsləhət": "Master's dissertation consultations",
  "Tədqiqat işinin aparılması": "Research work",
  "Layihələrin idarə olunması": "Project management",
  "Təcrübə": "Internship",
@@ -19,7 +19,7 @@
  "Gizli vərəq: idxal olunmur": "Hidden sheet: not imported",
  "Bloklanıb": "Blocked",
  "Vakansiya": "Vacancy",
- "Forma №3: oxunuşun hesabatı": "Forma №3: reading report",
+ "Forma №3: faylın oxunması üzrə hesabat": "Form No. 3: file reading report",
  "{n} ştat və ya bölmə bloklanıb": {
   "one": "{n} post or section blocked",
   "other": "{n} posts or sections blocked"
@@ -51,7 +51,7 @@
  "Bloklayır": "Blocking",
  "Xəbərdarlıq": "Warning",
  "Qeydlər: {n}": "Notes: {n}",
- "Dərs olmayan yük: {h} saat": "Load other than classes: {h} hours",
+ "Dərsdən kənar yük: {h} saat": "Load other than classes: {h} hours",
  "Yükün növü": "Load type",
  "İdxal olunmayan vərəqlər: {n}": "Sheets not imported: {n}",
  "Vərəq": "Sheet"

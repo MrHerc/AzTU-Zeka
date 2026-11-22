@@ -237,7 +237,7 @@ route("/profile", async (el) => {
         <div class="card"><div class="card-h"><h3>${ic("sliders", 17)} ${t("Görünüş və dil")}</h3></div><div class="card-b stack">
           <div class="set-row"><div><b>${t("İnterfeys dili")}</b><div class="small muted">${t("Fənn materialları tədris dilində qalır.")}</div></div>${langSwitch()}</div>
           <div class="set-row"><div><b>${t("Tema")}</b><div class="small muted">${t("Açıq və ya tünd görünüş")}</div></div>
-            <div class="seg" role="group"><button class="${S.theme !== "dark" ? "active" : ""}" data-theme-set="light">${ic("sun", 14)} ${t("Açıq")}</button><button class="${S.theme === "dark" ? "active" : ""}" data-theme-set="dark">${ic("moon", 14)} ${t("Tünd")}</button></div></div>
+            <div class="seg" role="group"><button class="${S.theme !== "dark" ? "active" : ""}" data-theme-set="light">${ic("sun", 14)} ${t("Açıq tema")}</button><button class="${S.theme === "dark" ? "active" : ""}" data-theme-set="dark">${ic("moon", 14)} ${t("Tünd tema")}</button></div></div>
           <div class="set-row"><div><b>${t("Sol panel")}</b><div class="small muted">${t("Yığılmış rejimdə yalnız ikonlar görünür. Qısayol: [")}</div></div>
             <div class="seg" role="group"><button class="${!collapsed ? "active" : ""}" data-sb="open">${t("Açıq")}</button><button class="${collapsed ? "active" : ""}" data-sb="collapsed">${t("Yığılmış")}</button></div></div>
         </div></div>

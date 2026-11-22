@@ -33,7 +33,7 @@ function forma3(f) {
   const who = (p) => p.vacancy ? t("Vakansiya") + (p.vacancy_area ? ` (${p.vacancy_area})` : "") : p.teacher || "—";
   const skipped = f.sheets.filter((x) => !x.imported);
   const labels = LOAD();
-  return html`<div class="card mt"><div class="card-h"><h3>${ic("list", 17)} ${t("Forma №3: oxunuşun hesabatı")}</h3>
+  return html`<div class="card mt"><div class="card-h"><h3>${ic("list", 17)} ${t("Forma №3: faylın oxunması üzrə hesabat")}</h3>
       <span class="badge ${blocked.length ? "b-red" : "b-green"}">${blocked.length ? t("{n} ştat və ya bölmə bloklanıb", { n: blocked.length }) : t("Bütün yoxlamalar keçdi")}</span></div>
     <div class="card-b stack">
       <p class="small muted" style="margin:0">${t("Tədris ili: {y} · quruluş: {l} · vərəq: {n}", { y: f.year || "—", l: f.layout || "—", n: f.sheets.length })}</p>
@@ -59,7 +59,7 @@ function forma3(f) {
       ${f.note_count ? html`<details><summary>${t("Qeydlər: {n}", { n: f.note_count })}</summary>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Qeyd")}</th></tr></thead><tbody>
         ${f.notes.map((n) => html`<tr><td>${n.cell}</td><td>${n.message}</td></tr>`)}</tbody></table></div></details>` : ""}
-      <details><summary>${t("Dərs olmayan yük: {h} saat", { h: f.load_hours })}</summary>
+      <details><summary>${t("Dərsdən kənar yük: {h} saat", { h: f.load_hours })}</summary>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Yükün növü")}</th><th>${t("Sətir")}</th><th>${t("Saat")}</th></tr></thead><tbody>
         ${Object.entries(f.load).map(([k, v]) => html`<tr><td>${labels[k] || k}</td><td>${v.lines}</td><td>${v.hours}</td></tr>`)}</tbody></table></div></details>
       ${skipped.length ? html`<details><summary>${t("İdxal olunmayan vərəqlər: {n}", { n: skipped.length })}</summary>

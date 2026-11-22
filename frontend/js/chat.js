@@ -14,7 +14,7 @@ export async function chatView(el, cfg) {
   const clearUrl = cfg.kind === "tutor" ? `${cfg.base}/clear` : "/api/campus/clear";
   // Course quotes stay in the language of instruction (Azerbaijani); flag it for EN/RU users.
   const langTip = LANG !== "az"
-    ? infoTip(t("Fənn materialları tədris dilində (azərbaycan dilində) təqdim olunur; sitatlar orijinal dildə göstərilir.")).__html
+    ? infoTip(t("Fənn materialları tədris dilində (Azərbaycan dilində) təqdim olunur; sitatlar orijinal dildə göstərilir.")).__html
     : "";
 
   mount(el, html`

@@ -835,7 +835,7 @@ def needs_input(body: dict, unit: dict, settings: dict, n: int, rooms: set[int])
         return {}, bad
     reason = " ".join(reason.split()) if isinstance(reason, str) else ""
     if need is not None and not 3 <= len(reason) <= 300:
-        return {}, E("Yer sayını dəyişəndə səbəbini yazın")
+        return {}, E("Yer sayını dəyişdirdikdə səbəbini yazın")
     if type(dur) is not int or not 1 <= dur <= MAX_DURATION or mode not in MODES or (split is not None and split not in SPLITS):
         return {}, bad
     if pat is not None:

@@ -219,7 +219,7 @@
  "Səhifə": "Page",
  "Problemi daha tez tapmaq üçün dəstəyə keçdiyiniz səhifənin ünvanı sorğuya əlavə olunur.": "To help find the problem faster, the address of the page you came from is added to the ticket.",
  "Parol və ya FİN kimi məxfi məlumatları yazmayın.": "Do not enter confidential data such as your password or FIN code.",
- "Sorğunu göndər": "Send request",
+ "Sorğunu göndər": "Send ticket",
  "Mövzunun kateqoriyasını seçin": "Select the subject category",
  "Sorğunuz qəbul olundu": "Your ticket has been received",
  "Sorğu № {id}. Cavab hazır olduqda bildiriş alacaqsınız.": "Ticket No. {id}. You will be notified when a reply is ready.",

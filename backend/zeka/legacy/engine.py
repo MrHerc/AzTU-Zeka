@@ -101,7 +101,7 @@ def split_sentences(md: str) -> list[str]:
         if not line or line.startswith("#") or line.startswith(">"):
             continue
         line = re.sub(r"^\s*[-*]\s+", "", line).replace("**", "").replace("`", "")
-        for s in re.split(r"(?<=[.!?])\s+(?=[A-ZƏÖÜŞÇĞIİ0-9“\"(])", line):
+        for s in re.split(r"(?<=[.!?])\s+(?=[A-ZƏÖÜŞÇĞIİ0-9“«\"(])", line):
             s = s.strip()
             if len(s) > 3:
                 out.append(s)
@@ -515,9 +515,10 @@ def grade(q: dict, value) -> tuple[bool | None, str]:
             v = value
         else:
             f = fold(str(value))
-            pos = re.search(r"(dogru|duz|beli|true|\bhe\b)", f)
-            neg = re.search(r"(yanlis|sehv|xeyr|false)", f)
-            negated = re.search(r"\b(deyil|not)\b", f)        # "doğru deyil" = false, "yanlış deyil" = true
+            # the RU and EN pages ask for «Верно / Неверно» and "True / False", so those words count too
+            pos = re.search(r"(dogru|duz|beli|true|\bhe\b|\bcorrect\b|\bверно\b|\bправда\b)", f)
+            neg = re.search(r"(yanlis|sehv|xeyr|false|\bincorrect\b|\bневерно\b|\bложь\b)", f)
+            negated = re.search(r"\b(deyil|not|не)\b", f)     # "doğru deyil" = false, "yanlış deyil" = true
             if pos and not neg:
                 v = not negated
             elif neg and not pos:
@@ -685,19 +686,19 @@ def generate_questions(chunks: list[dict], course_glossary: list[tuple[str, str]
         if len(others) >= 3:
             opts = rng.sample(others, 3) + [term]
             rng.shuffle(opts)
-            pool["mcq"].append({"qtype": "mcq", "text": f"Aşağıdakı tərif hansı anlayışa aiddir?\n\n“{_first_sentence(d, 220)}”",
+            pool["mcq"].append({"qtype": "mcq", "text": f"Aşağıdakı tərif hansı anlayışa aiddir?\n\n«{_first_sentence(d, 220)}»",
                                 "options": opts, "answer": opts.index(term), "bloom": "Xatırlama", "difficulty": "Asan",
                                 "explanation": f"**{term}** — {d}", "topic": topic, "chunk_id": ch["id"]})
             dopts = [_first_sentence(x, 120) for x in rng.sample(other_defs, 3)] + [_first_sentence(d, 120)]
             correct = dopts[-1]
             rng.shuffle(dopts)
-            pool["mcq"].append({"qtype": "mcq", "text": f"“{term}” anlayışının düzgün tərifi hansıdır?",
+            pool["mcq"].append({"qtype": "mcq", "text": f"«{term}» anlayışının düzgün tərifi hansıdır?",
                                 "options": dopts, "answer": dopts.index(correct), "bloom": "Anlama", "difficulty": "Orta",
                                 "explanation": f"**{term}** — {d}", "topic": topic, "chunk_id": ch["id"]})
         if other_defs:
             truth = rng.random() < 0.5
             stmt_def = d if truth else rng.choice(other_defs)
-            pool["tf"].append({"qtype": "tf", "text": f"Doğrudurmu: “{term} — {_first_sentence(stmt_def, 160)}.”",
+            pool["tf"].append({"qtype": "tf", "text": f"Doğrudurmu: «{term} — {_first_sentence(stmt_def, 160)}».",
                                "options": [], "answer": truth, "bloom": "Anlama", "difficulty": "Asan",
                                "explanation": f"Düzgün tərif: **{term}** — {d}", "topic": topic, "chunk_id": ch["id"]})
     for trigger, build in _numeric_templates(rng):

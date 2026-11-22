@@ -112,7 +112,7 @@ export async function privacyCard(box) {
   on(box, "click", "#pv-erase", () => modal({ title: t("Məlumatlarımın silinməsi"), body: html`<div class="stack">
       <p style="margin:0">${t("Sorğunu tədris hissəsi yoxlayır. Sorğu təsdiq edilərsə, söhbətləriniz, mesajlarınız, bildirişləriniz, adınız və əlaqə məlumatlarınız silinir, hesabınıza giriş bağlanır. Qanunvericiliyə əsasən saxlanılmalı olan akademik qeydlər qalır. Bu əməliyyat geri qaytarılmır.")}</p>
       <label class="field"><span>${t("Səbəb")} <span class="muted">(${t("istəyə görə")})</span></span><textarea class="input" id="pv-reason" rows="3" maxlength="1000"></textarea></label></div>`,
-    actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Sorğunu göndər"), cls: "btn-danger", onClick: async (w) => {
+    actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Silinmə sorğusunu göndər"), cls: "btn-danger", onClick: async (w) => {
       try { await api.post("/api/me/erase", { reason: w.querySelector("#pv-reason").value }); toast(t("Sorğu göndərildi"), "ok"); draw(); }
       catch (err) { toast(err.message, "err"); return false; }
     } }] }));

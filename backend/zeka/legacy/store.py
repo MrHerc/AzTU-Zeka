@@ -384,9 +384,9 @@ SYNTH_Q = {
                  ("İmpulsun saxlanması qanunu nədir?", None)],
     "QRF-1104": [("Üst görünüş harada yerləşdirilir?", "Görünüşlərin yerləşdirilməsi"), ("Ştrix xətt nə vaxt istifadə olunur?", "Xətt növləri"),
                  ("Miqyas necə hesablanır?", "Miqyas"), ("Ölçü rəqəmi harada yazılır?", "Ölçülərin qoyulması qaydaları"), ("Aksonometriya nədir?", None)],
-    "İNG-1105": [("“used to” və “used for” fərqi nədir?", "Describing function (Funksiyanı təsvir etmək)"),
+    "İNG-1105": [("«used to» və «used for» fərqi nədir?", "Describing function (Funksiyanı təsvir etmək)"),
                  ("3.5 kΩ necə oxunur?", "Saying numbers and units (Ədədlərin və vahidlərin oxunuşu)"),
-                 ("How do I describe tolerances?", "Tolerances (Buraxılışlar)"), ("“consists of” necə işlədilir?", "Describing structure (Quruluşu təsvir etmək)")],
+                 ("How do I describe tolerances?", "Tolerances (Buraxılışlar)"), ("«consists of» necə işlədilir?", "Describing structure (Quruluşu təsvir etmək)")],
 }
 
 

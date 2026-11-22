@@ -751,7 +751,11 @@ def rename(mapping_path, apply=False):
         new = m.get("az") or old
         only = {ROOT / p for p in m.get("only") or ()}
         hits = [(i, j) for i, j in index.get(old, ()) if not only or files[i][0] in only]
+        single = [(i, j) for i, j in hits if files[i][3][j][3] == "test" and " " not in old]
+        hits = [h for h in hits if h not in single]       # a one-word test literal may be unrelated (a sheet name, a value)
         if new != old and (hits or (not only and any(old in f["d"] for lg in LANGS for f in tr[lg]))):
+            if single:
+                print(f"  NOTE test literal left as it is: {', '.join(f'{files[i][0].relative_to(ROOT)}:{_line(files[i][2], files[i][3][j][0])}' for i, j in single[:4])}")
             bad = [(i, j) for i, j in hits if files[i][3][j][3] == "other"]
             if bad:
                 where = ", ".join(f"{files[i][0].relative_to(ROOT)}:{_line(files[i][2], files[i][3][j][0])}" for i, j in bad[:4])
@@ -778,7 +782,7 @@ def rename(mapping_path, apply=False):
             did = _tr_rename(tr[lg], old, new, m.get(lg), bool(only), lg)
             if did:
                 total["translations"] += 1
-                print(f"  {lg}: {did}")
+                print(f"  {lg}: {did} {new[:60]!r}")
     for i, lst in edits.items():
         f, kind, text, _ = files[i]
         for (start, end, _, _), new in sorted(lst, key=lambda x: -x[0][0]):

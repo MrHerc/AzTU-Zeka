@@ -102,7 +102,7 @@ def enrollment_body(holder, data, ctx, en):
         "İş yeri": "Dərslər həftə içi, əyani formada keçirilir.",
     }.get(purpose, "")
     other = f" Təyinatı: {e(data.get('purpose_other'))}." if purpose == "Digər" and data.get("purpose_other") else ""
-    return (f"Verilir ona ki, <b>{e(full)}</b> həqiqətən {e(uni['name'])}nin {e(fac['name'])}nin <b>“{e(sp['name'])}”</b> ixtisası üzrə "
+    return (f"Verilir ona ki, <b>{e(full)}</b> həqiqətən {e(uni['name'])}nin {e(fac['name'])}nin <b>«{e(sp['name'])}»</b> ixtisası üzrə "
             f"<b>{az_ordinal(int(yr))} kurs</b> tələbəsidir (qrup: {e(holder.get('group') or '—')}, tələbə bileti № {e(holder.get('student_no') or '—')}).</p>"
             f"<p>Təhsil forması: əyani; təhsil pilləsi: {e(sp['level'].lower())}; qəbul ili: {adm}. {extra}</p>"
             f"<p>Arayış {e(place)} təqdim edilmək üçün verilir.{other}{(' Qurum: ' + e(org) + '.') if org else ''}")
@@ -113,7 +113,7 @@ def transcript_body(holder, data, ctx, rows_, en):
     scope = rows_[-1:] if data.get("scope") == "Son semestr" else rows_
     name = translit(holder["full_name"]) if en else f"{holder['full_name']} {holder.get('patronymic') or ''}".strip()
     head = (f"Student: <b>{e(name)}</b> · {e(sp['name_en'])} · group {e(holder.get('group') or '—')} · ID {e(holder.get('student_no') or '—')}" if en
-            else f"Tələbə: <b>{e(name)}</b> · “{e(sp['name'])}” ixtisası · qrup {e(holder.get('group') or '—')} · tələbə bileti № {e(holder.get('student_no') or '—')}")
+            else f"Tələbə: <b>{e(name)}</b> · «{e(sp['name'])}» ixtisası · qrup {e(holder.get('group') or '—')} · tələbə bileti № {e(holder.get('student_no') or '—')}")
     out = [f"<p class='noindent'>{head}</p>"]
     tot_cr = tot_w = all_cr = 0
     for s in scope:
@@ -149,13 +149,13 @@ def leave_body(holder, data, ctx, doc):
     order = (f"{dmy(data['order_date'])} tarixli {e(data['order_no'])} nömrəli" if data.get("order_no") and data.get("order_date")
              else "… tarixli … nömrəli")
     return (f"Rektorun {order} əmrindən çıxarış:</p>"
-            f"<p>“{e(sp['name'])}” ixtisası üzrə {az_ordinal(int(holder.get('year') or 2))} kurs tələbəsi (qrup {e(holder.get('group') or '—')}) "
+            f"<p>«{e(sp['name'])}» ixtisası üzrə {az_ordinal(int(holder.get('year') or 2))} kurs tələbəsi (qrup {e(holder.get('group') or '—')}) "
             f"<b>{e(full)}</b> {e((data.get('reason') or '').lower())} səbəbindən {e(data.get('start') or '')}ndən başlayaraq "
             f"{e(data.get('period') or '')} müddətinə akademik məzuniyyətə buraxılsın.</p>"
             f"<p>Akademik məzuniyyət müddətində tələbənin statusu saxlanılır; təhsilin bərpası üçün müddət bitməzdən əvvəl dekanlığa müraciət edilməlidir.")
 
 
-KIND_AZ = {"main": "əsas", "retake": "təkrar", "individual": "fərdi vaxt"}
+KIND_AZ = {"main": "əsas", "retake": "təkrar imtahan", "individual": "fərdi vaxt"}
 RESULT_AZ = {"passed": "keçdi", "exam_min": "imtahan balı minimumdan aşağı", "pass_mark": "yekun bal keçid balından aşağı",
              "not_admitted": "buraxılmayıb", "absent": "gəlməyib"}
 INCIDENT_AZ = {"client.blur": "pəncərədən çıxma", "client.fullscreen_exit": "tam ekrandan çıxma", "client.reconnect": "yenidən qoşulma",
@@ -211,7 +211,7 @@ def render_document(doc: dict, holder: dict, issuer: dict, ctx: dict, transcript
   <h1>SERTİFİKAT</h1>
   <p class="cert-lead">Bu sertifikat təsdiq edir ki,</p>
   <div class="cert-name">{e(full)}</div>
-  <p class="cert-lead">“{e(data.get('program', 'Təhsildə süni intellekt'))}” peşəkar inkişaf proqramını ({e(str(data.get('modules', '')))} modul,
+  <p class="cert-lead">«{e(data.get('program', 'Təhsildə süni intellekt'))}» peşəkar inkişaf proqramını ({e(str(data.get('modules', '')))} modul,
   {e(str(data.get('hours', '')))} saat) uğurla başa vurmuşdur.</p>
   <div class="cert-foot">
     <div><b>Reyestr №</b> {e(doc['reg_no'])}<br><b>Tarix:</b> {dmy(doc['issued_at'])}<br><span class="muted">DEMO — hüquqi qüvvəsi yoxdur</span></div>

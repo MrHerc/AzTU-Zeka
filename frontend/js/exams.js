@@ -3,7 +3,7 @@
 import { api, html, mount, on, ic, toast, modal, fmtDateTime, empty, t, go, route, pageHead, loading, failed, S } from "./core.js";
 import { HOME } from "./shell.js";
 
-const KIND = () => ({ main: t("Əsas"), retake: t("Təkrar"), individual: t("Fərdi vaxt") });
+const KIND = () => ({ main: t("Əsas"), retake: t("Təkrar imtahan"), individual: t("Fərdi vaxt") });
 const STATUS = () => ({ draft: [t("Qaralama"), "b-gray"], open: [t("Açıq"), "b-green"], closed: [t("Bağlanıb"), "b-blue"], released: [t("Açıqlanıb"), "b-navy"] });
 const ROSTER = () => ({ eligible: [t("Buraxılıb"), "b-green"], excluded: [t("Buraxılmayıb"), "b-red"], exception: [t("İstisna qaydasında"), "b-amber"] });
 const badge = (map, k) => { const [l, c] = map()[k] || [k, "b-gray"]; return html`<span class="badge ${c}">${l}</span>`; };

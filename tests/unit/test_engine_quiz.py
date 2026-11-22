@@ -34,6 +34,15 @@ def test_grade_tf_parses_az_and_en_words(given, v):
     assert engine.grade(TF, given) == (v == TF["answer"], "Doğru" if v else "Yanlış")
 
 
+@pytest.mark.parametrize("given, v", [
+    # the RU and EN pages ask for «Верно / Неверно» and "True / False" (Task 20): those words are answers too
+    ("Верно", True), ("верно", True), ("Правда", True), ("Неверно", False), ("ложь", False), ("не верно", False),
+    ("True", True), ("False", False), ("correct", True), ("incorrect", False),
+])
+def test_grade_tf_parses_the_words_the_ru_and_en_pages_ask_for(given, v):
+    assert engine.grade(TF, given) == (v == TF["answer"], "Doğru" if v else "Yanlış")
+
+
 def test_grade_tf_unparseable():
     assert engine.grade(TF, "bəlkə") == (None, "bəlkə")
 

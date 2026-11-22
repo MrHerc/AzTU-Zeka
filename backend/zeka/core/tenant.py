@@ -174,7 +174,7 @@ SOLVER_LIMITS = {"construct_ejections": (0, 1000), "iter_budget": (1, 5_000_000)
 def _timetable(t: dict) -> dict | None:
     bad = E("Ayarın quruluşu düzgün deyil")
     if not _ints(t["days"], 1, 7, 7) or t["days"] != sorted(t["days"]):
-        return E("Dərs günləri 1 (bazar ertəsi) ilə 7 (bazar) arasında təkrarlanmayan rəqəmlərdir")
+        return E("Dərs günləri 1 (bazar ertəsi) ilə 7 (bazar) arasında təkrarlanmayan ədədlərdir")
     shifts = t["shifts"]
     if not (isinstance(shifts, dict) and len(shifts) <= 10 and all(
             isinstance(k, str) and 1 <= len(k) <= 20 and _ints(p, 1, 16, 16) for k, p in shifts.items())):

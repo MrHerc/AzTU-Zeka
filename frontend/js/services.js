@@ -377,7 +377,7 @@ route("/office", async (el, p, q) => {
     mount($("#queue-b", el), shown.length ? html`<div class="table-wrap"><table class="table office-table"><thead><tr><th>${t("Tələbə")}</th><th>${t("Müraciət")}</th><th>${t("Göndərilib")}</th><th>${t("İcra müddəti")}</th><th>${t("Status")}</th><th></th></tr></thead><tbody>
       ${shown.map((r) => html`<tr data-open="${r.id}"><td data-l="${t("Tələbə")}"><div class="row">${avatar(r.student, r.student_color)}<div><b>${r.student}</b><div class="tiny muted">${r.group || ""}</div></div></div></td>
         <td data-l="${t("Müraciət")}"><div class="row"><span class="stat-ic svc-cat-ic sm" style="--c:${catOf(r.category).color}">${ic(r.icon, 15)}</span><div><b class="small">${r.type_name}</b>
-          <div class="tiny muted">${t("№ {id}", { id: r.id })}${r.summary ? " · " + r.summary : ""}${r.files ? " · " + r.files + " " + t("fayl") : ""}</div></div></div></td>
+          <div class="tiny muted">${t("№ {id}", { id: r.id })}${r.summary ? " · " + r.summary : ""}${r.files ? " · " + t("{n} fayl", { n: r.files }) : ""}</div></div></div></td>
         <td class="small nowrap" data-l="${t("Göndərilib")}">${ago(r.created_at)}</td>
         <td class="sla-cell" data-l="${t("İcra müddəti")}">${r.hours_left != null && r.status !== "returned" ? html`<div class="small sla-txt ${r.overdue ? "over" : ""}">${r.overdue ? t("{n} saat gecikir", { n: Math.abs(Math.round(r.hours_left)) }) : t("{n} saat qalıb", { n: Math.round(r.hours_left) })}</div>
           ${raw(`<div class="progress mt-xs"><span style="width:${Math.min(100, Math.max(4, 100 - (r.hours_left / r.sla_hours) * 100))}%;background:${r.overdue ? "var(--red)" : r.hours_left < r.sla_hours / 3 ? "var(--amber)" : "var(--green)"}"></span></div>`)}`

@@ -42,7 +42,7 @@ export const tabs = (list, cur) => html`<div class="seg mb" role="tablist">${lis
 
 /** The readiness checklist: level as text, what it stops, counts, samples (ids) and the page that fixes it. */
 export const readinessTable = (r) => html`<div class="table-wrap"><table class="table tt-ready"><thead><tr><th>${t("Vəziyyət")}</th><th>${t("Bənd")}</th>
-  <th>${t("Say")}</th><th>${t("Nə dayanır")}</th><th>${t("Nümunələr")}</th><th></th></tr></thead><tbody>
+  <th>${t("Say")}</th><th>${t("Nəyi dayandırır")}</th><th>${t("Nümunələr")}</th><th></th></tr></thead><tbody>
   ${r.lines.map((x) => { const [l, c, i] = LINE_LEVEL()[x.level] || [x.level, "b-gray", "info"];
     return html`<tr data-line="${x.code}"><td><span class="badge ${c}">${ic(i, 13)} ${l}</span></td><td>${x.title}</td>
       <td class="nowrap">${x.code === "term_dates" ? t("{n} həftə, gözlənilən {m}", { n: x.found, m: x.of }) : x.of ? `${x.found} / ${x.of}` : x.found || "—"}</td>
@@ -72,7 +72,7 @@ function availabilityEditor(host, termId, uid, { onSaved } = {}) {
         <p class="small muted" style="margin:0">${t("Xananı basdıqca vəziyyəti dəyişir: boş → məşğulam → arzuolunmaz → üstünlük verirəm. «Məşğulam» xanasına dərs qoyulmur; digərləri yalnız nəzərə alınır.")}</p>
         <p class="small" style="margin:0" aria-live="polite" id="av-meter"><b>${t("Həftədə {n} cüt dərsiniz var.", { n: data.feedback.weekly_pairs })} ${t("Boş qalan xana: {n}.", { n: m.free })}</b>
           ${t("Məşğul xanalar: {u} / {t} (hədd {p}%).", { u: m.un, t: m.total, p: data.cap_pct })}
-          ${m.over ? html` <span class="badge b-amber">${mine ? t("Hədd {n} xana aşılıb: cədvəl kafedra müdirinin təsdiqinə gedəcək", { n: m.over }) : t("Hədd {n} xana aşılıb", { n: m.over })}</span>` : ""}</p>
+          ${m.over ? html` <span class="badge b-amber">${mine ? t("Hədd {n} xana aşılıb: cədvəl kafedra müdirinə təsdiqə göndəriləcək", { n: m.over }) : t("Hədd {n} xana aşılıb", { n: m.over })}</span>` : ""}</p>
         <p class="small muted" style="margin:0">${t("Son tarix: {d}", { d: fmtDate(data.due) })}${st.reopened_until ? " · " + t("Müddət {d} tarixinədək uzadılıb", { d: fmtDate(st.reopened_until) }) : ""}
           ${ro ? html` · <b>${t("Son tarix keçib: dəyişiklik üçün kafedra müdirinə müraciət edin")}</b>` : ""}</p>
         <div class="table-wrap" tabindex="0" role="region" aria-label="${t("Həftəlik məşğulluq")}"><table class="table tt-avail"><thead><tr><th>${t("Cüt")}</th>${data.days.map((d) => html`<th>${DAYS()[d]}</th>`)}</tr></thead><tbody>
@@ -137,9 +137,9 @@ route("/teacher/availability", async (el, p, q) => {
   mount(el, loading());
   let terms, term;
   try { ({ terms, term } = await pickTerm(q)); } catch (err) { return mount(el, failed(err.message)); }
-  const head = pageHead(t("Məşğulluq vaxtlarım"), t("Dərs deyə bilmədiyiniz vaxtları qeyd edin: cədvəl qurulanda bu vaxtlara dərs qoyulmur."),
+  const head = pageHead(t("Məşğulluq vaxtlarım"), t("Dərs keçə bilmədiyiniz vaxtları qeyd edin: cədvəl qurularkən bu vaxtlara dərs qoyulmur."),
     terms.length > 1 ? termSelect(terms, term) : "", [[t("Əsas"), HOME[S.user.role]], [t("Məşğulluq vaxtlarım")]]);
-  if (!term) return mount(el, html`${head}${empty("calendar", t("Semestr yoxdur"), t("Tədris şöbəsi semestri yaradanda burada görünür."))}`);
+  if (!term) return mount(el, html`${head}${empty("calendar", t("Semestr yoxdur"), t("Tədris hissəsi semestri yaratdıqdan sonra burada görünəcək."))}`);
   mount(el, html`${head}<div id="av-host">${loading()}</div>`);
   on(el, "change", ".tt-term", (e, s) => { location.hash = `#/teacher/availability?term=${s.value}`; });
   try { await availabilityEditor($("#av-host", el), term.id, S.user.id); } catch (err) { mount($("#av-host", el), failed(err.message)); }
@@ -155,9 +155,9 @@ const needsForm = (u, rooms, after, groupNames = "") => {
       <div class="field"><label class="label" for="nd-rooms">${t("Yalnız bu otaqlar")}</label><select class="input" id="nd-rooms" multiple size="4">${rooms.map((r) =>
         html`<option value="${r.id}" ${(n.room_ids || []).includes(r.id) ? "selected" : ""}>${r.code}${r.capacity ? ` · ${r.capacity}` : ""}</option>`)}</select></div>
       <div class="row wrap"><div class="field"><label class="label" for="nd-need">${t("Yer sayı")}</label><input class="input" id="nd-need" type="number" min="1" max="2000" value="${n.need ?? ""}" placeholder="${u.students ?? ""}"></div>
-        <div class="field grow"><label class="label" for="nd-reason">${t("Yer sayını dəyişməyin səbəbi")}</label><input class="input" id="nd-reason" maxlength="300" value="${n.need_reason || ""}"></div></div>
+        <div class="field grow"><label class="label" for="nd-reason">${t("Yer sayının dəyişdirilməsinin səbəbi")}</label><input class="input" id="nd-reason" maxlength="300" value="${n.need_reason || ""}"></div></div>
       <div class="row wrap"><div class="field"><label class="label" for="nd-dur">${t("Bir dərsdə cüt sayı")}</label><input class="input" id="nd-dur" type="number" min="1" max="4" value="${n.duration || 1}"></div>
-        <div class="field"><label class="label" for="nd-mode">${t("Forma")}</label><select class="input" id="nd-mode"><option value="in_person">${t("Əyani")}</option>
+        <div class="field"><label class="label" for="nd-mode">${t("Keçirilmə forması")}</label><select class="input" id="nd-mode"><option value="in_person">${t("Əyani")}</option>
           <option value="online" ${n.mode === "online" ? "selected" : ""}>${t("Onlayn")}</option></select></div>
         <div class="field grow"><label class="label" for="nd-pattern">${t("Hər dərsin həftələri, nöqtəli vergüllə (məs.: tək; cüt və ya 1-8; 9-15)")}</label><input class="input" id="nd-pattern" value="${(n.pattern || []).map(patternOut).join("; ")}" placeholder="${t("boşdursa: ümumi qayda")}"></div></div>
     </div>`,
@@ -180,7 +180,7 @@ route("/dept/timetable", async (el, p, q) => {
   const crumbs = [[t("Əsas"), HOME[S.user.role]], [t("Kafedra cədvəli")]];
   const head = () => html`${pageHead(t("Kafedra cədvəli"), t("Semestr cədvəli üçün kafedranın hazırlığı: vahidlərin tələbləri və müəllimlərin məşğulluq vaxtları."),
     terms.length > 1 ? termSelect(terms, term) : "", crumbs)}${tabs([["ready", t("Hazırlıq")], ["units", t("Tələblər")], ["teachers", t("Müəllimlər")]], tab)}`;
-  if (!term) return mount(el, html`${head()}${empty("calendar", t("Semestr yoxdur"), t("Tədris şöbəsi semestri yaradanda burada görünür."))}`);
+  if (!term) return mount(el, html`${head()}${empty("calendar", t("Semestr yoxdur"), t("Tədris hissəsi semestri yaratdıqdan sonra burada görünəcək."))}`);
   const B = `/api/timetable/build/${term.id}`;
   let offset = 0, board = null, rooms = null, unitsNow = [], open = null, gnames = {};
 
@@ -206,7 +206,7 @@ route("/dept/timetable", async (el, p, q) => {
             <td><button class="btn btn-ghost btn-sm" data-needs="${u.id}">${t("Dəyiş")}</button></td></tr>`)}</tbody></table></div>
             ${r.total > 100 ? html`<div class="card-b row"><button class="btn btn-sm" data-page="-1" ${offset ? "" : "disabled"}>${t("Əvvəlki")}</button>
               <button class="btn btn-sm" data-page="1" ${offset + 100 < r.total ? "" : "disabled"}>${t("Növbəti")}</button></div>` : ""}`
-            : html`<div class="card-b">${empty("layers", t("Bu semestrdə kafedranın vahidi yoxdur"), t("Forma №3 idxal olunanda burada görünür."))}</div>`}</div>`);
+            : html`<div class="card-b">${empty("layers", t("Bu semestrdə kafedranın vahidi yoxdur"), t("Forma №3 idxal edildikdən sonra burada görünəcək."))}</div>`}</div>`);
       } else {
         board = await api.get(`${B}/teachers`);
         mount(body, html`<div class="card"><div class="card-h"><h3>${ic("users", 17)} ${t("Müəllimlərin məşğulluq vaxtları")}</h3><span class="muted small">${t("Son tarix: {d}", { d: fmtDate(board.due) })}</span></div>
@@ -263,9 +263,9 @@ route("/office/timetable", async (el, p, q) => {
     ({ terms, term } = await pickTerm(q));
     if (term) [groups, st] = await Promise.all([api.get(`/api/timetable/build/${term.id}/groups`), api.get("/api/timetable/settings")]);
   } catch (err) { return mount(el, failed(err.message)); }
-  const head = pageHead(t("Fakültə cədvəli"), t("Qrupların növbəsi: cədvəl qurulanda qrupun dərsləri yalnız öz növbəsinin cütlərinə qoyulur."),
+  const head = pageHead(t("Fakültə cədvəli"), t("Qrupların növbəsi: cədvəl qurularkən qrupun dərsləri yalnız öz növbəsinin cütlərinə qoyulur."),
     terms.length > 1 ? termSelect(terms, term) : "", [[t("Əsas"), HOME[S.user.role]], [t("Fakültə cədvəli")]]);
-  if (!term) return mount(el, html`${head}${empty("calendar", t("Semestr yoxdur"), t("Tədris şöbəsi semestri yaradanda burada görünür."))}`);
+  if (!term) return mount(el, html`${head}${empty("calendar", t("Semestr yoxdur"), t("Tədris hissəsi semestri yaratdıqdan sonra burada görünəcək."))}`);
   const shifts = Object.keys(st.timetable.shifts);
   const label = (k) => `${SHIFT()[k] || k} (${st.timetable.shifts[k].join(", ")})`;
   mount(el, html`${head}<div class="card"><div class="card-h wrap"><h3>${ic("users", 17)} ${t("Qrupların növbəsi")}</h3>

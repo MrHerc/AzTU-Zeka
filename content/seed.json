@@ -65,7 +65,7 @@
     {"code": "İNG-1105", "prereq": "Xarici dil II", "name": "Texniki ingilis dili", "teacher": "gunel", "credits": 4, "color": "#db2777",
      "description": "Mühəndislik terminologiyası, komponentlərin və ölçülərin ingilis dilində təsviri.",
      "materials": [["eng-1-components.md", "Unit 1. Describing components and functions"], ["eng-2-measurements.md", "Unit 2. Units, measurements and tolerances"]],
-     "suggestions": ["“used to” və “used for” fərqi nədir?", "3.5 kΩ necə oxunur?", "How do I describe tolerances?", "“consists of” necə işlədilir?"],
+     "suggestions": ["«used to» və «used for» fərqi nədir?", "3.5 kΩ necə oxunur?", "How do I describe tolerances?", "«consists of» necə işlədilir?"],
      "schedule": [[1, "12:00", "13:20", "Məşğələ", "Əsas korpus, 512"], [4, "12:00", "13:20", "Məşğələ", "Əsas korpus, 512"]],
      "tools": []}
   ],

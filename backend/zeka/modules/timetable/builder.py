@@ -37,7 +37,7 @@ TITLES = {   # readiness lines, publish gate and slot reasons: one catalogue key
     "unit_groups": S_("Qrupu olmayan tədris vahidləri"), "vacancies": S_("Müəllimi olmayan tədris vahidləri"),
     "defaults": S_("Təsdiqlənməmiş standart ayarlar"),
     "status": S_("Yalnız layihə və ya rəydəki versiya dərc olunur"), "unchecked": S_("Versiya son dəyişiklikdən sonra yoxlanmayıb və ya pozuntusu var"),
-    "stale_parent": S_("Bu layihə hazırlanandan sonra başqa versiya dərc olunub: hesablamanı yenidən başladın"),
+    "stale_parent": S_("Bu layihə hazırlandıqdan sonra başqa versiya dərc olunub: hesablamanı yenidən başladın"),
     "unconfirmed": S_("Dərcdən əvvəl təsdiqlənməli olan ayarlar hələ təsdiqlənməyib"), "readiness": S_("Hazırlıq siyahısında dərci dayandıran bənd var"),
     "effective_from": S_("Qüvvəyə minmə tarixi semestrin dərs dövründə və bildiriş müddətindən sonra olmalıdır"),
     "unplaced_count": S_("Yerləşdirilməyən dərslərin sayı düzgün yazılmayıb"),
@@ -58,14 +58,14 @@ TITLES = {   # readiness lines, publish gate and slot reasons: one catalogue key
     "slot_rules": S_("Növbə, universitet tədbiri və ya müəllimin məşğul vaxtı imkan vermir"),
     "blocked_weeks": S_("Bütün həftələr təcrübə və ya başqa səbəblə dərsdən azaddır"),
     "teacher_busy": S_("Müəllim başqa dərsdədir"), "group_busy": S_("Qrup başqa dərsdədir"), "day_limit": S_("Günlük cüt həddi aşılır"),
-    "locked_infeasible": S_("Kilidli yerləşdirmə qaydalara uyğun deyil"), "free": S_("Boş vaxt var, amma axtarış onu tapmadı"),
+    "locked_infeasible": S_("Kilidli yerləşdirmə qaydalara uyğun deyil"), "free": S_("Boş vaxt var, lakin axtarış onu tapmadı"),
     # what a precheck finds before any search (solver.precheck) and the units a run leaves out
     "no_groups": S_("Vahidin qrupu yoxdur: hesablamaya daxil edilmir"), "no_hours": S_("Vahidin saatı yoxdur: hesablamaya daxil edilmir"),
     "no_room_kind": S_("Bu növdə otaq yoxdur"),
     "room_reserved": S_("Tutumu çatan otaqlar başqa vahidlərə ayrılıb və ya vahidin otaq siyahısında deyil"),
     "no_room_capacity": S_("Otaq tutumu çatmır: {need} yer lazımdır, ən böyük uyğun otaqda {max} yer var"),
     "empty_time_domain": S_("Növbə, universitet tədbirləri və müəllimin məşğul vaxtları bu dərsə vaxt saxlamır"),
-    "teacher_overload": S_("Müəllimin dərs yükü boş vaxtına sığmır: semestrdə {pair_weeks} cüt lazımdır, boş xana {available}"),
+    "teacher_overload": S_("Müəllimin dərs yükü boş vaxtına sığmır: semestrdə {pair_weeks} cüt lazımdır, boş xanaların sayı: {available}"),
     "group_over_law": S_("Qrupun həftəlik auditoriya saatı qanuni həddi aşır: həftədə {hours} saat"),
     "room_supply": S_("{need} və daha çox yerlik otaqlar çatmır: həftədə {demand} cüt lazımdır, imkan {supply} cütdür"),
     "manual_rows": S_("Əl ilə yazılmış sətirləri olduğu üçün hesablamaya daxil edilməyən vahidlər"),
@@ -398,7 +398,7 @@ def put_needs(c, user, uid: int, body) -> dict:
         raise HTTPError(409, "Vahidin fənni heç bir semestrə bağlanmayıb")
     t = term(c, u["term_id"])
     if _today() > dues(c, t)["needs"] and not manages(user):
-        raise HTTPError(409, "Tələblərin son tarixi keçib: dəyişikliyi indi yalnız tədris şöbəsi edə bilər")
+        raise HTTPError(409, "Tələblərin son tarixi keçib: dəyişikliyi indi yalnız tədris hissəsi edə bilər")
     v, problem = domain.needs_input(dict(body), u, settings(c), domain.term_weeks(t), {r["id"] for r in repo.rooms(c)})
     if problem:
         raise HTTPError(400, problem)
@@ -421,7 +421,7 @@ def put_groups(c, user, tid: int, body) -> dict:
     items = body.array("items")
     shifts, buildings = settings(c)["shifts"], repo.building_ids(c)
     if len(items) > 500:
-        raise HTTPError(400, "Bir dəfədə ən çox 500 qrup yazmaq olar")
+        raise HTTPError(400, "Bir dəfəyə ən çox 500 qrup saxlamaq mümkündür")
     clean = []
     for x in items:
         gid = x.get("group_id") if isinstance(x, dict) else None
@@ -722,15 +722,15 @@ def work(c) -> str:
         r = repo.run(c, r["id"]) or r                         # its steps may have moved on within this call
         holding = r["kind"] == "publish" and (J(r["progress"], {}) or {}).get("step", "check") != "check"
         failed = fails >= 3 and not holding
-        error = _err(T3("Dərcin bu mərhələsi alınmadı: iş onu özü təkrarlayır, bu müddətdə semestrin cədvəli kilidli qalır") if holding
-                     else T3("Hesablama sistem xətası ilə dayandı: onu yenidən başladın, xəta təkrarlansa, inzibatçıya bildirin"))
+        error = _err(T3("Dərcin bu mərhələsi uğursuz oldu: dövri iş onu avtomatik təkrarlayır, bu müddətdə semestrin cədvəli kilidli qalır") if holding
+                     else T3("Hesablama sistem xətası səbəbindən dayandı: onu yenidən başladın, xəta təkrarlanarsa, administratora bildirin"))
         _tx(c, lambda: repo.update_run(c, r["id"], fails=fails, error=error, progress=_progress(r, detail=detail),
                                        **({"status": "failed", "finished_at": iso(now()), "state": None} if failed else {})))
         if failed:
             CACHE.pop(r["id"], None)
-            _tx(c, lambda: notify(c, [r["requested_by"]], "timetable", T3("Cədvəl hesablaması alınmadı"), "", "/admin/timetable/build"))
+            _tx(c, lambda: notify(c, [r["requested_by"]], "timetable", T3("Cədvəlin hesablanması uğursuz oldu"), "", "/admin/timetable/build"))
         elif holding and fails == 3:
-            _tx(c, lambda: notify(c, [r["requested_by"]], "timetable", T3("Cədvəlin dərci yarımçıq qalıb: iş onu təkrarlayır"), "",
+            _tx(c, lambda: notify(c, [r["requested_by"]], "timetable", T3("Cədvəlin dərci yarımçıq qalıb: dövri iş onu təkrarlayır"), "",
                                   "/admin/timetable/build"))
         return f"run {r['id']}: error {fails}"
 
@@ -1067,7 +1067,7 @@ def _iso_day(v: str) -> bool:
 def publish(c, user, vid: int, body) -> dict:
     v = version_for(c, user, vid)
     if not scope_of(c, user)["all"]:
-        raise HTTPError(403, "Cədvəli yalnız bütün universitet üzrə səlahiyyəti olan tədris şöbəsi dərc edir")
+        raise HTTPError(403, "Cədvəli yalnız bütün universitet üzrə səlahiyyəti olan tədris hissəsi dərc edir")
     t = term(c, v["term_id"])
     eff, accept, reason = body.text("effective_from", 10), body.integer("accept_unplaced", None, lo=0), body.text("override_reason", 500)
     gate = _gate(c, v, t, eff, accept, reason)

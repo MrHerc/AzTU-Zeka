@@ -10,11 +10,11 @@ import { DAYS, KIND, PAIR, SHIFT, CONFIRM, pickTerm, termSelect, tabs, readiness
 const POLL_MS = 5000;
 const ROOT = "/admin/timetable/build";
 const STATUS = () => ({ draft: [t("Layihə"), "b-blue"], review: [t("Rəydə"), "b-violet"], published: [t("Dərc olunub"), "b-green"],
-  superseded: [t("Köhnəlib"), "b-gray"], discarded: [t("Atılıb"), "b-gray"] });
-const RUN_STATUS = () => ({ queued: t("Növbədədir"), running: t("Hesablanır"), done: t("Bitdi"), failed: t("Alınmadı"), cancelled: t("Dayandırıldı") });
+  superseded: [t("Əvəz olunub"), "b-gray"], discarded: [t("İmtina edilib"), "b-gray"] });
+const RUN_STATUS = () => ({ queued: t("Növbədədir"), running: t("Hesablanır"), done: t("Tamamlandı"), failed: t("Uğursuz oldu"), cancelled: t("Dayandırıldı") });
 const RUN_KIND = () => ({ precheck: t("İlkin yoxlama"), solve: t("Cədvəlin qurulması"), check: t("Tam yoxlama"), publish: t("Dərc") });
-const PHASE = () => ({ snapshot: t("məlumat oxunur"), construct: t("ilk yerləşdirmə"), improve: t("yaxşılaşdırma"), done: t("bitdi"),
-  check: t("yoxlama"), rows: t("cədvəl sətirləri"), drop: t("köhnə dərslərin silinməsi"), lessons: t("dərslərin yaradılması"), notify: t("bildirişlər"), failed: t("alınmadı") });
+const PHASE = () => ({ snapshot: t("məlumat oxunur"), construct: t("ilk yerləşdirmə"), improve: t("yaxşılaşdırma"), done: t("tamamlandı"),
+  check: t("yoxlama"), rows: t("cədvəl sətirləri"), drop: t("köhnə dərslərin silinməsi"), lessons: t("dərslərin yaradılması"), notify: t("bildirişlər"), failed: t("uğursuz oldu") });
 const COMP = () => ({ group_window: t("Qrupların boş cütləri"), teacher_window: t("Müəllimlərin boş cütləri"), same_day_course: t("Bir gündə eyni fənn"),
   undesired: t("Arzuolunmaz vaxtlar"), saturday: t("Şənbə cütləri"), late_pair: t("Gec cütlər"), room_waste_10: t("Boş qalan yerlər (hər 10 yer)"),
   foreign_building: t("Qrupun binasından kənar otaqlar"), hours_miss: t("Saatların Forma №3-dən fərqi"), stability_time: t("Vaxtı dəyişən dərslər"),
@@ -53,7 +53,7 @@ function watchRun(host, id, onEnd) {
           ${pr.iterations || r.iterations ? " · " + t("{n} addım", { n: pr.iterations || r.iterations }) : ""}
           ${pr.meetings ? " · " + t("{n} dərs", { n: pr.meetings }) : ""}${pr.unplaced != null ? " · " + t("yerləşdirilməyən: {n}", { n: pr.unplaced }) : ""}
           ${pr.counts && pr.counts.notified != null ? " · " + t("bildiriş: {n}", { n: pr.counts.notified }) : ""}</p>
-        ${r.status === "queued" ? html`<p class="small muted" style="margin:0">${t("Hesablama fon işində gedir: səhifəni bağlaya bilərsiniz, hazır olanda bildiriş gələcək.")}</p>` : ""}
+        ${r.status === "queued" ? html`<p class="small muted" style="margin:0">${t("Hesablama arxa planda aparılır: səhifəni bağlaya bilərsiniz, nəticə hazır olduqda bildiriş göndəriləcək.")}</p>` : ""}
         ${r.error && r.status !== "done" ? html`<p class="small" style="margin:0">${t("Səbəb")}: ${r.error}</p>` : ""}
         ${pr.problems && pr.problems.length ? listOf(pr.problems) : ""}
         ${r.report && r.report.excluded && r.report.excluded.length ? html`<p class="small" style="margin:0">${t("Hesablamaya daxil edilməyən vahidlər: {n}", { n: r.report.excluded.length })}</p>` : ""}
@@ -81,7 +81,7 @@ const scoreTable = (cards) => html`<div class="table-wrap"><table class="table t
   <tr><th scope="row">${t("Qaydaların pozuntusu")}</th>${cards.map((c) => html`<td>${c.score.hard ?? "—"}</td>`)}</tr>
   <tr><th scope="row">${t("Yerləşdirilən / yerləşdirilməyən")}</th>${cards.map((c) => html`<td>${c.score.placed ?? "—"} / ${c.score.unplaced ?? "—"}</td>`)}</tr>
   <tr><th scope="row">${t("Əhatə (‰)")}</th>${cards.map((c) => html`<td>${c.score.coverage ?? "—"}</td>`)}</tr>
-  <tr><th scope="row">${t("Yumşaq qaydaların cəmi (az olsa yaxşıdır)")}</th>${cards.map((c) => html`<td><b>${c.score.soft ?? "—"}</b></td>`)}</tr>
+  <tr><th scope="row">${t("Yumşaq qaydaların cəmi (nə qədər az olsa, o qədər yaxşıdır)")}</th>${cards.map((c) => html`<td><b>${c.score.soft ?? "—"}</b></td>`)}</tr>
   ${Object.keys(COMP()).filter((k) => cards.some((c) => c.score.components && c.score.components[k] && c.score.components[k].value)).map((k) => html`<tr><th scope="row">${COMP()[k]}</th>
     ${cards.map((c) => { const x = (c.score.components || {})[k] || { value: 0, cost: 0 }; return html`<td>${x.value} <span class="tiny muted">(${t("çəki ilə")} ${x.cost})</span></td>`; })}</tr>`)}
 </tbody></table></div>`;
@@ -101,10 +101,10 @@ route(ROOT, async (el, p, q) => {
 
   const summary = () => html`<div class="grid tt-summary">
     <div class="card card-b"><div class="tiny muted">${t("Semestr")}</div><b>${start.term.name}</b><div class="small muted">${fmtDate(start.term.teaching_start)} – ${fmtDate(start.term.teaching_end)} · ${t("{n} həftə", { n: start.weeks })}</div></div>
-    <div class="card card-b"><div class="tiny muted">${t("Hesablamanın vəziyyəti")}</div><b>${start.run_blocked ? t("Dayandırılıb: hazırlıq siyahısına baxın") : t("Başlamaq olar")}</b>
+    <div class="card card-b"><div class="tiny muted">${t("Hesablamanın vəziyyəti")}</div><b>${start.run_blocked ? t("Başlamaq mümkün deyil: hazırlıq siyahısına baxın") : t("Başlamaq mümkündür")}</b>
       <div class="small muted">${t("Xəbərdarlıq: {n}", { n: start.warnings })}</div></div>
     <div class="card card-b"><div class="tiny muted">${t("Dərc vəziyyəti")}</div><b>${start.published_id ? t("Dərc olunmuş versiya: #{id}", { id: start.published_id }) : t("Hələ dərc olunmayıb")}</b>
-      <div class="small muted">${start.publish_blocked ? t("Dərc üçün təsdiq gözləyən bəndlər var") : t("Dərc qapısı açıqdır")}</div></div>
+      <div class="small muted">${start.publish_blocked ? t("Dərc üçün təsdiq gözləyən bəndlər var") : t("Dərc etmək mümkündür")}</div></div>
     <div class="card card-b"><div class="tiny muted">${t("Son tarixlər")}</div><div class="small">${t("Tələblər")}: ${fmtDate(start.dues.needs)} · ${t("Məşğulluq")}: ${fmtDate(start.dues.availability)}</div>
       <div class="small">${t("Dərcin hədəf tarixi")}: ${fmtDate(start.dues.publish)}</div></div></div>`;
 
@@ -124,7 +124,7 @@ route(ROOT, async (el, p, q) => {
             <div class="field"><label class="label" for="rn-kind">${t("Növ")}</label><select class="input" id="rn-kind"><option value="solve">${RUN_KIND().solve}</option><option value="precheck">${RUN_KIND().precheck}</option></select></div>
             <div class="field grow"><label class="label" for="rn-name">${t("Layihənin adı")}</label><input class="input" id="rn-name" maxlength="100" placeholder="${t("məs.: ilk variant")}"></div>
             <div class="field"><label class="label" for="rn-budget">${t("Addım sayı")}</label><input class="input" id="rn-budget" type="number" min="1" value="20000"></div>
-            <div class="field"><label class="label" for="rn-base">${t("Kilidlər bu layihədən")}</label><select class="input" id="rn-base"><option value="">—</option>${vs.map((v) => html`<option value="${v.id}">#${v.id} ${v.name || ""}</option>`)}</select></div>
+            <div class="field"><label class="label" for="rn-base">${t("Kilidləri bu layihədən götür")}</label><select class="input" id="rn-base"><option value="">—</option>${vs.map((v) => html`<option value="${v.id}">#${v.id} ${v.name || ""}</option>`)}</select></div>
             <button class="btn btn-primary" id="rn-start" ${start.run_blocked ? "disabled" : ""}>${ic("play", 15)} ${t("Başlat")}</button></div></div>` : ""}
           <div id="tb-run" class="mt"></div>
           <div id="tb-versions">${versionsCard(vs)}</div>`);
@@ -139,7 +139,7 @@ route(ROOT, async (el, p, q) => {
               <td class="nowrap">${fmtDateTime(v.created_at)}</td><td>${v.unplaced}</td><td>${v.violations ?? "—"}</td>
               <td>${v.checked_rev === v.rev ? html`<span class="badge b-green">${t("Yoxlanılıb")}</span>` : html`<span class="badge b-amber">${t("Yoxlanılmayıb")}</span>`}</td>
               <td><a class="btn btn-ghost btn-sm" href="#${ROOT}/version/${v.id}">${t("Aç")}</a></td></tr>`)}</tbody></table></div>`
-            : html`<div class="card-b">${empty("layers", t("Hələ layihə yoxdur"), t("Hazırlıq tamam olanda hesablamanı başladın."))}</div>`}</div>`;
+            : html`<div class="card-b">${empty("layers", t("Hələ layihə yoxdur"), t("Hazırlıq başa çatdıqda hesablamanı başladın."))}</div>`}</div>`;
   // a run's end refreshes the list of drafts only: its card stays, with its final state
   const ended = async () => {
     try { start = await api.get(B); const box = $("#tb-versions", el); if (box) mount(box, versionsCard(await api.get(`${B}/versions`))); }
@@ -382,7 +382,7 @@ route(`${ROOT}/version/:id`, async (el, p, q) => {
   on(el, "click", "#vr-publish", () => {
     const first = firstDay(start.term, start.notice_days);
     modal({ title: t("Cədvəli dərc et"), size: "lg", body: html`<div class="stack">
-        <p class="small" style="margin:0">${t("Dərc olunanda cədvəl sətirləri və qüvvəyə minmə tarixindən dərslər yaradılır, tələbə və müəllimlərə bildiriş gedir. Keçmiş və davamiyyəti yazılmış dərslər dəyişmir.")}</p>
+        <p class="small" style="margin:0">${t("Dərc edildikdə cədvəl sətirləri yazılır, qüvvəyə minmə tarixindən etibarən dərslər yaradılır, tələbələrə və müəllimlərə bildiriş göndərilir. Keçmiş dərslər və davamiyyəti qeyd olunmuş dərslər dəyişdirilmir.")}</p>
         ${card.stale ? html`<p class="small" style="margin:0"><span class="badge b-amber">${t("Yoxlanılmayıb")}</span> ${t("Əvvəlcə «Yoxla» düyməsi ilə tam yoxlamanı keçirin.")}</p>` : ""}
         <div class="row wrap"><div class="field"><label class="label" for="pb-from">${t("Qüvvəyə minmə tarixi")}</label><input class="input" id="pb-from" type="date" value="${first}" min="${first}" max="${start.term.teaching_end}"></div>
           <div class="field"><label class="label" for="pb-count">${t("Yerləşdirilməyən dərslərin sayını yazın")}</label><input class="input" id="pb-count" type="number" min="0" inputmode="numeric"></div></div>

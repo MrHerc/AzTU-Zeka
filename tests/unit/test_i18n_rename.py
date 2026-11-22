@@ -87,6 +87,16 @@ def test_only_keeps_the_old_key_for_its_other_uses(tree):
     assert en["Köhnə mətn"] == "Old text" and en["Yeni mətn"] == "New text"
 
 
+def test_a_one_word_test_literal_is_left_as_it_is(tree, capsys):
+    tool, root = tree
+    (root / "frontend/js/c.js").write_text('t("Forma");\n', encoding="utf-8")
+    (root / "tests/test_y.py").write_text('sheet = "Forma"\n', encoding="utf-8")
+    (root / "one.json").write_text(json.dumps({"Forma": {"az": "Keçirilmə forması", "en": "Mode", "ru": None}}, ensure_ascii=False), encoding="utf-8")
+    tool.rename(root / "one.json", apply=True)
+    assert read(root, "frontend/js/c.js") == 't("Keçirilmə forması");\n' and read(root, "tests/test_y.py") == 'sheet = "Forma"\n'
+    assert "NOTE test literal left as it is: tests/test_y.py:1" in capsys.readouterr().out
+
+
 def test_a_key_inside_a_longer_content_string_is_refused(tree):
     tool, root = tree
     (root / "content/news.json").write_text(json.dumps({"kinds": {}, "news": [{"event": {"location": "Köhnə mətn, Bakı"}}]},

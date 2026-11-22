@@ -19,7 +19,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from ...core.i18n import E
 
-KINDS = ("main", "retake", "individual")          # əsas | təkrar | fərdi vaxt
+KINDS = ("main", "retake", "individual")          # əsas | təkrar imtahan | fərdi vaxt
 PROTECTION = ("open", "seb")
 PUBLIC = ("id", "qtype", "text", "options", "unit")
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$", re.ASCII)
