@@ -1,28 +1,28 @@
 {
- "Fərdi vaxt": "Individual time",
+ "Fərdi vaxt": "Individual sitting",
  "Açıqlanıb": "Released",
  "Buraxılıb": "Admitted",
  "Buraxılmayıb": "Not admitted",
- "İstisna": "Exception",
+ "İstisna qaydasında": "By exception",
  "İmtahanlar": "Exams",
  "Yeni imtahan": "New exam",
- "Pəncərə": "Window",
+ "Keçirilmə vaxtı": "Time window",
  "{n} dəq.": "{n} min",
  "Bağla və qiymətləndir": "Close and grade",
  "Hələ imtahan yoxdur": "No exams yet",
- "İmtahan yalnız “imtahan sualı” kimi təsdiqlənmiş suallardan qurulur: onlar məşqə, tutora və testlərə düşmür.": "An exam is built only from questions approved as “exam questions”: they never appear in practice, the tutor or tests.",
+ "İmtahan yalnız «imtahan sualı» kimi təsdiqlənmiş suallardan tərtib olunur: bu suallar məşqdə, tutorda və testlərdə istifadə edilmir.": "An exam is built only from questions approved as “exam questions”: they never appear in practice, the tutor or tests.",
  "Müddət, dəq.": "Duration, min",
- "Plan: hər sətirdə “çətinlik; mövzu; say” (boş xana hər hansı deməkdir)": "Plan: one “difficulty; topic; count” per line (an empty field means any)",
- "Vaxt universitetin saat qurşağındadır. Hər tələbə öz variantını alır; son vaxtı server saatı müəyyən edir.": "Times are in the university's time zone. Each student gets their own form; the server's clock sets the deadline.",
- "İmtahan açıldı: siyahı jurnaldan çəkildi": "The exam is open: the roster was drawn from the journal",
+ "Plan: hər sətirdə «çətinlik; mövzu; say» (boş xana istənilən dəyər deməkdir)": "Plan: one “difficulty; topic; count” per line (an empty field means any)",
+ "Vaxt universitetin saat qurşağı üzrə göstərilir. Hər tələbə öz variantını alır; son vaxtı server saatı müəyyən edir.": "Times are in the university's time zone. Each student gets their own form; the server's clock sets the deadline.",
+ "İmtahan açıldı: siyahı jurnal əsasında tərtib edildi": "The exam is open: the roster was drawn from the journal",
  "İmtahan bağlandı və qiymətləndirildi": "The exam is closed and graded",
- "Hovuzda {n} imtahan sualı": {
-  "one": "{n} exam question in the pool",
-  "other": "{n} exam questions in the pool"
+ "Sual bankında {n} imtahan sualı": {
+  "one": "{n} exam question in the bank",
+  "other": "{n} exam questions in the bank"
  },
  "avtomatik": "automatic",
- "Siyahı imtahan açılanda jurnaldan çəkilir.": "The roster is drawn from the journal when the exam opens.",
+ "Siyahı imtahan açılanda jurnal əsasında tərtib edilir.": "The roster is drawn from the journal when the exam opens.",
  "İmtahan sualı": "Exam question",
- "İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə düşmür. Təyinat sonra dəyişmir.": "An exam question is shown to a student only in an exam: never in practice, the tutor or tests. The purpose cannot be changed later.",
+ "İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə daxil edilmir. Təyinatı sonradan dəyişmək olmaz.": "An exam question is shown to a student only in an exam: never in practice, the tutor or tests. The purpose cannot be changed later.",
  "İmtahan sualı kimi təsdiqlə": "Approve as an exam question"
 }

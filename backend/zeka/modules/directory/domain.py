@@ -117,7 +117,7 @@ def _value(kind: str, field: str, v):
     if kind == "room_kind" and v not in ROOM_KINDS:
         return None, E("Otağın növü düzgün deyil")
     if kind == "degree" and v not in DEGREES:
-        return None, E("«{field}» sahəsində dərəcə bakalavr, magistr və ya doktorantura olmalıdır", field=field)
+        return None, E("«{field}» sahəsində təhsil pilləsi bakalavriat, magistratura və ya doktorantura olmalıdır", field=field)
     if kind == "login":
         v = v.lower()
         if not LOGIN.fullmatch(v):

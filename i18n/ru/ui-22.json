@@ -1,5 +1,5 @@
 {
- "Gecikmiş göndəriş qəbul olunur, “gecikib” qeyd olunur": "Работы с опозданием принимаются с отметкой «опоздание»",
+ "Gecikmiş göndəriş qəbul olunur və «gecikib» kimi qeyd edilir": "Работы с опозданием принимаются с отметкой «опоздание»",
  "Son tarixdən sonra qəbul olunmur": "После срока не принимается",
  "Tapşırıqlar": "Задания",
  "Yeni tapşırıq": "Новое задание",
@@ -7,7 +7,7 @@
  "Qiymətləndirilib": "Оценено",
  "Göndərişlər": "Работы",
  "Hələ tapşırıq yoxdur": "Заданий пока нет",
- "Tapşırığın balı qiymət jurnalının seçdiyiniz komponentinə düşür.": "Балл за задание попадает в выбранный компонент журнала оценок.",
+ "Tapşırığın balı qiymət jurnalının seçdiyiniz komponentinə yazılır.": "Балл за задание записывается в выбранный вами компонент журнала оценок.",
  "Tapşırığın mətni": "Текст задания",
  "Maksimum bal": "Максимальный балл",
  "gecikib": "опоздание",

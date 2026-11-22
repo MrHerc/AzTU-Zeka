@@ -10,6 +10,6 @@
  "Transfer-Encoding dəstəklənmir": "Transfer-Encoding не поддерживается",
  "Yanlış Content-Length": "Некорректный Content-Length",
  "Sillabus çox böyükdür": "Силлабус слишком большой",
- "Xarici AI xidmətinə razılıq verilmədiyi üçün demo mühərrik istifadə edildi.": "Использован демо-движок, так как согласие на внешний AI-сервис не дано.",
+ "Xarici AI xidmətinə razılıq verilmədiyi üçün demo mühərrik istifadə edildi.": "Использован демо-движок, так как согласие на использование внешнего сервиса ИИ не дано.",
  "LLM ünvanı https:// ilə başlamalıdır (http:// yalnız lokal model serveri üçün)": "Адрес LLM должен начинаться с https:// (http:// — только для локального сервера модели)"
 }

@@ -29,7 +29,7 @@ CODES = {"category": {k for k, _, _ in CATEGORIES}, "priority": {k for k, _ in P
          "area": {k for k, _ in AREAS}}
 
 _SYN_TICKETS = [
-    ("account", "normal", "Profildə qrupum köhnə göstərilir", "Qrupum dəyişib, amma profildə hələ köhnə qrup görünür."),
+    ("account", "normal", "Profildə köhnə qrupum göstərilir", "Qrupum dəyişib, amma profildə hələ köhnə qrup görünür."),
     ("ai", "low", "Tutor bəzən ingiliscə termin işlədir", "İzah rejimində bəzi terminlər ingilis dilində qalır, azərbaycanca qarşılığını da yazmaq olar?"),
     ("services", "high", "Yataqxana müraciətinə cavab gəlmir", "Müraciətimi 5 gün əvvəl göndərmişəm, status dəyişməyib."),
     ("technical", "urgent", "Test zamanı səhifə yeniləndi", "Testin ortasında səhifə yeniləndi, cavablarım saxlanıldımı?"),
@@ -38,7 +38,7 @@ _SYN_TICKETS = [
     ("university", "normal", "Kitabxananın iş saatları", "Kitabxana şənbə günləri işləyirmi?"),
     ("services", "normal", "Transkriptin ingiliscə variantı", "Transkriptin ingilis dilində variantını necə ala bilərəm?"),
     ("technical", "high", "Bildirişlər gəlmir", "Son iki gündə heç bir bildiriş almamışam."),
-    ("ai", "normal", "Kampus köməkçisi təqaüd barədə", "Təqaüdün məbləği barədə sualıma cavab tapılmadı."),
+    ("ai", "normal", "Kampus köməkçisi təqaüd sualıma cavab vermədi", "Təqaüdün məbləği barədə sualıma cavab tapılmadı."),
     ("account", "low", "Profil şəklini dəyişmək", "Profil şəklini necə dəyişə bilərəm?"),
     ("suggestion", "normal", "Qaranlıq rejim üçün təşəkkür", "Qaranlıq rejim gözəl alınıb, avtomatik keçid də əlavə olunsa yaxşı olar."),
     ("learning", "normal", "Testin nəticəsi göstərilmir", "Məşq testini bitirdim, amma nəticə səhifəsi boş açıldı."),
@@ -76,7 +76,7 @@ def seed(c, uid: dict, t0):
     aysel, rauf = uid.get("aysel"), uid.get("rauf")
     if aysel:
         ticket(aysel, "ai", "normal", "Tutor cavabında mənbəyə keçid açılmır",
-               "Elektrik dövrələri fənnində tutorun cavabındakı [2] mənbəsinə klik edəndə pəncərə açılmır.", "resolved",
+               "Elektrik dövrələri fənnində tutorun cavabındakı [2] mənbəyinə klik edəndə pəncərə açılmır.", "resolved",
                t0 - timedelta(days=9), [(staff_admin, "Salam, Aysel xanım. Problem aradan qaldırıldı — mənbə indi yan paneldə açılır. Bildirdiyiniz üçün təşəkkür edirik.", False)],
                rating=5, assignee=staff_admin, page="/student/tutor/1")
         ticket(aysel, "services", "high", "Arayışda ata adım səhv yazılıb",
@@ -86,7 +86,7 @@ def seed(c, uid: dict, t0):
                assignee=staff_office, page="/student/requests")
     if rauf:
         ticket(rauf, "learning", "normal", "PPTX faylından mətn tam çıxarılmır",
-               "“Dəyişən cərəyan” mühazirəsini PPTX formatında yüklədim, amma bəzi slaydların mətni tutorda görünmür.", "waiting",
+               "«Dəyişən cərəyan» mühazirəsini PPTX formatında yüklədim, amma bəzi slaydların mətni tutorda görünmür.", "waiting",
                t0 - timedelta(days=2), [(staff_admin, "Görünür, həmin slaydlarda mətn şəkil kimi yerləşdirilib. Faylı DOCX formatında yükləyə bilərsinizmi? Nəticəni bizə yazın.", False)],
                assignee=staff_admin, page="/teacher/courses")
 
@@ -100,7 +100,7 @@ def seed(c, uid: dict, t0):
         assignee = None
         if status != "open":
             assignee = staff_office if cat in ("services", "university") else staff_admin
-            msgs.append((assignee, "Müraciətiniz qəbul olundu, araşdırırıq.", False))
+            msgs.append((assignee, "Sorğunuz qəbul olundu, araşdırırıq.", False))
         ticket(rng.choice(synth_users), cat, prio, subject, body, status, created, msgs,
                rating=rng.choice([4, 5, 5]) if status in ("resolved", "closed") else None, assignee=assignee, synthetic=1)
 

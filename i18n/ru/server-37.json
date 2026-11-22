@@ -3,12 +3,12 @@
  "Klubun adı 3–80 simvol olmalıdır": "Название клуба — 3–80 символов",
  "Təsvir 10–1000 simvol olmalıdır": "Описание — 10–1000 символов",
  "Mesaj 1–2000 simvol olmalıdır": "Сообщение — 1–2000 символов",
- "Susdurma 5 dəqiqədən 30 günə qədərdir": "Блокировка — от 5 минут до 30 дней",
+ "Susdurma müddəti 5 dəqiqədən 30 günədək olmalıdır": "Блокировка — от 5 минут до 30 дней",
  "Səbəbi 3–300 simvolla yazın": "Укажите причину (3–300 символов)",
  "Klub tapılmadı": "Клуб не найден",
  "Mesaj tapılmadı": "Сообщение не найдено",
  "Kluba üzvlük sorğusu: {name}": "Заявка на вступление в клуб: {name}",
- "Klubu tələbə və ya müəllim təklif edir": "Клуб предлагает студент или преподаватель",
+ "Klubu yalnız tələbə və ya müəllim təklif edə bilər": "Предложить клуб может только студент или преподаватель",
  "Qərar: təsdiq və ya rədd": "Решение: одобрить или отклонить",
  "Klub təsdiqləndi: {name}": "Клуб одобрен: {name}",
  "Klub rədd edildi: {name}": "Клуб отклонён: {name}",
@@ -17,9 +17,9 @@
  "Kluba qəbul olundunuz: {name}": "Вас приняли в клуб: {name}",
  "Elanlar kanalına yalnız klubun rəhbəri yazır": "В канал объявлений пишет только руководитель клуба",
  "Əvvəlcə davranış qaydalarını qəbul edin": "Сначала примите правила поведения",
- "Yazmağınız {until} qədər dayandırılıb": "Вы не можете писать до {until}",
+ "Yazmaq hüququnuz {until} tarixinədək dayandırılıb": "Вы не можете писать до {until}",
  "Çox sayda mesaj. Bir az sonra yenidən yazın.": "Слишком много сообщений. Напишите чуть позже.",
  "Siz bu klubdan çıxarılmısınız": "Вас исключили из этого клуба",
- "Bu sorğu artıq baxılıb": "Эта заявка уже рассмотрена",
- "Klubda yazmağınız {until} qədər dayandırılıb": "Вы не можете писать в клубе до {until}"
+ "Bu sorğuya artıq baxılıb": "Эта заявка уже рассмотрена",
+ "Klubda yazmaq hüququnuz {until} tarixinədək dayandırılıb": "Вы не можете писать в клубе до {until}"
 }

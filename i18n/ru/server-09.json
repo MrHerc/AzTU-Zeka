@@ -1,8 +1,8 @@
 {
  "Vahid giriş qoşulmayıb": "Единый вход не настроен",
- "İşçi hesabını bağlamaq üçün parol və ikinci addımla daxil olun": "Чтобы связать аккаунт сотрудника, войдите с паролем и вторым фактором",
+ "İşçi hesabını universitet hesabı ilə əlaqələndirmək üçün parol və ikinci addımla daxil olun": "Чтобы связать учётную запись сотрудника с учётной записью университета, войдите с паролем и вторым фактором",
  "Provayderdəki istifadəçi identifikatorunu (sub) yazın": "Укажите идентификатор пользователя (sub) у провайдера",
- "Bu identifikator və ya hesab artıq bağlanıb": "Этот идентификатор или аккаунт уже связан",
+ "Bu identifikator və ya hesab artıq əlaqələndirilib": "Этот идентификатор или учётная запись уже связаны",
  "Bağlantı tapılmadı": "Связь не найдена",
  "Vahid giriş xidməti cavab vermir. Bir azdan yenidən cəhd edin.": "Служба единого входа не отвечает. Повторите попытку чуть позже."
 }

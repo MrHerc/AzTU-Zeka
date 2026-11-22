@@ -241,7 +241,7 @@ def test_every_type_leaves_its_effect_or_answers_from_the_factual_template(app_d
         row = q("SELECT * FROM requests WHERE id=?", (rid,))[0]
         if rt["effect"] == "none":
             assert not rt.get("answer"), f"{code}: effect none still has a free answer text"
-            expected = i18n.T3("Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka-da başqa heç bir qeyd dəyişməyib.",
+            expected = i18n.T3("Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka platformasında başqa heç bir qeyd dəyişdirilməyib.",
                                unit=UNITS[rt["step_roles"][-1]])
             assert json.loads(row["answer"]) == expected and done.json["answer"] == expected["az"], code
             assert after == before, f"{code}: an effect `none` changed a record"

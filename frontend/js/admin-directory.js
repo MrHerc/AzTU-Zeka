@@ -97,7 +97,7 @@ route("/admin/directory", async (el, p, q) => {
         ${can && tab === "rooms" ? html`<button class="btn btn-sm" id="dir-link-rooms">${t("Cədvəli otaqlara bağla")}</button>` : ""}</div>
       <div class="table-wrap"><table class="table"><thead><tr>${e.cols.map((c) => html`<th>${c[1]}</th>`)}<th>${t("Vəziyyət")}</th><th></th></tr></thead><tbody>
         ${items.map((x) => html`<tr><td>${cell(x, e.cols[0])}</td>${e.cols.slice(1).map((c) => html`<td>${cell(x, c)}</td>`)}
-          <td>${x.active ? html`<span class="badge b-green">${t("Aktiv")}</span>` : html`<span class="badge b-gray">${t("Deaktiv")}</span>`}</td>
+          <td>${x.active ? html`<span class="badge b-green">${t("Aktiv")}</span>` : html`<span class="badge b-gray">${t("Qeyri-aktiv")}</span>`}</td>
           <td class="nowrap">${can ? html`<button class="btn btn-ghost btn-sm" data-edit="${x.id}">${t("Düzəlt")}</button><button class="btn btn-ghost btn-sm" data-toggle="${x.id}">${x.active ? t("Deaktiv et") : t("Aktiv et")}</button>` : ""}${extra(x)}</td></tr>`)}
       </tbody></table></div>
       ${items.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Heç nə tapılmadı")}</p></div>`}
@@ -173,7 +173,7 @@ route("/admin/directory", async (el, p, q) => {
     });
     on(m.el, "click", "[data-end]", (ev, b) => modal({ title: t("Qeydiyyatı bitir"), size: "sm",
       body: html`<div class="field"><label class="label" for="enr-end">${t("Bitmə tarixi")}</label><input class="input" id="enr-end" type="date"></div>
-        <p class="small muted" style="margin:0">${t("Bu tarixdən dərs siyahılarında görünmür; əvvəlki davamiyyət və ballar qalır.")}</p>`,
+        <p class="small muted" style="margin:0">${t("Tələbə bu tarixdən etibarən dərs siyahılarında görünmür; əvvəlki davamiyyət və ballar saxlanılır.")}</p>`,
       actions: [{ label: t("Bitir"), cls: "btn-primary", onClick: async (w) => {
         try { await show(await api.post(`${path}/${b.dataset.end}/end`, { end_date: w.querySelector("#enr-end").value })); }
         catch (err) { toast(err.message, "err"); return false; }
@@ -190,8 +190,8 @@ route("/admin/directory", async (el, p, q) => {
     const box = $("#st-box", m.el);
     await loadRefs({ fields: [["", "", "ref:groups"]] });
     const show = (s) => mount(box, html`<p>${t("Hazırkı status")}: <b>${STATUS()[s.status] || s.status}</b></p>
-      ${MANAGERS.includes(role) ? html`<div class="row wrap mb"><button class="btn btn-sm" id="st-reconcile">${t("Əvvəlki semestrlər uzlaşdırılıb")}</button>
-        <span class="small muted">${t("Köhnə sistemdən gələn qiymətlər yoxlanandan sonra transkript verilir.")}</span></div>` : ""}
+      ${MANAGERS.includes(role) ? html`<div class="row wrap mb"><button class="btn btn-sm" id="st-reconcile">${t("Əvvəlki semestrləri uzlaşdırılmış kimi qeyd et")}</button>
+        <span class="small muted">${t("Köhnə sistemdən gələn qiymətlər yoxlanıldıqdan sonra transkript verilir.")}</span></div>` : ""}
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Əmr")}</th><th>${t("Nömrə")}</th><th>${t("Əmrin tarixi")}</th>
         <th>${t("Qüvvəyə minir")}</th><th>${t("Qeyd")}</th></tr></thead><tbody>
       ${s.events.map((x) => html`<tr><td>${kinds[x.kind] || x.kind}</td><td>${x.order_no}</td><td>${x.order_date}</td><td>${x.effective_date}</td>
@@ -242,8 +242,8 @@ route("/admin/directory", async (el, p, q) => {
   on(el, "click", "#dir-link-rooms", async () => {
     let r;
     try { r = await api.post("/api/facilities/link-rooms"); } catch (err) { toast(err.message, "err"); return; }
-    modal({ title: t("Cədvəl və otaqlar"), size: "lg", body: html`<p>${t("Otağa bağlanan cədvəl sətri: {n}", { n: r.linked })}</p>
-      ${r.unmatched.length ? html`<p class="small muted">${t("Bu yazılar heç bir otağa (və ya birdən çox otağa) uyğun gəlmir. Otağı əlavə edin və ya cədvəldə düzəldin:")}</p>
+    modal({ title: t("Cədvəl və otaqlar"), size: "lg", body: html`<p>${t("Otağa bağlanmış cədvəl sətirləri: {n}", { n: r.linked })}</p>
+      ${r.unmatched.length ? html`<p class="small muted">${t("Bu yazılar heç bir otağa uyğun gəlmir və ya birdən çox otağa uyğun gəlir. Otağı əlavə edin və ya yazını cədvəldə düzəldin:")}</p>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Cədvəldəki yazı")}</th><th>${t("Sətir")}</th></tr></thead><tbody>
         ${r.unmatched.map((x) => html`<tr><td>${x.room}</td><td>${x.rows}</td></tr>`)}</tbody></table></div>`
         : html`<p class="muted">${t("Bütün cədvəl sətirləri otağa bağlandı")}</p>`}` });

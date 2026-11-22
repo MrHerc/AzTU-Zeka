@@ -1,16 +1,16 @@
 {
  "Davamiyyətin açılış qalığı": "Attendance opening balance",
- "Müəllimin düzəliş pəncərəsi (dərs bitəndən sonra, saat)": "Teacher's edit window (hours after the lesson ends)",
+ "Müəllimin düzəliş müddəti (dərs bitdikdən sonra, saat)": "Teacher's edit window (hours after the lesson ends)",
  "Həddə yaxındır": "Close to the limit",
  "İmtahana buraxılmır": "Not admitted to the exam",
  "Məlumat natamam": "Data incomplete",
- "Dərsin davamiyyəti, buraxılmış saatlar və imtahana buraxılış.": "Lesson attendance, missed hours and exam admission.",
+ "Dərslərə davamiyyət, buraxılmış saatlar və imtahana buraxılış.": "Lesson attendance, missed hours and exam admission.",
  "Dərslərim": "My lessons",
  "Fənn üzrə vəziyyət": "Standing by course",
  "Son iki həftənin dərsləri": "Lessons of the last two weeks",
  "Qeyd olunub": "Recorded",
  "Qeyd olunmayıb": "Not recorded",
- "Son iki həftədə sizin dərsiniz yoxdur": "You had no lessons in the last two weeks",
+ "Son iki həftədə dərsiniz olmayıb": "You had no lessons in the last two weeks",
  "Fənni seçin": "Choose a course",
  "Plan saatı": "Planned hours",
  "Buraxılmış saat": "Missed hours",
@@ -25,7 +25,7 @@
  "Dərs ləğv edilib": "The lesson is cancelled",
  "Bu dərs kəsid tarixindən əvvəldir: davamiyyəti köhnə sistemdən idxal olunur.": "This lesson is before the cut-over date: its attendance is imported from the old system.",
  "Bu dərs hələ keçirilməyib.": "This lesson has not taken place yet.",
- "Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəblə edir.": {
+ "Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəb göstərməklə edir.": {
   "one": "The edit window ({n} hour) has ended: the head of department makes the change with a reason.",
   "other": "The edit window ({n} hours) has ended: the head of department makes the change with a reason."
  },
@@ -33,7 +33,7 @@
   "one": "List: {n} student",
   "other": "List: {n} students"
  },
- "Hamısı iştirak edir": "Everyone present",
+ "Hamısı iştirak edir": "Mark all present",
  "Əvəzedici müəllim": "Substitute teacher",
  "idxal": "imported",
  "Düzəlişin səbəbi": "Reason for the correction",

@@ -34,7 +34,7 @@ def row_input(body, partial: bool = False) -> tuple[dict, dict | None]:
         if not partial or k in body:
             v = body.get(k)
             if not (isinstance(v, str) and TIME.fullmatch(v)):
-                return {}, E("Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır")
+                return {}, E("Dərsin vaxtı SS:DD formatında olmalı, bitmə vaxtı isə başlama vaxtından sonra olmalıdır")
             out[k] = v
     if not partial or "weeks" in body:
         weeks = body.get("weeks") or "all"
@@ -55,7 +55,7 @@ def row_input(body, partial: bool = False) -> tuple[dict, dict | None]:
 
 
 def times_problem(start: str, end: str) -> dict | None:
-    return None if start < end else E("Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır")
+    return None if start < end else E("Dərsin vaxtı SS:DD formatında olmalı, bitmə vaxtı isə başlama vaxtından sonra olmalıdır")
 
 
 def week_no(day: date, teaching_start: date) -> int:

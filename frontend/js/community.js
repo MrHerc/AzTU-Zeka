@@ -4,7 +4,7 @@ import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, faile
 
 const POLL_MS = 3000;
 const when = (iso) => (iso || "").slice(0, 16).replace("T", " ");
-const CONDUCT = () => t("Hörmətli olun, şəxsi məlumat paylaşmayın, akademik dürüstlüyü pozan material (cavab, hazır iş) göndərməyin, reklam etməyin. Qaydanı pozan mesaj gizlədilir, üzv susdurula və ya klubdan çıxarıla bilər.");
+const CONDUCT = () => t("Başqalarına hörmətlə yanaşın, şəxsi məlumat paylaşmayın, akademik dürüstlüyü pozan material (cavab, hazır iş) göndərməyin, reklam etməyin. Qaydaları pozan mesaj gizlədilir, üzv susdurula və ya klubdan çıxarıla bilər.");
 
 route("/clubs", async (el) => {
   const draw = async () => {
@@ -24,7 +24,7 @@ route("/clubs", async (el) => {
   on(el, "click", "[data-new]", () => modal({ title: t("Klub təklif et"),
     body: html`<div class="stack"><label class="field"><span>${t("Ad")}</span><input class="input" name="name" maxlength="80"></label>
       <label class="field"><span>${t("Təsvir")}</span><textarea class="input" name="description" rows="4" maxlength="1000"></textarea></label>
-      <p class="small muted">${t("Klubu dekanlıq təsdiqləyir; siz onun rəhbəri olursunuz.")}</p></div>`,
+      <p class="small muted">${t("Təklifinizi dekanlıq təsdiqlədikdən sonra siz klubun rəhbəri olacaqsınız.")}</p></div>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Göndər"), cls: "btn-primary", onClick: async (w) => {
       try { await api.post("/api/clubs", { name: w.querySelector("[name=name]").value, description: w.querySelector("[name=description]").value }); toast(t("Təklif dekanlığa göndərildi"), "ok"); draw(); }
       catch (err) { toast(err.message, "err"); return false; }
@@ -129,7 +129,7 @@ route("/staff/clubs", async (el) => {
     try {
       [pending, reports] = await Promise.all([api.get("/api/clubs/pending").catch((e) => (e.status === 403 ? [] : Promise.reject(e))), api.get("/api/community/reports")]);
     } catch (err) { return mount(el, failed(err.message)); }
-    mount(el, html`${pageHead(t("Klublar və şikayətlər"), t("Təklif olunan klubların təsdiqi və kanal şikayətləri; hər addım auditdədir"))}
+    mount(el, html`${pageHead(t("Klublar və şikayətlər"), t("Təklif olunan klubların təsdiqi və kanal şikayətləri; hər addım audit jurnalına yazılır"))}
       <div class="card stack"><b>${t("Təsdiq gözləyən klublar")}</b>${pending.length ? pending.map((c) => html`<div class="row wrap" style="gap:8px;justify-content:space-between">
         <div><b>${c.name}</b> · <span class="small muted">${c.leader}</span><div class="small">${c.description}</div></div>
         <div class="row" style="gap:6px"><button class="btn btn-primary btn-sm" data-decide="${c.id}" data-ok="1">${t("Təsdiqlə")}</button>

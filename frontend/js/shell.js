@@ -14,7 +14,7 @@ export const ROLES = [
   ["admin", t("Administrator"), t("İT mərkəzi · platforma"), "sliders", "ic-coral"],
 ];
 export const ROLE_LABEL = { ...Object.fromEntries(ROLES.map((r) => [r[0], r[1]])),
-  dept_head: t("Kafedra müdiri"), academic_office: t("Tədris şöbəsi"), proctor: t("İmtahan nəzarətçisi") };
+  dept_head: t("Kafedra müdiri"), academic_office: t("Tədris hissəsi"), proctor: t("İmtahan nəzarətçisi") };
 
 const UNI = [t("Universitet"), [["news", t("Xəbərlər və tədbirlər"), "/news", "news"], ["trophy", t("Nailiyyətlər"), "/achievements"], ["phone", t("Əlaqə"), "/contact"]]];
 const UNI_STAFF = [t("Universitet"), [["trophy", t("Nailiyyətlər"), "/achievements"], ["phone", t("Əlaqə"), "/contact"]]];
@@ -32,14 +32,14 @@ export const NAV = {
             [t("Tədris"), [["calcheck", t("Elektron jurnal"), "/journal"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["book", t("Fənlərim"), "/teacher/courses"], ["wand", t("Test studiyası"), "/teacher/studio"], ["inbox", t("Tələbə sualları"), "/qa", "questions"], ["clock", t("Qəbul saatları"), "/office-hours"], ["users", t("Klublar"), "/clubs"], ["shield", t("İmtahan nəzarəti"), "/proctor"]]],
             [t("Peşəkar inkişaf"), [["cap", t("AI Akademiya"), "/teacher/academy"], ["cpu", t("Texnoloji həllər"), "/teacher/tools"], ["layers", t("Sillabus"), "/teacher/syllabus"]]],
             UNI, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["grid", t("Tətbiqlər"), "/apps"], ["ticket", t("Dəstək"), "/support", "support"]]]],
-  office: [[t("Dekanlıq"), [["inbox", t("Müraciətlər"), "/office", "office"], ["calcheck", t("Davamiyyət"), "/journal"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["qr", t("Sənəd reyestri"), "/office/registry"], ["calendar", t("Fakültə cədvəli"), "/office/timetable"], ["shield", t("İmtahan cədvəlləri"), "/office/exams"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["alert", t("Forum şikayətləri"), "/staff/qa"], ["users", t("Klublar və şikayətlər"), "/staff/clubs"]]],
+  office: [[t("Dekanlıq"), [["inbox", t("Müraciətlər"), "/office", "office"], ["calcheck", t("Davamiyyət"), "/journal"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["qr", t("Sənəd reyestri"), "/office/registry"], ["calendar", t("Fakültə cədvəli"), "/office/timetable"], ["shield", t("İmtahan-qiymət cədvəlləri"), "/office/exams"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["alert", t("Forum şikayətləri"), "/staff/qa"], ["users", t("Klublar və şikayətlər"), "/staff/clubs"]]],
            [t("Kommunikasiya"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["news", t("Xəbər lenti"), "/news"]]],
            UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
   leader: [[t("Rəhbərlik"), [["chart", t("Pilot paneli"), "/leader"], ["activity", t("Zəka Radar"), "/radar", "radar"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["inbox", t("E-xidmətlər"), "/office", "office"], ["qr", t("Sənəd reyestri"), "/office/registry"], ["award", t("Akkreditasiya sübutu"), "/leader/evidence"]]],
            [t("Kommunikasiya"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["news", t("Xəbər lenti"), "/news"]]],
            UNI_STAFF, [t("Nəzarət"), [["list", t("Audit jurnalı"), "/admin/audit"]]], [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"], ["grid", t("Tətbiqlər"), "/apps"], ["ticket", t("Dəstək"), "/support", "support"]]]],
-  academic_office: [[t("Tədris şöbəsi"), [["inbox", t("Müraciətlər"), "/office"], ["layers", t("Struktur və reyestr"), "/admin/directory"], ["calendar", t("Dərs cədvəli"), "/admin/timetable"], ["wand", t("Cədvəl qurucusu"), "/admin/timetable/build"], ["calcheck", t("Davamiyyət"), "/journal"], ["check", t("Sillabus təsdiqi"), "/syllabi"], ["shield", t("İmtahan nəzarəti"), "/proctor"], ["qr", t("İmtahan cədvəlləri"), "/office/exams"], ["book", t("Bilik bazası"), "/admin/kb"], ["lock", t("Məxfilik sorğuları"), "/staff/privacy"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
-  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["layers", t("Struktur və reyestr"), "/admin/directory"], ["calendar", t("Dərs cədvəli"), "/admin/timetable"], ["wand", t("Cədvəl qurucusu"), "/admin/timetable/build"], ["calcheck", t("Davamiyyət"), "/journal"], ["upload", t("Kütləvi idxal"), "/admin/import"], ["shield", t("İmtahan nəzarəti"), "/proctor"], ["qr", t("İmtahan cədvəlləri"), "/office/exams"], ["building", t("Universitet ayarları"), "/admin/settings"], ["book", t("Bilik bazası"), "/admin/kb"], ["link", t("İnteqrasiya"), "/admin/integration"], ["grid", t("Tətbiqlər"), "/apps"], ["activity", t("Zəka Radar"), "/radar"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["alert", t("Forum şikayətləri"), "/staff/qa"], ["users", t("Klublar və şikayətlər"), "/staff/clubs"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["award", t("Akkreditasiya sübutu"), "/leader/evidence"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
+  academic_office: [[t("Tədris hissəsi"), [["inbox", t("Müraciətlər"), "/office"], ["layers", t("Struktur və reyestr"), "/admin/directory"], ["calendar", t("Dərs cədvəli"), "/admin/timetable"], ["wand", t("Cədvəl qurucusu"), "/admin/timetable/build"], ["calcheck", t("Davamiyyət"), "/journal"], ["check", t("Sillabus təsdiqi"), "/syllabi"], ["shield", t("İmtahan nəzarəti"), "/proctor"], ["qr", t("İmtahan-qiymət cədvəlləri"), "/office/exams"], ["book", t("Bilik bazası"), "/admin/kb"], ["lock", t("Məxfilik sorğuları"), "/staff/privacy"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
+  admin: [[t("Platforma"), [["sliders", t("İdarəetmə"), "/admin"], ["layers", t("Struktur və reyestr"), "/admin/directory"], ["calendar", t("Dərs cədvəli"), "/admin/timetable"], ["wand", t("Cədvəl qurucusu"), "/admin/timetable/build"], ["calcheck", t("Davamiyyət"), "/journal"], ["upload", t("Kütləvi idxal"), "/admin/import"], ["shield", t("İmtahan nəzarəti"), "/proctor"], ["qr", t("İmtahan-qiymət cədvəlləri"), "/office/exams"], ["building", t("Universitet ayarları"), "/admin/settings"], ["book", t("Bilik bazası"), "/admin/kb"], ["link", t("İnteqrasiya"), "/admin/integration"], ["grid", t("Tətbiqlər"), "/apps"], ["activity", t("Zəka Radar"), "/radar"], ["ticket", t("Dəstək sorğuları"), "/staff/support", "support"], ["alert", t("Forum şikayətləri"), "/staff/qa"], ["users", t("Klublar və şikayətlər"), "/staff/clubs"], ["smile", t("Rəylər və məmnuniyyət"), "/staff/feedback"], ["award", t("Akkreditasiya sübutu"), "/leader/evidence"], ["list", t("Audit jurnalı"), "/admin/audit"]]],
           [t("Məzmun"), [["megaphone", t("Xəbərlərin idarə edilməsi"), "/staff/news"], ["inbox", t("Müraciətlər"), "/office", "office"]]], UNI_STAFF, [t("Kömək"), [["buoy", t("Bələdçi"), "/guide"]]]],
 };
 // Mobile bottom bar: 4 primary destinations per role (+ menu)
@@ -179,7 +179,7 @@ async function toggleNotifications(host) {
   let r;
   try { r = await api.get("/api/notifications"); } catch (err) { dd.querySelector(".notif-list").innerHTML = `<div class="empty small">${esc(err.message)}</div>`; return; }
   mount(dd, html`<div class="notif-h"><b>${t("Bildirişlər")} ${r.unread ? html`<span class="badge b-coral">${t("{n} yeni", { n: r.unread })}</span>` : ""}</b>
-      <button class="btn btn-ghost btn-sm" id="read-all" ${r.unread ? "" : "disabled"}>${ic("check", 14)} ${t("Hamısını oxunmuş et")}</button></div>
+      <button class="btn btn-ghost btn-sm" id="read-all" ${r.unread ? "" : "disabled"}>${ic("check", 14)} ${t("Hamısını oxunmuş kimi qeyd et")}</button></div>
     <div class="notif-list">${r.items.length ? r.items.slice(0, 12).map((n) => { const [i, c] = notifIcon(n.kind);
       return html`<a class="notif ${n.read_at ? "" : "unread"}" href="#${n.link || "/"}" data-nid="${n.id}"><span class="ni ${c}">${ic(i, 16)}</span>
         <div class="grow"><b>${n.title}</b>${n.body ? html`<span>${n.body}</span>` : ""}<span class="tiny">${ago(n.created_at)}</span></div>${n.read_at ? "" : raw('<span class="nd" aria-hidden="true"></span>')}</a>`; })
@@ -191,7 +191,7 @@ async function toggleNotifications(host) {
 }
 
 function langMenu(host) {
-  dropdown(host, "menu lang-dd", html`<div class="menu-label">${t("Interfeys dili")}</div>${LANGS.map((l) => html`<button class="menu-item" data-lang="${l.code}" lang="${l.code}">
+  dropdown(host, "menu lang-dd", html`<div class="menu-label">${t("İnterfeys dili")}</div>${LANGS.map((l) => html`<button class="menu-item" data-lang="${l.code}" lang="${l.code}">
       <span class="lang-code">${l.short}</span> ${l.label}${l.code === LANG ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Seçilib"))}</span>`) : ""}</button>`)}
     <div class="menu-sep"></div><div class="menu-note">${t("Fənn materialları və AI tutorun sitatları tədris dilində qalır.")}</div>`.__html);
   const dd = host.querySelector(".dropdown");
@@ -274,7 +274,7 @@ export function palette() {
   const back = document.createElement("div");
   back.className = "palette-back";
   back.innerHTML = `<div class="palette" role="dialog" aria-modal="true" aria-label="${esc(t("Axtarış"))}"><div class="palette-in">${icon("search", 18)}<input id="pq" placeholder="${esc(t("Nə axtarırsınız? Məsələn: arayış, Kirxhof, hakaton"))}" autocomplete="off" aria-label="${esc(t("Axtarış sorğusu"))}"><span class="kbd">Esc</span></div>
-    <div class="palette-res" id="pres" role="listbox"></div><div class="palette-foot"><span><span class="kbd">↑</span> <span class="kbd">↓</span> ${esc(t("seçim"))}</span><span><span class="kbd">Enter</span> ${esc(t("keçid"))}</span><span><span class="kbd">Esc</span> ${esc(t("bağla"))}</span></div></div>`;
+    <div class="palette-res" id="pres" role="listbox"></div><div class="palette-foot"><span><span class="kbd">↑</span> <span class="kbd">↓</span> ${esc(t("seç"))}</span><span><span class="kbd">Enter</span> ${esc(t("aç"))}</span><span><span class="kbd">Esc</span> ${esc(t("bağla"))}</span></div></div>`;
   document.body.appendChild(back);
   const inp = back.querySelector("#pq"), res = back.querySelector("#pres");
   let items = [], sel = 0, timer = null, seq = 0;

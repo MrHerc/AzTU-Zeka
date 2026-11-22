@@ -1,4 +1,4 @@
 {
- "Zəka Radar, {at} tarixinə: {high} tələbə yüksək risk, {watch} tələbə diqqət siyahısındadır. Dəstək planı alan {m} tələbədən {k}-nin riski azalıb.": "Zəka Radar на {at}: высокий риск — {high} студентов, в списке внимания — {watch}. Из {m} студентов, получивших план поддержки, риск снизился у {k}.",
+ "Zəka Radar, {at} tarixinə: {high} tələbə yüksək risk qrupunda, {watch} tələbə diqqət siyahısındadır. Dəstək planı alan {m} tələbədən {k} nəfərin riski azalıb.": "Zəka Radar на {at}: высокий риск — {high}, в списке наблюдения — {watch}. Из получивших план поддержки ({m}) риск снизился у {k}.",
  "Zəka Radar: kampus üzrə göstəricilər hələ hesablanmayıb. Onları dövri iş «radar.summary» hesablayır.": "Zəka Radar: показатели по кампусу ещё не рассчитаны. Их рассчитывает периодическая задача «radar.summary»."
 }

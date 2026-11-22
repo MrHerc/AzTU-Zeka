@@ -70,7 +70,7 @@ route("/admin/timetable", async (el, p, q) => {
       <div class="row wrap"><div class="field"><label class="label" for="tt-room">${t("Otaq")}</label><input class="input" id="tt-room" value="${x ? x.room || "" : ""}" placeholder="EK-220"></div>
         <div class="field"><label class="label" for="tt-weeks">${t("Həftələr")}</label><select class="input" id="tt-weeks">${opts(WEEKS(), x ? x.weeks : "all")}</select></div>
         <div class="field"><label class="label" for="tt-hours">${t("Akademik saat")}</label><input class="input" id="tt-hours" type="number" min="1" max="8" value="${x ? x.academic_hours || 2 : 2}"></div></div>
-      <p class="small muted" style="margin:0">${t("Növ və müəllim tədris vahidindən gəlir. Gələcək dərslər yeni vaxta keçir; tələbələrə bildiriş gedir.")}</p></div>`,
+      <p class="small muted" style="margin:0">${t("Növ və müəllim tədris vahidindən götürülür. Gələcək dərslər yeni vaxta keçirilir; tələbələrə bildiriş göndərilir.")}</p></div>`,
     actions: [{ label: t("Saxla"), cls: "btn-primary", onClick: async (w) => {
       const body = { weekday: Number(w.querySelector("#tt-day").value), start: w.querySelector("#tt-start").value, end: w.querySelector("#tt-end").value,
         room: w.querySelector("#tt-room").value || null, weeks: w.querySelector("#tt-weeks").value, academic_hours: Number(w.querySelector("#tt-hours").value) };
@@ -114,7 +114,7 @@ route("/admin/timetable", async (el, p, q) => {
   on(el, "click", "#tt-new", () => rowForm(null));
   on(el, "click", "[data-edit]", (e, b) => rowForm(rowsNow.find((x) => x.id === Number(b.dataset.edit))));
   on(el, "click", "[data-off]", (e, b) => modal({ title: t("Sətri cədvəldən çıxar"), size: "sm",
-    body: html`<p style="margin:0">${t("Bu sətrin gələcək dərsləri silinir, keçmiş dərslər və davamiyyət qalır. Tələbələrə bildiriş gedir.")}</p>`,
+    body: html`<p style="margin:0">${t("Bu sətrin gələcək dərsləri silinir, keçmiş dərslər və davamiyyət saxlanılır. Tələbələrə bildiriş göndərilir.")}</p>`,
     actions: [{ label: t("Çıxar"), cls: "btn-danger", onClick: async () => {
       try { await api.post(`/api/timetable/${b.dataset.off}/deactivate`); toast(t("Saxlanıldı"), "ok"); drawRows(); }
       catch (err) { toast(err.message, "err"); return false; }

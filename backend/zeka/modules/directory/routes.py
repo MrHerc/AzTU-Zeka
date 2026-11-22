@@ -108,7 +108,7 @@ def course_enrollments(req):
 def enroll(req):
     status, value = service.enroll(req.db, req.user, req.params["id"], req.json())
     if status == "taken":
-        raise HTTPError(409, "Tələbə bu fənnə artıq qeydiyyatdadır")
+        raise HTTPError(409, "Tələbə bu fənn üzrə artıq qeydiyyatdadır")
     _answer(status, value)
     return repo.enrollments(req.db, req.params["id"])
 

@@ -1,7 +1,7 @@
 {
  "Bu rol sizə verilməyib": "Эта роль вам не назначена",
  "İşçi rolunda işləmək üçün əvvəlcə ikinci addımı qoşun": "Чтобы работать в роли сотрудника, сначала настройте двухэтапный вход",
- "Əhatənin növü və id-si birlikdə verilir": "Тип области и её идентификатор указываются вместе",
+ "Əhatənin növü və identifikatoru birlikdə verilməlidir": "Тип области и её идентификатор должны указываться вместе",
  "Bu, istifadəçinin əsas roludur": "Это основная роль пользователя",
  "Rol tapılmadı": "Роль не найдена",
  "Bu rol artıq verilib": "Эта роль уже назначена"

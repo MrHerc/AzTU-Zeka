@@ -1,7 +1,7 @@
 {
- "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.": "A transcript is not issued yet: the dean's office is checking the grades of earlier terms. Contact the dean's office.",
- "Bal rəqəm olmalıdır": "The score must be a number",
- "«{field}» sahəsində rəqəm olmalıdır": "The “{field}” field must be a number",
+ "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.": "A transcript is not issued yet: the dean's office is checking the grades of earlier semesters. Contact the dean's office.",
+ "Bal ədəd olmalıdır": "The score must be a number",
+ "«{field}» sahəsinin dəyəri ədəd olmalıdır": "The “{field}” field must be a number",
  "Komponent fənnin sxemində yoxdur: {x}": "The course's scheme has no such component: {x}",
  "Bal 0 ilə {max} arasında olmalıdır": "The score must be between 0 and {max}",
  "Bəzi xanalar saxlanmadı": "Some cells were not saved",

@@ -18,7 +18,7 @@ route("/guide", async (el, p, q) => {
   const roleDone = isDone(S.user.role);
   mount(el, html`${pageHead(t("Bələdçi mərkəzi"), t("İnteraktiv səhifə bələdçiləri, təlimatlar və tez-tez verilən suallar."),
       html`<button class="btn btn-primary" id="tour">${ic("play", 15)} ${t("Tanışlıq turu")}</button>`, [[t("Əsas"), HOME[S.user.role]], [t("Bələdçi")]],
-      { info: t("Hər səhifənin yuxarısındakı “Səhifə bələdçisi” düyməsi həmin səhifənin hissələrini addım-addım izah edir.") })}
+      { info: t("Hər səhifənin yuxarısındakı «Səhifə bələdçisi» düyməsi həmin səhifənin hissələrini addım-addım izah edir.") })}
     <div class="guide-hero card"><div class="card-b row wrap" style="gap:18px">
       <span class="stat-ic ic-navy" style="width:52px;height:52px">${ic("compass", 24)}</span>
       <div class="grow"><b>${t("Bələdçilərdə irəliləyişiniz")}</b><div class="small muted">${t("{d} / {n} səhifə bələdçisi tamamlanıb", { d: done, n: tours.length })}${roleDone ? "" : " · " + t("tanışlıq turu hələ keçilməyib")}</div>
@@ -67,12 +67,12 @@ route("/guide/:id", async (el, p) => {
     <div class="grid g-12"><ol class="how">${a.steps.map((s) => html`<li><div>${md(s)}</div></li>`)}</ol>
       <div class="stack"><div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Digər təlimatlar")}</h3></div><div class="card-b list">
         ${others.map((o) => html`<div class="list-item click" data-go="/guide/${o.id}"><span class="stat-ic ic-blue" style="width:32px;height:32px">${ic(o.icon, 15)}</span><b class="small grow">${o.title}</b></div>`)}</div></div>
-        <div class="notice info">${ic("help", 16)}<div>${t("Cavab tapmadınız?")} ${S.user.role === "student" ? html`<a href="#/student/campus">${t("Kampus köməkçisinə soruşun")}</a> ${t("və ya")} ` : ""}<a href="#/support?tab=new">${t("dəstək xidmətinə yazın")}</a>.</div></div></div></div>`);
+        <div class="notice info">${ic("help", 16)}<div>${t("Cavab tapmadınız?")} ${S.user.role === "student" ? html`<a href="#/student/campus">${t("Kampus köməkçisindən soruşun")}</a> ${t("və ya")} ` : ""}<a href="#/support?tab=new">${t("dəstək xidmətinə yazın")}</a>.</div></div></div></div>`);
 });
 
 registerTour("guide", { route: "/guide", title: t("Bələdçi mərkəzi"), group: t("Kömək"), icon: "buoy", steps: [
   { sel: ".guide-hero", title: t("İrəliləyiş"), text: t("Neçə səhifə bələdçisini keçdiyinizi göstərir.") },
   { sel: ".tabs", title: t("Bölmələr"), text: t("İnteraktiv bələdçilər, addım-addım təlimatlar, suallar və klaviatura qısayolları.") },
-  { sel: "#gb", title: t("Bələdçini başladın"), text: t("“Başla” düyməsi sizi səhifəyə aparır və onun hissələrini bir-bir göstərir.") },
+  { sel: "#gb", title: t("Bələdçini başladın"), text: t("«Başla» düyməsi sizi səhifəyə aparır və onun hissələrini bir-bir göstərir.") },
 ] });
 export const _roleSteps = roleTourSteps;

@@ -108,7 +108,7 @@ export function ago(s) {
   const sec = (Date.now() - d.getTime()) / 1000;
   if (sec < 0) return fmtDateTime(s);
   if (sec < 60) return t("indicə");
-  if (sec < 3600) return t("{n} dəq əvvəl", { n: Math.floor(sec / 60) });
+  if (sec < 3600) return t("{n} dəq. əvvəl", { n: Math.floor(sec / 60) });
   if (sec < 86400) return t("{n} saat əvvəl", { n: Math.floor(sec / 3600) });
   if (sec < 172800) return t("dünən");
   if (sec < 604800) return t("{n} gün əvvəl", { n: Math.floor(sec / 86400) });
@@ -561,7 +561,7 @@ export async function openFile(id, title = "") {
       const u = await oneTimeUrl("file", id);
       box.innerHTML = f.kind === "image"
         ? `<div class="img-stage"><img class="viewer-img" src="${esc(u)}" alt="${esc(f.filename)}"></div>`
-        : `<iframe class="viewer-frame" src="${esc(u)}" title="${esc(f.filename)}"></iframe><p class="tiny muted center mt-sm">${esc(t("Fayl görünmürsə, “Yüklə” düyməsindən istifadə edin."))}</p>`;
+        : `<iframe class="viewer-frame" src="${esc(u)}" title="${esc(f.filename)}"></iframe><p class="tiny muted center mt-sm">${esc(t("Fayl görünmürsə, «Yüklə» düyməsindən istifadə edin."))}</p>`;
     } catch (err) { box.innerHTML = failed(err.message).__html; }
   };
   let body;

@@ -1,5 +1,5 @@
 {
- "Naməlum reyestr: {kind}. Mümkün olanlar: {kinds}": "Unknown register: {kind}. Available: {kinds}",
+ "Naməlum reyestr: {kind}. Mövcud reyestrlər: {kinds}": "Unknown register: {kind}. Available: {kinds}",
  "Naməlum sütun: {cols}. Mümkün sütunlar: {allowed}": "Unknown column: {cols}. Available columns: {allowed}",
- "«{field}» sahəsində vaxt ISO 8601 formatında olmalıdır, məsələn 2026-12-01T00:00:00+04:00": "«{field}» must be a time in ISO 8601 format, e.g. 2026-12-01T00:00:00+04:00"
+ "«{field}» sahəsində vaxt ISO 8601 formatında olmalıdır, məsələn, 2026-12-01T00:00:00+04:00": "“{field}” must be a time in ISO 8601 format, e.g. 2026-12-01T00:00:00+04:00"
 }

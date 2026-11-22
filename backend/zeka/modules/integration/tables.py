@@ -62,7 +62,7 @@ def csv_rows(data: bytes) -> list[tuple[int, list[str]]]:
     except csv.Error:
         raise TableError("CSV faylını oxumaq mümkün olmadı") from None
     if len(rows) > MAX_ROWS:
-        raise TableError("Faylda sətir çox çoxdur")
+        raise TableError("Faylda sətirlərin sayı həddən artıqdır")
     return [(n + 1, r) for n, r in enumerate(rows) if _filled(r)]
 
 
@@ -113,7 +113,7 @@ def _sheets(z: zipfile.ZipFile) -> list[Sheet]:
         for c in root.iter(NS + "c"):
             r, col = _cell(c.get("r"))
             if r >= MAX_ROWS or col >= MAX_COLS:
-                raise TableError("Faylda sətir çox çoxdur")
+                raise TableError("Faylda sətirlərin sayı həddən artıqdır")
             kind, v = c.get("t"), c.find(NS + "v")
             if kind == "s":
                 value = shared[int(v.text)] if v is not None and v.text else ""

@@ -10,11 +10,11 @@ const ATTEMPT = () => ({ in_progress: [t("Yazır"), "b-green"], paused: [t("Daya
   graded: [t("Qiymətləndirilib"), "b-navy"] });
 const FLAG = () => ({ "client.blur": t("pəncərədən çıxıb"), "client.fullscreen_exit": t("tam ekrandan çıxıb"), "client.reconnect": t("yenidən qoşulub"),
   "net.changed": t("ünvan dəyişib"), "net.refused": t("kənar ünvan"), "login.during_exam": t("başqa yerdən giriş"), "seb.refused": t("SEB yoxlanmayıb") });
-const EVENT = () => ({ "session.entered": t("imtahana daxil oldu"), "session.takeover": t("başqa kompüterdən davam etdi"), "session.refused": t("girişi rədd edildi"),
+const EVENT = () => ({ "session.entered": t("imtahana daxil oldu"), "session.takeover": t("başqa kompüterdən davam etdi"), "session.refused": t("imtahana buraxılmadı"),
   "attempt.started": t("başladı"), "attempt.submitted": t("təslim etdi"), "attempt.refused": t("başlaya bilmədi"), ...FLAG(),
-  "proctor.extend": t("vaxt əlavə olundu"), "proctor.pause": t("dayandırıldı"), "proctor.resume": t("davam etdirildi"), "proctor.end": t("cəhd bitirildi"),
-  "proctor.reopen": t("cəhd yenidən açıldı"), "proctor.unlock": t("giriş kilidi açıldı"), "proctors.set": t("nəzarətçilər təyin olundu"),
-  "seb.verified": t("SEB yoxlandı"), "exam.opened": t("imtahan açıldı"), "exam.closed": t("imtahan bağlandı"), "exam.created": t("imtahan yaradıldı"), "roster.exception": t("istisna verildi") });
+  "proctor.extend": t("əlavə vaxt aldı"), "proctor.pause": t("dayandırıldı"), "proctor.resume": t("davam etdirildi"), "proctor.end": t("cəhd bitirildi"),
+  "proctor.reopen": t("cəhd yenidən açıldı"), "proctor.unlock": t("giriş kilidi açıldı"), "proctors.set": t("nəzarətçiləri təyin etdi"),
+  "seb.verified": t("SEB yoxlamasından keçdi"), "exam.opened": t("imtahanı açdı"), "exam.closed": t("imtahanı bağladı"), "exam.created": t("imtahanı yaratdı"), "roster.exception": t("istisna qaydasında imtahana buraxıldı") });
 const ACTION = () => ({ extend: t("Vaxt əlavə et"), pause: t("Dayandır"), resume: t("Davam etdir"), end: t("Cəhdi bitir"), reopen: t("Yenidən aç"),
   unlock: t("Giriş kilidini aç") });
 const NEEDS_MINUTES = ["extend", "reopen"];
@@ -30,12 +30,12 @@ route("/proctor", async (el) => {
   let list;
   try { list = await api.get("/api/proctor/exams"); } catch (err) { return mount(el, failed(err.message)); }
   const crumbs = [[t("Əsas"), HOME[S.user.role] || "/"], [t("İmtahan nəzarəti")]];
-  mount(el, html`${pageHead(t("İmtahan nəzarəti"), t("Sizə təyin olunmuş və fənlərinizin açıq imtahanları. Lövhə hər 5 saniyədən bir yenilənir."), "", crumbs)}
+  mount(el, html`${pageHead(t("İmtahan nəzarəti"), t("Sizə təyin olunmuş imtahanlar və fənlərinizin açıq imtahanları. Lövhə hər 5 saniyədən bir yenilənir."), "", crumbs)}
     <div class="card">${list.length ? html`<div class="list card-b">${list.map((e) => html`<div class="list-item click" data-board="${e.id}">
         <span class="dot ${e.status === "open" ? "" : "amber"}"></span><div class="grow"><b class="small">${e.title}</b>
         <div class="tiny muted">${e.course_code} · ${e.course_name} · ${fmtDateTime(e.opens_at)} – ${fmtTime(e.closes_at)}</div></div>
         <button class="btn btn-sm btn-primary">${ic("eye", 14)} ${t("Lövhə")}</button></div>`)}</div>`
-      : html`<div class="card-b">${empty("shield", t("Nəzarət ediləcək imtahan yoxdur"), t("Müəllim sizi imtahana nəzarətçi təyin edəndə burada görünür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("shield", t("Nəzarət ediləcək imtahan yoxdur"), t("Müəllim sizi imtahana nəzarətçi təyin etdikdə imtahan burada görünəcək."))}</div>`}</div>`);
   on(el, "click", "[data-board]", (e, b) => go(`/proctor/${b.dataset.board}`));
 });
 
@@ -83,11 +83,11 @@ route("/proctor/:id", async (el, p) => {
     const tab = (k, label) => html`<button class="chip ${filter === k ? "on" : ""}" data-filter="${k}">${label} <b>${n[k]}</b></button>`;
     el.querySelector("#px-live").className = `px-live small ${stale ? "px-stale" : ""}`;
     mount(el.querySelector("#px-live"), html`<span class="dot ${stale ? "amber" : ""}"></span>
-      ${stale ? t("Bağlantı yoxdur: lövhə köhnə ola bilər") : t("Canlı · hər 5 saniyədən bir yenilənir")}`);
+      ${stale ? t("Bağlantı yoxdur: lövhədəki məlumatlar köhnəlmiş ola bilər") : t("Canlı · hər 5 saniyədən bir yenilənir")}`);
     mount(el.querySelector("#px-filters"), html`${tab("all", t("Hamısı"))}${tab("writing", t("Yazır"))}${tab("paused", t("Dayandırılıb"))}
       ${tab("done", t("Təslim edib"))}${tab("waiting", t("Başlamayıb"))}${tab("flagged", t("Diqqət"))}`);
     if (!(document.activeElement && document.activeElement.classList.contains("px-act"))) {
-      mount(el.querySelector("#px-rows"), shown().length ? html`${shown().map(row)}` : html`<tr><td colspan="7" class="muted small">${t("Bu süzgəcdə tələbə yoxdur")}</td></tr>`);
+      mount(el.querySelector("#px-rows"), shown().length ? html`${shown().map(row)}` : html`<tr><td colspan="7" class="muted small">${t("Bu filtrə uyğun tələbə yoxdur")}</td></tr>`);
       tick();                                     // the time left counts from when the data came, not from this redraw (SF-13)
     }
     mount(el.querySelector("#px-feed"), feed.length ? html`${feed.slice().reverse().map(entry)}` : html`<p class="small muted" style="margin:0">${t("Hələ hadisə yoxdur")}</p>`);

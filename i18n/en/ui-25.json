@@ -9,7 +9,7 @@
  "Düzəldib yeni versiya kimi saxlayın və yenidən təsdiqə göndərin.": "Make the changes, save them as a new version and send it for approval again.",
  "Fərq": "Differences",
  "Əvvəlki versiyadan fərq": "Differences from the previous version",
- "Versiya {n} kafedra müdirinə göndəriləcək. Göndərilən versiya dəyişmir.": "Version {n} will be sent to the head of department. A version sent cannot be changed.",
+ "Versiya {n} kafedra müdirinə göndəriləcək. Göndərilən versiya dəyişmir.": "Version {n} will be sent to the head of department. Once sent, a version cannot be changed.",
  "Təsdiqə göndərildi": "Sent for approval",
  "Təsdiq gözləyən versiyalar: fərqə baxın, təsdiqləyin və ya şərhlə geri qaytarın.": "Versions waiting for approval: look at the differences, approve, or return with a comment.",
  "Versiya": "Version",
@@ -26,5 +26,5 @@
  "Forma №3-dən fərq": "Difference from Form No. 3",
  "Dərc olunmuş versiyadan fərq": "Differences from the published version",
  "Şərh": "Comment",
- "Bu fəndə bal yazılıb: dərcə icazə verirəm (səbəb şərhdə yazılır və audit jurnalına düşür)": "This course already has scores: I permit publication (the reason goes in the comment and the audit log)"
+ "Bu fənn üzrə artıq bal qoyulub: dərcə icazə verirəm (səbəb şərhdə göstərilir və audit jurnalında qeydə alınır)": "This course already has scores: I permit publication (the reason goes in the comment and the audit log)"
 }

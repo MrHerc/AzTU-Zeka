@@ -36,7 +36,7 @@ route("/qa/:cid", async (el, p) => {
   on(el, "click", "[data-new]", () => modal({ title: t("Sual ver"),
     body: html`<div class="stack"><label class="field"><span>${t("Başlıq")}</span><input class="input" name="title" maxlength="140"></label>
       <label class="field"><span>${t("Sual")}</span><textarea class="input" name="text" rows="6" maxlength="4000"></textarea></label>
-      <label class="field"><span>${t("Həftə və ya mövzu (könüllü)")}</span><input class="input" name="tag" maxlength="40"></label>
+      <label class="field"><span>${t("Həftə və ya mövzu (istəyə görə)")}</span><input class="input" name="tag" maxlength="40"></label>
       <label class="row" style="gap:6px"><input type="checkbox" name="anonymous"> ${t("Qrup yoldaşlarına anonim göstər (müəllim adınızı görür)")}</label></div>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Göndər"), cls: "btn-primary", onClick: async (w) => {
       const v = (k) => w.querySelector(`[name=${k}]`);
@@ -80,7 +80,7 @@ route("/staff/qa", async (el) => {
   const load = async () => {
     let list;
     try { list = await api.get("/api/qa/reports"); } catch (err) { return mount(el, failed(err.message)); }
-    mount(el, html`${pageHead(t("Forum şikayətləri"), t("Fənn forumlarından gələn şikayətlər: gizlət və ya saxla; hər addım auditdədir"))}
+    mount(el, html`${pageHead(t("Forum şikayətləri"), t("Fənn forumlarından gələn şikayətlər: gizlət və ya saxla; hər addım audit jurnalına yazılır"))}
       ${list.length ? list.map((r) => html`<div class="card stack"><div class="small muted">${r.course} · ${r.created_at.slice(0, 16).replace("T", " ")} · ${t("şikayət edən")}: ${r.reporter}</div>
         <b>${r.title}</b><div class="small">${t("Müəllif")}: ${r.reply_id ? r.reply_author : r.topic_author}${!r.reply_id && r.anonymous ? html` (${t("anonim")})` : ""}</div>
         <blockquote>${r.reply_id ? r.reply_text : r.question}</blockquote><div><b>${t("Səbəb")}:</b> ${r.reason}</div>
@@ -110,7 +110,7 @@ route("/office-hours", async (el) => {
       const mine = html`<div class="card"><b>${t("Görüşlər")}</b>${bookings.length ? html`<table class="table"><tbody>${bookings.map(bookingRow)}</tbody></table>` : empty("inbox", t("Görüş yoxdur"))}</div>`;
       if (teacher) {
         const hours = await api.get("/api/office-hours");
-        return mount(el, html`${pageHead(t("Qəbul saatları"), t("Həftəlik qəbul saatlarınız: tələbələr iki həftə qabağa yer tutur"))}
+        return mount(el, html`${pageHead(t("Qəbul saatları"), t("Həftəlik qəbul saatlarınız: tələbələr iki həftə əvvəlcədən qəbula yazıla bilər"))}
           <div class="card stack"><b>${t("Həftəlik aralıqlar")}</b>
             ${hours.map((h) => html`<div class="row" style="gap:8px">${WEEKDAY()[h.weekday]}, ${h.start}–${h.end} · ${t("{n} dəq.", { n: h.slot_min })} · ${h.place || h.online_url}
               <button class="btn btn-ghost btn-sm" data-end="${h.id}">${t("Bitir")}</button></div>`)}
@@ -124,7 +124,7 @@ route("/office-hours", async (el) => {
       pick ||= teachers[0] && teachers[0].id;
       const slots = pick ? await api.get(`/api/office-hours/teachers/${pick}/free`) : [];
       const days = [...new Set(slots.map((s) => s.day))];
-      mount(el, html`${pageHead(t("Qəbul saatları"), t("Müəlliminizlə görüş üçün yer tutun"))}
+      mount(el, html`${pageHead(t("Qəbul saatları"), t("Müəlliminizin qəbuluna yazılın"))}
         <div class="card stack"><label class="field"><span>${t("Müəllim")}</span><select class="input" id="oh-teacher">
           ${teachers.map((x) => html`<option value="${x.id}" ${x.id === pick ? "selected" : ""}>${x.full_name}</option>`)}</select></label>
           ${days.length ? days.map((d) => html`<div><b>${d}</b><div class="row wrap" style="gap:6px">${slots.filter((s) => s.day === d).map((s) =>
@@ -134,9 +134,9 @@ route("/office-hours", async (el) => {
   on(el, "change", "#oh-teacher", (e, s) => { pick = +s.value; load(); });
   on(el, "click", "[data-slot]", (e, b) => {
     const [hours_id, day, start] = b.dataset.slot.split("|");
-    modal({ title: t("Yer tut: {day} {start}", { day, start }), body: html`<label class="field"><span>${t("Mövzu (könüllü)")}</span><input class="input" name="topic" maxlength="300"></label>`,
-      actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Yer tut"), cls: "btn-primary", onClick: async (w) => {
-        try { await api.post("/api/office-hours/book", { hours_id: +hours_id, day, start, topic: w.querySelector("[name=topic]").value }); toast(t("Yer tutuldu"), "ok"); load(); }
+    modal({ title: t("Qəbula yazıl: {day} {start}", { day, start }), body: html`<label class="field"><span>${t("Mövzu (istəyə görə)")}</span><input class="input" name="topic" maxlength="300"></label>`,
+      actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Qəbula yazıl"), cls: "btn-primary", onClick: async (w) => {
+        try { await api.post("/api/office-hours/book", { hours_id: +hours_id, day, start, topic: w.querySelector("[name=topic]").value }); toast(t("Qəbula yazıldınız"), "ok"); load(); }
         catch (err) { toast(err.message, "err"); load(); }
       } }] });
   });

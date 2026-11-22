@@ -3,18 +3,18 @@
 import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, t, S } from "./core.js";
 
 const ROLES = () => ({ student: t("Tələbə"), teacher: t("Müəllim"), dept_head: t("Kafedra müdiri"), office: t("Dekanlıq"),
-  academic_office: t("Tədris şöbəsi"), leader: t("Rəhbərlik"), admin: t("Administrator") });
+  academic_office: t("Tədris hissəsi"), leader: t("Rəhbərlik"), admin: t("Administrator") });
 const SCOPES = () => ({ "grades.read": t("Qiymətlər"), "attendance.read": t("Davamiyyət"), "registry.read": t("Reyestr (OneRoster)"), "status.read": t("Status dəyişiklikləri") });
-const EVENTS = () => ({ "grade.published": t("Bal dərc olundu"), "attendance.barred": t("Davamiyyətə görə buraxılmadı"), "exam.released": t("İmtahan nəticəsi açıqlandı") });
+const EVENTS = () => ({ "grade.published": t("Bal dərc olundu"), "attendance.barred": t("Davamiyyətə görə imtahana buraxılmadı"), "exam.released": t("İmtahan nəticəsi açıqlandı") });
 
 route("/apps", async (el) => {
   let data;
   const draw = () => mount(el, html`${pageHead(t("Tətbiqlər"), t("Universitetin digər sistemlərinə keçidlər"))}
     ${data.apps.length ? html`<div class="grid g-3">${data.apps.map((a) => html`<a class="card clickable" href="${a.url}" target="_blank" rel="noopener noreferrer">
       ${ic(a.icon || "external", 20)} <b>${a.title}</b>${a.note ? html`<div class="small muted">${a.note}</div>` : ""}</a>`)}</div>` : empty("inbox", t("Hələ tətbiq əlavə olunmayıb"))}
-    ${data.all ? html`<div class="card stack"><b>${t("Kafellərin redaktəsi")}</b>
-      <textarea class="input" id="apps-json" rows="10" aria-label="${t("Kafellər")}">${JSON.stringify(data.all, null, 1)}</textarea>
-      <p class="small muted">${t("Hər kafel: title, url (https://), roles ({roles}), icon, note.", { roles: Object.keys(ROLES()).join(", ") })}</p>
+    ${data.all ? html`<div class="card stack"><b>${t("Kartların redaktəsi")}</b>
+      <textarea class="input" id="apps-json" rows="10" aria-label="${t("Kartlar")}">${JSON.stringify(data.all, null, 1)}</textarea>
+      <p class="small muted">${t("Hər kart: title, url (https://), roles ({roles}), icon, note.", { roles: Object.keys(ROLES()).join(", ") })}</p>
       <button class="btn btn-primary" data-save>${t("Saxla")}</button></div>` : ""}`);
   on(el, "click", "[data-save]", async () => {
     let apps;
@@ -44,7 +44,7 @@ route("/admin/integration", async (el) => {
       <div class="card stack"><b>${t("Webhook-lar")}</b>
         <table class="table"><tbody>${hooks.map((h) => html`<tr><td class="small">${h.url}</td><td class="small">${h.events.map((e) => EVENTS()[e] || e).join(", ")}</td>
           <td class="small">${t("gözləyir: {p} · uğursuz: {f}", { p: h.pending, f: h.failed })}</td>
-          <td>${h.active ? html`<button class="btn btn-ghost btn-sm" data-off="${h.id}">${t("Söndür")}</button>` : html`<span class="badge b-gray">${t("Sönülü")}</span>`}
+          <td>${h.active ? html`<button class="btn btn-ghost btn-sm" data-off="${h.id}">${t("Söndür")}</button>` : html`<span class="badge b-gray">${t("Söndürülüb")}</span>`}
             <button class="btn btn-ghost btn-sm" data-log="${h.id}">${t("Jurnal")}</button></td></tr>`)}</tbody></table>
         <div class="row wrap" style="gap:8px"><input class="input grow" id="hook-url" placeholder="https://…">
           ${Object.entries(EVENTS()).map(([k, v]) => html`<label class="row" style="gap:4px"><input type="checkbox" name="event" value="${k}"> ${v}</label>`)}

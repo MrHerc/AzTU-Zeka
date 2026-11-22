@@ -79,7 +79,7 @@ route("/student", async (el) => {
         <div class="card"><div class="card-h"><h3>${ic("quiz", 17)} ${t("Gözləyən testlər")}</h3><a class="small" href="#/student/quizzes">${t("Hamısı")} ${ic("arrow", 13)}</a></div>
           <div class="card-b list">${d.quizzes.length ? d.quizzes.map((q) => html`<div class="list-item click" data-go="/student/quiz/${q.id}">
             <span class="course-ic sm" style="background:${q.color}">${ic("quiz", 16)}</span>
-            <div class="grow"><b class="small">${q.title}</b><div class="tiny muted">${q.course} · ${t("{n} sual", { n: q.questions })} · ${t("{n} dəq", { n: q.time_limit })}</div></div>
+            <div class="grow"><b class="small">${q.title}</b><div class="tiny muted">${q.course} · ${t("{n} sual", { n: q.questions })} · ${t("{n} dəq.", { n: q.time_limit })}</div></div>
             <span class="badge ${q.kind === "graded" ? "b-coral" : "b-blue"}">${q.kind === "graded" ? t("Qiymətli") : t("Məşq")}</span></div>`)
             : empty("check", t("Gözləyən test yoxdur"), t("Yeni test təyin olunduqda burada görünəcək."))}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("inbox", 17)} ${t("Müraciətlərim")}</h3><a class="small" href="#/student/requests">${t("Hamısı")} ${ic("arrow", 13)}</a></div>
@@ -137,7 +137,7 @@ route("/student/course/:id", async (el, p) => {
   const a = c.attendance;
   mount(el, html`
     ${pageHead(c.name, t("{code} · {k} kredit · {teacher}", { code: c.code, k: c.credits, teacher: `${c.teacher}, ${c.teacher_title}` }),
-      html`${c.syllabus_id ? html`<button class="btn" data-syl="${c.syllabus_id}">${ic("layers", 15)} ${t("Sillabus")}</button>` : ""}<button class="btn btn-ai" data-go="/student/tutor/${c.id}">${ic("sparkles", 16)} ${t("AI tutora soruş")}</button>`,
+      html`${c.syllabus_id ? html`<button class="btn" data-syl="${c.syllabus_id}">${ic("layers", 15)} ${t("Sillabus")}</button>` : ""}<button class="btn btn-ai" data-go="/student/tutor/${c.id}">${ic("sparkles", 16)} ${t("AI tutordan soruş")}</button>`,
       crumbsS([t("Fənlərim"), "/student/courses"], [c.name]), { info: t("Materiallar və test sualları fənnin tədris dilində təqdim olunur.") })}
     <div class="grid g-12">
       <div class="stack">
@@ -149,7 +149,7 @@ route("/student/course/:id", async (el, p) => {
             : empty("file", t("Hələ material yoxdur"), t("Müəllim material yüklədikcə burada görünəcək."))}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("quiz", 17)} ${t("Testlər")}</h3></div><div class="card-b list">
           ${c.quizzes.length ? c.quizzes.map((q) => html`<div class="list-item"><span class="course-ic sm" style="background:${c.color}">${ic("quiz", 15)}</span>
-            <div class="grow"><b class="small">${q.title}</b><div class="tiny muted">${t("{n} sual", { n: q.questions })} · ${t("{n} dəq", { n: q.time_limit })} · ${t("cəhd {u}/{a}", { u: q.used, a: q.attempts })}</div></div>
+            <div class="grow"><b class="small">${q.title}</b><div class="tiny muted">${t("{n} sual", { n: q.questions })} · ${t("{n} dəq.", { n: q.time_limit })} · ${t("cəhd {u}/{a}", { u: q.used, a: q.attempts })}</div></div>
             ${q.best != null ? html`<span class="badge b-green">${num(q.best)}%</span>` : ""}
             ${q.can_start ? html`<button class="btn btn-sm btn-primary" data-go="/student/quiz/${q.id}">${t("Başla")}</button>`
               : q.last_attempt ? html`<button class="btn btn-sm" data-go="/student/attempt/${q.last_attempt}">${t("Nəticə")}</button>` : html`<span class="badge b-gray">${t("Cəhd limiti bitib")}</span>`}</div>`)
@@ -179,7 +179,7 @@ route("/student/course/:id", async (el, p) => {
     try { m = await api.get(`/api/materials/${b.dataset.mat}`); } catch (err) { return toast(err.message, "err"); }
     modal({ title: m.title, size: "lg", body: html`${m.glossary.length ? html`<div class="label mb-sm">${t("Əsas anlayışlar")}</div><div class="chips mb">${m.glossary.map((g) => html`<span class="badge b-navy" title="${g.definition}">${g.term}</span>`)}</div>` : ""}
       <div class="stack">${m.chunks.map((ch) => html`<div class="card pad"><b>${ch.heading}</b><div class="mt-sm">${md(ch.text)}</div></div>`)}</div>
-      ${m.references && m.references.length ? html`<div class="label mt mb-sm">${t("Mövzu üzrə əlavə oxu")}</div>${refList(m.references)}` : ""}`,
+      ${m.references && m.references.length ? html`<div class="label mt mb-sm">${t("Mövzu üzrə əlavə mənbələr")}</div>${refList(m.references)}` : ""}`,
       actions: [{ label: t("Bağla") }, { html: `${ic("sparkles", 15).__html} ${esc(t("Bu mövzunu tutorla öyrən"))}`, cls: "btn-ai", onClick: () => go(`/student/tutor/${c.id}?q=${encodeURIComponent(m.title.split(". ").pop() + " mövzusunu izah et")}&mode=explain`) }] });
   });
 });
@@ -198,7 +198,7 @@ route("/student/tutor/:cid?", async (el, p, q) => {
   await chatView($("#chat", el), {
     kind: "tutor", base: `/api/tutor/${course.id}`, modes: course.modes, mode: q.mode && course.modes.includes(q.mode) ? q.mode : course.modes[0],
     suggestions: course.suggestions, locked: !!course.tutor_locked, canForward: true, prefill: q.q || "", title: t("{course} üzrə AI tutor", { course: course.name }),
-    text: t("Salam! Sualınızı yazın — {teacher} müəllimin materiallarına əsaslanaraq cavab verəcəyəm. Sokratik rejimdə hazır cavab yox, düşünməyə kömək edən ipuçları veririəm.", { teacher: course.teacher }),
+    text: t("Salam! Sualınızı yazın — {teacher} tərəfindən yüklənmiş materiallar əsasında cavab verəcəyəm. Sokratik rejimdə hazır cavab vermirəm: düşünməyə kömək edən ipucu və suallar təqdim edirəm.", { teacher: course.teacher }),
   });
 });
 
@@ -207,7 +207,7 @@ route("/student/campus", async (el) => {
       html`<span class="demo-banner">${t("Bilik bazası: nümunə qaydalar (pilot)")}</span>`, crumbsS([t("Kampus köməkçisi")]),
       { info: t("Köməkçi ümumi qaydalar üzrə məlumat verir. Lazım gəldikdə müraciəti elə bu söhbətdən yarada bilərsiniz.") })}<div id="chat" data-tour="campus-chat"></div>`);
   await chatView($("#chat", el), {
-    kind: "campus", suggestions: [t("Xəstə olmuşam, qayıbı necə üzrlü edim?"), t("Arayışı necə ala bilərəm?"), t("Qiymətləndirmə sistemi necədir?"), t("Yataqxanaya necə müraciət edim?"), t("İmtahanı başqa vaxta keçirmək olar?")],
+    kind: "campus", suggestions: [t("Xəstə olmuşam, qayıbı necə üzrlü hesab etdirim?"), t("Arayışı necə ala bilərəm?"), t("Qiymətləndirmə sistemi necədir?"), t("Yataqxanaya necə müraciət edim?"), t("İmtahanı başqa vaxta keçirmək olarmı?")],
     title: t("{x} kampus köməkçisi", { x: S.app.university.short }), text: t("Arayış, qayıb, akademik məzuniyyət, qiymətləndirmə, təqaüd və digər mövzularda soruşa bilərsiniz. Lazım olduqda müraciəti elə buradan yaradacağıq."),
   });
 });
@@ -222,7 +222,7 @@ route("/student/quizzes", async (el) => {
     ${qs.length ? html`<div class="grid g-3" data-tour="quiz-grid">${qs.map((q) => html`<div class="card slide-up quiz-card"><div class="course-strip" style="background:${q.color}"></div><div class="card-b">
       <div class="row between"><span class="badge ${q.kind === "graded" ? "b-coral" : "b-blue"}">${q.kind === "graded" ? t("Qiymətli") : t("Məşq")}</span>${q.best != null ? html`<span class="badge b-green">${t("Ən yaxşı: {n}%", { n: q.best })}</span>` : ""}</div>
       <h3 class="quiz-title">${q.title}</h3><div class="small muted">${q.course}</div>
-      <div class="row wrap small muted mt quiz-meta">${ic("list", 14)} ${t("{n} sual", { n: q.questions })} <span>·</span> ${ic("clock", 14)} ${t("{n} dəq", { n: q.time_limit })} <span>·</span> ${t("cəhd {u}/{a}", { u: q.used, a: q.attempts })}</div>
+      <div class="row wrap small muted mt quiz-meta">${ic("list", 14)} ${t("{n} sual", { n: q.questions })} <span>·</span> ${ic("clock", 14)} ${t("{n} dəq.", { n: q.time_limit })} <span>·</span> ${t("cəhd {u}/{a}", { u: q.used, a: q.attempts })}</div>
       <div class="row mt wrap">${q.can_start ? html`<button class="btn btn-primary grow" data-go="/student/quiz/${q.id}">${ic("play", 14)} ${q.used ? t("Yenidən həll et") : t("Başla")}</button>`
         : html`<button class="btn grow" disabled>${t("Cəhd limiti bitib")}</button>`}
         ${q.last_attempt ? html`<button class="btn" data-go="/student/attempt/${q.last_attempt}">${t("Nəticə")}</button>` : ""}</div></div></div>`)}</div>`
@@ -249,7 +249,7 @@ route("/student/quiz/:id", async (el, p) => {
         <div class="q-text">${md(q.text)}</div>
         ${q.qtype === "mcq" ? html`<div class="opts">${q.options.map((o, i) => html`<button class="opt ${answers[q.id] === i ? "sel" : ""}" data-opt="${i}"><span class="l">${LET[i]}</span><span>${o}</span></button>`)}</div>`
           : q.qtype === "tf" ? html`<div class="opts">${[[true, t("Doğru")], [false, t("Yanlış")]].map(([v, l], i) => html`<button class="opt ${answers[q.id] === v ? "sel" : ""}" data-tf="${v}"><span class="l">${LET[i]}</span><span>${l}</span></button>`)}</div>`
-          : html`<div class="row"><input class="input numans" id="numans" inputmode="decimal" placeholder="${t("Cavab")}" value="${answers[q.id] ?? ""}" aria-label="${t("Cavab")}">${q.unit ? html`<span class="badge b-gray">${q.unit}</span>` : ""}</div><div class="small muted mt-sm">${t("Onluq kəsr üçün vergül və ya nöqtə istifadə edə bilərsiniz.")}</div>`}
+          : html`<div class="row"><input class="input numans" id="numans" inputmode="decimal" placeholder="${t("Cavab")}" value="${answers[q.id] ?? ""}" aria-label="${t("Cavab")}">${q.unit ? html`<span class="badge b-gray">${q.unit}</span>` : ""}</div><div class="small muted mt-sm">${t("Onluq kəsr üçün vergüldən və ya nöqtədən istifadə edə bilərsiniz.")}</div>`}
         <div class="row between mt"><button class="btn" id="prev" ${cur === 0 ? "disabled" : ""}>${ic("back", 15)} ${t("Əvvəlki")}</button>
           ${cur < d.questions.length - 1 ? html`<button class="btn btn-primary" id="next">${t("Növbəti")} ${ic("chevron", 15)}</button>` : html`<button class="btn btn-success" id="finish2">${ic("check", 15)} ${t("Testi bitir")}</button>`}</div>
       </div></div>`);
@@ -338,7 +338,7 @@ route("/student/attendance", async (el) => {
   const days = [...new Set(abs.map((r) => r.day))].sort();
   mount(el, html`${pageHead(t("Davamiyyət"), t("Cari semestr üzrə iştirakınız. Üzrlü səbəb varsa, təsdiqedici sənədi yükləyin."),
       abs.length ? html`<button class="btn btn-accent" id="excuse-all">${ic("heart", 16)} ${t("Qayıbları üzrlü et ({n})", { n: abs.length })}</button>` : "", crumbsS([t("Davamiyyət")]),
-      { info: t("Tibbi sənədləri yalnız dekanlıq görür; müəllim yalnız qayıbın “üzrlü” olduğunu görür. Buraxılmış dərslər ümumi saatların {p}%-ni keçərsə, imtahana buraxılmaya bilərsiniz.", { p: a.limit_percent }) })}
+      { info: t("Tibbi sənədləri yalnız dekanlıq görür; müəllim yalnız qayıbın «üzrlü» olduğunu görür. Buraxılmış dərslər ümumi saatların {p}%-ni keçərsə, imtahana buraxılmaya bilərsiniz.", { p: a.limit_percent }) })}
     <div class="grid g-3" data-tour="att-courses">${a.courses.map((c) => html`<div class="card pad slide-up"><div class="row"><span class="course-ic sm2" style="background:${c.color}">${c.code.split("-")[0]}</span>
       <b class="small grow">${c.name}</b><b style="color:${c.rate < 80 ? "var(--red)" : "var(--green)"}">${num(c.rate)}%</b></div>
       <div class="row wrap mt small"><span class="badge b-green">${t("{n} iştirak", { n: c.present })}</span><span class="badge b-red">${t("{n} qayıb", { n: c.absent })}</span><span class="badge b-blue">${t("{n} üzrlü", { n: c.excused })}</span><span class="badge b-amber">${t("{n} gecikmə", { n: c.late })}</span></div>
@@ -365,10 +365,10 @@ route("/student/grades", async (el) => {
   const hasCur = g.courses.length && g.courses[0].items;
   mount(el, html`${pageHead(t("Qiymətlərim"), t("Cari semestrin balları və keçmiş semestrlər."),
       html`<button class="btn" data-go="/student/services?new=transcript">${ic("file", 15)} ${t("Transkript sifariş et")}</button>`, crumbsS([t("Qiymətlərim")]),
-      { info: t("100 ballıq sistem: 50 bal semestr, 50 bal imtahan. Balların hesablanması qaydası ilə “Qiymətləndirmə” sənədində tanış ola bilərsiniz. Ballar demo üçün sintetikdir.") })}
+      { info: t("100 ballıq sistem: 50 bal semestr, 50 bal imtahan. Balların hesablanması qaydası ilə «Qiymətləndirmə» sənədində tanış ola bilərsiniz. Ballar demo üçün sintetikdir.") })}
     <div class="grid g-3 mb" data-tour="grades-summary">${stat("target", "ic-navy", g.average != null ? num(g.average) : "—", t("Orta çəkili bal (keçmiş semestrlər)"))}
       ${stat("award", "ic-green", cnt(g.credits), t("Toplanmış kredit (AKTS)"))}${stat("book", "ic-blue", cnt(g.courses.length), t("Cari semestrdə fənn"))}</div>
-    ${hasCur ? html`<div class="card" data-tour="grades-table"><div class="card-h"><h3>${ic("list", 17)} ${S.app.semester}</h3><span class="small muted">${t("“—” — hələ keçirilməyib")}</span></div>
+    ${hasCur ? html`<div class="card" data-tour="grades-table"><div class="card-h"><h3>${ic("list", 17)} ${S.app.semester}</h3><span class="small muted">${t("«—» — hələ keçirilməyib")}</span></div>
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Fənn")}</th>${g.courses[0].items.map((i) => html`<th class="center">${i.name}<br><span class="tiny">${t("maks. {n}", { n: i.max })}</span></th>`)}<th class="center">${t("Semestr (50)")}</th></tr></thead>
       <tbody>${g.courses.map((c) => html`<tr><td><div class="row"><span class="dot" style="background:${c.color};box-shadow:none"></span><b class="small">${c.name}</b></div></td>
         ${c.items.map((i) => html`<td class="center">${i.score != null ? html`<b>${num(i.score)}</b>` : html`<span class="faint">—</span>`}</td>`)}
@@ -384,9 +384,9 @@ export { isoDay };
 // ---------------------------------------------------------------- page guides
 registerTour("student.home", { route: "/student", roles: ["student"], title: t("Əsas səhifə"), group: t("Əsas"), icon: "home", go: "/student", steps: [
   { sel: "[data-tour=hero]", title: t("Sürətli sual"), text: t("Fənni seçin, sualınızı yazın və birbaşa AI tutora keçin.") },
-  { sel: "[data-tour=quick-tiles]", title: t("Sürətli xidmətlər"), text: t("Ən çox istifadə olunan e-xidmətlər: arayış, qayıbın üzrlü edilməsi, icazə.") },
+  { sel: "[data-tour=quick-tiles]", title: t("Sürətli xidmətlər"), text: t("Ən çox istifadə olunan e-xidmətlər: arayış, qayıbın üzrlü hesab edilməsi, icazə.") },
   { sel: "#today-card", title: t("Bu gün"), text: t("Bugünkü dərsləriniz. Həftəlik cədvələ bir toxunuşla keçin.") },
-  { sel: "[data-tour=ai-tip]", title: t("AI tövsiyəsi"), text: t("Test nəticələrinizə əsasən təkrarlamalı mövzular burada görünür.") },
+  { sel: "[data-tour=ai-tip]", title: t("AI tövsiyəsi"), text: t("Test nəticələrinizə əsasən təkrarlamalı olduğunuz mövzular burada görünür.") },
 ] });
 registerTour("student.courses", { route: "/student/courses", roles: ["student"], title: t("Fənlərim"), group: t("Təhsil"), icon: "book", go: "/student/courses", steps: [
   { sel: "[data-tour=course-grid]", title: t("Fənlər"), text: t("Hər kartda müəllim, davamiyyət və material sayı göstərilir. Karta toxunub fənn səhifəsini açın.") },
@@ -406,13 +406,13 @@ registerTour("student.tutor", { route: "/student/tutor/:cid?", roles: ["student"
 registerTour("student.campus", { route: "/student/campus", roles: ["student"], title: t("Kampus köməkçisi"), group: t("Xidmətlər"), icon: "help", go: "/student/campus", steps: [
   { sel: "[data-tour=campus-chat]", title: t("Köməkçi"), text: t("Qaydalar, arayışlar və prosedurlar barədə soruşun; lazım olduqda müraciəti elə buradan yaradın.") },
   { sel: "[data-tour=chat-suggestions]", title: t("Nümunə suallar"), text: t("Tez-tez verilən suallardan birini seçərək başlayın.") },
-  { sel: "[data-tour=chat-input]", title: t("Sual"), text: t("Sualınızı sərbəst yazın. Cavab universitetin qaydalarına əsaslanır və mənbəsi göstərilir.") },
+  { sel: "[data-tour=chat-input]", title: t("Sual"), text: t("Sualınızı sərbəst yazın. Cavab universitetin qaydalarına əsaslanır və mənbəyi göstərilir.") },
 ] });
 registerTour("student.quizzes", { route: "/student/quizzes", roles: ["student"], title: t("Testlər"), group: t("Təhsil"), icon: "quiz", go: "/student/quizzes", steps: [
   { sel: "[data-tour=quiz-grid]", title: t("Testlər"), text: t("Qiymətli və məşq testləri. Hər kartda sual sayı, vaxt və cəhd limiti göstərilir.") },
 ] });
 registerTour("student.quiz", { route: "/student/quiz/:id", roles: ["student"], title: t("Test həlli"), group: t("Təhsil"), icon: "quiz", steps: [
-  { sel: ".q-dots", title: t("Suallar"), text: t("Suallar arasında keçin; cavablandırılmışlar işarələnir.") },
+  { sel: ".q-dots", title: t("Suallar"), text: t("Suallar arasında keçid edin; cavablandırılmış suallar işarələnir.") },
   { sel: "#timer", title: t("Vaxt"), text: t("Qalan vaxt. Vaxt bitdikdə cavablar avtomatik göndərilir.") },
   { sel: ".opts, .numans", title: t("Cavab"), text: t("Variantı seçin və ya cavabı yazın. Bitirmədən əvvəl cavabsız sualları yoxlayın.") },
 ] });
@@ -430,7 +430,7 @@ registerTour("teacher.schedule", { route: "/teacher/schedule", roles: ["teacher"
 ] });
 registerTour("student.attendance", { route: "/student/attendance", roles: ["student"], title: t("Davamiyyət"), group: t("Təhsil"), icon: "calcheck", go: "/student/attendance", steps: [
   { sel: "[data-tour=att-courses]", title: t("Fənlər üzrə"), text: t("Hər fənn üzrə iştirak faizi və qayıb həddindən istifadə.") },
-  { sel: "[data-tour=att-log]", title: t("Jurnal"), text: t("Qayıbları buradan üzrlü edin — e-xidmət müraciəti avtomatik hazırlanır.") },
+  { sel: "[data-tour=att-log]", title: t("Jurnal"), text: t("Qayıbları buradan üzrlü hesab etdirin — e-xidmət müraciəti avtomatik hazırlanır.") },
 ] });
 registerTour("student.grades", { route: "/student/grades", roles: ["student"], title: t("Qiymətlərim"), group: t("Təhsil"), icon: "target", go: "/student/grades", steps: [
   { sel: "[data-tour=grades-summary]", title: t("Xülasə"), text: t("Orta bal, toplanmış kreditlər və cari semestrdəki fənn sayı.") },

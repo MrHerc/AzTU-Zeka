@@ -1,5 +1,5 @@
 {
- "Naməlum reyestr: {kind}. Mümkün olanlar: {kinds}": "Неизвестный реестр: {kind}. Доступные: {kinds}",
+ "Naməlum reyestr: {kind}. Mövcud reyestrlər: {kinds}": "Неизвестный реестр: {kind}. Доступные: {kinds}",
  "Naməlum sütun: {cols}. Mümkün sütunlar: {allowed}": "Неизвестный столбец: {cols}. Доступные столбцы: {allowed}",
- "«{field}» sahəsində vaxt ISO 8601 formatında olmalıdır, məsələn 2026-12-01T00:00:00+04:00": "«{field}»: время в формате ISO 8601, например 2026-12-01T00:00:00+04:00"
+ "«{field}» sahəsində vaxt ISO 8601 formatında olmalıdır, məsələn, 2026-12-01T00:00:00+04:00": "«{field}»: время в формате ISO 8601, например 2026-12-01T00:00:00+04:00"
 }

@@ -2,9 +2,9 @@
  "Dekanlıqdan mesajlar": "Messages from the dean's office",
  "Bildiriş ayarları düzgün deyil": "The notification settings are not valid",
  "İmtahan protokolu: {title}": "Exam record: {title}",
- "Bu məktubu Zəka-dakı bildiriş ayarlarınıza görə alırsınız. Dəyişmək: {url}": "You receive this e-mail because of your notification settings in Zəka. To change them: {url}",
+ "Bu məktubu Zəka platformasındakı bildiriş ayarlarınıza görə alırsınız. Ayarları dəyişmək üçün: {url}": "You receive this email because of your notification settings in Zəka. To change them: {url}",
  "Zəncirin kökü (64 simvol):": "Root of the chain (64 characters):",
- "Bu məktubu saxlayın: imtahan jurnalını yoxlamaq üçün kök bazadan kənarda qalmalıdır.": "Keep this e-mail: to verify the exam log, the root must stay outside the database.",
+ "Bu məktubu saxlayın: imtahan jurnalını yoxlamaq üçün kök verilənlər bazasından kənarda qalmalıdır.": "Keep this email: to verify the exam log, the root must stay outside the database.",
  "Yoxlama: python backend/manage.py exam-verify {id} --root {root}": "To verify: python backend/manage.py exam-verify {id} --root {root}",
  "Portalda açın: {url}": "Open in the portal: {url}",
  "Protokol: {url}": "Record: {url}"

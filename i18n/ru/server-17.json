@@ -1,7 +1,7 @@
 {
  "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.": "Транскрипт пока не выдаётся: деканат проверяет оценки прошлых семестров. Обратитесь в деканат.",
- "Bal rəqəm olmalıdır": "Балл должен быть числом",
- "«{field}» sahəsində rəqəm olmalıdır": "Поле «{field}» должно быть числом",
+ "Bal ədəd olmalıdır": "Балл должен быть числом",
+ "«{field}» sahəsinin dəyəri ədəd olmalıdır": "Поле «{field}» должно быть числом",
  "Komponent fənnin sxemində yoxdur: {x}": "В схеме дисциплины нет такого компонента: {x}",
  "Bal 0 ilə {max} arasında olmalıdır": "Балл должен быть от 0 до {max}",
  "Bəzi xanalar saxlanmadı": "Некоторые ячейки не сохранены",

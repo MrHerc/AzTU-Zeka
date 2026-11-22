@@ -35,7 +35,7 @@ def clubs(c, user) -> list[dict]:
 
 def propose(c, user, body) -> tuple[str, object]:
     if user["role"] not in WRITERS:
-        return "forbidden", T3("Klubu tələbə və ya müəllim təklif edir")
+        return "forbidden", T3("Klubu yalnız tələbə və ya müəllim təklif edə bilər")
     v, problem = domain.club_input(body)
     if problem:
         return "invalid", problem
@@ -128,7 +128,7 @@ def manage_member(c, user, cid: int, uid: int, action: str, body) -> tuple[str, 
     until = None
     if action == "approve":
         if m["status"] != "requested":
-            return "invalid", T3("Bu sorğu artıq baxılıb")
+            return "invalid", T3("Bu sorğuya artıq baxılıb")
         repo.set_member(c, cid, uid, status="member")
         notify(c, uid, "event", T3("Kluba qəbul olundunuz: {name}", name=repo.club(c, cid)["name"]), "", f"/clubs/{cid}")
     elif action == "remove":
@@ -139,7 +139,7 @@ def manage_member(c, user, cid: int, uid: int, action: str, body) -> tuple[str, 
             return "invalid", problem
         until = iso(now() + timedelta(minutes=v["minutes"]))
         repo.set_member(c, cid, uid, muted_until=until)
-        notify(c, uid, "event", T3("Klubda yazmağınız {until} qədər dayandırılıb", until=until.replace("T", " ")[:16]), v["reason"], f"/clubs/{cid}")
+        notify(c, uid, "event", T3("Klubda yazmaq hüququnuz {until} tarixinədək dayandırılıb", until=until.replace("T", " ")[:16]), v["reason"], f"/clubs/{cid}")
     else:
         return "missing", None
     audit(c, user["id"], f"club_{action}", "club", f"#{cid} user #{uid}" + (f" until {until}" if action == "mute" else ""))
@@ -174,7 +174,7 @@ def post(c, user, chid: int, body) -> tuple[str, object]:
     if not m["conduct_at"]:
         return "conduct", T3("Əvvəlcə davranış qaydalarını qəbul edin")
     if m["muted_until"] and m["muted_until"] > iso(now()):
-        return "forbidden", T3("Yazmağınız {until} qədər dayandırılıb", until=m["muted_until"].replace("T", " ")[:16])
+        return "forbidden", T3("Yazmaq hüququnuz {until} tarixinədək dayandırılıb", until=m["muted_until"].replace("T", " ")[:16])
     text, problem = domain.message_input(body)
     if problem:
         return "invalid", problem

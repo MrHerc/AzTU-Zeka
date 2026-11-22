@@ -37,7 +37,7 @@ route("/admin/kb", async (el) => {
       body: html`<div class="stack">${field("heading", t("Başlıq"))}
         <label class="field"><span>${t("Mətn")}</span><textarea class="input" name="text" rows="10" maxlength="8000">${a.text || ""}</textarea></label>
         <div class="row wrap" style="gap:8px">${field("source", t("Mənbə sənədi"))}${field("source_ref", t("Bənd"))}</div>
-        <div class="row wrap" style="gap:8px">${field("request", t("E-xidmətin kodu (könüllü)"))}${field("action_label", t("Düymənin adı"))}</div>
+        <div class="row wrap" style="gap:8px">${field("request", t("E-xidmətin kodu (istəyə görə)"))}${field("action_label", t("Düymənin adı"))}</div>
         <div class="row wrap" style="gap:8px">${field("review_at", t("Yenidən baxış tarixi"))}
           <label class="field"><span>${t("Status")}</span><select class="input" name="status">
             ${Object.entries(STATUS()).map(([k, v]) => html`<option value="${k}" ${k === a.status ? "selected" : ""}>${v}</option>`)}</select></label></div>

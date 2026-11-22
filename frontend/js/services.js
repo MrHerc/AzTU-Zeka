@@ -24,7 +24,7 @@ route("/student/services", async (el, p, q) => {
     const ff = f.trim().toLowerCase();
     const match = (x) => !ff || (x.name + " " + x.description).toLowerCase().includes(ff);
     const popular = s.types.filter((x) => x.popular);
-    return html`${!ff && popular.length ? html`<div class="card brand-border mb" data-tour="svc-popular"><div class="card-h"><h3>${ic("star", 17)} ${t("Ən çox istifadə olunan")}</h3></div>
+    return html`${!ff && popular.length ? html`<div class="card brand-border mb" data-tour="svc-popular"><div class="card-h"><h3>${ic("star", 17)} ${t("Ən çox istifadə olunanlar")}</h3></div>
         <div class="card-b grid g-3">${popular.map((x) => svcCard(x))}</div></div>` : ""}
       ${s.categories.map((c) => { const ts = s.types.filter((x) => x.category === c.key && match(x)); return ts.length ? html`<section class="mb svc-sec">
         <div class="row mb-sm"><span class="stat-ic svc-cat-ic" style="--c:${c.color}">${ic(c.icon, 17)}</span><div><b>${c.name}</b><div class="tiny muted">${c.text}</div></div></div>
@@ -33,7 +33,7 @@ route("/student/services", async (el, p, q) => {
   };
   mount(el, html`${pageHead(t("E-xidmətlər"), t("Bütün müraciətlər onlayn — kağız ərizə və növbə olmadan."),
       html`<button class="btn" data-go="/student/requests">${ic("inbox", 15)} ${t("Müraciətlərim")}</button>`, crumbsS([t("E-xidmətlər")]),
-      { info: t("Müraciətin statusunu “Müraciətlərim” bölməsində izləyin. Hazır sənədlər QR kod və doğrulama kodu ilə verilir.") })}
+      { info: t("Müraciətin statusunu «Müraciətlərim» bölməsində izləyin. Hazır sənədlər QR kod və doğrulama kodu ilə verilir.") })}
     <div class="row mb"><div class="search-field"><span class="sfi">${ic("search", 16)}</span>
       <input class="input" id="sf" placeholder="${t("Məsələn: arayış, qayıb, yataqxana")}" aria-label="${t("Xidmət axtarın")}"></div></div>
     <div id="cat">${draw()}</div>`);
@@ -88,7 +88,7 @@ route("/student/apply/:code", async (el, p, q) => {
       case "number": return html`<div class="field">${lab}<input class="input" type="number" id="${id}" data-f="${f.name}" value="${v || ""}" min="${f.min ?? ""}" max="${f.max ?? ""}">${hint}</div>`;
       case "date": return html`<div class="field">${lab}<input class="input" type="date" id="${id}" data-f="${f.name}" value="${v || ""}">${hint}</div>`;
       case "daterange": return html`<div class="field full"><span class="label">${f.label}${req}</span>
-        <div class="row wrap daterange"><input class="input" type="date" data-range="${f.name}" data-part="from" value="${(v && v.from) || ""}" aria-label="${t("Başlanğıc tarix")}">
+        <div class="row wrap daterange"><input class="input" type="date" data-range="${f.name}" data-part="from" value="${(v && v.from) || ""}" aria-label="${t("Başlama tarixi")}">
           <span class="muted" aria-hidden="true">—</span><input class="input" type="date" data-range="${f.name}" data-part="to" value="${(v && v.to) || ""}" aria-label="${t("Son tarix")}"></div>
         <span class="hint">${f.future ? t("Yalnız gələcək tarixlər seçilə bilər.") : t("Keçmiş tarixlər — buraxılmış dərslər üçün.")}</span></div>`;
       case "course": return html`<div class="field">${lab}<select class="select" id="${id}" data-f="${f.name}"><option value="">${t("— seçin —")}</option>${courses.map((co) => html`<option value="${co.id}" ${+v === co.id ? "selected" : ""}>${co.name}</option>`)}</select>${hint}</div>`;
@@ -102,7 +102,7 @@ route("/student/apply/:code", async (el, p, q) => {
   function absBox(f) {
     const per = data.period || {};
     if (!per.from || !per.to) return html`<div class="notice info">${ic("info", 16)}<div>${t("Əvvəlcə dövrü seçin — həmin dövrdəki qayıblarınız burada görünəcək.")}</div></div>`;
-    if (!absences.length) return html`<div class="notice warn">${ic("alert", 16)}<div>${t("Seçilmiş dövrdə üzrlü edilməmiş qayıb tapılmadı.")}</div></div>`;
+    if (!absences.length) return html`<div class="notice warn">${ic("alert", 16)}<div>${t("Seçilmiş dövrdə üzrlü hesab edilməmiş qayıb tapılmadı.")}</div></div>`;
     return html`<div class="list abs-list">${absences.map((a) => html`<label class="list-item check abs-item"><input type="checkbox" data-abs="${a.lesson_id}" ${data[f.name].includes(a.lesson_id) ? "checked" : ""}>
       <span class="dot" style="background:${a.color};box-shadow:none"></span><div class="grow"><b class="small">${a.course}</b><div class="tiny muted">${fmtDate(a.day)} · ${a.start}–${a.end} · ${a.kind}</div></div>${badge("absent")}</label>`)}</div>
       <div class="tiny muted mt-sm">${t("{a} / {b} dərs seçilib", { a: data[f.name].length, b: absences.length })}</div>`;
@@ -123,7 +123,7 @@ route("/student/apply/:code", async (el, p, q) => {
     if (!a) return "";
     return html`<div class="field full"><span class="label">${a.label}${a.required ? raw(' <span class="req" aria-hidden="true">*</span>') : ""}</span>
       <label class="dropzone" id="dz"><input type="file" id="file" ${a.accept === "image" ? 'accept="image/png,image/jpeg"' : 'accept=".pdf,.jpg,.jpeg,.png,.docx"'} multiple hidden>
-        <span class="dz-ic">${ic("upload", 26)}</span><b>${t("Faylı seçin və ya bura atın")}</b>
+        <span class="dz-ic">${ic("upload", 26)}</span><b>${t("Faylı seçin və ya buraya sürükləyin")}</b>
         <div class="tiny muted mt-sm">${a.accept === "image" ? t("JPG və ya PNG") : t("PDF, JPG, PNG və ya DOCX")} · ${t("maks. 10 MB")} · ${t("ən çox {n} fayl", { n: a.max })}</div></label>
       <div class="file-list">${files.map((f, i) => html`<div class="file-row"><span class="fi ${f.mime.startsWith("image/") ? "img" : ""}">${f.mime.startsWith("image/") ? "IMG" : f.mime.includes("pdf") ? "PDF" : "DOC"}</span>
         <div class="grow"><b class="small ellipsis" style="display:block">${f.filename}</b><span class="tiny muted">${fmtSize(f.size)} · ${t("yükləndi")}</span></div>
@@ -177,12 +177,12 @@ route("/student/apply/:code", async (el, p, q) => {
       const v = data[f.name];
       const emptyV = v == null || v === "" || (Array.isArray(v) && !v.length) || (f.type === "daterange" && (!v.from || !v.to));
       if (emptyV) {
-        toast(t("“{label}” sahəsini doldurun.", { label: f.label }), "err");
+        toast(t("«{label}» sahəsini doldurun.", { label: f.label }), "err");
         const n = el.querySelector(`[data-f="${f.name}"], [data-radio="${f.name}"], [data-range="${f.name}"]`); n && n.focus();
         return false;
       }
     }
-    if (rt.attachments && rt.attachments.required && !files.length) { toast(t("“{label}” yüklənməlidir.", { label: rt.attachments.label }), "err"); return false; }
+    if (rt.attachments && rt.attachments.required && !files.length) { toast(t("«{label}» yüklənməlidir.", { label: rt.attachments.label }), "err"); return false; }
     return true;
   }
   on(el, "click", "[data-radio]", (e, b) => { data[b.dataset.radio] = b.dataset.val; draw(); });
@@ -331,7 +331,7 @@ export async function requestDetailPage(el, id) {
           <input class="input input-sm" id="lo-no" placeholder="${t("Əmrin nömrəsi")}" aria-label="${t("Əmrin nömrəsi")}" style="max-width:160px">
           <label class="small">${t("Əmrin tarixi")} <input class="input input-sm" id="lo-date" type="date"></label>
           <label class="small">${t("Qüvvəyə minir")} <input class="input input-sm" id="lo-eff" type="date"></label></div>` : ""}
-        <div class="tiny muted mt-sm">${t("Pilotda bu addımda ASAN İmza / SİMA ilə gücləndirilmiş elektron imza əlavə olunacaq.")}</div>`,
+        <div class="tiny muted mt-sm">${t("Pilot mərhələsində bu addımda ASAN İmza / SİMA ilə gücləndirilmiş elektron imza əlavə olunacaq.")}</div>`,
         actions: [{ label: t("Geri"), cls: "btn-ghost" }, { html: `${ic("shield", 15).__html} ${esc(t("Elektron təsdiqlə və ver"))}`, cls: "btn-success", onClick: async (w) => {
           const order = r.type_code === "academic_leave" ? { order_no: w.querySelector("#lo-no").value, order_date: w.querySelector("#lo-date").value,
             effective_date: w.querySelector("#lo-eff").value } : {};
@@ -345,13 +345,13 @@ export async function requestDetailPage(el, id) {
         fr.addEventListener("load", () => { fr.hidden = false; m.el.querySelector(".viewer-load")?.remove(); }, { once: true });
       } catch (err) { m.el.querySelector(".viewer-stage").innerHTML = failed(err.message).__html; }
     } else {
-      modal({ title: t("Müraciəti tamamla"), body: html`${r.type.effect === "none" ? html`<div class="notice info mb">${ic("info", 16)}<div>${t("Bu xidmət Zəka-da heç bir qeydi dəyişmir. Tələbə faktiki cavab alacaq: müraciət qeydə alınıb, baxan bölmə və qərar.")}</div></div>` : ""}
-        <div class="field"><label class="label" for="ans">${t("Qeyd (tələbə gedişatda görəcək)")}</label><textarea class="textarea" id="ans" rows="4"></textarea></div>
-        ${r.type_code === "absence_excuse" ? html`<div class="notice info mt">${ic("calcheck", 16)}<div>${t("Təsdiqdən sonra seçilmiş qayıblar elektron jurnalda avtomatik “üzrlü” olacaq və fənn müəllimləri məlumatlandırılacaq (tibbi məlumat göndərilmir).")}</div></div>` : ""}`,
+      modal({ title: t("Müraciəti tamamla"), body: html`${r.type.effect === "none" ? html`<div class="notice info mb">${ic("info", 16)}<div>${t("Bu xidmət Zəka platformasında heç bir qeydi dəyişmir. Tələbə faktiki cavab alacaq: müraciətin qeydə alınması, ona baxan bölmə və qərar.")}</div></div>` : ""}
+        <div class="field"><label class="label" for="ans">${t("Qeyd (tələbə onu «Gedişat» bölməsində görəcək)")}</label><textarea class="textarea" id="ans" rows="4"></textarea></div>
+        ${r.type_code === "absence_excuse" ? html`<div class="notice info mt">${ic("calcheck", 16)}<div>${t("Təsdiqdən sonra seçilmiş qayıblar elektron jurnalda avtomatik «üzrlü» olacaq və fənn müəllimləri məlumatlandırılacaq (tibbi məlumat göndərilmir).")}</div></div>` : ""}`,
         actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Təsdiqlə və tamamla"), cls: "btn-success", onClick: async (w) => { await api.post(`/api/requests/${id}/action`, { action: "issue", note: w.querySelector("#ans").value }); toast(t("Müraciət tamamlandı."), "ok"); reload(); } }] });
     }
   });
-  on(el, "click", "#a-cancel", async () => { if (await confirmBox(t("Müraciəti ləğv etmək?"), t("Müraciət geri götürüləcək. Bu əməliyyat geri qaytarılmır."), t("Ləğv et"), true)) {
+  on(el, "click", "#a-cancel", async () => { if (await confirmBox(t("Müraciət ləğv edilsin?"), t("Müraciət geri götürüləcək. Bu əməliyyat geri qaytarılmır."), t("Ləğv et"), true)) {
     try { await api.post(`/api/requests/${id}/cancel`); toast(t("Müraciət ləğv edildi."), "ok"); reload(); } catch (err) { toast(err.message, "err"); } } });
   on(el, "click", "#a-resubmit", () => {
     const fields = r.type.fields.filter((f) => ["text", "textarea", "select", "number"].includes(f.type));
@@ -388,7 +388,7 @@ route("/office", async (el, p, q) => {
   mount(el, html`${pageHead(t("Müraciətlər"), t("Tələbə müraciətlərinin yoxlanması, təsdiqi və sənədlərin elektron verilməsi."), "", crumbsO([t("Müraciətlər")]),
       { info: t("Növbə prioritet və icra müddətinə görə sıralanır. Müraciəti açmaq üçün sətrə toxunun.") })}
     <div class="grid g-4" id="office-stats">${stat("inbox", "ic-blue", cnt(sum.new), t("Yeni müraciət"))}${stat("timer", "ic-violet", cnt(sum.in_progress), t("İcrada"))}
-      ${stat("alert", sum.overdue ? "ic-red" : "ic-green", cnt(sum.overdue), t("Müddəti keçən"))}
+      ${stat("alert", sum.overdue ? "ic-red" : "ic-green", cnt(sum.overdue), t("Müddəti keçmiş"))}
       ${stat("check", "ic-green", cnt(sum.issued_week), sum.avg_hours != null ? t("Bu həftə tamamlanıb · orta {n} saat", { n: num(sum.avg_hours, 1) }) : t("Bu həftə tamamlanıb"))}</div>
     <div class="card mt" id="queue"><div class="card-h wrap"><div class="seg" role="tablist">${[["open", t("Açıq")], ["done", t("Bağlanmış")], ["all", t("Hamısı")]].map(([k, l]) =>
       html`<button class="${status === k ? "active" : ""}" role="tab" aria-selected="${status === k}" data-go="/office?status=${k}">${l}</button>`)}</div>
@@ -408,7 +408,7 @@ route("/office/registry", async (el, p, q) => {
   mount(el, loading());
   let docs;
   try { docs = await api.get(`/api/documents?q=${encodeURIComponent(q.q || "")}`); } catch (e) { return mount(el, failed(e.message)); }
-  mount(el, html`${pageHead(t("Sənəd reyestri"), t("Verilmiş bütün sənədlər — QR kod və bütövlük imzası ilə onlayn doğrulanır."), "", crumbsO([t("Sənəd reyestri")]),
+  mount(el, html`${pageHead(t("Sənəd reyestri"), t("Verilmiş bütün sənədlər QR kod və bütövlük imzası ilə onlayn doğrulanır."), "", crumbsO([t("Sənəd reyestri")]),
       { info: t("Sənədi reyestr nömrəsi, ad və ya növ üzrə axtarın. Doğrulama səhifəsi sənədin etibarlı olduğunu təsdiqləyir.") })}
     <div class="card" data-tour="reg-table"><div class="card-h wrap"><form class="search-field grow" id="sform"><span class="sfi">${ic("search", 16)}</span>
         <input class="input" id="sq" placeholder="${t("Reyestr nömrəsi, ad və ya sənəd növü")}" value="${esc(q.q || "")}" aria-label="${t("Axtarış")}"></form><span class="small muted">${t("{n} sənəd", { n: docs.length })}</span></div>
@@ -421,7 +421,7 @@ route("/office/registry", async (el, p, q) => {
         : empty("search", q.q ? t("Uyğun sənəd tapılmadı") : t("Reyestr boşdur"), q.q ? t("Axtarış sözünü dəyişin.") : t("Verilmiş sənədlər burada görünəcək."), q.q ? { label: t("Axtarışı sıfırla"), go: "/office/registry", cls: "btn" } : null)}</div></div>`);
   $("#sform", el).addEventListener("submit", (e) => { e.preventDefault(); go(`/office/registry?q=${encodeURIComponent($("#sq", el).value.trim())}`); });
   on(el, "click", "[data-doc]", (e, b) => openDoc(+b.dataset.doc, b.dataset.title));
-  on(el, "click", "[data-revoke]", (e, b) => modal({ title: t("Sənədi ləğv et"), size: "sm", body: html`<p class="small">${t("Ləğv edilmiş sənəd doğrulama səhifəsində “etibarsız” göstəriləcək.")}</p>
+  on(el, "click", "[data-revoke]", (e, b) => modal({ title: t("Sənədi ləğv et"), size: "sm", body: html`<p class="small">${t("Ləğv edilmiş sənəd doğrulama səhifəsində «etibarsız» göstəriləcək.")}</p>
       <div class="field"><label class="label" for="rr">${t("Səbəb")}</label><textarea class="textarea" id="rr" rows="3"></textarea></div>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Sənədi ləğv et"), cls: "btn-danger", onClick: async (w) => {
       const reason = w.querySelector("#rr").value.trim();
@@ -434,11 +434,11 @@ export { openDoc };
 // ---------------------------------------------------------------- page guides
 const GX = t("Xidmətlər"), GO = t("Dekanlıq");
 registerTour("student.services", { route: "/student/services", roles: ["student"], title: t("E-xidmətlər"), group: GX, icon: "grid", go: "/student/services", steps: [
-  { sel: "#sf", title: t("Axtarış"), text: t("Xidmətin adını yazın — nəticələr dərhal süzgəclənir.") },
-  { sel: "[data-tour=svc-popular]", title: t("Populyar xidmətlər"), text: t("Ən çox istifadə olunan müraciətlər buradadır.") },
+  { sel: "#sf", title: t("Axtarış"), text: t("Xidmətin adını yazın — nəticələr dərhal süzülür.") },
+  { sel: "[data-tour=svc-popular]", title: t("Populyar xidmətlər"), text: t("Ən çox müraciət edilən xidmətlər buradadır.") },
   { sel: ".svc-sec", title: t("Kateqoriyalar"), text: t("Xidmətlər bölmələrə ayrılıb. Karta toxunub müraciətə başlayın.") },
 ] });
-registerTour("student.apply", { route: "/student/apply/:code", roles: ["student"], title: t("Müraciət sihirbazı"), group: GX, icon: "edit", go: "/student/apply/enrollment_certificate", steps: [
+registerTour("student.apply", { route: "/student/apply/:code", roles: ["student"], title: t("Müraciət forması"), group: GX, icon: "edit", go: "/student/apply/enrollment_certificate", steps: [
   { sel: "[data-tour=apply-stepper]", title: t("Mərhələlər"), text: t("Müraciət üç addımdan ibarətdir: məlumatlar, yoxlama və göndəriş.") },
   { sel: "#w-form", title: t("Məlumatlar"), text: t("Sahələri doldurun. Bəzi sahələr seçiminizə görə görünür.") },
   { sel: "[data-tour=apply-side]", title: t("Xidmət haqqında"), text: t("Lazım olanlar, mərhələlər və icra müddəti burada göstərilir.") },

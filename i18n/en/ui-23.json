@@ -2,14 +2,14 @@
  "Ballar": "Scores",
  "Bu sətirlər yazılır, amma yoxlanmalıdır.": "These rows are written, but they need checking.",
  "Tapşırıqlar yüklənmədi": "The assignments did not load",
- "İlk {n} borc göstərilir, cəmi {total}: hamısı CSV-dədir.": {
-  "one": "The first {n} debt is shown, {total} in all: every one is in the CSV.",
-  "other": "The first {n} debts are shown, {total} in all: every one is in the CSV."
+ "İlk {n} borc göstərilir, cəmi {total}: tam siyahı CSV faylındadır.": {
+  "one": "Showing the first {n} of {total} failed courses: the full list is in the CSV.",
+  "other": "Showing the first {n} of {total} failed courses: the full list is in the CSV."
  },
- "Fənnin dərsləri": "The course's lessons",
- "Düzəliş və əvəzedici müəllim üçün dərsi açın": "Open a lesson to correct it or to name a substitute teacher",
+ "Fənnin dərsləri": "Course lessons",
+ "Davamiyyətə düzəliş etmək və ya əvəzedici müəllim təyin etmək üçün dərsi açın": "Open a lesson to correct it or to name a substitute teacher",
  "Siyahı ilk {n} sətirlə qısaldılıb: qrup seçin.": {
-  "one": "The list is cut to its first {n} row: choose a group.",
-  "other": "The list is cut to its first {n} rows: choose a group."
+  "one": "Only the first {n} row is shown: choose a group.",
+  "other": "Only the first {n} rows are shown: choose a group."
  }
 }

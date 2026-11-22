@@ -2,7 +2,7 @@
 // the score goes to the grade journal's component (a draft there until published).
 import { api, html, mount, on, ic, toast, modal, fmtDateTime, empty, fileToB64, t } from "./core.js";
 
-const RULE = () => ({ mark: t("Gecikmiş göndəriş qəbul olunur, “gecikib” qeyd olunur"), refuse: t("Son tarixdən sonra qəbul olunmur") });
+const RULE = () => ({ mark: t("Gecikmiş göndəriş qəbul olunur və «gecikib» kimi qeyd edilir"), refuse: t("Son tarixdən sonra qəbul olunmur") });
 
 export async function teacherAssignments(tgt, c) {
   let list, cols = [];
@@ -17,7 +17,7 @@ export async function teacherAssignments(tgt, c) {
       ${list.map((a) => html`<tr><td><b class="small">${a.title}</b><div class="tiny muted">${t("maks. {n}", { n: a.max_score })} · ${RULE()[a.late_rule]}</div></td>
         <td class="nowrap small">${a.due_at.replace("T", " ")}</td><td>${a.component}</td><td>${a.submitted}</td><td>${a.graded}</td>
         <td><button class="btn btn-sm" data-subs="${a.id}">${t("Göndərişlər")}</button></td></tr>`)}</tbody></table></div>`
-      : html`<div class="card-b">${empty("file", t("Hələ tapşırıq yoxdur"), t("Tapşırığın balı qiymət jurnalının seçdiyiniz komponentinə düşür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("file", t("Hələ tapşırıq yoxdur"), t("Tapşırığın balı qiymət jurnalının seçdiyiniz komponentinə yazılır."))}</div>`}</div>`);
   on(tgt, "click", "#as-new", () => modal({ title: t("Yeni tapşırıq"), size: "lg", body: html`<div class="stack">
       <div class="field"><label class="label" for="as-title">${t("Ad")}</label><input class="input" id="as-title" maxlength="200"></div>
       <div class="field"><label class="label" for="as-body">${t("Tapşırığın mətni")}</label><textarea class="input" id="as-body" rows="5"></textarea></div>

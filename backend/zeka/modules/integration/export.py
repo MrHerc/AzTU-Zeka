@@ -174,8 +174,8 @@ def oneroster_zip(c, report: dict | None = None) -> bytes:
 def _cap(c, count_sql: str, args: tuple, cap: int | None):
     """Over HTTP an export holds a worker and its memory: past ``cap`` rows it is refused with the way round (AR-E1)."""
     if cap is not None and (n := row(c, count_sql, args)["n"]) > cap:
-        raise ValueError(E("Fayl çox böyükdür ({n} sətir, ən çox {cap}). since ilə yalnız dəyişənləri alın və ya serverdə "
-                           "manage.py export işlədin.", n=n, cap=cap))
+        raise ValueError(E("Fayl çox böyükdür ({n} sətir, ən çox {cap}). Yalnız dəyişiklikləri almaq üçün since parametrindən istifadə edin və ya serverdə manage.py "
+                           "export əmrini işə salın.", n=n, cap=cap))
 
 
 def grades_csv(c, since: datetime | None = None, cap: int | None = None) -> str:
@@ -210,7 +210,7 @@ def attendance_csv(c, since: datetime | None = None, cap: int | None = None) -> 
 def registry_csv(c, kind: str, columns: list[str] | None = None) -> str:
     """A register of ``students`` or ``users`` with the chosen columns (all of them when none is chosen)."""
     if kind not in REGISTRY:
-        raise ValueError(E("Naməlum reyestr: {kind}. Mümkün olanlar: {kinds}", kind=kind, kinds=", ".join(REGISTRY)))
+        raise ValueError(E("Naməlum reyestr: {kind}. Mövcud reyestrlər: {kinds}", kind=kind, kinds=", ".join(REGISTRY)))
     tail, allowed = REGISTRY[kind]
     cols = list(dict.fromkeys(columns or allowed))
     bad = [x for x in cols if x not in allowed]

@@ -100,13 +100,13 @@ function draw() {
     ${a && a.status === "paused" ? `<div class="exam-right"><div class="exam-timer paused" role="timer">${clock(a.remaining_s)}</div></div>` : ""}</header>`;
   if (!a) {
     root.innerHTML = `${head}<section class="exam-card"><p>${esc(t("Müddət: {n} dəqiqə. Vaxt server saatı ilə ölçülür; cavablar dəyişən kimi saxlanılır.", { n: e.duration_min }))}</p>
-      <p class="exam-muted">${esc(t("Bağlantı kəsilsə cavablar bu brauzerdə saxlanılır və bağlantı qayıdanda göndərilir."))}</p>
+      <p class="exam-muted">${esc(t("Bağlantı kəsilərsə, cavablar bu brauzerdə saxlanılır və bağlantı bərpa olunanda göndərilir."))}</p>
       <button class="btn btn-primary" id="start">${esc(t("Başla"))}</button></section>`;
     return;
   }
   if (a.status === "paused") {
     root.innerHTML = `${head}<section class="exam-card"><h2>${esc(t("İmtahan dayandırılıb"))}</h2>
-      <p>${esc(t("Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; davam edəndə cavablarınız göndəriləcək."))}</p></section>`;
+      <p>${esc(t("Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; imtahan davam edəndə cavablarınız göndəriləcək."))}</p></section>`;
     return;
   }
   if (a.status !== "in_progress") {
@@ -195,7 +195,7 @@ function flush() {
 
 async function submit(auto = false) {
   if (submitting) return;
-  if (!auto && !confirm(t("Təslim etmək istəyirsiniz? Bundan sonra cavab dəyişmir."))) return;
+  if (!auto && !confirm(t("Təslim etmək istəyirsiniz? Bundan sonra cavabları dəyişmək mümkün olmayacaq."))) return;
   submitting = true;
   try {
     await flush();

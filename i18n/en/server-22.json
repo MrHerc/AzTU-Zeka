@@ -1,8 +1,8 @@
 {
- "Bu addım sizin rolunuzun növbəsi deyil": "This step is not your role's turn",
+ "Bu addım sizin rolunuza aid deyil": "This step is not assigned to your role",
  "Yalnız son versiya təqdim olunur": "Only the latest version can be submitted",
  "Geri qaytarmanın səbəbini yazın": "Write the reason for returning it",
  "Sillabus geri qaytarıldı: {course}": "Syllabus returned: {course}",
  "Sillabus dərc olundu: {course}": "Syllabus published: {course}",
- "Bu fəndə artıq bal yazılıb: dərc üçün tədris şöbəsinin açıq icazəsi və səbəbi lazımdır": "This course already has scores: publication needs the academic office's explicit permission and a reason"
+ "Bu fəndə artıq bal yazılıb: dərc etmək üçün tədris hissəsinin xüsusi icazəsi və səbəbin göstərilməsi lazımdır": "This course already has scores: publication needs the academic office's explicit permission and a reason"
 }

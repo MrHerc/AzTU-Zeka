@@ -63,15 +63,15 @@ def render(template: str, params: dict, lang: str, base: str) -> tuple[str, str]
         lines = [title] + (["", body] if body else [])
         if params.get("link"):
             lines += ["", S("Portalda açın: {url}", lang, url=f"{base}/#{params['link']}")]
-        lines += ["", "—", S("Bu məktubu Zəka-dakı bildiriş ayarlarınıza görə alırsınız. Dəyişmək: {url}", lang, url=f"{base}/#/profile")]
+        lines += ["", "—", S("Bu məktubu Zəka platformasındakı bildiriş ayarlarınıza görə alırsınız. Ayarları dəyişmək üçün: {url}", lang, url=f"{base}/#/profile")]
         return title, "\n".join(lines)
     if template == "exam.root":
         subject = S("İmtahan protokolu: {title}", lang, title=params["title"])
-        stage = {"close": S_("imtahan bağlandı"), "release": S_("nəticə açıqlandı"), "statement": S_("qrupun cədvəli bağlandı"),
+        stage = {"close": S_("imtahan bağlandı"), "release": S_("nəticə açıqlandı"), "statement": S_("qrupun imtahan-qiymət cədvəli bağlandı"),
                  "score": S_("dekanlıq balı dəyişdi")}.get(params.get("what", "close"), S_("imtahan bağlandı"))
         lines = [subject, S("Mərhələ: {stage} (hadisə № {seq})", lang, stage=S(stage, lang), seq=params.get("seq", "")), "",
                  S("Zəncirin kökü (64 simvol):", lang), params["root"], "",
-                 S("Bu məktubu saxlayın: imtahan jurnalını yoxlamaq üçün kök bazadan kənarda qalmalıdır.", lang),
+                 S("Bu məktubu saxlayın: imtahan jurnalını yoxlamaq üçün kök verilənlər bazasından kənarda qalmalıdır.", lang),
                  S("Yoxlama: python backend/manage.py exam-verify {id} --root {root}", lang, id=params["exam_id"], root=params["root"])]
         if params.get("verify_url"):
             lines += ["", S("Protokol: {url}", lang, url=params["verify_url"])]

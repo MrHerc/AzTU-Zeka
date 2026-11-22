@@ -163,7 +163,7 @@ def _attendance(frame: Frame, sid: int, cid: int, as_of: datetime) -> dict:
     if absent:
         ev.append(T3("{absent} üzrsüz qayıb / {total} dərs ({rate}%)", absent=absent, total=total, rate=pct(rate)))
     if streak >= 2:
-        ev.append(T3("son {n} dərs ardıcıl qayıb", n=streak))
+        ev.append(T3("son {n} dərsdə ardıcıl qayıb", n=streak))
     elif recent >= 2:
         ev.append(T3("son 2 həftədə {n} qayıb", n=recent))
     if excused:
@@ -268,10 +268,10 @@ def _engagement(frame: Frame, sid: int, cid: int, as_of: datetime) -> dict:
     value, ev = 0.0, []
     if sid in frame.ai and n14 == 0 and (co["median_asks"] >= 1 or before >= 3):
         value += 0.6
-        ev.append(T3("Son 14 gündə tutora sual yoxdur (qrup mediyanı: {m})", m=num3(co["median_asks"], 0)))
+        ev.append(T3("Son 14 gündə tutora sual yoxdur (qrup medianı: {m})", m=num3(co["median_asks"], 0)))
     if not ats and co["attempt_share"] >= 0.5:
         value += 0.4
-        ev.append(T3("Heç bir test cəhdi yoxdur (kursun {p}%-i cəhd edib)", p=pct(co["attempt_share"])))
+        ev.append(T3("Heç bir test cəhdi yoxdur (fənn üzrə tələbələrin {p}%-i cəhd edib)", p=pct(co["attempt_share"])))
     return {"key": "engagement", "value": round(clamp(value), 3), "confidence": 1.0, "evidence": ev,
             "stats": {"asks_14d": n14, "asks_before": before, "median_asks": co["median_asks"], "attempts": len(ats)}}
 
@@ -519,7 +519,7 @@ def build_plan(c, prof: dict, course: dict, kind: str = "plan", note: str = "", 
     att = prof["stats"]["attendance"]
     if kind in ("plan", "office") and (att.get("streak", 0) >= 2 or att.get("recent", 0) >= 2):
         steps.append({"kind": "attend", "title": T3("Növbəti dərslərdə iştirak"),
-                      "text": T3("Növbəti 2 dərsdə iştirak edin. Üzrlü səbəbiniz olubsa, təsdiqedici sənədi E-xidmətlərdən yükləyin — qayıb üzrlü sayılacaq."),
+                      "text": T3("Növbəti 2 dərsdə iştirak edin. Üzrlü səbəbiniz olubsa, təsdiqedici sənədi E-xidmətlər bölməsində yükləyin — qayıb üzrlü hesab ediləcək."),
                       "link": "/student/attendance", "done": False})
     if kind in ("plan", "consult"):
         nxt = next_lesson(c, cid, when)

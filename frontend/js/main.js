@@ -60,12 +60,12 @@ function langSwitch(cls = "") {
 }
 // Answers of the single sign-on callback (/api/auth/sso/callback redirects to #/login?sso=… or #/profile?sso=…).
 function ssoMessage(code) {
-  return ({ not_found: t("Bu universitet hesabına bağlı hesab tapılmadı. Dekanlığa və ya İT xidmətinə müraciət edin."),
-    failed: t("Vahid girişi tamamlamaq olmadı. Bir azdan yenidən cəhd edin."),
-    expired: t("Giriş vaxtı bitib və ya başqa pəncərədə başlayıb. Yenidən cəhd edin."),
+  return ({ not_found: t("Bu universitet hesabı ilə əlaqələndirilmiş portal hesabı tapılmadı. Dekanlığa və ya İT xidmətinə müraciət edin."),
+    failed: t("Vahid girişi tamamlamaq mümkün olmadı. Bir azdan yenidən cəhd edin."),
+    expired: t("Giriş müddəti bitib və ya giriş başqa pəncərədə başlanıb. Yenidən cəhd edin."),
     cancelled: t("Vahid giriş ləğv olundu."), off: t("Vahid giriş qoşulmayıb."),
-    taken: t("Bu universitet hesabı artıq başqa hesaba və ya bu hesab başqa universitet hesabına bağlanıb."),
-    linked: t("Universitet hesabı bağlandı: növbəti dəfə onunla daxil ola bilərsiniz.") })[code] || "";
+    taken: t("Bu universitet hesabı artıq başqa portal hesabı ilə əlaqələndirilib, ya da bu portal hesabı başqa universitet hesabı ilə əlaqələndirilib."),
+    linked: t("Universitet hesabı əlaqələndirildi: növbəti dəfə onunla daxil ola bilərsiniz.") })[code] || "";
 }
 function ssoNotice() {
   const { path, query } = currentPath();
@@ -88,13 +88,13 @@ function passwordLogin() {
       <div class="field"><label class="label" for="login-pass">${t("Parol")}</label>
         <input class="input" id="login-pass" name="password" type="password" autocomplete="current-password" required></div>
       <button class="btn btn-primary btn-block" type="submit">${ic("lock", 16)} ${t("Daxil ol")}</button>
-      <p class="small muted" style="margin:0">${t("Parolu unutmusunuzsa, dekanlığa və ya İT xidmətinə müraciət edin: müvəqqəti parol verəcəklər.")}</p>
+      <p class="small muted" style="margin:0">${t("Parolu unutmusunuzsa, dekanlığa və ya İT xidmətinə müraciət edin: sizə müvəqqəti parol veriləcək.")}</p>
       <button class="btn btn-ghost btn-sm" type="button" id="activate-open" style="align-self:flex-start">${ic("lock", 15)} ${t("Tələbə hesabını aktivləşdir")}</button>
     </form>`;
 }
 function activateModal() {
   modal({ title: t("Hesabın aktivləşdirilməsi"), size: "sm", body: html`<div class="stack">
-      <p class="small muted" style="margin:0">${t("Dekanlığın verdiyi birdəfəlik kodu və tələbə bileti nömrənizi yazın, sonra parol seçin.")}</p>
+      <p class="small muted" style="margin:0">${t("Dekanlığın verdiyi birdəfəlik kodu və tələbə bileti nömrənizi yazın, sonra parol təyin edin.")}</p>
       <div class="field"><label class="label" for="act-no">${t("Tələbə bileti №")}</label><input class="input" id="act-no" autocomplete="username" spellcheck="false"></div>
       <div class="field"><label class="label" for="act-code">${t("Aktivləşdirmə kodu")}</label><input class="input" id="act-code" autocomplete="one-time-code" spellcheck="false" placeholder="XXXX-XXXX-XXXX"></div>
       <div class="field"><label class="label" for="act-pass">${t("Yeni parol (ən azı 15 simvol)")}</label><input class="input" id="act-pass" type="password" autocomplete="new-password"></div>
@@ -118,14 +118,14 @@ async function loginPage(root) {
       <p class="lead">${t("Tədris, qiymətləndirmə, e-xidmətlər və müəllim inkişafı — vahid platformada.")}</p>
       <div class="feats">${[["sparkles", t("Fənn materiallarına əsaslanan AI tutor"), t("Sokratik metod və hər cavabda mənbə")],
          ["grid", t("E-xidmətlər onlayn"), t("Arayışdan akademik məzuniyyətə qədər 13 xidmət")],
-         ["calcheck", t("Davamiyyət və qiymətlər"), t("Qayıbların həkim arayışı ilə üzrlü edilməsi")],
+         ["calcheck", t("Davamiyyət və qiymətlər"), t("Qayıbların həkim arayışı ilə üzrlü hesab edilməsi")],
          ["cap", t("Müəllimlər üçün AI Akademiya"), t("İngilis dilində tədris, sillabus və rəqəmsal alətlər")]].map(([i, ti, s]) =>
         html`<div class="feat"><span class="fi">${ic(i, 20)}</span><div><b>${ti}</b><span>${s}</span></div></div>`)}</div>
       <div class="login-ach" id="login-ach" aria-live="polite"></div>
       <div class="foot">${S.app.mode === "prod" ? html`v${S.app.version || "0.3"}` : html`${t("Demo versiya")} v${S.app.version || "0.3"} · ${t("məlumatlar sintetikdir")}`} · ${(S.app.contact && S.app.contact.address) || uni.address} · <a href="#" data-privacy-notice>${t("Məxfilik bildirişi")}</a> · <b>by Safarov Industries</b></div>
     </div>
     <div class="login-side"><div class="login-card">
-      ${S.app.mode === "prod" ? passwordLogin() : html`<h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitetin vahid hesabı (SSO) ilə olacaq. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
+      ${S.app.mode === "prod" ? passwordLogin() : html`<h2>${t("Xoş gəlmisiniz")}</h2><p class="muted" style="margin:6px 0 18px">${t("Demo üçün rol seçin.")} ${infoTip(t("Pilot mərhələsində giriş universitet hesabı (SSO) ilə həyata keçiriləcək. Demo girişi parolsuzdur və yalnız bu kompüterdə işləyir."))}</p>
       ${S.app.sso && S.app.sso.enabled ? ssoButton() : html`<button class="btn btn-block" disabled title="${t("Pilot mərhələsində aktiv olacaq")}">${ic("lock", 16)} ${t("AzTU hesabı ilə daxil ol (SSO)")}<span class="badge b-gray" style="margin-left:6px">${t("Pilotda")}</span></button>`}
       <div class="or">${t("demo rolları")}</div>
       ${S.app.access_required ? html`<div class="field mb"><label class="label" for="access-code">${t("Demo giriş kodu")}</label>
@@ -235,7 +235,7 @@ route("/profile", async (el) => {
       </div>
       <div class="stack">
         <div class="card"><div class="card-h"><h3>${ic("sliders", 17)} ${t("Görünüş və dil")}</h3></div><div class="card-b stack">
-          <div class="set-row"><div><b>${t("Interfeys dili")}</b><div class="small muted">${t("Fənn materialları tədris dilində qalır.")}</div></div>${langSwitch()}</div>
+          <div class="set-row"><div><b>${t("İnterfeys dili")}</b><div class="small muted">${t("Fənn materialları tədris dilində qalır.")}</div></div>${langSwitch()}</div>
           <div class="set-row"><div><b>${t("Tema")}</b><div class="small muted">${t("Açıq və ya tünd görünüş")}</div></div>
             <div class="seg" role="group"><button class="${S.theme !== "dark" ? "active" : ""}" data-theme-set="light">${ic("sun", 14)} ${t("Açıq")}</button><button class="${S.theme === "dark" ? "active" : ""}" data-theme-set="dark">${ic("moon", 14)} ${t("Tünd")}</button></div></div>
           <div class="set-row"><div><b>${t("Sol panel")}</b><div class="small muted">${t("Yığılmış rejimdə yalnız ikonlar görünür. Qısayol: [")}</div></div>
@@ -286,7 +286,7 @@ route("/profile", async (el) => {
     if (!box) return;
     let m;
     try { m = await api.get("/api/me/notifications"); } catch { return mount(box, html`<span class="small muted">—</span>`); }
-    mount(box, html`<p class="small muted" style="margin:0">${m.address ? t("Ünvan: {address}. Portaldakı bildirişlər həmişə görünür; burada yalnız e-poçt seçilir.", { address: m.address })
+    mount(box, html`<p class="small muted" style="margin:0">${m.address ? t("Ünvan: {address}. Portaldakı bildirişlər həmişə görünür; burada isə hansı bildirişlərin e-poçtla da göndəriləcəyini seçirsiniz.", { address: m.address })
         : t("Hesabınızda e-poçt ünvanı yoxdur: bildirişlər yalnız portalda görünür.")}${m.relay ? "" : html` ${t("Universitet e-poçt göndərişini hələ qoşmayıb.")}`}</p>
       <div class="mail-kinds">${m.kinds.map((k) => html`<label class="check"><input type="checkbox" data-mail-kind="${k.kind}" ${k.email ? "checked" : ""}> ${k.label}</label>`)}</div>`);
   };
@@ -301,9 +301,9 @@ route("/profile", async (el) => {
     const list = await api.get("/api/me/sso");
     mount(box, list.length ? html`${list.map((x) => html`<div class="set-row"><div><b>${x.email || x.iss}</b>
         <div class="small muted">${t("Bağlantı tarixi")}: ${fmtDateTime(x.linked_at)}${x.last_login ? html` · ${t("Son giriş")}: ${fmtDateTime(x.last_login)}` : ""}</div></div>
-        <span class="badge b-green">${t("Bağlıdır")}</span></div>`)}`
-      : html`<p class="small muted" style="margin:0">${t("Universitet hesabınızı bağlasanız, parol yazmadan onunla daxil ola bilərsiniz.")}</p>
-        <button class="btn btn-sm" id="sso-link" style="align-self:flex-start">${ic("link", 15)} ${t("Hesabı bağla")}</button>`);
+        <span class="badge b-green">${t("Əlaqələndirilib")}</span></div>`)}`
+      : html`<p class="small muted" style="margin:0">${t("Universitet hesabınızı əlaqələndirsəniz, parol yazmadan onunla daxil ola bilərsiniz.")}</p>
+        <button class="btn btn-sm" id="sso-link" style="align-self:flex-start">${ic("link", 15)} ${t("Hesabı əlaqələndir")}</button>`);
   };
   drawSso();
   ssoNotice();
@@ -368,7 +368,7 @@ route("/notifications", async (el, p, q) => {
     const r = await api.get("/api/notifications");
     const only = q.filter === "unread";
     const items = only ? r.items.filter((n) => !n.read_at) : r.items;
-    mount(el, html`${pageHead(t("Bildirişlər"), t("Müraciətlər, testlər, elanlar və dəstək cavabları."), html`<button class="btn" id="all-read" ${r.unread ? "" : "disabled"}>${ic("check", 15)} ${t("Hamısını oxunmuş et")}</button>`, [[t("Əsas"), HOME[S.user.role]], [t("Bildirişlər")]])}
+    mount(el, html`${pageHead(t("Bildirişlər"), t("Müraciətlər, testlər, elanlar və dəstək cavabları."), html`<button class="btn" id="all-read" ${r.unread ? "" : "disabled"}>${ic("check", 15)} ${t("Hamısını oxunmuş kimi qeyd et")}</button>`, [[t("Əsas"), HOME[S.user.role]], [t("Bildirişlər")]])}
       <div class="tabs"><button class="tab ${only ? "" : "active"}" data-go="/notifications">${t("Hamısı")} <span class="count-pill">${r.items.length}</span></button>
         <button class="tab ${only ? "active" : ""}" data-go="/notifications?filter=unread">${t("Oxunmamış")} <span class="count-pill">${r.unread}</span></button></div>
       <div class="card"><div class="card-b list">${items.length ? items.map((n) => { const [i, c] = notifIcon(n.kind);

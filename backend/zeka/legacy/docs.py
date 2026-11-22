@@ -62,7 +62,7 @@ def _head(uni, unit_az, unit_en, en):
 
 def _sign(doc, issuer, qr, en, role_az="Tədris hissəsi", role_en="Registrar's Office"):
     return f"""<div class="sign">
-    <div><div class="role">{e(role_en if en else role_az)}</div><div class="esign">✓ {'Electronically approved' if en else 'Elektron təsdiqlənib'}<br>
+    <div><div class="role">{e(role_en if en else role_az)}</div><div class="esign">✓ {'Electronically approved' if en else 'Elektron qaydada təsdiqlənib'}<br>
       <span>{e(issuer['full_name'])} · {dmy(doc['issued_at'], True)}</span></div></div>
     <div class="qr">{qr}<small>{'Verification code' if en else 'Doğrulama kodu'}<br><b>{e(doc['verify_code'])}</b></small></div></div>"""
 
@@ -156,11 +156,11 @@ def leave_body(holder, data, ctx, doc):
 
 
 KIND_AZ = {"main": "əsas", "retake": "təkrar", "individual": "fərdi vaxt"}
-RESULT_AZ = {"passed": "keçdi", "exam_min": "imtahan balı minimumdan aşağı", "pass_mark": "cəm keçid balından aşağı",
+RESULT_AZ = {"passed": "keçdi", "exam_min": "imtahan balı minimumdan aşağı", "pass_mark": "yekun bal keçid balından aşağı",
              "not_admitted": "buraxılmayıb", "absent": "gəlməyib"}
 INCIDENT_AZ = {"client.blur": "pəncərədən çıxma", "client.fullscreen_exit": "tam ekrandan çıxma", "client.reconnect": "yenidən qoşulma",
                "net.changed": "ünvan dəyişməsi", "net.refused": "kənar ünvandan sorğu", "login.during_exam": "imtahan zamanı başqa giriş",
-               "session.refused": "rədd edilmiş giriş", "session.takeover": "başqa kompüterdən davam", "seb.refused": "SEB yoxlamasından keçməyən sorğu"}
+               "session.refused": "rədd edilmiş giriş", "session.takeover": "başqa kompüterdən davam etdirmə", "seb.refused": "SEB yoxlamasından keçməyən sorğu"}
 ACTION_AZ = {"proctor.extend": "vaxt əlavəsi", "proctor.pause": "dayandırma", "proctor.resume": "davam etdirmə", "proctor.end": "cəhdin bitirilməsi",
              "proctor.reopen": "cəhdin yenidən açılması", "proctor.unlock": "giriş kilidinin açılması"}
 
@@ -175,7 +175,7 @@ def exam_protocol_body(data) -> str:
     r, a = data.get("roster") or {}, data.get("attempts") or {}
     window = f'{dmy(data.get("opens_at") or "", True)} – {dmy(data.get("closes_at") or "", True)}'
     facts = [("Fənn", data.get("course")), ("İmtahan", f'{data.get("title")} · {KIND_AZ.get(data.get("kind"), data.get("kind"))} · {data.get("attempt_no")}-ci cəhd'),
-             ("Pəncərə (UTC)", window), ("Müddət", f'{data.get("duration_min")} dəq.'),
+             ("Keçirilmə vaxtı (UTC)", window), ("Müddət", f'{data.get("duration_min")} dəq.'),
              ("Siyahı", f'buraxılıb {r.get("eligible", 0)} · istisna {r.get("exception", 0)} · buraxılmayıb {r.get("excluded", 0)}'),
              ("Cəhdlər", f'başlayıb {a.get("started", 0)} · avtomatik təslim {a.get("auto", 0)} · gəlməyib {a.get("absent", 0)}')]
     inc = ", ".join(f"{INCIDENT_AZ.get(k, k)}: {n}" for k, n in (data.get("incidents") or {}).items()) or "yoxdur"
@@ -264,8 +264,8 @@ def unverified_card(doc: dict, lang: str, state: str) -> str:
         head = (f'<div class="v-icon">!</div><h1>{e(s("Sənəd dəyişdirilib"))}</h1>'
                 f'<p>{e(s("Reyestrdəki məzmun sənəd veriləndə saxlanmış məzmunla uyğun gəlmir. Bu sənədə etibar etməyin və universitetlə əlaqə saxlayın."))}</p>')
     else:
-        head = (f'<div class="v-icon">?</div><h1>{e(s("Bu sənəd doğrulanmır"))}</h1>'
-                f'<p>{e(s("Sənəd verilmə anındakı məzmunu saxlanmadan əvvəl verilib. Həqiqiliyini universitetdən soruşun."))}</p>')
+        head = (f'<div class="v-icon">?</div><h1>{e(s("Bu sənədi doğrulamaq mümkün deyil"))}</h1>'
+                f'<p>{e(s("Bu sənəd verilmə anındakı məzmunun saxlanılmasına başlanmazdan əvvəl verilib. Sənədin həqiqiliyini universitetdə dəqiqləşdirin."))}</p>')
     return f'<div class="v-card bad">{head}<table><tr><th>{e(s("Reyestr nömrəsi"))}</th><td>{e(doc["reg_no"])}</td></tr></table></div>'
 
 
@@ -311,4 +311,4 @@ def render_verify(doc: dict | None, holder: dict | None, ctx: dict, lang: str = 
     body = f"""<div class="verify"><div class="v-brand"><img src="/static/img/brand/icon.png" alt="{e(uni['short'])}" class="v-logo">
 <div><b>{e(uni['name'])}</b><br><span>{e(s("Sənədlərin onlayn doğrulanması"))}</span></div></div>
 {card}<p class="v-note">{e(s("Şəxsi məlumatların qorunması məqsədilə yalnız minimal məlumat göstərilir. DEMO versiya."))}</p></div>"""
-    return _page(s("Sənəd doğrulama · {x}", x=uni["short"]), body)
+    return _page(s("Sənədin doğrulanması · {x}", x=uni["short"]), body)

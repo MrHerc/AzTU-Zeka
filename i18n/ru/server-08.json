@@ -1,13 +1,13 @@
 {
- "«{field}» sahəsi doldurulmalıdır": "Поле «{field}» обязательно",
+ "«{field}» sahəsi doldurulmalıdır": "Поле «{field}» обязательно для заполнения",
  "«{field}» sahəsində kod 2–30 hərf, rəqəm, nöqtə, defis və ya alt xətdən ibarət olmalıdır": "«{field}»: код из 2–30 букв, цифр, точек, дефисов или подчёркиваний",
  "«{field}» sahəsi 2–200 simvol olmalıdır": "«{field}»: от 2 до 200 символов",
- "«{field}» sahəsində dərəcə bakalavr, magistr və ya doktorantura olmalıdır": "«{field}»: бакалавриат, магистратура или докторантура",
+ "«{field}» sahəsində təhsil pilləsi bakalavriat, magistratura və ya doktorantura olmalıdır": "«{field}»: бакалавриат, магистратура или докторантура",
  "Başlanğıc tarixi bitmə tarixindən əvvəl olmalıdır": "Дата начала должна быть раньше даты окончания",
  "Tədris dövrü imtahan sessiyası başlamazdan əvvəl bitməlidir": "Учебный период должен закончиться до начала экзаменационной сессии",
  "«{field}» sahəsində mövcud bir sətir seçin": "«{field}»: выберите существующую запись",
  "«{field}» sahəsində il 1990 ilə 2100 arasında olmalıdır": "«{field}»: год от 1990 до 2100",
- "«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır": "«{field}»: дата в формате ГГГГ-ММ-ДД",
+ "«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır": "В поле «{field}» дата должна быть в формате ГГГГ-ММ-ДД",
  "Bu kod artıq istifadə olunur": "Этот код уже используется",
  "«{field}» sahəsində seçilən sətir tapılmadı": "«{field}»: выбранная запись не найдена"
 }

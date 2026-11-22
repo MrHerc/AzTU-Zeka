@@ -298,7 +298,7 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
             return None, E("Açılış qalığının tarixi gələcəkdə ola bilməz")      # it would hide the journal's records up to that day
         first = ctx.legacy_pairs().get((student_id, course_id or 0))        # one form per student and course (Task 38): lesson
         if first and first <= str(v.get("as_of") or ""):                       # records up to the opening's date (AR-F8)
-            return None, E("Bu tələbə və fənn üçün dərs səviyyəli qeydlər idxal olunub: açılış qalığı qəbul olunmur")
+            return None, E("Bu tələbə və fənn üzrə ayrı-ayrı dərslərin qeydləri idxal olunub: açılış qalığı qəbul olunmur")
         keys = ctx.keyed("attendance_opening", ("student_id", "course_id", "term_id"))
         values = {"student_id": student_id, "course_id": course_id, "term_id": term_id, **v}
         return Item(n, "attendance_opening", sid, values, natural=keys.get((student_id, course_id, term_id))), None
@@ -339,9 +339,9 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
             return None, E("Bu tələbə və fənn üçün açılış qalığı var ({day}): həmin tarixə qədərki dərs qeydi qəbul olunmur", day=opening)
         les = ctx.lesson(unit, v["day"], v["start"])
         if les and les["status"] == "cancelled":
-            return None, E("Zəka-da bu dərs ləğv olunub: qeyd sayılmazdı")
+            return None, E("Zəka platformasında bu dərs ləğv olunub: qeyd sayılmazdı")
         if les and v["_hours"] and les["academic_hours"] and v["_hours"] != les["academic_hours"]:   # Checkpoint F (CR-F2)
-            return None, E("Faylda dərsin saatı ({a}), Zəka-da {b}: qeyd fərqli saat sayardı", a=v["_hours"], b=les["academic_hours"])
+            return None, E("Dərsin saatı faylda {a}, Zəka platformasında isə {b}: qeyd başqa saat sayı ilə hesablanardı", a=v["_hours"], b=les["academic_hours"])
         key = f"{unit}|{v['day']}|{v['start']}"
         item = Item(n, "attendance", sid, {"lesson_id": les["_k"] if les else Pending("lessons", key), "user_id": user, "status": v["status"]},
                     natural=ctx.marks(les["_k"]).get(user) if les else None)
@@ -357,7 +357,7 @@ def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item |
                                     ctx.table("final_grades", ("user_id", "course_code", "term_name", "source")).values()}
         same = ctx._cache["finals"].get((user, v["course_code"], v["term_name"]))
         if same and same["source"] != "legacy":
-            return None, E("Bu fənnin həmin semestrdəki yekun qiyməti Zəka-da yazılıb: tarixi nəticə kimi idxal olunmur")
+            return None, E("Bu fənnin həmin semestrdəki yekun qiyməti Zəka platformasında yazılıb: tarixi nəticə kimi idxal olunmur")
         return Item(n, "results", sid, {"user_id": user, **v}, natural=same["_k"] if same else None), None
     if kind == "status-events":
         user, group = ctx.linked("users", v["_user"]), v["_group"]
@@ -559,7 +559,7 @@ def _classify(ctx: Context, items: list[Item], prefer: bool, conflicts: list, er
             it.extra["fields"] = changed
             if it.action == "conflict":
                 conflicts.append({"row": it.extra.get("where", it.row), "id": it.row_id, "fields": changed,
-                                  "reason": E("Zəka-da dəyişdirilib; mənbənin dəyəri yazılmadı")})
+                                  "reason": E("Zəka platformasında dəyişdirilib; mənbənin dəyəri yazılmadı")})
         if it.link == "attendance" and it.action == "relink" and not link:
             it.action = "update"                       # the same mark written in Zəka becomes the imported record
         if it.link == "status_events" and it.action == "update":   # an order is never rewritten: a correction is a new order
@@ -610,7 +610,7 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
             if it.action == "update" and _now_hash(c, it) != it.extra.get("cur_hash"):
                 it.action = "conflict"                            # changed in Zəka while the file was being checked
                 conflicts.append({"row": it.extra.get("where", it.row), "id": rid,
-                                  "reason": E("İdxal yoxlanarkən Zəka-da dəyişdirildi; mənbənin dəyəri yazılmadı")})
+                                  "reason": E("İdxal yoxlanılarkən Zəka platformasında dəyişdirildi; mənbənin dəyəri yazılmadı")})
                 continue
             if it.action in ("update", "overwrite") and it.link == "users":
                 before = repo.one(c, "users", ("role", "status"), rid)
@@ -650,12 +650,12 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     if not domain.SOURCE.fullmatch(source or ""):
         raise tables.TableError("Mənbə sisteminin adını yazın (--source)")
     if as_of is not None and (kind not in domain.JOURNAL_KINDS or domain.a_date(as_of) != as_of or as_of > now().date().isoformat()):
-        raise tables.TableError("Kəsid tarixi (--as-of) jurnal növləri üçündür: İİİİ-AA-GG, bu gündən gec olmayan")
+        raise tables.TableError("Kəsid tarixi (--as-of) yalnız jurnal növləri üçün göstərilir və İİİİ-AA-GG formatında, bu gündən gec olmayan tarix olmalıdır")
     if kind == "status-events" and user_id is None and not dry_run:
         raise tables.TableError("Status əmrini idxal edən hesab göstərilməlidir (--by)")   # it is the order's "entered by"
     going = 0 if dry_run else exam.open_count(c)
     if going and not force:
-        raise tables.TableError("İmtahan gedir: yazan idxal imtahan bağlanandan sonra başlayır")
+        raise tables.TableError("İmtahan gedir: məlumat yazan idxal imtahan bağlandıqdan sonra başlaya bilər")
     started = time.monotonic()
     errors: list = []
     conflicts: list = []
@@ -675,7 +675,7 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
             raise tables.TableError("Bir faylda ən çox 200 000 sətir idxal olunur: faylı hissələrə bölün")
         for n, x in cells if as_of else ():             # the export's date for every row that names none (Task 38)
             if x.get("asOf") and domain.a_date(x["asOf"]) != as_of:
-                errors.append({"row": n, "reason": E("Sətrin tarixi --as-of ilə uyğun gəlmir")})
+                errors.append({"row": n, "reason": E("Sətrin tarixi --as-of tarixinə uyğun gəlmir")})
             x["asOf"] = as_of
         links = {"users": ("users",), "orgs": ("faculties", "departments"), "terms": ("terms",), "courses": ("courses",),
                  "classes": ("classes",), "enrollments": ("unit_teachers", "enrollments", "users"), "timetable": ("timetable",),
@@ -704,7 +704,7 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     try:
         going = exam.open_count(c)                     # again under the lock: an exam may have opened while the file was read (PY-F1)
         if going and not force:
-            raise tables.TableError("İmtahan gedir: yazan idxal imtahan bağlanandan sonra başlayır")
+            raise tables.TableError("İmtahan gedir: məlumat yazan idxal imtahan bağlandıqdan sonra başlaya bilər")
         _write(c, ctx, items, user_id, conflicts)
         for finish in loaders.FINISH:                  # the effects of the newest status order per student (AR-F1)
             finish(c, items)
@@ -742,7 +742,7 @@ def _held_check(c, items: list[Item]) -> list[dict]:
         v = it.values
         planned = journal.planned_until(c, v["student_id"], v["course_id"], v["as_of"])
         if planned is not None and planned != v["held_hours"]:
-            out.append({"row": it.row, "reason": E("Keçilmiş saat Zəka-nın planından fərqlidir: faylda {a}, Zəka-da {b}",
+            out.append({"row": it.row, "reason": E("Keçilmiş saatlar Zəka platformasındakı plandan fərqlidir: faylda {a}, Zəka platformasında {b}",
                                                    a=v["held_hours"], b=planned)})
     return out
 

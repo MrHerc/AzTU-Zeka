@@ -1,10 +1,10 @@
 {
  "Əməliyyatın səbəbini yazın": "Write the reason for the action",
  "Dəqiqə sayı 1 ilə 240 arasında olmalıdır": "Minutes must be between 1 and 240",
- "Bu ünvandan imtahana daxil olmaq olmaz: imtahan otağının şəbəkəsindən daxil olun": "The exam cannot be taken from this address: connect from the exam room's network",
+ "Bu ünvandan imtahana daxil olmaq mümkün deyil: imtahan otağının şəbəkəsindən daxil olun": "The exam cannot be taken from this address: connect from the exam room's network",
  "Bu əməliyyat cəhdin indiki vəziyyətində mümkün deyil": "This action is not possible in the attempt's current state",
- "İmtahan nəzarətçi tərəfindən dayandırılıb: cavablar davam edəndə göndəriləcək": "The proctor has paused the exam: answers will be sent when it resumes",
- "Nəzarətçilər ən çox 20 istifadəçi adıdır": "Proctors are at most 20 usernames",
- "Bu adla aktiv əməkdaş tapılmadı: {names}": "No active staff member with this username: {names}",
+ "İmtahan nəzarətçi tərəfindən dayandırılıb: cavablar imtahan davam etdirildikdə göndəriləcək": "The proctor has paused the exam: answers will be sent when it resumes",
+ "Nəzarətçilərin siyahısında ən çox 20 istifadəçi adı ola bilər": "The proctor list can have at most 20 usernames",
+ "Aktiv əməkdaş tapılmadı: {names}": "No active staff member found: {names}",
  "Naməlum siqnal": "Unknown signal"
 }

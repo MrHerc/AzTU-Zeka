@@ -201,7 +201,7 @@ def grant_role(req):
     if role not in perms.ROLES:
         raise HTTPError(400, "Naməlum rol")
     if scope_type is not None and scope_type not in perms.SCOPE_TYPES or (scope_type is None) != (scope_id is None):
-        raise HTTPError(400, "Əhatənin növü və id-si birlikdə verilir")
+        raise HTTPError(400, "Əhatənin növü və identifikatoru birlikdə verilməlidir")
     u = _target(req)
     if u["id"] == req.user["id"]:                      # Checkpoint F (SA-F8): an administrator does not grant themselves a role
         raise HTTPError(403, "Özünüzə rol verə bilməzsiniz: bunu başqa administrator edir")
@@ -314,7 +314,7 @@ def sso_link_start(req):
     if req.user.get("session_scope") != "full":
         raise HTTPError(403, "Əvvəlcə ikinci addımı tamamlayın")
     if service.has_staff_role(req.db, req.user) and not req.user.get("session_mfa"):
-        raise HTTPError(403, "İşçi hesabını bağlamaq üçün parol və ikinci addımla daxil olun")
+        raise HTTPError(403, "İşçi hesabını universitet hesabı ilə əlaqələndirmək üçün parol və ikinci addımla daxil olun")
     if not LIMITS["sso"].hit(domain.client_key(req.ip)):
         raise HTTPError(429, "Çox sayda sorğu. Bir az sonra yenidən cəhd edin.")
     try:
@@ -343,7 +343,7 @@ def admin_sso_link(req):
     if not sub:
         raise HTTPError(400, "Provayderdəki istifadəçi identifikatorunu (sub) yazın")
     if not service.link_identity(req.db, req.user, _target(req), cfg["issuer"], sub, None, "admin"):
-        raise HTTPError(409, "Bu identifikator və ya hesab artıq bağlanıb")
+        raise HTTPError(409, "Bu identifikator və ya hesab artıq əlaqələndirilib")
     return {"ok": True}
 
 

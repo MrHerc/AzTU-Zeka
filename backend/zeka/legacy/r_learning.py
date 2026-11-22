@@ -34,8 +34,8 @@ def _ai_consent(c, u):
     """The AI tutor and the campus assistant are optional study aids: only with the person's consent to the current
     text (Task 40, the owner's decision of 2026-11-21). Checked before anything is counted or stored."""
     if not privacy.allowed(c, u["id"], "ai"):
-        raise HTTPError(403, "AI tutor və kampus köməkçisi yalnız razılığınızla işləyir. Razılığı köməkçinin səhifəsində "
-                             "və ya “Profil” bölməsində verə bilərsiniz.")
+        raise HTTPError(403, "AI tutor və kampus köməkçisi yalnız razılığınızla işləyir. Razılığı köməkçinin səhifəsində və "
+                             "ya «Profil» bölməsində verə bilərsiniz.")
 
 
 def _masked_history(hist, enabled):
@@ -750,7 +750,7 @@ def studio_generate(req):
                  for g in engine.glossary(m["text"])]
     gen = engine.generate_questions(chunks, course_gl, count, types, seed=random.randint(1, 10 ** 6))
     if not gen:
-        raise HTTPError(422, "Materialdan sual yaratmaq mümkün olmadı. Materialda “Termin — tərif” formatında anlayışlar olmalıdır.")
+        raise HTTPError(422, "Materialdan sual yaratmaq mümkün olmadı. Materialda «Termin — tərif» formatında anlayışlar olmalıdır.")
     existing = rows(c, "SELECT text FROM questions WHERE course_id=? AND status='approved'", (co["id"],))
     out = []
     for g in gen:

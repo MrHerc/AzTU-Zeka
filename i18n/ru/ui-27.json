@@ -7,15 +7,15 @@
  "Saxlanılır…": "Сохранение…",
  "Hamısı saxlanılıb": "Всё сохранено",
  "Müddət: {n} dəqiqə. Vaxt server saatı ilə ölçülür; cavablar dəyişən kimi saxlanılır.": "Длительность: {n} мин. Время отсчитывается по часам сервера; ответы сохраняются сразу при изменении.",
- "Bağlantı kəsilsə cavablar bu brauzerdə saxlanılır və bağlantı qayıdanda göndərilir.": "Если связь прервётся, ответы сохранятся в этом браузере и будут отправлены, когда она восстановится.",
+ "Bağlantı kəsilərsə, cavablar bu brauzerdə saxlanılır və bağlantı bərpa olunanda göndərilir.": "Если связь прервётся, ответы сохранятся в этом браузере и будут отправлены, когда она восстановится.",
  "Cavablarınız qəbul olundu": "Ваши ответы приняты",
  "Nəticəni müəllim açıqlayandan sonra portalda görəcəksiniz.": "Результат появится на портале после того, как преподаватель его опубликует.",
  "Təslim et": "Сдать",
  "İmtahan səhifəsi": "Страница экзамена",
  "İmtahana portaldan daxil olun.": "Войдите в экзамен через портал.",
  "Portala qayıt": "Вернуться на портал",
- "Təslim etmək istəyirsiniz? Bundan sonra cavab dəyişmir.": "Сдать работу? После этого ответы изменить нельзя.",
+ "Təslim etmək istəyirsiniz? Bundan sonra cavabları dəyişmək mümkün olmayacaq.": "Сдать работу? После этого ответы изменить нельзя.",
  "Bağlantı yoxdur": "Нет связи",
- "İmtahana daxil ol": "Войти в экзамен",
+ "İmtahana daxil ol": "Перейти к экзамену",
  "İmtahan səhifəsi açılacaq və bu brauzerdəki digər girişləriniz bağlanacaq. Davam edək?": "Откроется страница экзамена, а другие ваши входы в этом браузере будут завершены. Продолжить?"
 }

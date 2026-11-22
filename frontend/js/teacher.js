@@ -40,7 +40,7 @@ route("/teacher", async (el) => {
     <div class="grid g-12 mt">
       <div class="stack">
         <div class="card" id="insights-card" data-tour="insights"><div class="card-h"><h3>${ic("sparkles", 17)} ${main ? t("Tutor müşahidələri · {course}", { course: main.name }) : t("Tutor müşahidələri")}
-            ${infoTip(t("Müşahidələr yalnız materiallardakı boşluqları göstərir; tələbələrin tutorla şəxsi söhbətləri sizə açılmır."))}</h3>
+            ${infoTip(t("Müşahidələr yalnız materiallardakı boşluqları göstərir; tələbələrin tutorla şəxsi söhbətləri sizə göstərilmir."))}</h3>
           ${main ? html`<a class="small" href="#/teacher/course/${main.id}?tab=insights">${t("Ətraflı")} ${ic("arrow", 13)}</a>` : ""}</div>
           <div class="card-b">${ins ? html`<div class="grid g-2">
             <div><div class="label mb-sm">${t("Ən çox soruşulan mövzular")}</div>
@@ -49,7 +49,7 @@ route("/teacher", async (el) => {
             <div><div class="label mb-sm">${t("Həftəlik suallar")}</div>${sparkline(ins.weekly, "#2b5aa8", 260, 70)}
               <div class="row wrap mt"><span class="badge b-green">${t("{n}% faydalı", { n: ins.positive_rate ?? "—" })}</span><span class="badge b-amber">${t("Mənbəsiz: {n}%", { n: num(ins.no_source_rate, 1) })}</span></div>
               ${ins.gaps.length ? html`<div class="notice warn mt">${ic("alert", 16)}<div><b>${t("Materiallarda cavabı olmayan suallar")}</b>
-                <div class="mt-sm">${ins.gaps.slice(0, 3).map((g) => html`<div class="small">${t("“{q}”", { q: g })}</div>`)}</div>
+                <div class="mt-sm">${ins.gaps.slice(0, 3).map((g) => html`<div class="small">${t("«{q}»", { q: g })}</div>`)}</div>
                 <a class="small" href="#/teacher/course/${main.id}?tab=materials">${t("Material əlavə et")} ${ic("arrow", 13)}</a></div></div>` : ""}</div></div>`
             : empty("sparkles", t("Hələ müşahidə yoxdur"), t("Fənninizə material yükləyin və tutoru aktiv edin — tələbə sualları toplandıqca təhlil burada görünəcək."),
                 main ? { label: t("Material yüklə"), go: `/teacher/course/${main.id}?tab=materials`, icon: "upload", cls: "btn" } : { label: t("Fənlərim"), go: "/teacher/courses", icon: "book", cls: "btn" })}</div></div>
@@ -87,7 +87,7 @@ route("/teacher", async (el) => {
 
         <div id="ach-teaser"></div>
 
-        ${d.drafts ? html`<div class="notice ai">${ic("wand", 16)}<div><b>${t("{n} AI qaralama sual", { n: d.drafts })}</b> ${t("təsdiqinizi gözləyir.")}
+        ${d.drafts ? html`<div class="notice ai">${ic("wand", 16)}<div><b>${t("AI ilə hazırlanmış {n} qaralama sual", { n: d.drafts })}</b> ${t("təsdiqinizi gözləyir.")}
           <a href="#/teacher/studio?tab=bank">${t("Yoxla")} ${ic("arrow", 13)}</a></div></div>` : ""}
       </div></div>`);
   achievementsTeaser(3).then((h) => { const box = $("#ach-teaser", el); if (box && h) mount(box, h); else if (box) box.remove(); });
@@ -158,9 +158,9 @@ function materialsTab(tgt, c) {
         ${infoTip(t("Dəstəklənən formatlar: Word (DOCX), PowerPoint (PPTX), mətn (TXT) və Markdown (MD). Maksimum ölçü {mb} MB. PDF dəstəyi pilot mərhələsində əlavə olunacaq.", { mb: MAX_MB }))}</h3></div>
       <div class="card-b">
         <label class="dropzone" id="dz"><input type="file" id="file" accept="${FORMATS}" hidden><div style="color:var(--blue-700)">${ic("upload", 30)}</div>
-          <b>${t("Faylı bura atın və ya seçin")}</b><div class="small muted mt-sm">${t("DOCX, PPTX, TXT, MD · maksimum {mb} MB", { mb: MAX_MB })}</div></label>
+          <b>${t("Faylı buraya sürükləyin və ya seçin")}</b><div class="small muted mt-sm">${t("DOCX, PPTX, TXT, MD · maksimum {mb} MB", { mb: MAX_MB })}</div></label>
         <div id="proc" class="mt" aria-live="polite"></div></div></div>
-      <div class="notice ai">${ic("sparkles", 16)}<div><b>${t("Məsləhət")}:</b> ${t("Əsas anlayışları “Termin — tərif” formatında yazın — AI onlardan həm tutorda, həm də test generasiyasında istifadə edir.")}</div></div>
+      <div class="notice ai">${ic("sparkles", 16)}<div><b>${t("Məsləhət")}:</b> ${t("Əsas anlayışları «Termin — tərif» formatında yazın — AI onlardan həm tutorda, həm də testlərin yaradılmasında istifadə edir.")}</div></div>
       ${refCard(c.references, c.references_checked, { note: t("Tələbələr bu siyahını fənn səhifəsində görür.") })}</div></div>`);
 
   const proc = $("#proc", tgt), file = $("#file", tgt), dz = $("#dz", tgt);
@@ -199,9 +199,9 @@ function materialsTab(tgt, c) {
         <div class="chips mb">${m.glossary.map((g) => html`<span class="badge b-navy" title="${g.definition}">${g.term}</span>`)}</div>` : ""}
       <div class="label mb-sm">${t("Bölmələr ({n}) — tutor bu hissələrə istinad edir", { n: m.chunks.length })}</div>
       <div class="stack">${m.chunks.map((ch) => html`<div class="card pad"><b>${t("{n}.", { n: ch.seq + 1 })} ${ch.heading}</b><div class="mt-sm small">${md(ch.text)}</div></div>`)}</div>
-      ${m.references && m.references.length ? html`<div class="label mt mb-sm">${t("Mövzu üzrə əlavə oxu")}</div>${refList(m.references)}` : ""}` });
+      ${m.references && m.references.length ? html`<div class="label mt mb-sm">${t("Mövzu üzrə əlavə mənbələr")}</div>${refList(m.references)}` : ""}` });
   });
-  on(tgt, "click", "[data-del]", (e, b) => { e.stopPropagation(); modal({ title: t("Materialı silmək?"), size: "sm", body: html`<p>${t("Material və onun bölmələri tutorun bilik bazasından silinəcək. Bu əməliyyat geri qaytarılmır.")}</p>`,
+  on(tgt, "click", "[data-del]", (e, b) => { e.stopPropagation(); modal({ title: t("Material silinsin?"), size: "sm", body: html`<p>${t("Material və onun bölmələri tutorun bilik bazasından silinəcək. Bu əməliyyat geri qaytarılmır.")}</p>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Sil"), cls: "btn-danger", onClick: async () => { await api.del(`/api/materials/${b.dataset.del}`); toast(t("Material silindi"), "ok"); go(`/teacher/course/${c.id}?tab=materials`); } }] }); });
 }
 
@@ -243,7 +243,7 @@ async function attendanceTab(tgt, c) {
         : html`<div class="card-b">${empty("calcheck", t("Hələ dərs qeydə alınmayıb"), t("Dərslər keçirildikcə davamiyyət burada görünəcək."))}</div>`}</div>
     <div class="stack"><div class="card"><div class="card-h"><h3>${ic("heart", 17)} ${t("Üzrlü hesab edilənlər")}</h3></div><div class="card-b list">
       ${a.excused.length ? a.excused.map((x) => html`<div class="list-item"><div class="grow"><b class="small">${x.student}</b><div class="tiny muted">${fmtDate(x.day)} · ${x.kind}</div></div>${badge("excused")}</div>`)
-        : empty("check", t("Üzrlü qayıb yoxdur"), t("Dekanlıq qayıbı üzrlü etdikdə burada görünəcək."))}</div></div>
+        : empty("check", t("Üzrlü qayıb yoxdur"), t("Dekanlıq qayıbı üzrlü hesab etdikdə burada görünəcək."))}</div></div>
       <div class="notice info">${ic("shield", 16)}<div>${t("Qayıbın səbəbi və təsdiqedici sənədlər (məsələn, həkim arayışı) məxfidir və yalnız dekanlıqda saxlanılır. Siz yalnız statusu görürsünüz.")}</div></div></div></div>`);
 }
 
@@ -297,7 +297,7 @@ route("/teacher/studio", async (el, p, q) => {
   const TABS = [["generate", t("AI ilə yarat"), "wand"], ["bank", t("Sual bankı"), "layers"], ["quizzes", t("Testlər və nəticələr"), "chart"]];
   mount(el, html`${pageHead(t("Test studiyası"), t("AI materialdan sual yaradır, siz yoxlayıb təsdiqləyirsiniz."),
       html`<label class="sr-only" for="cs">${t("Fənn")}</label><select class="select" id="cs" style="width:auto" aria-label="${t("Fənn")}">${courses.map((x) => html`<option value="${x.id}" ${x.id === course.id ? "selected" : ""}>${x.name}</option>`)}</select>`,
-      crumbsT([t("Test studiyası")]), { info: t("İş axını: AI ilə sual yaradın → yoxlayın → təsdiqləyin → testə yığın → nəticələrə baxın. Heç bir sual təsdiqinizdən əvvəl tələbəyə getmir.") })}
+      crumbsT([t("Test studiyası")]), { info: t("İş axını: AI ilə sual yaradın → yoxlayın → təsdiqləyin → testə daxil edin → nəticələrə baxın. Heç bir sual təsdiqinizdən əvvəl tələbəyə göstərilmir.") })}
     <div class="table-wrap"><div class="tabs" role="tablist" data-tour="studio-tabs">${TABS.map(([k, l, i]) => html`<button class="tab ${tab === k ? "active" : ""}" role="tab" aria-selected="${tab === k}" data-go="/teacher/studio?course=${course.id}&tab=${k}">${ic(i, 15)} ${l}</button>`)}</div></div>
     <div id="tab"></div>`);
   $("#cs", el).addEventListener("change", (e) => go(`/teacher/studio?course=${e.target.value}&tab=${tab}`));
@@ -315,7 +315,7 @@ function genTab(tgt, course, detail, q) {
       <div class="field"><label class="label" for="cnt">${t("Sual sayı")}</label><select class="select" id="cnt">${[3, 5, 6, 8, 10].map((n) => html`<option ${n === 6 ? "selected" : ""}>${n}</option>`)}</select></div>
       <button class="btn btn-ai btn-block" id="gen">${ic("sparkles", 16)} ${t("AI ilə sual yarat")}</button>
       <div class="small muted">${ic("cpu", 12)} ${S.app.engine.label}. ${t("Hesablama sualları hər dəfə fərqli rəqəmlərlə (parametrik) yaradılır.")}</div></div></div>
-    <div id="out">${empty("wand", t("Suallar burada görünəcək"), t("Material və parametrləri seçib “AI ilə sual yarat” düyməsini basın."))}</div></div>`);
+    <div id="out">${empty("wand", t("Suallar burada görünəcək"), t("Material və parametrləri seçib «AI ilə sual yarat» düyməsini basın."))}</div></div>`);
   on(tgt, "click", "[data-type]", (e, b) => { const onx = !b.classList.contains("on"); b.classList.toggle("on", onx); b.setAttribute("aria-pressed", String(onx)); });
   const out = $("#out", tgt);
   $("#gen", tgt).addEventListener("click", async () => {
@@ -346,7 +346,7 @@ function qCard(qq, actions = true) {
       : html`<div class="opts-mini"><div class="om ok">${t("Cavab")}: ${qq.qtype === "tf" ? (qq.answer ? t("Doğru") : t("Yanlış")) : `${qq.answer}${qq.unit ? " " + qq.unit : ""}`}</div></div>`}
     <div class="small muted">${md(qq.explanation)}</div>${qq.source ? html`<div class="tiny muted mt-sm">${ic("book", 11)} ${qq.source.material} · ${qq.source.heading}</div>` : ""}
     ${actions ? html`<div class="row mt wrap">${qq.status === "draft" ? html`<button class="btn btn-sm btn-success" data-approve="${qq.id}">${ic("check", 14)} ${t("Təsdiqlə")}</button>
-      <button class="btn btn-sm" data-approve="${qq.id}" data-purpose="exam" title="${t("İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə düşmür. Təyinat sonra dəyişmir.")}">${ic("shield", 14)} ${t("İmtahan sualı kimi təsdiqlə")}</button>` : ""}
+      <button class="btn btn-sm" data-approve="${qq.id}" data-purpose="exam" title="${t("İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə daxil edilmir. Təyinatı sonradan dəyişmək olmaz.")}">${ic("shield", 14)} ${t("İmtahan sualı kimi təsdiqlə")}</button>` : ""}
       <button class="btn btn-sm" data-edit="${qq.id}">${ic("edit", 14)} ${t("Redaktə et")}</button>
       <button class="btn btn-sm btn-danger btn-icon" data-delq="${qq.id}" aria-label="${t("Sil")}">${ic("trash", 14)}</button></div>` : ""}</div>`;
 }
@@ -388,9 +388,9 @@ function renderDrafts(out, list, course) {
 function createQuizModal(course, ids) {
   modal({ title: t("Test yarat və dərc et"), body: html`<div class="stack"><div class="field"><label class="label" for="qt">${t("Ad")}</label><input class="input" id="qt" value="${esc(t("Məşq: {course}", { course: course.name }))}"></div>
       <div class="grid g-3"><div class="field"><label class="label" for="qk">${t("Növ")}</label><select class="select" id="qk"><option value="practice">${t("Məşq")}</option><option value="graded">${t("Qiymətli")}</option></select></div>
-        <div class="field"><label class="label" for="ql">${t("Vaxt (dəq)")}</label><input class="input" id="ql" type="number" value="${Math.max(5, ids.length * 2)}" min="1"></div>
+        <div class="field"><label class="label" for="ql">${t("Vaxt (dəq.)")}</label><input class="input" id="ql" type="number" value="${Math.max(5, ids.length * 2)}" min="1"></div>
         <div class="field"><label class="label" for="qa">${t("Cəhd sayı")}</label><input class="input" id="qa" type="number" value="3" min="1"></div></div>
-      <div class="notice info">${ic("bell", 16)}<div>${t("{n} təsdiqlənmiş sual daxil ediləcək. Dərc olunan kimi fənnin bütün tələbələrinə bildiriş gedəcək.", { n: ids.length })}</div></div></div>`,
+      <div class="notice info">${ic("bell", 16)}<div>${t("{n} təsdiqlənmiş sual daxil ediləcək. Dərc olunan kimi fənnin bütün tələbələrinə bildiriş göndəriləcək.", { n: ids.length })}</div></div></div>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Dərc et"), cls: "btn-primary", onClick: async (w) => {
       await api.post("/api/quizzes", { course_id: course.id, title: w.querySelector("#qt").value, kind: w.querySelector("#qk").value, time_limit: +w.querySelector("#ql").value, attempts: +w.querySelector("#qa").value, question_ids: ids });
       toast(t("Test dərc olundu — tələbələrə bildiriş göndərildi"), "ok"); go(`/teacher/studio?course=${course.id}&tab=quizzes`);
@@ -409,9 +409,9 @@ async function bankTab(tgt, course) {
       html`<button data-f="${k}" class="${filter === k ? "active" : ""}" role="tab" aria-selected="${filter === k}">${l} (${k === "all" ? list.length : list.filter((x) => x.status === k).length})</button>`)}</div>
       <button class="btn btn-primary" id="mk" ${sel.size ? "" : "disabled"}>${ic("plus", 15)} ${t("Seçilənlərdən test ({n})", { n: sel.size })}</button></div>
       ${shown.length ? html`<div class="grid g-2">${shown.map((x) => html`<div class="qwrap">${x.status === "approved" ? html`<label class="check qwrap-check"><input type="checkbox" data-sel="${x.id}" ${sel.has(x.id) ? "checked" : ""} aria-label="${t("Seç")}"></label>` : ""}${qCard(x)}</div>`)}</div>`
-        : filter === "draft" ? empty("wand", t("Qaralama sual yoxdur"), t("“AI ilə yarat” bölməsində material seçib yeni suallar hazırlayın."), { label: t("AI ilə yarat"), go: `/teacher/studio?course=${course.id}&tab=generate`, icon: "wand", cls: "btn" })
-        : filter === "approved" ? empty("check", t("Təsdiqlənmiş sual yoxdur"), t("Qaralama sualları yoxlayıb təsdiqlədikcə burada toplanacaq."))
-        : empty("layers", t("Sual bankı boşdur"), t("“AI ilə yarat” bölməsindən materiallarınızdan ilk sualları hazırlayın."), { label: t("AI ilə yarat"), go: `/teacher/studio?course=${course.id}&tab=generate`, icon: "wand", cls: "btn" })}`);
+        : filter === "draft" ? empty("wand", t("Qaralama sual yoxdur"), t("«AI ilə yarat» bölməsində material seçib yeni suallar hazırlayın."), { label: t("AI ilə yarat"), go: `/teacher/studio?course=${course.id}&tab=generate`, icon: "wand", cls: "btn" })
+        : filter === "approved" ? empty("check", t("Təsdiqlənmiş sual yoxdur"), t("Yoxlayıb təsdiqlədiyiniz qaralama suallar burada toplanacaq."))
+        : empty("layers", t("Sual bankı boşdur"), t("«AI ilə yarat» bölməsində materiallarınız əsasında ilk sualları hazırlayın."), { label: t("AI ilə yarat"), go: `/teacher/studio?course=${course.id}&tab=generate`, icon: "wand", cls: "btn" })}`);
   };
   rerender();
   bindQActions(tgt, list, rerender);
@@ -428,7 +428,7 @@ async function quizzesTab(tgt, course) {
     ${qs.map((x) => html`<tr><td><b>${x.title}</b><div class="tiny muted">${fmtDate(x.created_at)}</div></td><td><span class="badge ${x.kind === "graded" ? "b-coral" : "b-blue"}">${x.kind === "graded" ? t("Qiymətli") : t("Məşq")}</span></td>
       <td>${num(x.questions)}</td><td>${num(x.attempts_count)}</td><td>${x.avg != null ? html`<div class="row" style="min-width:140px">${progress(x.avg)}<b>${num(x.avg)}%</b></div>` : "—"}</td>
       <td class="right"><button class="btn btn-sm" data-res="${x.id}">${ic("chart", 14)} ${t("Nəticələr")}</button></td></tr>`)}</tbody></table></div></div>`
-    : empty("quiz", t("Hələ test yoxdur"), t("Təsdiqlənmiş suallardan test yığıb dərc edin — nəticələr və statistika burada görünəcək."), { label: t("Sual bankı"), go: `/teacher/studio?course=${course.id}&tab=bank`, icon: "layers", cls: "btn" }));
+    : empty("quiz", t("Hələ test yoxdur"), t("Təsdiqlənmiş suallardan test yaradıb dərc edin — nəticələr və statistika burada görünəcək."), { label: t("Sual bankı"), go: `/teacher/studio?course=${course.id}&tab=bank`, icon: "layers", cls: "btn" }));
   on(tgt, "click", "[data-res]", async (e, b) => {
     let r;
     try { r = await api.get(`/api/quizzes/${b.dataset.res}/results`); } catch (err) { return toast(err.message, "err"); }
@@ -449,7 +449,7 @@ route("/teacher/questions", async (el) => {
   const render = () => {
     const shown = qs.filter((x) => filter === "all" || x.status === filter);
     const openN = qs.filter((x) => x.status === "open").length;
-    mount(el, html`${pageHead(t("Tələbə sualları"), t("AI tutordan sizə yönləndirilmiş suallar. Tələbə anonimlik seçə bilər; cavabınız bildiriş kimi çatdırılır."), "", crumbsT([t("Tələbə sualları")]),
+    mount(el, html`${pageHead(t("Tələbə sualları"), t("AI tutordan sizə yönləndirilmiş suallar. Tələbə anonim qalmağı seçə bilər; cavabınız bildiriş kimi çatdırılır."), "", crumbsT([t("Tələbə sualları")]),
         { info: t("Yalnız tələbənin müəllimə yönləndirdiyi suallar sizə gəlir — tutorla adi söhbətlər məxfidir.") })}
       <div class="row between wrap mb" data-tour="filters"><div class="seg" role="tablist">${[["all", t("Hamısı"), qs.length], ["open", t("Cavab gözləyən"), openN], ["answered", t("Cavablandırılıb"), qs.length - openN]].map(([k, l, n]) =>
         html`<button data-f="${k}" class="${filter === k ? "active" : ""}" role="tab" aria-selected="${filter === k}">${l} (${n})</button>`)}</div></div>
@@ -500,6 +500,6 @@ registerTour("teacher.studio", { route: "/teacher/studio", roles: ["teacher"], t
   { sel: "[data-tour=gen-form]", title: t("AI ilə yarat"), text: t("Materialı və parametrləri seçin — AI qaralama suallar hazırlayır.") },
 ] });
 registerTour("teacher.questions", { route: "/teacher/questions", roles: ["teacher"], title: t("Tələbə sualları"), group: t("Tədris"), icon: "inbox", go: "/teacher/questions", steps: [
-  { sel: "[data-tour=filters]", title: t("Filtrlər"), text: t("Sualları cavab gözləyən və cavablandırılmış kimi süzün.") },
-  { sel: "[data-tour=q-list]", title: t("Cavablandırma"), text: t("“Cavabla” düyməsi ilə cavabınızı yazın; tələbəyə bildiriş kimi çatır.") },
+  { sel: "[data-tour=filters]", title: t("Filtrlər"), text: t("Sualları vəziyyətinə görə süzün: cavab gözləyən və ya cavablandırılmış.") },
+  { sel: "[data-tour=q-list]", title: t("Cavablandırma"), text: t("«Cavabla» düyməsini basın və cavabınızı yazın; cavab tələbəyə bildiriş kimi çatdırılır.") },
 ] });

@@ -1,3 +1,3 @@
 {
- "Fayl çox böyükdür ({n} sətir, ən çox {cap}). since ilə yalnız dəyişənləri alın və ya serverdə manage.py export işlədin.": "The file is too large ({n} rows, at most {cap}). Use since to get only the changes, or run manage.py export on the server."
+ "Fayl çox böyükdür ({n} sətir, ən çox {cap}). Yalnız dəyişiklikləri almaq üçün since parametrindən istifadə edin və ya serverdə manage.py export əmrini işə salın.": "The file is too large ({n} rows, at most {cap}). Use since to get only the changes, or run manage.py export on the server."
 }

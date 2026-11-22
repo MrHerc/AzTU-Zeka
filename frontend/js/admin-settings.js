@@ -49,24 +49,24 @@ function view(s) {
       ${field("u-site", t("Sayt"), u.site)}`)}
     ${card("grading", "target", t("Qiymətləndirmə sxemi"), html`
       ${area("g-components", t("Komponentlər"), g.components.map((x) => `${x.name} | ${x.max}${x.attendance ? " | davamiyyət" : ""}`).join("\n"),
-        t("Hər sətirdə: ad | maksimal bal | (davamiyyətdirsə) davamiyyət. Komponentlər və imtahan birlikdə 100 bal edir."))}
+        t("Hər sətirdə: ad | maksimal bal | davamiyyət (yalnız davamiyyət komponentində). Komponentlər və imtahan birlikdə 100 bal təşkil edir."))}
       <div class="row wrap">${field("g-exam-name", t("İmtahan"), g.exam.name)}${field("g-exam-max", t("İmtahanın maksimumu"), g.exam.max, "number")}
-        ${field("g-exam-min", t("İmtahan minimumu"), g.exam.min, "number")}${field("g-pass", t("Keçid balı"), g.pass_mark, "number")}</div>
+        ${field("g-exam-min", t("İmtahanın minimumu"), g.exam.min, "number")}${field("g-pass", t("Keçid balı"), g.pass_mark, "number")}</div>
       ${area("g-scale", t("Hərf şkalası"), g.scale.map((x) => `${x[0]} ${x[1]}`).join("\n"), t("Hər sətirdə: hərf və aşağı hədd, yuxarıdan aşağı; son hədd keçid balıdır."))}`)}
     ${card("attendance", "calcheck", t("Davamiyyət"), html`${field("a-limit", t("Buraxılmış dərslərin həddi, %"), a.limit_percent, "number")}
       <label class="check"><input type="checkbox" name="a-excused" ${a.excused_counts_toward_limit ? "checked" : ""}> ${t("Üzrlü qayıb həddə sayılır")}</label>
       ${area("a-rule", t("Davamiyyət balı cədvəli"), a.points_rule.map((x) => `${x[0]} ${x[1]}`).join("\n"),
         t("Hər sətirdə: buraxılmış faiz (bu həddədək) və bal. Boş qalsa, bal iştirak faizinə mütənasibdir."))}`)}
-    ${card("journal", "book", t("Elektron jurnal"), html`${field("j-cutover", t("Kəsid tarixi: jurnalın Zəka-da başladığı gün"), s.journal.cutover_date, "date")}
+    ${card("journal", "book", t("Elektron jurnal"), html`${field("j-cutover", t("Kəsid tarixi: jurnalın Zəka platformasında aparılmağa başladığı gün"), s.journal.cutover_date, "date")}
       <p class="small muted" style="margin:0">${t("Boşdursa və ya cari tədris dövründən kənardırsa, kəsid yoxdur.")}</p>
-      ${field("j-hours", t("Müəllimin düzəliş pəncərəsi (dərs bitəndən sonra, saat)"), s.journal.edit_hours ?? 48, "number")}`)}
+      ${field("j-hours", t("Müəllimin düzəliş müddəti (dərs bitdikdən sonra, saat)"), s.journal.edit_hours ?? 48, "number")}`)}
     ${card("calendar", "calendar", t("Dərs saatları və bayramlar"), html`${area("c-times", t("Dərs saatları"), cal.lesson_times.map((x) => x.join("-")).join("\n"), t("Hər sətirdə: 09:00-10:20"))}
       ${area("c-holidays", t("Bayram günləri"), cal.holidays.join("\n"), t("Hər sətirdə bir tarix: İİİİ-AA-GG"))}`)}
     ${card("registry", "file", t("Sənəd reyestri"), html`${field("r-prefix", t("Reyestr prefiksi"), s.registry.prefix)}
       <p class="small muted" style="margin:0">${t("Yeni sənədlərin nömrəsi bununla başlayır; verilmiş sənədlərin nömrəsi dəyişmir.")}</p>`)}
-    ${card("sessions", "lock", t("Sessiyalar"), html`<div class="row wrap">${field("s-staff-idle", t("İşçi: boş qalma, dəq"), s.sessions.staff.idle_minutes, "number")}
+    ${card("sessions", "lock", t("Sessiyalar"), html`<div class="row wrap">${field("s-staff-idle", t("İşçi: boş qalma, dəq."), s.sessions.staff.idle_minutes, "number")}
         ${field("s-staff-abs", t("İşçi: ümumi, saat"), s.sessions.staff.absolute_hours, "number")}</div>
-      <div class="row wrap">${field("s-student-idle", t("Tələbə: boş qalma, dəq"), s.sessions.student.idle_minutes, "number")}
+      <div class="row wrap">${field("s-student-idle", t("Tələbə: boş qalma, dəq."), s.sessions.student.idle_minutes, "number")}
         ${field("s-student-abs", t("Tələbə: ümumi, saat"), s.sessions.student.absolute_hours, "number")}</div>`)}
     ${card("sso", "link", t("Vahid giriş (OIDC)"), html`<label class="check"><input type="checkbox" name="o-enabled" ${o.enabled ? "checked" : ""}> ${t("Vahid giriş açıqdır")}</label>
       ${field("o-issuer", t("Issuer (https)"), o.issuer)}${field("o-client", "client_id", o.client_id)}${field("o-label", t("Düymənin adı"), o.label)}

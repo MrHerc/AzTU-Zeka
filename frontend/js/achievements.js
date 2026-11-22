@@ -4,7 +4,7 @@ import { HOME } from "./shell.js";
 
 let A = null;
 const data = async () => (A ||= await api.get("/api/achievements"));
-const srcLang = (s) => (s.lang !== LANG ? html` <span class="tiny muted">(${s.lang === "az" ? t("azərbaycan dilində") : s.lang === "en" ? t("ingilis dilində") : t("rus dilində")})</span>` : "");
+const srcLang = (s) => (s.lang !== LANG ? html` <span class="tiny muted">(${s.lang === "az" ? t("Azərbaycan dilində") : s.lang === "en" ? t("ingilis dilində") : t("rus dilində")})</span>` : "");
 const dateLabel = (d) => (!d ? t("Tarix göstərilməyib") : d.length === 7 ? fmtMonthYear(d + "-01") : `${fmtDayMonth(d)} ${d.slice(0, 4)}`);
 
 function card(x, cats) {
@@ -43,7 +43,7 @@ route("/achievements", async (el, p, q) => {
     <section class="ach-hero" aria-label="${t("Əsas göstəricilər")}"><div class="ach-hero-in">
       <div class="ach-hero-t"><span class="eyebrow">${ic("trophy", 15)} ${t("Azərbaycan Texniki Universiteti")}</span>
         <h2>${t("Mühəndislik təhsilində 75 ildən artıq ənənə, yeni nəslin texnoloji uğurları")}</h2>
-        <p>${t("Seçilmiş nailiyyətlər rəsmi xəbərlər əsasında hazırlanıb. Hər birinin mənbəsini oxuya bilərsiniz.")}</p></div>
+        <p>${t("Seçilmiş nailiyyətlər rəsmi xəbərlər əsasında hazırlanıb. Hər birinin mənbəyini oxuya bilərsiniz.")}</p></div>
       <div class="ach-stats">${a.stats.map((s) => html`<div class="ach-stat"><div class="v">${s.format === "year" ? s.value : html`${s.prefix || ""}${cnt(s.value)}`}</div><div class="l">${s.label}</div></div>`)}</div></div></section>
     <div class="chips" role="group" aria-label="${t("Kateqoriyalar")}"><button class="chip on" data-fcat="all" aria-pressed="true">${t("Hamısı")} <span>${total}</span></button>
       ${a.categories.map((c) => html`<button class="chip" data-fcat="${c.key}" aria-pressed="false">${ic(c.icon, 14)} ${c.name} <span>${c.n}</span></button>`)}</div>
@@ -71,7 +71,7 @@ route("/contact", async (el) => {
   const c = await api.get("/api/contact");
   const SOC = { facebook: "facebook", instagram: "instagram", linkedin: "linkedin", youtube: "youtube", wikipedia: "wikipedia" };
   mount(el, html`${pageHead(t("Əlaqə"), t("Azərbaycan Texniki Universitetinin rəsmi əlaqə məlumatları."), "", [[t("Əsas"), HOME[S.user.role]], [t("Əlaqə")]],
-      { info: t("Məlumatlar universitetin rəsmi saytından götürülüb. Struktur bölmələrin əlaqə nömrələri üçün rəsmi saytın “Əlaqə” səhifəsinə baxın.") })}
+      { info: t("Məlumatlar universitetin rəsmi saytından götürülüb. Struktur bölmələrin əlaqə nömrələri üçün rəsmi saytın «Əlaqə» səhifəsinə baxın.") })}
     <div class="grid g-12">
       <div class="stack">
         <div class="card contact-hero"><div class="card-b">
@@ -117,11 +117,11 @@ route("/contact", async (el) => {
 
 registerTour("achievements", { route: "/achievements", title: t("AzTU-nun nailiyyətləri"), group: t("Universitet"), icon: "trophy", steps: [
   { sel: ".ach-hero", title: t("Əsas göstəricilər"), text: t("Universitetin reytinqlərdəki mövqeyi və son uğurların qısa xülasəsi.") },
-  { sel: ".chips", title: t("Kateqoriyalar"), text: t("Reytinqlər, elm, tələbə uğurları, innovasiya və əməkdaşlıq üzrə süzgəc.") },
+  { sel: ".chips", title: t("Kateqoriyalar"), text: t("Reytinqlər, elm, tələbə uğurları, innovasiya və əməkdaşlıq üzrə filtr.") },
   { sel: ".ach-card .btn-primary", title: t("Rəsmi mənbə"), text: t("Hər nailiyyətin orijinal xəbərini universitetin və ya nazirliyin saytında oxuyun.") },
 ] });
 registerTour("contact", { route: "/contact", title: t("Əlaqə"), group: t("Universitet"), icon: "phone", steps: [
-  { sel: ".contact-hero", title: t("Rəsmi əlaqə"), text: t("Ünvan, telefon və e-poçt. Kopyalama düyməsi ilə məlumatı tez götürün.") },
+  { sel: ".contact-hero", title: t("Rəsmi əlaqə"), text: t("Ünvan, telefon və e-poçt. Kopyalama düyməsi məlumatı bir kliklə köçürür.") },
   { sel: ".map-card", title: t("Xəritə"), text: t("Universitetin yerini Google Maps və ya OpenStreetMap-də açın.") },
-  { sel: "#ask-uni", title: t("Sual verin"), text: t("Sualınız qeydə alınır və cavabı “Dəstək” bölməsində görünür.") },
+  { sel: "#ask-uni", title: t("Sual verin"), text: t("Sualınız qeydə alınır və cavabı «Dəstək» bölməsində görünür.") },
 ] });

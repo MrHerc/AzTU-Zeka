@@ -18,7 +18,7 @@ route("/journal", async (el, p, q) => {
   try {
     courses = role === "teacher" ? await api.get("/api/courses") : await api.all("/api/directory/courses?active=1");
   } catch (err) { mount(el, failed(err.message)); return; }
-  const head = () => html`${pageHead(t("Elektron jurnal"), t("Dərsin davamiyyəti, buraxılmış saatlar və imtahana buraxılış."), "", crumbs())}
+  const head = () => html`${pageHead(t("Elektron jurnal"), t("Dərslərə davamiyyət, buraxılmış saatlar və imtahana buraxılış."), "", crumbs())}
     <div class="seg mb" role="tablist">
       <button role="tab" aria-selected="${view === "lessons"}" class="${view === "lessons" ? "active" : ""}" data-view="lessons">${t("Dərslərim")}</button>
       <button role="tab" aria-selected="${view === "standing"}" class="${view === "standing" ? "active" : ""}" data-view="standing">${t("Fənn üzrə vəziyyət")}</button>
@@ -44,7 +44,7 @@ route("/journal", async (el, p, q) => {
         ${grid && grid.students.some((s) => s.writable) ? html`<button class="btn btn-primary btn-sm" id="g-save">${t("Saxla")}</button>
           <button class="btn btn-sm" id="g-publish">${t("Dərc et ({n} qaralama)", { n: grid.drafts })}</button>` : ""}
         ${grid ? html`<button class="btn btn-ghost btn-sm" id="g-log">${t("Dəyişiklik jurnalı")}</button>` : ""}</div>
-      ${grid ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("Yeni bal qaralamadır: tələbə onu dərc olunandan sonra görür. Dərc olunmuş balın dəyişməsi səbəb tələb edir. Excel-dən sütunları seçib xanaya yapışdıra bilərsiniz.")}</p></div>
+      ${grid ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("Yeni bal qaralamadır: tələbə onu dərc olunandan sonra görür. Dərc olunmuş balın dəyişdirilməsi üçün səbəb göstərilməlidir. Excel-dən köçürülmüş sütunları xanaya yapışdıra bilərsiniz.")}</p></div>
         <div class="table-wrap"><table class="table" id="g-table"><thead><tr><th>${t("Tələbə")}</th>${cols.map((c) => html`<th class="center">${c.name}<br><span class="tiny">${t("maks. {n}", { n: c.max })}</span></th>`)}
           <th class="center">${t("Cəmi")}</th><th class="center">${t("Qiymət")}</th></tr></thead><tbody>
         ${grid.students.map((s) => html`<tr><td>${s.full_name} <span class="tiny muted">${s.group || ""}</span></td>${cols.map((c) => cell(s, c))}
@@ -58,9 +58,9 @@ route("/journal", async (el, p, q) => {
     catch (err) {
       if (err.data && err.data.cells) {
         for (const x of err.data.cells) { const i = el.querySelector(`[data-s="${x.student_id}"][data-c="${CSS.escape(String(x.component))}"]`); if (i) { i.classList.add("bad"); i.title = x.reason; } }
-        toast(t("{n} xana saxlanmadı: {x}", { n: err.data.cells.length, x: err.data.cells[0].reason }), "err");
+        toast(t("{n} xana saxlanılmadı: {x}", { n: err.data.cells.length, x: err.data.cells[0].reason }), "err");
       } else if (err.status === 400 && !reason && /səbəb|reason|причин/i.test(err.message)) {
-        modal({ title: t("Dərc olunmuş balın dəyişməsi"), size: "sm", body: html`<div class="field"><label class="label" for="g-why">${t("Səbəb")}</label><input class="input" id="g-why" maxlength="300"></div>`,
+        modal({ title: t("Dərc olunmuş balın dəyişdirilməsi"), size: "sm", body: html`<div class="field"><label class="label" for="g-why">${t("Səbəb")}</label><input class="input" id="g-why" maxlength="300"></div>`,
           actions: [{ label: t("Saxla"), cls: "btn-primary", onClick: (w) => saveGrades(w.querySelector("#g-why").value) }] });
       } else toast(err.message, "err");
     }
@@ -69,13 +69,13 @@ route("/journal", async (el, p, q) => {
     let res;
     try { res = await api.get("/api/journal/debts"); } catch (err) { mount(el, html`${head()}${failed(err.message)}`); return; }
     const list = res.items;
-    mount(el, html`${head()}<div class="card"><div class="card-h wrap"><h3>${ic("alert", 17)} ${t("Keçid balını toplamayan fənlər")}</h3>
+    mount(el, html`${head()}<div class="card"><div class="card-h wrap"><h3>${ic("alert", 17)} ${t("Keçid balı toplanmayan fənlər")}</h3>
         <a class="btn btn-sm" href="/api/journal/debts?format=csv" download>${t("CSV yüklə")}</a></div>
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Tələbə")}</th><th>${t("Qrup")}</th><th>${t("Semestr")}</th><th>${t("Fənn")}</th><th>${t("Kredit")}</th><th>${t("Bal")}</th><th>${t("Qiymət")}</th></tr></thead><tbody>
       ${list.map((x) => html`<tr><td>${x.full_name} <span class="tiny muted">${x.student_no || ""}</span></td><td>${x.grp || "—"}</td><td>${x.term_name}</td><td>${x.course_name}</td>
         <td>${x.credits}</td><td>${x.score}</td><td>${x.letter}</td></tr>`)}</tbody></table></div>
       ${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Akademik borc yoxdur")}</p></div>`}
-      ${res.total > list.length ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("İlk {n} borc göstərilir, cəmi {total}: hamısı CSV-dədir.", { n: list.length, total: res.total })}</p></div>` : ""}</div>`);
+      ${res.total > list.length ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("İlk {n} borc göstərilir, cəmi {total}: tam siyahı CSV faylındadır.", { n: list.length, total: res.total })}</p></div>` : ""}</div>`);
   };
 
   const drawLessons = async () => {
@@ -87,7 +87,7 @@ route("/journal", async (el, p, q) => {
         <td>${x.status === "cancelled" ? html`<span class="badge b-red">${t("Ləğv edilib")}</span>` : x.marked ? html`<span class="badge b-green">${t("Qeyd olunub")}</span>`
           : html`<span class="badge b-amber">${t("Qeyd olunmayıb")}</span>`}</td>
         <td>${x.status !== "cancelled" ? html`<button class="btn btn-sm" data-go="/journal/lesson/${x.id}">${t("Aç")}</button>` : ""}</td></tr>`)}</tbody></table></div>
-      ${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Son iki həftədə sizin dərsiniz yoxdur")}</p></div>`}</div>`);
+      ${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Son iki həftədə dərsiniz olmayıb")}</p></div>`}</div>`);
   };
 
   const drawStanding = async () => {
@@ -109,7 +109,7 @@ route("/journal", async (el, p, q) => {
         </tbody></table></div>${list.length ? "" : html`<div class="card-b"><p class="muted" style="margin:0">${t("Bu fənndə tələbə yoxdur")}</p></div>`}`
         : html`<div class="card-b"><p class="muted" style="margin:0">${t("Tələbələrin buraxılmış saatlarını görmək üçün fənni seçin.")}</p></div>`}</div>
       ${lessons.length ? html`<div class="card mt"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Fənnin dərsləri")}</h3>
-        <span class="small muted">${t("Düzəliş və əvəzedici müəllim üçün dərsi açın")}</span></div>
+        <span class="small muted">${t("Davamiyyətə düzəliş etmək və ya əvəzedici müəllim təyin etmək üçün dərsi açın")}</span></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Tarix")}</th><th>${t("Vaxt")}</th><th>${t("Növ")}</th><th>${t("Müəllim")}</th><th>${t("Vəziyyət")}</th><th></th></tr></thead><tbody>
         ${lessons.map((x) => html`<tr><td class="nowrap">${x.day}</td><td class="nowrap">${x.start}–${x.end}</td><td>${x.kind || "—"}</td><td>${x.teacher || "—"}</td>
           <td>${x.status === "cancelled" ? html`<span class="badge b-red">${t("Ləğv edilib")}</span>` : x.marked ? html`<span class="badge b-green">${t("Qeyd olunub")}</span>`
@@ -138,7 +138,7 @@ route("/journal", async (el, p, q) => {
     let log = [];
     try { log = await api.get(`/api/journal/courses/${course}/grades/log`); } catch (err) { toast(err.message, "err"); return; }
     modal({ title: t("Dəyişiklik jurnalı"), size: "lg", body: log.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Tarix")}</th><th>${t("Tələbə")}</th>
-        <th>${t("Komponent")}</th><th>${t("Əvvəl")}</th><th>${t("Sonra")}</th><th>${t("Kim")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
+        <th>${t("Komponent")}</th><th>${t("Əvvəlki bal")}</th><th>${t("Yeni bal")}</th><th>${t("Kim")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
       ${log.map((x) => html`<tr><td class="nowrap small">${x.changed_at}</td><td>${x.student}</td><td>${x.component}</td><td>${x.old_score ?? "—"}</td><td>${x.new_score ?? "—"}</td>
         <td>${x.changed_by_name || "—"}</td><td class="small">${x.reason}</td></tr>`)}</tbody></table></div>`
       : html`<p class="muted" style="margin:0">${t("Dərc olunmuş bal hələ dəyişdirilməyib")}</p>` });
@@ -174,7 +174,7 @@ route("/journal/lesson/:id", async (el, p) => {
       ${l.status === "cancelled" ? html`<div class="notice warn mb">${ic("alert", 16)}<div>${t("Dərs ləğv edilib")}${l.note ? ": " + l.note : ""}</div></div>` : ""}
       ${v.before_cutover ? html`<div class="notice warn mb">${ic("alert", 16)}<div>${t("Bu dərs kəsid tarixindən əvvəldir: davamiyyəti köhnə sistemdən idxal olunur.")}</div></div>` : ""}
       ${!v.can_mark && !v.before_cutover && l.status !== "cancelled" ? html`<div class="notice warn mb">${ic("alert", 16)}<div>${v.window_open ? t("Bu dərs hələ keçirilməyib.")
-        : t("Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəblə edir.", { n: v.edit_hours })}</div></div>` : ""}
+        : t("Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəb göstərməklə edir.", { n: v.edit_hours })}</div></div>` : ""}
       <div class="card"><div class="card-h wrap"><h3>${ic("users", 17)} ${t("Siyahı: {n} tələbə", { n: v.students.length })}</h3>
         ${v.can_mark ? html`<button class="btn btn-sm" id="all-present">${t("Hamısı iştirak edir")}</button>` : ""}
         ${v.can_substitute ? html`<button class="btn btn-sm btn-ghost" id="substitute">${t("Əvəzedici müəllim")}</button>` : ""}</div>

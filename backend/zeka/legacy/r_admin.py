@@ -52,7 +52,7 @@ def analytics(req):
     teachers = row(c, "SELECT COUNT(*) n FROM users WHERE role='teacher'")["n"]
     kpis = insight.tiles(c)
     tile = {k["key"]: k for k in kpis}
-    insights = [{"level": "warn", "text": T3("{course}: sualların {rate}%-nin cavabı materiallarda tapılmır — material əlavə edilməsi tövsiyə olunur.",
+    insights = [{"level": "warn", "text": T3("{course}: sualların {rate}%-inin cavabı materiallarda tapılmır — material əlavə edilməsi tövsiyə olunur.",
                                              course=x["name"], rate=str(x["no_source_rate"]).replace(".", ","))}
                 for x in cs if x["no_source_rate"] and x["no_source_rate"] > 5]
     acad = tile["academy"]

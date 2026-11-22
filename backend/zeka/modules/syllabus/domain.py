@@ -55,14 +55,14 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
 
     outcomes = data.get("outcomes")
     if not isinstance(outcomes, list) or not 1 <= len(outcomes) <= 20:
-        return {}, E("Təlim nəticələri 1 ilə 20 arasında olmalıdır")
+        return {}, E("Təlim nəticələrinin sayı 1 ilə 20 arasında olmalıdır")
     out["outcomes"] = []
     for o in outcomes:
         oid = o.get("id") if isinstance(o, dict) else None
         text = _text(o.get("text"), 10, 500) if isinstance(o, dict) else None
         bloom = o.get("bloom") if isinstance(o, dict) else None
         if not (isinstance(oid, str) and OUTCOME_ID.fullmatch(oid)) or text is None or bloom not in BLOOM:
-            return {}, E("Hər nəticənin kodu (N1, N2 …), 10–500 simvol mətni və Bloom səviyyəsi olmalıdır")
+            return {}, E("Hər nəticənin kodu (N1, N2 …), 10–500 simvolluq mətni və Bloom səviyyəsi olmalıdır")
         out["outcomes"].append({"id": oid, "text": text, "bloom": bloom})
     ids = [o["id"] for o in out["outcomes"]]
     if len(set(ids)) != len(ids):
@@ -78,7 +78,7 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
         serves = p.get("outcomes", []) if isinstance(p, dict) else None
         activity = _text(p.get("activity") or "", 0, 500) if isinstance(p, dict) else None
         if week is None or topic is None or activity is None or not isinstance(serves, list):
-            return {}, E("Hər həftənin nömrəsi (1–30) və 3–300 simvol mövzusu olmalıdır")
+            return {}, E("Hər həftənin nömrəsi (1–30) və 3–300 simvolluq mövzusu olmalıdır")
         if any(x not in ids for x in serves):
             return {}, E("Həftə {n} sillabusda olmayan nəticəyə istinad edir", n=week)
         out["plan"].append({"week": week, "topic": topic, "outcomes": list(dict.fromkeys(serves)), "activity": activity})
@@ -129,17 +129,17 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
 
     pre = data.get("prerequisites") or []
     if not isinstance(pre, list) or len(pre) > 20 or any(_text(x, 1, 200) is None for x in pre):
-        return {}, E("Prerekvizitlər ən çox 20 olur, hər biri 200 simvola qədər")
+        return {}, E("Ən çox 20 prerekvizit göstərilə bilər, hər biri 200 simvola qədər")
     out["prerequisites"] = [_text(x, 1, 200) for x in pre]
 
     lit = data.get("literature") or []
     if not isinstance(lit, list) or len(lit) > 50:
-        return {}, E("Ədəbiyyat siyahısı ən çox 50 mənbədir")
+        return {}, E("Ədəbiyyat siyahısında ən çox 50 mənbə ola bilər")
     out["literature"] = []
     for x in lit:
         title = _text(x.get("title"), 3, 500) if isinstance(x, dict) else None
         if title is None or x.get("kind") not in LITERATURE:
-            return {}, E("Hər mənbənin 3–500 simvol adı və növü (əsas və ya əlavə) olmalıdır")
+            return {}, E("Hər mənbənin 3–500 simvolluq adı və növü (əsas və ya əlavə) olmalıdır")
         out["literature"].append({"title": title, "kind": x["kind"]})
 
     raw = data.get("workload")

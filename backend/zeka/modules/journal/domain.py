@@ -100,14 +100,14 @@ def cell_value(v, maximum: float) -> tuple[float | None, dict | None]:
     if v is None or (isinstance(v, str) and not v.strip()):
         return None, None
     if isinstance(v, bool):
-        return None, E("Bal rəqəm olmalıdır")
+        return None, E("Bal ədəd olmalıdır")
     if isinstance(v, str):
         try:
             v = float(v.strip().replace(",", "."))
         except ValueError:
-            return None, E("Bal rəqəm olmalıdır")
+            return None, E("Bal ədəd olmalıdır")
     if not isinstance(v, (int, float)) or v != v or v in (float("inf"), float("-inf")):
-        return None, E("Bal rəqəm olmalıdır")
+        return None, E("Bal ədəd olmalıdır")
     if not 0 <= v <= maximum:
         return None, E("Bal 0 ilə {max} arasında olmalıdır", max=maximum)
     return round(float(v), 2), None

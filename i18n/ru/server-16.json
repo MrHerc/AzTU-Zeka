@@ -1,18 +1,18 @@
 {
- "Düzəliş pəncərəsi 1 ilə 720 saat arasında olmalıdır": "Окно исправлений должно быть от 1 до 720 часов",
+ "Düzəliş müddəti 1 ilə 720 saat arasında olmalıdır": "Срок исправления должен составлять от 1 до 720 часов",
  "Buraxılmış saatlar keçilmiş saatlardan çox ola bilməz": "Пропущенных часов не может быть больше проведённых",
- "«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır": "Поле «{field}» должно содержать идентификатор источника из 1–64 букв, цифр и символов ._:@/-",
- "Keçilmiş saat Zəka-nın planından fərqlidir: faylda {a}, Zəka-da {b}": "Проведённые часы отличаются от плана Zəka: в файле {a}, в Zəka {b}",
+ "«{field}» sahəsindəki mənbə identifikatoru hərf, rəqəm və ._:@/- simvollarından ibarət olmalıdır (1–64 simvol)": "Поле «{field}» должно содержать идентификатор источника из 1–64 букв, цифр и символов ._:@/-",
+ "Keçilmiş saatlar Zəka platformasındakı plandan fərqlidir: faylda {a}, Zəka platformasında {b}": "Проведённые часы отличаются от плана Zəka: в файле {a}, в Zəka {b}",
  "Qeydlər siyahı kimi göndərilməlidir": "Отметки нужно отправлять списком",
  "Tələbə bu dərsin siyahısında deyil": "Студента нет в списке этого занятия",
  "Qeyd iştirak, qayıb və ya gecikmə olmalıdır": "Отметка: присутствие, пропуск или опоздание",
- "Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəblə edir": {
+ "Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəb göstərməklə edir": {
   "one": "Срок исправления ({n} час) истёк: изменение вносит заведующий кафедрой с указанием причины",
   "few": "Срок исправления ({n} часа) истёк: изменение вносит заведующий кафедрой с указанием причины",
   "many": "Срок исправления ({n} часов) истёк: изменение вносит заведующий кафедрой с указанием причины"
  },
  "Düzəlişin səbəbini yazın": "Укажите причину исправления",
- "İdxal olunmuş davamiyyəti yalnız kafedra müdiri səbəblə dəyişir": "Импортированную посещаемость меняет только заведующий кафедрой с указанием причины",
+ "İdxal olunmuş davamiyyəti yalnız kafedra müdiri səbəb göstərməklə dəyişir": "Импортированную посещаемость меняет только заведующий кафедрой с указанием причины",
  "Müəllimi seçin": "Выберите преподавателя",
  "Əvəzetmənin səbəbini yazın": "Укажите причину замены",
  "Yalnız qarşıdakı dərsin müəllimi dəyişdirilir": "Преподавателя можно сменить только у предстоящего занятия",

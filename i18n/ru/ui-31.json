@@ -2,11 +2,11 @@
  "Qoruma": "Защита",
  "Adi brauzer (portal)": "Обычный браузер (портал)",
  "Safe Exam Browser məcburidir": "Требуется Safe Exam Browser",
- "Tələbə imtahana SEB-dən daxil olur. Çıxış parolu nəzarətçidə qalır.": "Студент входит в экзамен из SEB. Пароль выхода хранится у наблюдателя.",
+ "Tələbə imtahana SEB vasitəsilə daxil olur. Çıxış parolu nəzarətçidə saxlanılır.": "Студент открывает экзамен в SEB. Пароль выхода хранится у наблюдателя.",
  "Çıxış parolu": "Пароль выхода",
  "Konfiqurasiyanı yüklə": "Скачать конфигурацию",
  "Bu imtahan yalnız Safe Exam Browser-də açılır.": "Этот экзамен открывается только в Safe Exam Browser.",
  "SEB-də aç": "Открыть в SEB",
  "SEB yoxlanmayıb": "SEB не проверен",
- "SEB yoxlandı": "SEB проверен"
+ "SEB yoxlamasından keçdi": "прошёл проверку SEB"
 }

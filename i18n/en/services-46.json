@@ -1,9 +1,9 @@
 {
- "Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka-da başqa heç bir qeyd dəyişməyib.": "Your request has been registered. Reviewed by: {unit}. Decision: granted. No other record in Zəka has changed.",
+ "Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka platformasında başqa heç bir qeyd dəyişdirilməyib.": "Your request has been registered. Reviewed by: {unit}. Decision: granted. No other record in Zəka has changed.",
  "Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz": "This service's effect ({effect}) is not registered in the code: it cannot be opened",
  "Bu mərhələni {unit} icra edir": "This stage is handled by: {unit}",
  "Müraciət hələ son mərhələdə deyil: əvvəlcə mərhələləri təsdiqləyin": "The request is not at its last stage yet: approve the stages first",
  "Açılan xidmət tələbələrə təklif olunur; bağlı xidmət kataloqda, axtarışda və köməkçidə görünmür.": "An open service is offered to students; a closed one does not appear in the catalogue, in search or in the assistant.",
- "Bu xidmət Zəka-da heç bir qeydi dəyişmir. Tələbə faktiki cavab alacaq: müraciət qeydə alınıb, baxan bölmə və qərar.": "This service changes no record in Zəka. The student will receive a factual answer: the request was registered, who reviewed it and the decision.",
- "Qeyd (tələbə gedişatda görəcək)": "Note (the student will see it under Progress)"
+ "Bu xidmət Zəka platformasında heç bir qeydi dəyişmir. Tələbə faktiki cavab alacaq: müraciətin qeydə alınması, ona baxan bölmə və qərar.": "This service changes no record in Zəka. The student will receive a factual answer: the request was registered, who reviewed it and the decision.",
+ "Qeyd (tələbə onu «Gedişat» bölməsində görəcək)": "Note (the student will see it under Progress)"
 }

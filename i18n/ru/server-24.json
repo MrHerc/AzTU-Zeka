@@ -1,15 +1,15 @@
 {
  "Yalnız təsdiqlənmiş məşq sualları testə əlavə oluna bilər": "В тест можно добавить только утверждённые тренировочные вопросы",
- "Sualın təyinatı məşq və ya imtahan olmalıdır": "Назначение вопроса — тренировка или экзамен",
+ "Sualın təyinatı məşq və ya imtahan olmalıdır": "Вопрос должен быть предназначен для тренировки или экзамена",
  "Təsdiqlənmiş sualın təyinatı dəyişdirilə bilməz": "Назначение утверждённого вопроса изменить нельзя",
  "İmtahanın adı 3–200 simvol olmalıdır": "Название экзамена — от 3 до 200 символов",
  "İmtahanın növü əsas, təkrar və ya fərdi vaxt olmalıdır": "Вид экзамена: основной, пересдача или индивидуальное время",
- "Pəncərənin başlanğıcı və sonu SS:DD formatında olmalı, sonu başlanğıcdan sonra gəlməlidir": "Начало и конец окна — в формате ЧЧ:ММ, конец позже начала",
+ "Keçirilmə vaxtının başlanğıcı və sonu SS:DD formatında olmalı, son vaxt başlanğıcdan sonra olmalıdır": "Начало и конец времени проведения должны быть в формате ЧЧ:ММ, конец — позже начала",
  "Müddət 5 dəqiqə ilə pəncərənin uzunluğu ({n} dəq.) arasında olmalıdır": "Длительность — от 5 минут до длины окна ({n} мин)",
  "Qoruma rejimi açıq və ya SEB olmalıdır": "Режим защиты: открытый или SEB",
- "Şəbəkə siyahısı ən çox 50 ünvan blokudur": "Список сетей — не более 50 блоков адресов",
- "İmtahan planında 1 ilə 20 arasında bənd olmalıdır": "В плане экзамена от 1 до 20 пунктов",
- "Hovuzda bu plan üçün kifayət qədər imtahan sualı yoxdur: lazımdır {need}, var {have}": "В банке недостаточно экзаменационных вопросов для этого плана: нужно {need}, есть {have}",
+ "Şəbəkə siyahısında ən çox 50 ünvan bloku ola bilər": "В списке сетей может быть не более 50 блоков адресов",
+ "İmtahan planında 1 ilə 20 arasında bənd olmalıdır": "В плане экзамена должно быть от 1 до 20 пунктов",
+ "Sual bankında bu plan üçün kifayət qədər imtahan sualı yoxdur: tələb olunan {need}, mövcud {have}": "В банке вопросов недостаточно экзаменационных вопросов для этого плана: нужно {need}, есть {have}",
  "Şəbəkə siyahısında ünvan bloku düzgün deyil (məs. 10.0.0.0/24)": "Неверный блок адресов в списке сетей (например, 10.0.0.0/24)",
  "Plan bəndinin sual sayı 1 ilə 100 arasında olmalıdır": "Число вопросов в пункте плана — от 1 до 100",
  "İmtahan tapılmadı": "Экзамен не найден",
@@ -19,6 +19,6 @@
  "Siz bu imtahanın siyahısında deyilsiniz. Dekanlığa müraciət edin.": "Вас нет в списке этого экзамена. Обратитесь в деканат.",
  "İmtahan pəncərəsi açıq deyil": "Окно экзамена не открыто",
  "İmtahanın vaxtı bitib: cavab qəbul olunmur": "Время экзамена истекло: ответ не принимается",
- "Cavab düzgün deyil": "Ответ неверного формата",
+ "Cavabın formatı düzgün deyil": "Неверный формат ответа",
  "Yalnız açıq imtahan bağlanır": "Закрыть можно только открытый экзамен"
 }

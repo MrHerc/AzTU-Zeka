@@ -74,7 +74,7 @@ def authenticate(c, header: str | None, scope: str, path: str) -> dict:
     if scope not in json.loads(t["scopes"]):
         audit(c, None, "api_call_refused", "api_token", f"#{t['id']} {path} · scope {scope}")
         c.commit()                                              # the refusal stays in the audit log
-        raise HTTPError(403, T3("Bu açarın əhatəsi bu marşrutu daxil etmir"))
+        raise HTTPError(403, T3("Bu marşrut açarın əhatə dairəsinə daxil deyil"))
     lim = _LIMITERS.get(t["per_minute"]) or _LIMITERS.setdefault(t["per_minute"], RateLimiter(t["per_minute"], 60, name="api_key"))
     if not lim.hit(f"t{t['id']}"):
         raise HTTPError(429, T3("Açarın dəqiqəlik limiti bitib"))

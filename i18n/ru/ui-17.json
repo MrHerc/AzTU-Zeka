@@ -9,15 +9,15 @@
  "Kod, nömrə və ya ad": "Код, номер или название",
  "Korpus": "Корпус",
  "Tutum": "Вместимость",
- "Kod (QR ünvanı)": "Код (адрес QR)",
+ "Kod (QR ünvanı)": "Код (адрес в QR-коде)",
  "Nömrə (qapıda)": "Номер (на двери)",
  "Mərtəbə": "Этаж",
  "Əlil arabası ilə əlçatan": "Доступно для инвалидной коляски",
  "QR vərəqi": "Лист QR-кодов",
  "Cədvəli otaqlara bağla": "Привязать расписание к помещениям",
  "Cədvəl və otaqlar": "Расписание и помещения",
- "Otağa bağlanan cədvəl sətri: {n}": "Строк расписания, привязанных к помещению: {n}",
- "Bu yazılar heç bir otağa (və ya birdən çox otağa) uyğun gəlmir. Otağı əlavə edin və ya cədvəldə düzəldin:": "Эти записи не соответствуют ни одному помещению (или соответствуют нескольким). Добавьте помещение или исправьте расписание:",
+ "Otağa bağlanmış cədvəl sətirləri: {n}": "Строк расписания, привязанных к помещению: {n}",
+ "Bu yazılar heç bir otağa uyğun gəlmir və ya birdən çox otağa uyğun gəlir. Otağı əlavə edin və ya yazını cədvəldə düzəldin:": "Эти записи не соответствуют ни одному помещению (или соответствуют нескольким). Добавьте помещение или исправьте расписание:",
  "Cədvəldəki yazı": "Запись в расписании",
  "Bütün cədvəl sətirləri otağa bağlandı": "Все строки расписания привязаны к помещениям"
 }

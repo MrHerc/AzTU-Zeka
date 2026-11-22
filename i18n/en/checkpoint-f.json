@@ -1,9 +1,9 @@
 {
  "Məlumatların silinməsi üçün yeni sorğu: №{id}": "New data deletion request: No. {id}",
- "Son aktiv administratorun hesabı silinmir: əvvəl başqa administrator təyin edin": "The last active administrator's account is not deleted: appoint another administrator first",
+ "Son aktiv administratorun hesabı silinmir: əvvəlcə başqa administrator təyin edin": "The last active administrator's account is not deleted: appoint another administrator first",
  "Özünüzə rol verə bilməzsiniz: bunu başqa administrator edir": "You cannot grant yourself a role: another administrator does it",
  "Hesab məxfilik sorğusu ilə silinib: idxal onu bərpa etmir": "The account was erased by a privacy request: an import does not restore it",
  "Bu növ ekrandan yox, manage.py import ilə idxal olunur": "This kind is imported with manage.py import, not from the screen",
- "Faylda dərsin saatı ({a}), Zəka-da {b}: qeyd fərqli saat sayardı": "The file gives the lesson {a} hours, Zəka {b}: the record would count different hours",
+ "Dərsin saatı faylda {a}, Zəka platformasında isə {b}: qeyd başqa saat sayı ilə hesablanardı": "The file gives the lesson {a} hours, Zəka {b}: the record would count different hours",
  "Eyni dərsin qeydi təkrarlanır: cəmə iki dəfə düşməz": "The same lesson's record is repeated: it is not summed twice"
 }

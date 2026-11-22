@@ -751,7 +751,7 @@ def rename(mapping_path, apply=False):
         new = m.get("az") or old
         only = {ROOT / p for p in m.get("only") or ()}
         hits = [(i, j) for i, j in index.get(old, ()) if not only or files[i][0] in only]
-        if new != old and (hits or any(old in f["d"] for lg in LANGS for f in tr[lg])):
+        if new != old and (hits or (not only and any(old in f["d"] for lg in LANGS for f in tr[lg]))):
             bad = [(i, j) for i, j in hits if files[i][3][j][3] == "other"]
             if bad:
                 where = ", ".join(f"{files[i][0].relative_to(ROOT)}:{_line(files[i][2], files[i][3][j][0])}" for i, j in bad[:4])

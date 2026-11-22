@@ -132,7 +132,7 @@ INDICATORS = (
     ("3.5.1", S_("Sinxron və asinxron tədris və qiymətləndirmə üçün e-təhsil sistemi"),
      (("courses", S_("Fənlər"), False), ("materials", S_("Tədris materialları"), False), ("assignments", S_("Tapşırıqlar"), False),
       ("lessons_held", S_("Keçirilmiş dərslər"), True), ("exams", S_("Açılan onlayn imtahanlar"), True)),
-     ((S_("Fənlər üzrə göstəricilər"), "/leader", ("leader", "admin")), (S_("İmtahan cədvəlləri"), "/office/exams", ("admin",))), None),
+     ((S_("Fənlər üzrə göstəricilər"), "/leader", ("leader", "admin")), (S_("İmtahan-qiymət cədvəlləri"), "/office/exams", ("admin",))), None),
     ("3.5.3", S_("Tələbə fəaliyyətini qeydə alan platforma və jurnal"),
      (("student_events", S_("Tələbə fəaliyyəti qeydləri"), True), ("attendance_marks", S_("Davamiyyət qeydləri"), True)),
      ((S_("Audit jurnalı"), "/admin/audit", ("leader", "admin")), (S_("Davamiyyət"), "/journal", ("admin",))), None),

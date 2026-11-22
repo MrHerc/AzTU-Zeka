@@ -291,7 +291,7 @@ def system_status(req):
     eng = engine.engine_info()
     db_ok = bool(row(c, "SELECT 1 ok"))
     comps = [
-        {"key": "portal", "status": "operational", "name": S_("Portal və e-xidmətlər"), "note": T3("Fasiləsiz iş: {h} saat {m} dəq", h=up // 3600, m=up % 3600 // 60)},
+        {"key": "portal", "status": "operational", "name": S_("Portal və e-xidmətlər"), "note": T3("Fasiləsiz iş: {h} saat {m} dəq.", h=up // 3600, m=up % 3600 // 60)},
         {"key": "db", "status": "operational" if db_ok else "down", "name": S_("Verilənlər bazası"), "note": T3("Əlaqə normaldır") if db_ok else T3("Əlaqə yoxdur")},
         {"key": "ai", "status": "operational" if eng["mode"] == "llm" else "degraded", "name": S_("AI mühərriki"),
          "note": T3("Xarici LLM qoşulub") if eng["mode"] == "llm" else T3("Demo rejimi: oflayn mühərrik işləyir")},

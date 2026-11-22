@@ -193,7 +193,7 @@ def _exam_scope(req, scope: str | None):
         if problem:
             raise HTTPError(403, problem)
     elif in_exam:
-        raise HTTPError(403, "İmtahan sessiyası yalnız imtahan səhifəsinə açılır")
+        raise HTTPError(403, "İmtahan üçün açılmış sessiya ilə yalnız imtahan səhifəsinə daxil olmaq mümkündür")
 
 
 def after(req, ok):

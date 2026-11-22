@@ -174,7 +174,7 @@ def may_enter(c, user, eid: int, ip: str = "") -> tuple[str, object]:
     return "ok", e
 
 
-NETWORK = E("Bu ünvandan imtahana daxil olmaq olmaz: imtahan otağının şəbəkəsindən daxil olun")
+NETWORK = E("Bu ünvandan imtahana daxil olmaq mümkün deyil: imtahan otağının şəbəkəsindən daxil olun")
 
 
 SEB_OPEN = ("/seb-verify", "/leave")                    # what an exam session reaches before SEB is verified (Task 28)
@@ -267,14 +267,14 @@ def answer(c, user, eid: int, qid: int, body) -> tuple[str, object]:
     if not a:
         return "missing", None
     if a["status"] == "paused":
-        return "closed", E("İmtahan nəzarətçi tərəfindən dayandırılıb: cavablar davam edəndə göndəriləcək")
+        return "closed", E("İmtahan nəzarətçi tərəfindən dayandırılıb: cavablar imtahan davam etdirildikdə göndəriləcək")
     if a["status"] != "in_progress" or _now() > _t(a["deadline_at"]):
         return "closed", E("İmtahanın vaxtı bitib: cavab qəbul olunmur")
     if qid not in {x["qid"] for x in _form(c, e, user["id"])}:
         return "missing", None
     v = body.get("value")
     if v is not None and not (isinstance(v, (str, int, float)) and not isinstance(v, bool)) or (isinstance(v, str) and len(v) > 2000):
-        return "invalid", E("Cavab düzgün deyil")
+        return "invalid", E("Cavabın formatı düzgün deyil")
     repo.put_answer(c, a["id"], qid, json.dumps(v, ensure_ascii=False), _iso(_now()))
     return "ok", {"saved": True, "remaining_s": max(0, int((_t(a["deadline_at"]) - _now()).total_seconds()))}
 
@@ -516,12 +516,12 @@ def set_proctors(c, user, eid: int, body) -> tuple[str, object]:
         return "missing", None
     names = body.get("usernames")
     if not isinstance(names, list) or len(names) > 20 or not all(isinstance(n, str) for n in names):
-        return "invalid", E("Nəzarətçilər ən çox 20 istifadəçi adıdır")
+        return "invalid", E("Nəzarətçilərin siyahısında ən çox 20 istifadəçi adı ola bilər")
     names = sorted({n.strip() for n in names if n.strip()})
     found = {u["username"]: u for u in repo.staff_by_username(c, names)}
     bad = [n for n in names if n not in found or found[n]["role"] == "student" or found[n]["status"] != "active"]
     if bad:
-        return "invalid", E("Bu adla aktiv əməkdaş tapılmadı: {names}", names=", ".join(bad))
+        return "invalid", E("Aktiv əməkdaş tapılmadı: {names}", names=", ".join(bad))
     uids = [found[n]["id"] for n in names]
     at = _iso(_now())
     repo.set_proctors(c, eid, uids, user["id"], at)

@@ -1,9 +1,9 @@
 {
- "Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka-da başqa heç bir qeyd dəyişməyib.": "Ваша заявка зарегистрирована. Рассмотрело подразделение: {unit}. Решение: удовлетворена. Других изменений в записях Zəka нет.",
+ "Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka platformasında başqa heç bir qeyd dəyişdirilməyib.": "Ваша заявка зарегистрирована. Рассмотрело подразделение: {unit}. Решение: удовлетворена. Других изменений в записях Zəka нет.",
  "Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz": "Действие этой услуги ({effect}) не зарегистрировано в коде: её нельзя открыть",
  "Bu mərhələni {unit} icra edir": "Этот этап выполняет: {unit}",
  "Müraciət hələ son mərhələdə deyil: əvvəlcə mərhələləri təsdiqləyin": "Заявка ещё не на последнем этапе: сначала утвердите этапы",
  "Açılan xidmət tələbələrə təklif olunur; bağlı xidmət kataloqda, axtarışda və köməkçidə görünmür.": "Открытая услуга предлагается студентам; закрытая не отображается в каталоге, поиске и помощнике.",
- "Bu xidmət Zəka-da heç bir qeydi dəyişmir. Tələbə faktiki cavab alacaq: müraciət qeydə alınıb, baxan bölmə və qərar.": "Эта услуга не меняет никаких записей в Zəka. Студент получит фактический ответ: заявка зарегистрирована, кто её рассмотрел и какое принято решение.",
- "Qeyd (tələbə gedişatda görəcək)": "Примечание (студент увидит его в разделе «Прогресс»)"
+ "Bu xidmət Zəka platformasında heç bir qeydi dəyişmir. Tələbə faktiki cavab alacaq: müraciətin qeydə alınması, ona baxan bölmə və qərar.": "Эта услуга не меняет никаких записей в Zəka. Студент получит фактический ответ: заявка зарегистрирована, кто её рассмотрел и какое принято решение.",
+ "Qeyd (tələbə onu «Gedişat» bölməsində görəcək)": "Примечание (студент увидит его в разделе «Прогресс»)"
 }

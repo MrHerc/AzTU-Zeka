@@ -16,8 +16,8 @@
  "QR vərəqi": "QR sheet",
  "Cədvəli otaqlara bağla": "Link the timetable to rooms",
  "Cədvəl və otaqlar": "Timetable and rooms",
- "Otağa bağlanan cədvəl sətri: {n}": "Timetable rows linked to a room: {n}",
- "Bu yazılar heç bir otağa (və ya birdən çox otağa) uyğun gəlmir. Otağı əlavə edin və ya cədvəldə düzəldin:": "These entries match no room (or more than one). Add the room or correct the timetable:",
+ "Otağa bağlanmış cədvəl sətirləri: {n}": "Timetable rows linked to a room: {n}",
+ "Bu yazılar heç bir otağa uyğun gəlmir və ya birdən çox otağa uyğun gəlir. Otağı əlavə edin və ya yazını cədvəldə düzəldin:": "These entries match no room (or more than one). Add the room or correct the timetable:",
  "Cədvəldəki yazı": "Entry in the timetable",
  "Bütün cədvəl sətirləri otağa bağlandı": "Every timetable row is linked to a room"
 }

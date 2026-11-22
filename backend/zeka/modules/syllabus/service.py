@@ -133,7 +133,7 @@ def act(c, user, cid: int, vid: int, action: str, body) -> tuple[str, object]:
         return "missing", None
     new = domain.step(v["status"], action, user["role"])
     if new is None or action not in actions(c, user, co, v):
-        return "forbidden", E("Bu addım sizin rolunuzun növbəsi deyil")
+        return "forbidden", E("Bu addım sizin rolunuza aid deyil")
     latest = repo.latest(c, cid)
     if action == "submit" and latest["id"] != vid:
         return "invalid", E("Yalnız son versiya təqdim olunur")
@@ -144,7 +144,7 @@ def act(c, user, cid: int, vid: int, action: str, body) -> tuple[str, object]:
     if action == "publish":
         graded = repo.has_grades(c, cid)
         if graded and not (body.get("override") is True and len(note) >= 3):
-            return "blocked", E("Bu fəndə artıq bal yazılıb: dərc üçün tədris şöbəsinin açıq icazəsi və səbəbi lazımdır")
+            return "blocked", E("Bu fəndə artıq bal yazılıb: dərc etmək üçün tədris hissəsinin xüsusi icazəsi və səbəbin göstərilməsi lazımdır")
         data, rules = J(v["data"], {}), tenant.load(c)
         modes, locked = domain.tutor_modes(data["rules"]["ai_policy"])
         repo.publish_course(c, cid, json.dumps(domain.course_grading(data, rules["grading"]), ensure_ascii=False),

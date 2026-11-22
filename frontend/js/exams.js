@@ -5,7 +5,7 @@ import { HOME } from "./shell.js";
 
 const KIND = () => ({ main: t("Əsas"), retake: t("Təkrar"), individual: t("Fərdi vaxt") });
 const STATUS = () => ({ draft: [t("Qaralama"), "b-gray"], open: [t("Açıq"), "b-green"], closed: [t("Bağlanıb"), "b-blue"], released: [t("Açıqlanıb"), "b-navy"] });
-const ROSTER = () => ({ eligible: [t("Buraxılıb"), "b-green"], excluded: [t("Buraxılmayıb"), "b-red"], exception: [t("İstisna"), "b-amber"] });
+const ROSTER = () => ({ eligible: [t("Buraxılıb"), "b-green"], excluded: [t("Buraxılmayıb"), "b-red"], exception: [t("İstisna qaydasında"), "b-amber"] });
 const badge = (map, k) => { const [l, c] = map()[k] || [k, "b-gray"]; return html`<span class="badge ${c}">${l}</span>`; };
 
 export async function teacherExams(tgt, c) {
@@ -13,7 +13,7 @@ export async function teacherExams(tgt, c) {
   try { list = await api.get(`/api/courses/${c.id}/exams`); } catch (err) { mount(tgt, html`<div class="card pad">${err.message}</div>`); return; }
   mount(tgt, html`<div class="card"><div class="card-h wrap"><h3>${ic("shield", 17)} ${t("İmtahanlar")}</h3>
       <button class="btn btn-primary btn-sm" id="ex-new">${ic("plus", 15)} ${t("Yeni imtahan")}</button></div>
-    ${list.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("İmtahan")}</th><th>${t("Pəncərə")}</th><th>${t("Müddət")}</th>
+    ${list.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("İmtahan")}</th><th>${t("Keçirilmə vaxtı")}</th><th>${t("Müddət")}</th>
       <th>${t("Status")}</th><th></th></tr></thead><tbody>
       ${list.map((e) => html`<tr><td><b class="small">${e.title}</b><div class="tiny muted">${KIND()[e.kind] || e.kind}</div></td>
         <td class="small nowrap">${fmtDateTime(e.opens_at)} – ${fmtDateTime(e.closes_at)}</td><td>${t("{n} dəq.", { n: e.duration_min })}</td>
@@ -23,7 +23,7 @@ export async function teacherExams(tgt, c) {
         ${e.status === "closed" ? html`<button class="btn btn-sm btn-primary" data-release="${e.id}">${t("Nəticəni açıqla")}</button>` : ""}
         ${e.status === "closed" || e.status === "released" ? html`<button class="btn btn-sm" data-results="${e.id}">${t("Nəticələr")}</button>
           <button class="btn btn-sm" data-analysis="${e.id}">${t("Təhlil")}</button>` : ""}</td></tr>`)}</tbody></table></div>`
-      : html`<div class="card-b">${empty("shield", t("Hələ imtahan yoxdur"), t("İmtahan yalnız “imtahan sualı” kimi təsdiqlənmiş suallardan qurulur: onlar məşqə, tutora və testlərə düşmür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("shield", t("Hələ imtahan yoxdur"), t("İmtahan yalnız «imtahan sualı» kimi təsdiqlənmiş suallardan tərtib olunur: bu suallar məşqdə, tutorda və testlərdə istifadə edilmir."))}</div>`}</div>`);
   on(tgt, "click", "#ex-new", () => modal({ title: t("Yeni imtahan"), size: "lg", body: html`<div class="stack">
       <div class="field"><label class="label" for="ex-title">${t("Ad")}</label><input class="input" id="ex-title" maxlength="200"></div>
       <div class="row wrap"><div class="field"><label class="label" for="ex-kind">${t("Növ")}</label><select class="input" id="ex-kind">${Object.entries(KIND()).map(([k, l]) => html`<option value="${k}">${l}</option>`)}</select></div>
@@ -31,13 +31,13 @@ export async function teacherExams(tgt, c) {
         <div class="field"><label class="label" for="ex-start">${t("Başlanğıc")}</label><input class="input" id="ex-start" type="time" value="10:00"></div>
         <div class="field"><label class="label" for="ex-end">${t("Son")}</label><input class="input" id="ex-end" type="time" value="12:00"></div>
         <div class="field"><label class="label" for="ex-dur">${t("Müddət, dəq.")}</label><input class="input" id="ex-dur" type="number" min="5" value="90"></div></div>
-      <div class="field"><label class="label" for="ex-plan">${t("Plan: hər sətirdə “çətinlik; mövzu; say” (boş xana hər hansı deməkdir)")}</label>
+      <div class="field"><label class="label" for="ex-plan">${t("Plan: hər sətirdə «çətinlik; mövzu; say» (boş xana istənilən dəyər deməkdir)")}</label>
         <textarea class="input" id="ex-plan" rows="3" placeholder="Asan;;10&#10;Orta;Om qanunu;5"></textarea></div>
       <div class="field"><label class="label" for="ex-prot">${t("Qoruma")}</label><select class="input" id="ex-prot">
         <option value="open">${t("Adi brauzer (portal)")}</option><option value="seb">${t("Safe Exam Browser məcburidir")}</option></select></div>
       <div class="field"><label class="label" for="ex-cidrs">${t("Şəbəkə siyahısı: imtahan otağının ünvan blokları, vergüllə (boş: hər yerdən)")}</label>
         <input class="input mono" id="ex-cidrs" placeholder="10.20.30.0/24"></div>
-      <div class="tiny muted">${t("Vaxt universitetin saat qurşağındadır. Hər tələbə öz variantını alır; son vaxtı server saatı müəyyən edir.")}</div></div>`,
+      <div class="tiny muted">${t("Vaxt universitetin saat qurşağı üzrə göstərilir. Hər tələbə öz variantını alır; son vaxtı server saatı müəyyən edir.")}</div></div>`,
     actions: [{ label: t("Saxla"), cls: "btn-primary", onClick: async (w) => {
       const plan = w.querySelector("#ex-plan").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
         const [difficulty, topic, count] = l.split(";").map((x) => (x || "").trim());
@@ -52,7 +52,7 @@ export async function teacherExams(tgt, c) {
       } catch (err) { toast(err.message, "err"); return false; }
     } }] }));
   on(tgt, "click", "[data-open]", async (e, b) => {
-    try { await api.post(`/api/exams/${b.dataset.open}/open`); toast(t("İmtahan açıldı: siyahı jurnaldan çəkildi"), "ok"); teacherExams(tgt, c); }
+    try { await api.post(`/api/exams/${b.dataset.open}/open`); toast(t("İmtahan açıldı: siyahı jurnal əsasında tərtib edildi"), "ok"); teacherExams(tgt, c); }
     catch (err) { toast(err.message, "err"); }
   });
   on(tgt, "click", "[data-close]", async (e, b) => {
@@ -73,12 +73,12 @@ export async function teacherExams(tgt, c) {
     let a;
     try { a = await api.get(`/api/exams/${b.dataset.analysis}/analysis`); } catch (err) { toast(err.message, "err"); return; }
     modal({ title: `${a.exam.title} · ${t("Təhlil")}`, size: "lg", body: html`<div class="stack">
-      <h4 style="margin:0">${t("Suallar: ən çətindən")}</h4>
-      <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sual")}</th><th>${t("Cavab verən")}</th><th>${t("Düzgün")}</th><th>${t("Ən çox səhv cavab")}</th></tr></thead><tbody>
+      <h4 style="margin:0">${t("Suallar: ən çətinindən başlayaraq")}</h4>
+      <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sual")}</th><th>${t("Cavab verən")}</th><th>${t("Düzgün")}</th><th>${t("Ən çox verilən səhv cavablar")}</th></tr></thead><tbody>
         ${a.questions.map((q) => html`<tr><td class="small">${q.text}</td><td>${q.answered}</td><td>${q.rate == null ? "—" : `${Math.round(q.rate * 100)}%`}</td>
           <td class="small mono">${q.wrong.map((w) => `${w.value} × ${w.n}`).join(", ") || "—"}</td></tr>`)}</tbody></table></div>
       <h4 style="margin:0">${t("Eyni səhv cavablar")}</h4>
-      <p class="tiny muted" style="margin:0">${t("Bu siyahı yalnız müəllimə görünür. O, qərar deyil: baxmağa dəyər cütləri göstərir.")}</p>
+      <p class="tiny muted" style="margin:0">${t("Bu siyahını yalnız müəllim görür. Siyahı hökm deyil, yalnız diqqət yetirilməli cütləri göstərir.")}</p>
       ${a.pairs.length ? html`<div class="list">${a.pairs.map((p) => html`<div class="list-item"><div class="grow small">${p.a_name} · ${p.b_name}</div>
         <span class="badge b-amber">${t("{n} eyni səhv", { n: p.same })}</span></div>`)}</div>` : html`<p class="small muted" style="margin:0">${t("Belə cüt yoxdur")}</p>`}</div>` });
   });
@@ -87,12 +87,12 @@ export async function teacherExams(tgt, c) {
     try { m = await api.get(`/api/exams/${b.dataset.manage}/manage`); } catch (err) { toast(err.message, "err"); return; }
     const att = Object.fromEntries(m.attempts.map((a) => [a.student_id, a]));
     const w = modal({ title: m.exam.title, size: "lg", body: html`<div class="stack">
-      <div class="row wrap"><div class="small muted grow">${t("Hovuzda {n} imtahan sualı", { n: m.pool })} · ${badge(STATUS, m.exam.status)}
+      <div class="row wrap"><div class="small muted grow">${t("Sual bankında {n} imtahan sualı", { n: m.pool })} · ${badge(STATUS, m.exam.status)}
         · ${m.exam.allowed_cidrs.length ? t("Şəbəkə: {list}", { list: m.exam.allowed_cidrs.join(", ") }) : t("Şəbəkə məhdudiyyəti yoxdur")}</div>
         ${m.exam.status === "open" ? html`<button class="btn btn-sm btn-primary" id="ex-board">${ic("eye", 14)} ${t("Lövhə")}</button>` : ""}
         ${m.exam.protocol_id ? html`<button class="btn btn-sm" data-doc="${m.exam.protocol_id}">${ic("qr", 14)} ${t("Protokol")}</button>` : ""}</div>
       ${m.exam.seb ? html`<div class="card pad stack" style="margin:0"><b class="small">${ic("shield", 14)} Safe Exam Browser</b>
-        <div class="tiny muted">${t("Tələbə imtahana SEB-dən daxil olur. Çıxış parolu nəzarətçidə qalır.")}</div>
+        <div class="tiny muted">${t("Tələbə imtahana SEB vasitəsilə daxil olur. Çıxış parolu nəzarətçidə saxlanılır.")}</div>
         <div class="row wrap small"><span>${t("Çıxış parolu")}: <b class="mono">${m.exam.seb.quit_password}</b></span>
           <a class="btn btn-sm" href="${m.exam.seb.download}">${t("Konfiqurasiyanı yüklə")}</a></div>
         <div class="tiny muted mono" style="word-break:break-all">Config Key: ${m.exam.seb.key}</div></div>` : ""}
@@ -103,7 +103,7 @@ export async function teacherExams(tgt, c) {
         ${m.roster.map((r) => html`<tr><td>${r.full_name} <span class="tiny muted">${r.student_no || ""}</span></td><td>${badge(ROSTER, r.status)}${r.reason ? html`<div class="tiny muted">${r.reason}</div>` : ""}</td>
           <td class="small">${att[r.student_id] ? att[r.student_id].status : "—"}${att[r.student_id] && att[r.student_id].auto ? html` <span class="badge b-amber">${t("avtomatik")}</span>` : ""}</td>
           <td>${att[r.student_id] && att[r.student_id].score != null ? `${att[r.student_id].score} / ${att[r.student_id].max_score}` : "—"}</td></tr>`)}</tbody></table></div>`
-        : html`<p class="small muted" style="margin:0">${t("Siyahı imtahan açılanda jurnaldan çəkilir.")}</p>`}</div>` });
+        : html`<p class="small muted" style="margin:0">${t("Siyahı imtahan açılanda jurnal əsasında tərtib edilir.")}</p>`}</div>` });
     const box = w.el;
     const board = box.querySelector("#ex-board");
     if (board) board.onclick = () => { w.close(); go(`/proctor/${m.exam.id}`); };
@@ -162,13 +162,13 @@ route("/office/exams", async (el) => {
   mount(el, loading());
   let list;
   try { list = await api.get("/api/exam-statements"); } catch (err) { return mount(el, failed(err.message)); }
-  const crumbs = [[t("Əsas"), HOME[S.user.role] || "/"], [t("İmtahan cədvəlləri")]];
-  mount(el, html`${pageHead(t("İmtahan cədvəlləri"), t("Açıqlanmış imtahanlar: qrupun cədvəlini bağlayın; bundan sonra balı yalnız dekanlıq apellyasiya və ya əmrlə dəyişir."), "", crumbs)}
+  const crumbs = [[t("Əsas"), HOME[S.user.role] || "/"], [t("İmtahan-qiymət cədvəlləri")]];
+  mount(el, html`${pageHead(t("İmtahan-qiymət cədvəlləri"), t("Nəticəsi açıqlanmış imtahanlar: hər qrupun cədvəlini bağlayın; bundan sonra balı yalnız dekanlıq apellyasiya qərarı və ya əmr əsasında dəyişə bilər."), "", crumbs)}
     <div class="card">${list.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("İmtahan")}</th><th>${t("Fənn")}</th>
       <th>${t("Bağlanmış cədvəl")}</th><th></th></tr></thead><tbody>${list.map((e) => html`<tr><td><b class="small">${e.title}</b></td>
       <td class="small">${e.course_code} · ${e.course_name}</td><td>${e.closed} / ${e.groups}</td>
       <td><button class="btn btn-sm" data-groups="${e.id}">${t("Qruplar")}</button></td></tr>`)}</tbody></table></div>`
-      : html`<div class="card-b">${empty("qr", t("Açıqlanmış imtahan yoxdur"), t("Müəllim nəticəni açıqlayanda imtahan burada görünür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("qr", t("Nəticəsi açıqlanmış imtahan yoxdur"), t("Müəllim nəticəni açıqlayanda imtahan burada görünür."))}</div>`}</div>`);
   const groups = async (eid) => {
     let st, res;
     try { [st, res] = await Promise.all([api.get(`/api/exams/${eid}/statements`), api.get(`/api/exams/${eid}/results`)]); } catch (err) { toast(err.message, "err"); return; }
@@ -181,7 +181,7 @@ route("/office/exams", async (el) => {
       ${resultsTable(res, (x) => (closed.has(x.group_id) ? html`<button class="btn btn-sm" data-score="${x.student_id}">${t("Balı dəyiş")}</button>` : ""))}</div>` });
     on(w.el, "click", "[data-doc]", (ev, d) => openDoc(d.dataset.doc));
     on(w.el, "click", "[data-close-group]", async (ev, b) => {
-      if (!confirm(t("Cədvəl bağlanacaq və QR sənəd kimi veriləcək. Bundan sonra balı yalnız dekanlıq dəyişir. Davam edək?"))) return;
+      if (!confirm(t("Cədvəl bağlanacaq və QR kodlu sənəd kimi veriləcək. Bundan sonra balı yalnız dekanlıq dəyişə bilər. Davam edək?"))) return;
       try { await api.post(`/api/exams/${eid}/statements/${b.dataset.closeGroup}/close`); toast(t("Cədvəl bağlandı"), "ok"); w.close(); groups(eid); }
       catch (err) { toast(err.message, "err"); }
     });

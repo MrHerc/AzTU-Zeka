@@ -78,7 +78,7 @@ function report(r) {
       ${r.error_count ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Səhv sətirlər düzəldilməyincə fayldan heç nə yazılmır.")}</div></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.errors.map((e) => html`<tr><td>${e.row}</td><td>${e.reason}</td></tr>`)}</tbody></table></div>` : ""}
-      ${r.conflicts.length ? html`<div class="notice info">${ic("info", 16)}<div>${t("Bu sətirlər Zəka-da dəyişdirilib və mənbənin dəyəri yazılmayıb. Mənbəni üstün tutmaq üçün işarəni qoyub yenidən idxal edin.")}</div></div>
+      ${r.conflicts.length ? html`<div class="notice info">${ic("info", 16)}<div>${t("Bu sətirlər Zəka platformasında dəyişdirilib və mənbənin dəyərləri yazılmayıb. Mənbəni üstün tutmaq üçün işarəni qoyub yenidən idxal edin.")}</div></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Sahələr")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.conflicts.slice(0, 500).map((x) => html`<tr><td>${x.row}</td><td>${(x.fields || []).join(", ") || "—"}</td><td>${x.reason}</td></tr>`)}</tbody></table></div>` : ""}
       ${(r.warnings || []).length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bu sətirlər yazılır, amma yoxlanmalıdır.")}</div></div>
@@ -91,20 +91,20 @@ route("/admin/import", async (el) => {
   let faculties = [];
   try { faculties = (await api.get("/api/directory/faculties?active=1")).items; } catch (err) { mount(el, failed(err.message)); return; }
   let checked = null;
-  mount(el, html`${pageHead(t("Kütləvi idxal"), t("Köhnə sistemlərdən CSV və ya XLSX faylı: əvvəl yoxlanır, sonra ya tam idxal olunur, ya heç nə."), "",
+  mount(el, html`${pageHead(t("Kütləvi idxal"), t("Köhnə sistemlərdən CSV və ya XLSX faylı: əvvəlcə yoxlanılır, sonra ya tam idxal olunur, ya da ümumiyyətlə idxal olunmur."), "",
       [[t("Əsas"), HOME[S.user.role]], [t("Kütləvi idxal")]])}
     <div class="grid g-2">
       <div class="card"><div class="card-h"><h3>${ic("upload", 17)} ${t("Fayl")}</h3></div><div class="card-b stack">
         <div class="field"><label class="label" for="imp-kind">${t("Nə idxal olunur")}</label>
           <select class="input" id="imp-kind">${KINDS().map(([k, l]) => html`<option value="${k}">${l}</option>`)}</select></div>
-        <div class="field"><label class="label" for="imp-source">${t("Mənbə sistem")}</label>
+        <div class="field"><label class="label" for="imp-source">${t("Mənbə sistemi")}</label>
           <input class="input" id="imp-source" placeholder="${t("məs. kohne-sis")}" autocomplete="off" spellcheck="false"></div>
-        <div class="field"><label class="label" for="imp-file">${t("CSV və ya XLSX faylı (ekrandan ən çox 20 000 sətir)")}</label>
+        <div class="field"><label class="label" for="imp-file">${t("CSV və ya XLSX faylı (bu səhifədən ən çox 20 000 sətir)")}</label>
           <input class="input" id="imp-file" type="file" accept=".csv,.xlsx,text/csv"></div>
-        <label class="check"><input type="checkbox" id="imp-prefer"> ${t("Konfliktdə mənbəni üstün tut (dəyişiklik audit jurnalına yazılır)")}</label>
+        <label class="check"><input type="checkbox" id="imp-prefer"> ${t("Konflikt olduqda mənbəni üstün tut (dəyişiklik audit jurnalına yazılır)")}</label>
         <div class="row wrap"><button class="btn" id="imp-check">${ic("eye", 15)} ${t("Yoxla")}</button>
           <button class="btn btn-primary" id="imp-run" disabled>${ic("upload", 15)} ${t("İdxal et")}</button></div>
-        <p class="small muted" style="margin:0">${t("Sütun adları OneRoster 1.2 və ya Azərbaycanca başlıqlardır. Böyük faylı serverdə manage.py import ilə idxal edin.")}</p>
+        <p class="small muted" style="margin:0">${t("Sütun adları OneRoster 1.2 və ya azərbaycanca başlıqlardır. Böyük faylı serverdə manage.py import ilə idxal edin.")}</p>
       </div></div>
       <div class="card"><div class="card-h"><h3>${ic("lock", 17)} ${t("Aktivləşdirmə kodları")}</h3></div><div class="card-b stack">
         <p class="small muted" style="margin:0">${t("Fakültənin hələ parol seçməmiş tələbələrinə birdəfəlik kod. Kodlar yalnız bir dəfə göstərilir; yenidən yaratmaq köhnə kodları ləğv edir.")}</p>

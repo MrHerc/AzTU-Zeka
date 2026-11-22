@@ -16,7 +16,7 @@ from ..modules.directory import domain as directory_rules, service as directory
 
 OPEN = ("submitted", "in_progress", "returned")
 DONE = ("ready", "rejected", "cancelled")
-UNITS = {"office": S_("Dekanlıq"), "academic_office": S_("Tədris şöbəsi"), "dept_head": S_("Kafedra müdiri")}   # who a step's role is
+UNITS = {"office": S_("Dekanlıq"), "academic_office": S_("Tədris hissəsi"), "dept_head": S_("Kafedra müdiri")}   # who a step's role is
 
 
 def type_out(t):
@@ -83,7 +83,7 @@ def answer_of(rt, changed: bool = True):
     claims a change Zəka did not make."""
     if rt["effect"] != "none" and changed:
         return rt["answer"]
-    return T3("Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka-da başqa heç bir qeyd dəyişməyib.",
+    return T3("Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka platformasında başqa heç bir qeyd dəyişdirilməyib.",
               unit=UNITS[rt["step_roles"][-1]])
 
 
@@ -116,7 +116,7 @@ def _date(v, label):
     try:
         return date.fromisoformat(str(v)[:10])
     except ValueError:
-        raise HTTPError(400, E("“{label}”: tarix düzgün deyil", label=label)) from None
+        raise HTTPError(400, E("«{label}»: tarix düzgün deyil", label=label)) from None
 
 
 def _visible(f, data):
@@ -131,14 +131,14 @@ def validate(c, u, rt, raw: dict) -> dict:
         if f["type"] in ("radio", "select"):
             choice = canon(str(raw.get(f["name"], "") or "").strip(), f["options"])
             if choice and choice not in f["options"]:
-                raise HTTPError(400, E("“{label}” üçün yanlış seçim", label=f["label"]))
+                raise HTTPError(400, E("«{label}» üçün yanlış seçim", label=f["label"]))
             data[f["name"]] = choice or ("" if f.get("required") else f["options"][0])
     for f in rt["fields"]:
         name, typ, req_ = f["name"], f["type"], f.get("required") and _visible(f, {**raw, **data})
         v = raw.get(name)
         if typ in ("radio", "select"):
             if req_ and not data[name]:
-                raise HTTPError(400, E("“{label}” seçilməlidir", label=f["label"]))
+                raise HTTPError(400, E("«{label}» seçilməlidir", label=f["label"]))
             continue
         if not _visible(f, data):
             data[name] = ""
@@ -148,12 +148,12 @@ def validate(c, u, rt, raw: dict) -> dict:
                 raise HTTPError(400, E("Yanlış dəyər: {field}", field=name))
             v = str(v or "").strip()[:3000]
             if req_ and not v:
-                raise HTTPError(400, E("“{label}” sahəsi mütləqdir", label=f["label"]))
+                raise HTTPError(400, E("«{label}» sahəsi doldurulmalıdır", label=f["label"]))
             data[name] = v
         elif typ == "number":
             if v in (None, ""):
                 if req_:
-                    raise HTTPError(400, E("“{label}” sahəsi mütləqdir", label=f["label"]))
+                    raise HTTPError(400, E("«{label}» sahəsi doldurulmalıdır", label=f["label"]))
                 data[name] = ""
                 continue
             try:
@@ -161,14 +161,14 @@ def validate(c, u, rt, raw: dict) -> dict:
             except ValueError:
                 n = math.nan
             if not math.isfinite(n):
-                raise HTTPError(400, E("“{label}”: rəqəm daxil edin", label=f["label"]))
+                raise HTTPError(400, E("«{label}»: ədəd daxil edin", label=f["label"]))
             if ("min" in f and n < f["min"]) or ("max" in f and n > f["max"]):
-                raise HTTPError(400, E("“{label}”: {lo}–{hi} aralığında olmalıdır", label=f["label"], lo=f.get("min"), hi=f.get("max")))
+                raise HTTPError(400, E("«{label}»: {lo}–{hi} aralığında olmalıdır", label=f["label"], lo=f.get("min"), hi=f.get("max")))
             data[name] = f"{n:g}"
         elif typ == "date":
             if not v:
                 if req_:
-                    raise HTTPError(400, E("“{label}” seçilməlidir", label=f["label"]))
+                    raise HTTPError(400, E("«{label}» seçilməlidir", label=f["label"]))
                 data[name] = ""
                 continue
             data[name] = _date(v, f["label"]).isoformat()
@@ -176,18 +176,18 @@ def validate(c, u, rt, raw: dict) -> dict:
             rng: dict = v if isinstance(v, dict) else {}
             if not rng.get("from") or not rng.get("to"):
                 if req_:
-                    raise HTTPError(400, E("“{label}”: başlanğıc və son tarixi seçin", label=f["label"]))
+                    raise HTTPError(400, E("«{label}»: başlanğıc və son tarixi seçin", label=f["label"]))
                 data[name] = {}
                 continue
             d1, d2 = _date(rng["from"], f["label"]), _date(rng["to"], f["label"])
             if d2 < d1:
-                raise HTTPError(400, E("“{label}”: son tarix başlanğıcdan əvvəl ola bilməz", label=f["label"]))
+                raise HTTPError(400, E("«{label}»: son tarix başlanğıc tarixindən əvvəl ola bilməz", label=f["label"]))
             if f.get("future") and d1 < now().date():
-                raise HTTPError(400, E("“{label}”: əvvəlcədən icazə yalnız gələcək tarixlər üçün verilir", label=f["label"]))
+                raise HTTPError(400, E("«{label}»: əvvəlcədən icazə yalnız gələcək tarixlər üçün verilir", label=f["label"]))
             if not f.get("future") and d2 > now().date():
-                raise HTTPError(400, E("“{label}”: gələcək tarixlər üçün “Dərslərdən icazə” xidmətindən istifadə edin", label=f["label"]))
+                raise HTTPError(400, E("«{label}»: gələcək tarixlər üçün «Dərslərdən icazə» xidmətindən istifadə edin", label=f["label"]))
             if (d2 - d1).days > 60:
-                raise HTTPError(400, E("“{label}”: dövr 60 gündən uzun ola bilməz", label=f["label"]))
+                raise HTTPError(400, E("«{label}»: dövr 60 gündən uzun ola bilməz", label=f["label"]))
             data[name] = {"from": d1.isoformat(), "to": d2.isoformat()}
         elif typ == "course":
             try:
@@ -196,7 +196,7 @@ def validate(c, u, rt, raw: dict) -> dict:
                 cid = 0
             if cid not in enrolled:
                 if req_:
-                    raise HTTPError(400, E("“{label}” seçilməlidir", label=f["label"]))
+                    raise HTTPError(400, E("«{label}» seçilməlidir", label=f["label"]))
                 data[name] = ""
                 continue
             data[name] = cid
@@ -204,7 +204,7 @@ def validate(c, u, rt, raw: dict) -> dict:
             given: list = v if isinstance(v, list) else []
             ids = sorted({int(x) for x in given if str(x).isascii() and str(x).isdigit() and int(x) in enrolled})
             if req_ and not ids:
-                raise HTTPError(400, E("“{label}”: ən azı bir fənn seçin", label=f["label"]))
+                raise HTTPError(400, E("«{label}»: ən azı bir fənn seçin", label=f["label"]))
             data[name] = ids
         elif typ == "absences":
             picked: list = v if isinstance(v, list) else []
@@ -227,7 +227,7 @@ def attach_files(c, u, rt, file_ids, rid, existing=0):
     if not spec:
         return 0
     if spec.get("required") and not ids and not existing:
-        raise HTTPError(400, E("“{label}” yüklənməlidir", label=spec["label"]))
+        raise HTTPError(400, E("«{label}» yüklənməlidir", label=spec["label"]))
     if len(ids) + existing > spec.get("max", 3):
         raise HTTPError(400, E("Ən çox {n} fayl əlavə etmək olar", n=spec.get("max", 3)))
     for fid in ids:
@@ -511,7 +511,7 @@ def request_action(req):
         if r["status"] == "returned":
             raise HTTPError(409, "Müraciət tələbəyə qaytarılıb")
         if r["step"] >= len(steps) - 1:
-            raise HTTPError(409, "Son mərhələdə “Təsdiqlə və tamamla” istifadə edin")
+            raise HTTPError(409, "Son mərhələdə «Təsdiqlə və tamamla» düyməsindən istifadə edin")
         nxt = step_actors(c, roles[r["step"] + 1], r["student_id"], data)
         if not nxt:                                  # nobody holds the next step: it stays here, where it can be returned (TE46-3)
             raise HTTPError(409, E("Növbəti mərhələni icra edən yoxdur ({unit}): administrator bu rolu təyin etməlidir",

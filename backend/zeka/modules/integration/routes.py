@@ -71,7 +71,7 @@ def _since(req):
     try:
         return domain.moment(req.query.get("since"))
     except ValueError:
-        raise HTTPError(400, E("«{field}» sahəsində vaxt ISO 8601 formatında olmalıdır, məsələn 2026-12-01T00:00:00+04:00",
+        raise HTTPError(400, E("«{field}» sahəsində vaxt ISO 8601 formatında olmalıdır, məsələn, 2026-12-01T00:00:00+04:00",
                                field="since")) from None
 
 

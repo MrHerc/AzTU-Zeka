@@ -178,7 +178,7 @@ def draft(kind: str, cells: dict[str, str]) -> tuple[dict, dict | None]:
         return {"attendance": _mark, "results": _result, "status-events": _status_event}[kind](cells)
     sid = cells.get("sourcedId", "")
     if not SOURCE.fullmatch(sid):
-        return {}, E("sourcedId 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır")
+        return {}, E("sourcedId hərf, rəqəm və ._:@/- simvollarından ibarət olmalıdır (1–64 simvol)")
     return {"users": _user, "orgs": _org, "terms": _term, "courses": _course, "classes": _class,
             "enrollments": _enrollment, "timetable": _lesson, "rooms": _room}[kind](cells)
 
@@ -199,7 +199,7 @@ def _user(x: dict) -> tuple[dict, dict | None]:
         return {}, E("enabledUser true və ya false olmalıdır")
     out["status"] = "active" if enabled in YES else "disabled"
     if role == "student" and not out["student_no"]:
-        return {}, E("Tələbənin bilet nömrəsi (identifier) yazılmalıdır")
+        return {}, E("Tələbə bileti nömrəsi (identifier) yazılmalıdır")
     if role != "student" and (out["student_no"] or x.get("group")):
         return {}, E("Qrup və tələbə bileti nömrəsi yalnız tələbəyə verilir")
     out["_group"], out["_department"] = x.get("group") or None, x.get("department") or None
@@ -281,7 +281,7 @@ def _lesson(x: dict) -> tuple[dict, dict | None]:
         return {}, E("Həftə günü 1 ilə 7 arasında olmalıdır")
     start, end = x.get("start", "").strip(), x.get("end", "").strip()
     if not (TIME.fullmatch(start) and TIME.fullmatch(end) and start < end):
-        return {}, E("Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır")
+        return {}, E("Dərsin vaxtı SS:DD formatında olmalı, bitmə vaxtı isə başlama vaxtından sonra olmalıdır")
     kind = _lookup(UNIT_KIND, x.get("kind", "") or "lecture")
     if not kind:
         return {}, E("Dərsin növü mühazirə, məşğələ və ya laboratoriya olmalıdır")
@@ -337,16 +337,16 @@ def _number(v: str) -> float | None:
 def _grade(x: dict) -> tuple[dict, dict | None]:
     for k in ("courseSourcedId", "userSourcedId"):
         if not SOURCE.fullmatch(x.get(k, "")):
-            return {}, E("«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır", field=k)
+            return {}, E("«{field}» sahəsindəki mənbə identifikatoru hərf, rəqəm və ._:@/- simvollarından ibarət olmalıdır (1–64 simvol)", field=k)
     component = " ".join(x.get("component", "").split())
     if not 1 <= len(component) <= 100:
         return {}, E("«{field}» sahəsi doldurulmalıdır", field="component")
     score = _number(x.get("score", ""))
     if score is None or score < 0:
-        return {}, E("Bal rəqəm olmalıdır")
+        return {}, E("Bal ədəd olmalıdır")
     maximum = _number(x["max"]) if x.get("max", "").strip() else None
     if x.get("max", "").strip() and maximum is None:
-        return {}, E("«{field}» sahəsində rəqəm olmalıdır", field="max")
+        return {}, E("«{field}» sahəsinin dəyəri ədəd olmalıdır", field="max")
     as_of = a_date(x["asOf"]) if x.get("asOf", "").strip() else None
     if x.get("asOf", "").strip() and not as_of:
         return {}, E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field="asOf")
@@ -357,7 +357,7 @@ def _grade(x: dict) -> tuple[dict, dict | None]:
 def _opening(x: dict) -> tuple[dict, dict | None]:
     for k in ("termSourcedId", "courseSourcedId", "userSourcedId"):
         if not SOURCE.fullmatch(x.get(k, "")):
-            return {}, E("«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır", field=k)
+            return {}, E("«{field}» sahəsindəki mənbə identifikatoru hərf, rəqəm və ._:@/- simvollarından ibarət olmalıdır (1–64 simvol)", field=k)
     out: dict = {"_term": x["termSourcedId"], "_course": x["courseSourcedId"], "_user": x["userSourcedId"]}
     for name, col in (("held_hours", "heldHours"), ("unexcused_hours", "unexcusedHours"), ("excused_hours", "excusedHours")):
         out[name] = an_int(x.get(col, ""), 0, 5000)
@@ -375,7 +375,7 @@ def _opening(x: dict) -> tuple[dict, dict | None]:
 def _refs(x: dict, *cols: str) -> dict | None:
     for k in cols:
         if not SOURCE.fullmatch(x.get(k, "")):
-            return E("«{field}» sahəsində mənbə id-si 1–64 hərf, rəqəm və ._:@/- simvolları olmalıdır", field=k)
+            return E("«{field}» sahəsindəki mənbə identifikatoru hərf, rəqəm və ._:@/- simvollarından ibarət olmalıdır (1–64 simvol)", field=k)
     return None
 
 
@@ -391,7 +391,7 @@ def _mark(x: dict) -> tuple[dict, dict | None]:
         return {}, problem or bad_day
     start, end = x.get("start", "").strip(), x.get("end", "").strip() or None
     if not TIME.fullmatch(start) or (end and not (TIME.fullmatch(end) and start < end)):
-        return {}, E("Dərsin vaxtı SS:DD formatında olmalı və bitməsi başlanğıcından sonra olmalıdır")
+        return {}, E("Dərsin vaxtı SS:DD formatında olmalı, bitmə vaxtı isə başlama vaxtından sonra olmalıdır")
     hours = an_int(x["hours"], 1, 12) if x.get("hours", "").strip() else None
     if x.get("hours", "").strip() and hours is None:
         return {}, E("«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır", field="hours", lo=1, hi=12)
@@ -400,7 +400,7 @@ def _mark(x: dict) -> tuple[dict, dict | None]:
         return {}, E("Qeyd iştirak, qayıb, gecikmə və ya üzrlü olmalıdır")
     as_of = a_date(x.get("asOf", ""))
     if not as_of:
-        return {}, E("Kəsid tarixi yoxdur: onu --as-of ilə və ya «asOf» sütununda verin")
+        return {}, E("Kəsid tarixi yoxdur: onu --as-of parametri ilə və ya «asOf» sütununda göstərin")
     if day > as_of:                                    # type: ignore[operator]  # day is a date here
         return {}, E("Dərsin tarixi kəsid tarixindən sonradır")
     return {"_class": x["classSourcedId"], "_user": x["userSourcedId"], "day": day, "start": start, "_end": end, "_hours": hours,

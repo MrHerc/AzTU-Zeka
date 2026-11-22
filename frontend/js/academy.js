@@ -48,19 +48,19 @@ route("/teacher/academy", async (el) => {
       ${ring(pct, 110, "#fff", t("{n}%", { n: pct }), 10)}</div></div>
     <div class="grid g-12 mt">
       <div class="card brand-border" data-tour="plan"><div class="card-h"><h3>${ic("target", 17)} ${t("Fərdi inkişaf planı")}
-          ${infoTip(t("Özünüqiymətləndirmə nəticəsinə görə sizə ən çox fayda verəcək istiqamətlər seçilir. İstədiyiniz vaxt yenidən keçə bilərsiniz."))}</h3>
+          ${infoTip(t("Özünüqiymətləndirmə nəticəsinə görə sizə ən çox fayda verəcək istiqamətlər seçilir. Qiymətləndirməni istədiyiniz vaxt təkrarlaya bilərsiniz."))}</h3>
         <button class="btn btn-sm" id="assess">${ic("sliders", 14)} ${Object.keys(a.assessment).length ? t("Yenidən qiymətləndir") : t("Özünüqiymətləndirmə")}</button></div>
         <div class="card-b">${rec.length ? html`<p class="small muted" style="margin:0 0 10px">${t("Qiymətləndirmənizə əsasən bu istiqamətlərdən başlamağı tövsiyə edirik:")}</p>
           <div class="list">${rec.map((tr, i) => html`<div class="list-item click" data-go="/teacher/academy/track/${tr.key}"><span class="avatar" style="background:${avatarBg(tr.color)}">${i + 1}</span>
             <div class="grow"><b class="small">${tr.title}</b><div class="tiny muted">${t("{done}/{total} modul", { done: tr.done, total: tr.total })} · ${t("{h} saat", { h: hrs(tr.minutes) })}</div></div>
             ${tr.next ? html`<button class="btn btn-sm btn-primary" data-go="/teacher/academy/module/${tr.next}">${tr.done ? t("Davam et") : t("Başla")}</button>` : html`<span class="badge b-green">${t("tamamlanıb")}</span>`}</div>`)}</div>`
           : empty("target", t("İnkişaf planı hazır deyil"), t("Bir dəqiqəlik özünüqiymətləndirmədən keçin — sizə uyğun istiqamətləri tövsiyə edək."), { label: t("Özünüqiymətləndirmə"), id: "assess-empty", icon: "sliders" })}</div></div>
-      <div class="card" data-tour="certs"><div class="card-h"><h3>${ic("award", 17)} ${t("Sertifikatlar və portfel")}</h3></div><div class="card-b list">
+      <div class="card" data-tour="certs"><div class="card-h"><h3>${ic("award", 17)} ${t("Sertifikatlar və portfolio")}</h3></div><div class="card-b list">
         ${a.certificates.length ? a.certificates.map((c) => html`<div class="list-item"><span class="stat-ic ic-green" style="width:34px;height:34px">${ic("award", 16)}</span>
           <div class="grow"><b class="small">${c.track}</b><div class="tiny muted">${c.reg_no} · ${fmtDate(c.issued_at)}</div></div>
           <button class="btn btn-sm" data-cert="${c.id}" data-ctrack="${esc(c.track)}">${ic("eye", 13)} ${t("Bax")}</button></div>`)
           : empty("award", t("Hələ sertifikat yoxdur"), t("İstiqaməti bitirdikdə QR kodla doğrulanan sertifikat avtomatik verilir."))}
-        <div class="tiny muted mt-sm">${t("Peşəkar inkişaf saatları attestasiya üçün portfelinizdə toplanır.")}</div></div></div></div>
+        <div class="tiny muted mt-sm">${t("Peşəkar inkişaf saatları attestasiya üçün portfolionuzda toplanır.")}</div></div></div></div>
     <h3 class="mt" style="font-size:17px;margin-bottom:12px">${t("İstiqamətlər")}</h3>
     <div class="grid g-3" data-tour="tracks">${a.tracks.map((tr) => trackCard(tr, a.recommended.includes(tr.key)))}</div>`);
   on(el, "click", "#assess, #assess-empty", () => assessmentModal(a, () => go("/teacher/academy")));
@@ -76,10 +76,10 @@ route("/teacher/academy/track/:key", async (el, p) => {
     ${empty("alert", t("İstiqamət tapılmadı"), t("Bu istiqamət mövcud deyil və ya ünvan dəyişib."), { label: t("Bütün istiqamətlər"), go: "/teacher/academy", icon: "cap" })}`);
   mount(el, html`${pageHead(tr.title, t("{level} · {aud}", { level: tr.level, aud: tr.audience }),
       tr.next ? html`<button class="btn btn-ai" data-go="/teacher/academy/module/${tr.next}">${ic("play", 14)} ${tr.done ? t("Davam et") : t("Başla")}</button>` : "",
-      crumbsA([tr.title]), { info: t("İstiqamət {total} moduldan ibarətdir, təxminən {h} saat. Modullar ardıcıl açılır, hər birinin sonunda qısa test var.", { total: tr.total, h: hrs(tr.minutes) }) })}
+      crumbsA([tr.title]), { info: t("İstiqamət {total} moduldan ibarətdir və təxminən {h} saat çəkir. Modullar ardıcıl açılır, hər birinin sonunda qısa test var.", { total: tr.total, h: hrs(tr.minutes) }) })}
     <div class="grid g-12"><div class="stack" data-tour="modules">${tr.modules.length ? tr.modules.map((m) => html`<div class="mod-row ${m.status === "completed" ? "done" : ""}" data-go="/teacher/academy/module/${m.id}" role="link" tabindex="0">
         <span class="mn">${m.status === "completed" ? raw(ic("check", 14).__html) : m.seq}</span>
-        <div class="grow"><b>${m.title}</b><div class="tiny muted">${t("{n} dəq", { n: m.minutes })}${m.score != null ? " · " + t("nəticə {n}%", { n: m.score }) : ""}</div></div>${ic("chevron", 16)}</div>`)
+        <div class="grow"><b>${m.title}</b><div class="tiny muted">${t("{n} dəq.", { n: m.minutes })}${m.score != null ? " · " + t("nəticə {n}%", { n: m.score }) : ""}</div></div>${ic("chevron", 16)}</div>`)
         : empty("book", t("Bu istiqamətdə modul yoxdur"), t("Modullar tezliklə əlavə olunacaq."))}</div>
       <div class="stack"><div class="card"><div class="card-h"><h3>${ic("target", 17)} ${t("Təlim nəticələri")}</h3></div><div class="card-b">
         ${tr.outcomes.map((o) => html`<div class="row small top" style="margin-bottom:6px"><span style="color:var(--green)">${ic("check", 14)}</span> ${o}</div>`)}
@@ -105,14 +105,14 @@ route("/teacher/academy/module/:id", async (el, p) => {
     ${err.status === 404 ? empty("alert", t("Modul tapılmadı"), t("Bu modul mövcud deyil və ya ünvan dəyişib."), { label: t("AI Akademiya"), go: "/teacher/academy", icon: "cap" }) : failed(err.message)}`); }
   const ans = [];
   mount(el, html`${pageHead(m.title, t("{track} · modul {seq}/{count}", { track: m.track.title, seq: m.seq, count: m.count }),
-      m.progress ? html`<span class="badge b-green">${ic("check", 12)} ${t("tamamlanıb · {n}%", { n: m.progress.score })}</span>` : html`<span class="badge b-gray">${t("{n} dəqiqə", { n: m.minutes })}</span>`,
+      m.progress ? html`<span class="badge b-green">${ic("check", 12)} ${t("Tamamlanıb · {n}%", { n: m.progress.score })}</span>` : html`<span class="badge b-gray">${t("{n} dəqiqə", { n: m.minutes })}</span>`,
       crumbsA([m.track.title, `/teacher/academy/track/${m.track.key}`], [t("Modul {n}", { n: m.seq })]),
-      { info: t("Modulu oxuyun, əsas məqamları və faydalı ifadələri nəzərdən keçirin, praktiki tapşırığı yerinə yetirin və qısa testlə yoxlayın.") })}
+      { info: t("Modulu oxuyun, əsas məqamları və faydalı ifadələri nəzərdən keçirin, praktiki tapşırığı yerinə yetirin və biliyinizi qısa testlə yoxlayın.") })}
     <div data-tour="progress">${progress((100 * m.seq) / m.count, "", t("Modul gedişatı"))}</div>
     <div class="grid g-12 mt"><div class="stack">
       <div class="card pad md" style="font-size:15px">${m.paragraphs.map((x) => html`<p>${x}</p>`)}</div>
       ${m.phrases.length ? html`<div class="card" data-tour="phrases"><div class="card-h"><h3>${ic("globe", 17)} ${t("Faydalı ifadələr")}</h3>
-          <span class="tiny muted">${ic("activity", 13)} ${t("tələffüzü dinləyin")}</span></div><div class="card-b stack sm">
+          <span class="tiny muted">${ic("activity", 13)} ${t("Tələffüzü dinləyin")}</span></div><div class="card-b stack sm">
         ${m.phrases.map((ph) => html`<div class="phrase ${LANG === "en" ? "en-only" : ""}"><div class="row"><button class="btn btn-ghost btn-icon" data-say="${esc(ph.en)}" aria-label="${t("Dinlə")}">${ic("activity", 16)}</button><span class="en">${ph.en}</span></div>
           ${LANG === "en" ? "" : html`<span class="az">${ph.az}</span>`}</div>`)}</div></div>` : ""}
       <div class="card" data-tour="quiz"><div class="card-h"><h3>${ic("quiz", 17)} ${t("Yoxlama testi")}</h3></div><div class="card-b stack" id="qz">
@@ -139,7 +139,7 @@ route("/teacher/academy/module/:id", async (el, p) => {
     btn.innerHTML = `${ic("check", 16).__html} ${esc(t("Tamamlandı"))}`;
     if (r.certificate) {
       modal({ title: t("Təbriklər"), body: html`<div class="center"><div class="welcome" style="padding:0"><div class="orb">${ic("award", 30)}</div>
-        <h3>${t("“{track}” sertifikatı verildi", { track: m.track.title })}</h3>
+        <h3>${t("«{track}» sertifikatı verildi", { track: m.track.title })}</h3>
         <p>${t("Reyestr nömrəsi")}: <b>${r.certificate.reg_no}</b><br>${t("Doğrulama kodu")}: <b class="mono">${r.certificate.verify_code}</b></p></div></div>`,
         actions: [{ label: t("Bağla"), cls: "btn-ghost" }, { html: `${ic("award", 15).__html} ${esc(t("Sertifikata bax"))}`, cls: "btn-ai", onClick: () => { openDoc(r.certificate.id, t("Sertifikat: {name}", { name: m.track.title })); return false; } }] });
     } else toast(t("Modul tamamlandı ({n}%)", { n: r.score }), "ok");
@@ -164,7 +164,7 @@ route("/teacher/tools", async (el, p, q) => {
   const draw = () => {
     const items = d.tools.filter((tool) => (!area || tool.areas.includes(area)) && (!term || (tool.name + " " + tool.summary + " " + tool.type).toLowerCase().includes(term)));
     mount($("#tl", el), items.length ? html`<div class="grid g-3">${items.map(toolCard)}</div>`
-      : term ? empty("search", t("Nəticə tapılmadı"), t("“{q}” üzrə alət yoxdur. Başqa açar söz yoxlayın və ya filtri sıfırlayın.", { q: term }), { label: t("Axtarışı təmizlə"), id: "tl-clear", icon: "x" })
+      : term ? empty("search", t("Nəticə tapılmadı"), t("«{q}» üzrə alət tapılmadı. Başqa açar sözlə axtarın və ya filtri sıfırlayın.", { q: term }), { label: t("Axtarışı təmizlə"), id: "tl-clear", icon: "x" })
         : empty("cpu", t("Bu sahədə alət yoxdur"), t("Başqa sahə seçin və ya bütün alətlərə baxın."), { label: t("Bütün alətlər"), id: "tl-all", icon: "grid" }));
     $$("[data-area]", el).forEach((x) => { const onx = x.dataset.area === area; x.classList.toggle("on", onx); x.setAttribute("aria-pressed", String(onx)); });
   };
@@ -198,7 +198,7 @@ route("/teacher/tools", async (el, p, q) => {
       const co = d.courses.find((x) => x.id === +b.dataset.ct); co.tools = r.tools;
       b.classList.toggle("on", r.on); b.setAttribute("aria-pressed", String(r.on));
       b.innerHTML = `${(r.on ? ic("check", 12) : ic("plus", 12)).__html} ${esc(co.name)}`;
-      toast(r.on ? t("{tool} “{course}” fənninə əlavə edildi", { tool: tool.name, course: co.name }) : t("“{course}” fənnindən çıxarıldı", { course: co.name }), "ok");
+      toast(r.on ? t("{tool} «{course}» fənninə əlavə edildi", { tool: tool.name, course: co.name }) : t("«{course}» fənnindən çıxarıldı", { course: co.name }), "ok");
     });
   };
   on(el, "click", "[data-tool]", (e, b) => detail(b.dataset.tool));
@@ -209,7 +209,7 @@ route("/teacher/tools", async (el, p, q) => {
 registerTour("teacher.academy", { route: "/teacher/academy", roles: ["teacher"], title: t("AI Akademiya"), group: GROUP(), icon: "cap", steps: [
   { sel: '[data-tour="hero"]', title: t("Ümumi mənzərə"), text: t("Tamamlanmış saatlar, sertifikatlar və modulların ümumi gedişatı.") },
   { sel: '[data-tour="plan"]', title: t("İnkişaf planı"), text: t("Özünüqiymətləndirmədən keçin — sizə ən uyğun istiqamətlər tövsiyə olunur.") },
-  { sel: '[data-tour="certs"]', title: t("Sertifikatlar"), text: t("Qazandığınız sertifikatlar portalın daxilində açılır və attestasiya portfelinizə əlavə olunur.") },
+  { sel: '[data-tour="certs"]', title: t("Sertifikatlar"), text: t("Qazandığınız sertifikatlar portalın daxilində açılır və attestasiya portfolionuza əlavə olunur.") },
   { sel: '[data-tour="tracks"]', title: t("İstiqamətlər"), text: t("İstiqaməti seçin, modullara baxın və öyrənməyə başlayın.") },
 ] });
 registerTour("teacher.academy.track", { route: "/teacher/academy/track/:key", go: "/teacher/academy/track/ai", roles: ["teacher"], title: t("İstiqamət"), group: GROUP(), icon: "layers", steps: [
@@ -218,14 +218,14 @@ registerTour("teacher.academy.track", { route: "/teacher/academy/track/:key", go
 ] });
 registerTour("teacher.academy.module", { route: "/teacher/academy/module/:id", go: "/teacher/academy/module/1", roles: ["teacher"], title: t("Modul"), group: GROUP(), icon: "book", steps: [
   { sel: '[data-tour="progress"]', title: t("Gedişat"), text: t("İstiqamət daxilində bu modulun yerini göstərir.") },
-  { sel: '[data-tour="phrases"]', title: t("Faydalı ifadələr"), text: t("İngilis dilində ifadələri səsləndirmə düyməsi ilə dinləyin.") },
+  { sel: '[data-tour="phrases"]', title: t("Faydalı ifadələr"), text: t("İngilis dilindəki ifadələri səsləndirmə düyməsi ilə dinləyin.") },
   { sel: '[data-tour="quiz"]', title: t("Yoxlama testi"), text: t("Suallara cavab verin və modulu tamamlayın — nəticə dərhal göstərilir.") },
   { sel: '[data-tour="task"]', title: t("Praktiki tapşırıq"), text: t("Öyrəndiyinizi öz dərsinizdə tətbiq edin.") },
   { sel: '[data-tour="refs"]', title: t("Tövsiyə olunan mənbələr"), text: t("Modulun mövzusu üzrə rəsmi sənədlər və metodik vəsaitlər.") },
 ] });
 registerTour("teacher.tools", { route: "/teacher/tools", roles: ["teacher"], title: t("Texnoloji həllər"), group: GROUP(), icon: "cpu", steps: [
   { sel: '[data-tour="filters"]', title: t("Filtrlər və axtarış"), text: t("Sahə üzrə süzün və ya alət adına görə axtarın. Ulduz kafedranız üçün tövsiyə olunan alətləri göstərir.") },
-  { sel: ".tool", title: t("Alət"), text: t("“Ətraflı” düyməsi istifadə ssenarilərini, addımları və dərs ideyasını açır.") },
+  { sel: ".tool", title: t("Alət"), text: t("«Ətraflı» düyməsi istifadə ssenarilərini, addımları və dərs ideyasını açır.") },
 ] });
 
 export { esc, raw, stat };

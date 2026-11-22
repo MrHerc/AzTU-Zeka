@@ -92,7 +92,7 @@ route("/support", async (el, p, q) => {
           <div class="seg" role="radiogroup">${m.priorities.map((x) => html`<button type="button" class="${x.key === "normal" ? "active" : ""}" data-prio="${x.key}" role="radio" aria-checked="${x.key === "normal"}">${x.name}</button>`)}</div></div>
         <div class="field"><span>${t("Əlavə fayl")} <span class="muted">(${t("istəyə görə")})</span></span>
           <label class="file-pick"><input type="file" id="tk-file" accept=".pdf,.png,.jpg,.jpeg" hidden>${ic("clip", 15)} <span id="tk-fname">${t("Ekran şəkli və ya PDF seçin")}</span></label></div></div>
-      ${from ? html`<div class="tiny muted">${ic("pin", 12)} ${t("Səhifə")}: <code>${from}</code> ${infoTip(t("Problemi daha tez tapmaq üçün hansı səhifədən yazdığınız sorğuya əlavə olunur."))}</div>` : ""}
+      ${from ? html`<div class="tiny muted">${ic("pin", 12)} ${t("Səhifə")}: <code>${from}</code> ${infoTip(t("Problemi daha tez tapmaq üçün dəstəyə keçdiyiniz səhifənin ünvanı sorğuya əlavə olunur."))}</div>` : ""}
       <div class="row between wrap"><span class="tiny muted">${ic("shield", 12)} ${t("Parol və ya FİN kimi məxfi məlumatları yazmayın.")}</span>
         <button class="btn btn-primary" type="submit">${ic("send", 15)} ${t("Sorğunu göndər")}</button></div></div></form>`);
     const f = $("#tk-form", el);
@@ -159,7 +159,7 @@ async function ticketPage(el, id, staffView) {
               <button class="btn btn-primary" type="submit">${ic("send", 15)} ${t("Göndər")}</button></div></form>`
             : html`<div class="notice info mt">${ic("info", 16)}<div>${t("Sorğu bağlanıb.")} ${tk.can_reopen ? html`<button class="btn btn-sm" id="reopen">${t("Yenidən aç")}</button>` : ""}</div></div>`}
           ${tk.can_rate ? html`<div class="rate-box"><b>${t("Problem həll olundumu? Xidməti qiymətləndirin:")}</b><div class="stars" role="radiogroup">${[1, 2, 3, 4, 5].map((n) => html`<button type="button" data-rate="${n}" aria-label="${n}">${ic("star", 22)}</button>`)}</div></div>` : ""}
-          ${tk.rating ? html`<div class="tiny muted mt">${t("Xidmət qiyməti")}: ${"★".repeat(tk.rating)}${"☆".repeat(5 - tk.rating)}</div>` : ""}
+          ${tk.rating ? html`<div class="tiny muted mt">${t("Xidmətə verilən qiymət")}: ${"★".repeat(tk.rating)}${"☆".repeat(5 - tk.rating)}</div>` : ""}
         </div></div>
         <div class="stack">
           <div class="card"><div class="card-h"><h3>${ic("info", 17)} ${t("Məlumat")}</h3></div><div class="card-b"><div class="review-grid">
@@ -209,12 +209,12 @@ route("/staff/support", async (el, p, q) => {
     api.get(`/api/support/tickets?scope=all&status=${encodeURIComponent(status)}${q.category ? "&category=" + encodeURIComponent(q.category) : ""}${q.mine ? "&mine=1" : ""}${q.q ? "&q=" + encodeURIComponent(q.q) : ""}`)]);
   const qs = (patch) => "/staff/support?" + new URLSearchParams(Object.entries({ status, category: q.category || "", mine: q.mine || "", q: q.q || "", ...patch }).filter(([, v]) => v)).toString();
   mount(el, html`${pageHead(t("Dəstək sorğuları"), t("İstifadəçi sorğularının vahid növbəsi."), html`<button class="btn" data-go="/staff/feedback">${ic("smile", 15)} ${t("Rəylər")}</button>`,
-      [[t("Əsas"), HOME[S.user.role]], [t("Dəstək sorğuları")]], { info: t("Sorğular prioritet və yaranma vaxtına görə sıralanır. İlk cavab müddəti: təcili — 4 saat, yüksək — 8 saat, normal — 24 saat, aşağı — 72 saat.") })}
+      [[t("Əsas"), HOME[S.user.role]], [t("Dəstək sorğuları")]], { info: t("Sorğular prioritet və yaradılma vaxtına görə sıralanır. İlk cavab müddəti: təcili — 4 saat, yüksək — 8 saat, normal — 24 saat, aşağı — 72 saat.") })}
     <div class="grid g-4" id="sp-stats">
       <div class="stat"><span class="stat-ic ic-blue">${ic("inbox", 19)}</span><div><div class="v">${cnt(sum.open)}</div><div class="l">${t("Yeni")}</div></div></div>
       <div class="stat"><span class="stat-ic ic-violet">${ic("refresh", 19)}</span><div><div class="v">${cnt(sum.in_progress + sum.waiting)}</div><div class="l">${t("İcrada və cavab gözləyən")}</div></div></div>
       <div class="stat"><span class="stat-ic ${sum.overdue ? "ic-red" : "ic-green"}">${ic("alert", 19)}</span><div><div class="v">${cnt(sum.overdue)}</div><div class="l">${t("Müddəti keçib")}</div></div></div>
-      <div class="stat"><span class="stat-ic ic-amber">${ic("clock", 19)}</span><div><div class="v">${sum.avg_first_response_h == null ? "—" : cnt(sum.avg_first_response_h, { dec: 1, suffix: " " + t("saat") })}</div><div class="l">${t("Orta ilk cavab")}</div></div></div>
+      <div class="stat"><span class="stat-ic ic-amber">${ic("clock", 19)}</span><div><div class="v">${sum.avg_first_response_h == null ? "—" : cnt(sum.avg_first_response_h, { dec: 1, suffix: " " + t("saat") })}</div><div class="l">${t("Orta ilk cavab müddəti")}</div></div></div>
     </div>
     <div class="card mt"><div class="card-h wrap">
       <div class="seg" role="tablist">${[["open", t("Açıq")], ["done", t("Bağlı")], ["all", t("Hamısı")]].map(([k, l]) => html`<button class="${status === k ? "active" : ""}" data-go="${qs({ status: k })}">${l}</button>`)}</div>
@@ -247,14 +247,14 @@ export async function feedbackSummaryCard(link = true) {
 route("/staff/feedback", async (el) => {
   if (!["office", "admin", "leader"].includes(S.user.role)) return go("/support?tab=feedback");
   const [f, s] = await Promise.all([api.get("/api/feedback/summary"), api.get("/api/support/summary")]);
-  const weeks = f.weekly.map((w, i) => (i === f.weekly.length - 1 ? t("bu həftə") : t("{n} hft əvvəl", { n: f.weekly.length - 1 - i })));
+  const weeks = f.weekly.map((w, i) => (i === f.weekly.length - 1 ? t("bu həftə") : t("{n} həftə əvvəl", { n: f.weekly.length - 1 - i })));
   mount(el, html`${pageHead(t("Rəylər və məmnuniyyət"), t("İstifadəçi rəyləri, NPS və dəstək keyfiyyəti."), html`<button class="btn" id="csv">${ic("download", 15)} CSV</button>`,
-      [[t("Əsas"), HOME[S.user.role]], [t("Rəylər və məmnuniyyət")]], { info: t("Məlumatlar demo üçün sintetikdir. NPS = tövsiyə edənlərin (9–10) faizi çıxılsın tənqid edənlərin (0–6) faizi.") })}
+      [[t("Əsas"), HOME[S.user.role]], [t("Rəylər və məmnuniyyət")]], { info: t("Məlumatlar demo üçün sintetikdir. NPS = tövsiyə edənlərin (9–10) faizi ilə tənqid edənlərin (0–6) faizi arasındakı fərq.") })}
     <div class="grid g-4">
       <div class="stat"><span class="stat-ic ic-amber">${ic("star", 19)}</span><div><div class="v">${cnt(f.avg || 0, { dec: 2 })}</div><div class="l">${t("Orta qiymət (1–5)")}</div></div></div>
       <div class="stat"><span class="stat-ic ic-blue">${ic("users", 19)}</span><div><div class="v">${cnt(f.count)}</div><div class="l">${t("Rəylərin sayı")}</div></div></div>
       <div class="stat"><span class="stat-ic ic-green">${ic("trend", 19)}</span><div><div class="v">${f.nps == null ? "—" : cnt(f.nps, { prefix: f.nps > 0 ? "+" : "" })}</div><div class="l">NPS · ${t("{n} cavab", { n: f.nps_responses })}</div></div></div>
-      <div class="stat"><span class="stat-ic ic-violet">${ic("ticket", 19)}</span><div><div class="v">${s.csat == null ? "—" : cnt(s.csat, { dec: 1 })}</div><div class="l">${t("Dəstək xidmətinin qiyməti")}</div></div></div>
+      <div class="stat"><span class="stat-ic ic-violet">${ic("ticket", 19)}</span><div><div class="v">${s.csat == null ? "—" : cnt(s.csat, { dec: 1 })}</div><div class="l">${t("Dəstək xidmətinə verilən qiymət")}</div></div></div>
     </div>
     <div class="grid g-2 mt">
       <div class="card"><div class="card-h"><h3>${ic("trend", 17)} ${t("Həftəlik orta qiymət")}</h3></div><div class="card-b">${lineChart({ labels: weeks, series: [{ name: t("Orta qiymət"), color: "#2b5aa8", values: f.weekly.map((w) => w.avg || 0) }], max: 5, height: 220 })}</div></div>
@@ -277,14 +277,14 @@ route("/staff/feedback", async (el) => {
 
 // ---------------------------------------------------------------- page guides
 registerTour("support", { route: "/support", title: t("Dəstək xidməti"), group: t("Kömək"), icon: "ticket", steps: [
-  { sel: ".tabs", title: t("Bölmələr"), text: t("Yeni sorğu yaradın, əvvəlki sorğularınıza baxın, rəy bildirin və ya tez-tez verilən suallara baxın.") },
+  { sel: ".tabs", title: t("Bölmələr"), text: t("Yeni sorğu yaradın, əvvəlki sorğularınıza baxın, rəy bildirin və ya tez-tez verilən suallarla tanış olun.") },
   { sel: ".cat-grid", title: t("Kateqoriya"), text: t("Mövzunu seçin — sorğu birbaşa uyğun mütəxəssisə çatır.") },
   { sel: "#tk-body", title: t("Təsvir"), text: t("Nə baş verdiyini və hansı addımları atdığınızı yazın. Ekran şəkli əlavə etmək problemi tez həll etməyə kömək edir.") },
   { sel: "#sp-side", title: t("Sistemin vəziyyəti"), text: t("Problem ümumidirsə, burada görünəcək. Universitetin rəsmi əlaqə məlumatları da buradadır.") },
 ] });
 registerTour("staff.support", { route: "/staff/support", roles: ["office", "admin"], title: t("Dəstək sorğuları"), group: t("Dəstək"), icon: "inbox", steps: [
-  { sel: "#sp-stats", title: t("Göstəricilər"), text: t("Yeni, icrada olan və müddəti keçmiş sorğular, həmçinin orta ilk cavab müddəti.") },
-  { sel: ".card-h .seg", title: t("Filtrlər"), text: t("Açıq və bağlı sorğular, kateqoriya və sizə təyin olunanlar üzrə süzgəc.") },
+  { sel: "#sp-stats", title: t("Göstəricilər"), text: t("Yeni, icrada olan və müddəti keçmiş sorğular, həmçinin ilk cavabın orta müddəti.") },
+  { sel: ".card-h .seg", title: t("Filtrlər"), text: t("Açıq və bağlı sorğular, kateqoriya və sizə təyin olunanlar üzrə filtr.") },
   { sel: "#queue", title: t("Növbə"), text: t("Sorğunu açın, cavab yazın, statusu dəyişin. Daxili qeydləri istifadəçi görmür.") },
 ] });
 registerTour("staff.feedback", { route: "/staff/feedback", roles: ["office", "admin", "leader"], title: t("Rəylər və məmnuniyyət"), group: t("Analitika"), icon: "smile", steps: [

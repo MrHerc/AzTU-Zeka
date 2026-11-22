@@ -1,8 +1,8 @@
 {
- "Bu addım sizin rolunuzun növbəsi deyil": "Этот шаг не за вашей ролью",
+ "Bu addım sizin rolunuza aid deyil": "Этот шаг не относится к вашей роли",
  "Yalnız son versiya təqdim olunur": "Отправить можно только последнюю версию",
  "Geri qaytarmanın səbəbini yazın": "Укажите причину возврата",
  "Sillabus geri qaytarıldı: {course}": "Силлабус возвращён: {course}",
  "Sillabus dərc olundu: {course}": "Силлабус опубликован: {course}",
- "Bu fəndə artıq bal yazılıb: dərc üçün tədris şöbəsinin açıq icazəsi və səbəbi lazımdır": "По этой дисциплине уже выставлены баллы: для публикации нужны явное разрешение учебной части и причина"
+ "Bu fəndə artıq bal yazılıb: dərc etmək üçün tədris hissəsinin xüsusi icazəsi və səbəbin göstərilməsi lazımdır": "По этой дисциплине уже выставлены баллы: для публикации нужны специальное разрешение учебной части и указание причины"
 }

@@ -83,7 +83,7 @@ def save_marks(c, user, lid: int, body) -> tuple[str, object]:
             return "forbidden", E("Bu dərs keçirilməyib: davamiyyət yazılmır")
         if view["before_cutover"]:
             return "forbidden", E("Kəsid tarixinə qədərki dərsin davamiyyəti köhnə sistemdən idxal olunur; onu kafedra müdiri düzəldir")
-        return "forbidden", E("Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəblə edir", n=view["edit_hours"])
+        return "forbidden", E("Düzəliş müddəti ({n} saat) bitib: dəyişikliyi kafedra müdiri səbəb göstərməklə edir", n=view["edit_hours"])
     reason = " ".join(str(body.get("reason") or "").split())[:300]
     if view["needs_reason"] and len(reason) < 3:
         return "invalid", E("Düzəlişin səbəbini yazın")
@@ -96,7 +96,7 @@ def save_marks(c, user, lid: int, body) -> tuple[str, object]:
     changes = [(uid, current[uid]["status"], m) for uid, m in marks.items()
                if current[uid]["status"] != m and not (current[uid]["status"] == "excused" and current[uid]["request_id"])]
     if not view["corrector"] and any(current[uid]["source"] == "legacy" for uid, _, _ in changes):
-        return "forbidden", E("İdxal olunmuş davamiyyəti yalnız kafedra müdiri səbəblə dəyişir")
+        return "forbidden", E("İdxal olunmuş davamiyyəti yalnız kafedra müdiri səbəb göstərməklə dəyişir")
     if view["before_cutover"]:
         # before the cut-over only imported rows count (Checkpoint C, J7): a new row there would change nothing, so a mark
         # sent for a student with no imported row is refused and the "present" every other student defaults to is not written

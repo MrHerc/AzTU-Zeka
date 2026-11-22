@@ -46,7 +46,7 @@ function eventRow(n) {
 
 const achievementsBanner = () => html`<a class="ach-banner" href="#/achievements">
   <span class="ach-banner-ic">${ic("trophy", 22)}</span>
-  <span class="grow"><b>${t("AzTU-nun nailiyyətləri")}</b><span class="tiny muted">${t("Reytinqlər, elm və tələbə uğurları — rəsmi mənbələrlə.")}</span></span>
+  <span class="grow"><b>${t("AzTU-nun nailiyyətləri")}</b><span class="tiny muted">${t("Reytinqlər, elm və tələbə uğurları — rəsmi mənbələrə keçidlərlə.")}</span></span>
   ${ic("arrow", 16)}</a>`;
 
 async function rsvp(id) {
@@ -110,7 +110,7 @@ route("/news", async (el, p, q) => {
       t("Universitetin elanları, tədbirləri və fürsətləri."),
       isStaff() ? html`<button class="btn btn-primary" data-go="/staff/news?new=1">${ic("plus", 15)} ${t("Xəbər dərc et")}</button>` : "",
       [[t("Əsas"), homeOf()], [t("Xəbərlər")]],
-      { info: t("Təqaüd, mübadilə və karyera fürsətləri “Fürsətlər” filtrindədir. Qeydiyyatdan keçdiyiniz tədbirlər və “Vacib” elanlar barədə bildiriş alacaqsınız.") })}
+      { info: t("Təqaüd və mübadilə fürsətləri «Fürsət», karyera imkanları isə «Karyera» filtrindədir. Qeydiyyatdan keçdiyiniz tədbirlər və «Vacib» elanlar barədə bildiriş alacaqsınız.") })}
     ${featured ? html`<a class="news-featured card hover" href="#/news/${featured.id}">
       <div class="nf-cover">${cover(featured.cover, 72, "lg")}</div>
       <div class="nf-body"><div class="row wrap news-tags"><span class="badge ${KIND_BADGE[featured.kind] || "b-gray"}">${kindName(featured.kind)}</span>${flags(featured)}</div>
@@ -238,7 +238,7 @@ route("/staff/news", async (el, p, q) => {
         t("Xəbər, elan və tədbirləri yaradın və dərc edin."),
         html`<button class="btn btn-primary" id="new">${ic("plus", 15)} ${t("Yeni xəbər")}</button>`,
         [[t("Əsas"), homeOf()], [t("Xəbərlərin idarə edilməsi")]],
-        { info: t("“Vacib” işarəli xəbər dərc olunduqda auditoriyaya bildiriş kimi göndərilir. Qaralama yalnız sizə görünür; dərc etdikdə lentdə görünəcək.") })}
+        { info: t("«Vacib» işarəli xəbər dərc olunduqda auditoriyaya bildiriş kimi göndərilir. Qaralama yalnız sizə görünür; dərc etdikdə lentdə görünəcək.") })}
       <div class="stack">${drafts.length ? section(t("Qaralamalar"), drafts, true) : ""}${section(t("Dərc olunmuş xəbərlər"), live, false)}</div>`);
   };
   draw();
@@ -298,7 +298,7 @@ route("/staff/news", async (el, p, q) => {
         if (!(v.location || "").trim()) { toast(t("Tədbirin keçiriləcəyi yeri yazın"), "err"); return false; }
       }
       if (!draft) {
-        const ok = await confirmBox(t("Xəbəri dərc etmək?"),
+        const ok = await confirmBox(t("Xəbər dərc edilsin?"),
           v.important ? t("Xəbər dərc olunacaq və auditoriyaya bildiriş göndəriləcək.") : t("Xəbər dərc olunacaq və auditoriyaya görünəcək."),
           t("Dərc et"));
         if (!ok) return false;
@@ -330,7 +330,7 @@ route("/staff/news", async (el, p, q) => {
     } catch (err) { toast(err.message, "err"); }
   });
   on(el, "click", "[data-del]", async (e, b) => {
-    if (!(await confirmBox(t("Xəbəri silmək?"), t("Xəbər, qeydiyyatlar və statistika birdəfəlik silinəcək. Bu əməliyyat geri qaytarılmır."), t("Sil"), true))) return;
+    if (!(await confirmBox(t("Xəbər silinsin?"), t("Xəbər, qeydiyyatlar və statistika birdəfəlik silinəcək. Bu əməliyyat geri qaytarılmır."), t("Sil"), true))) return;
     try { await api.del(`/api/news/${b.dataset.del}`); toast(t("Xəbər silindi"), "ok"); d = await api.get("/api/news/manage"); draw(); }
     catch (err) { toast(err.message, "err"); }
   });

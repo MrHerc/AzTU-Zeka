@@ -27,14 +27,14 @@ def kb_input(body, request_codes: set[str]) -> tuple[dict, dict | None]:
     if v["request"] and v["request"] not in request_codes:
         return v, E("Belə e-xidmət yoxdur")
     if v["action_label"] and (not v["request"] or len(v["action_label"]) > 60):
-        return v, E("Düymənin adı yalnız e-xidmətlə və ən çox 60 simvol olur")
+        return v, E("Düymənin adı yalnız e-xidmət seçildikdə verilir və ən çox 60 simvoldur")
     if v["review_at"]:
         try:                                                    # exactly YYYY-MM-DD: 3.11+ also reads 20261118 (PY-E3)
             if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", v["review_at"]):
                 raise ValueError(v["review_at"])
             date.fromisoformat(v["review_at"])
         except ValueError:
-            return v, E("Yenidən baxış tarixi YYYY-MM-DD formatında olmalıdır")
+            return v, E("Yenidən baxış tarixi İİİİ-AA-GG formatında olmalıdır")
     if v["status"] not in STATUSES:
         return v, E("Status düzgün deyil")
     return v, None

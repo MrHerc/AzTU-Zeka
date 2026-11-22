@@ -36,9 +36,9 @@ def compose_tutor(mode: str, question: str, hits: list[dict], history: list[dict
         return {"text": s("Buyurun. Başqa sualınız olarsa, kömək etməyə hazıram. Mövzunu möhkəmləndirmək üçün **Məşq** rejimindən istifadə edə bilərsiniz."),
                 "cites": [], "meta": {"mode": mode, "kind": "thanks"}}
     if not hits or hits[0]["score"] < 1.2:
-        return {"text": s("Bu sualın cavabını fənn materiallarında tapmadım.\n\n"
-                          "Dəqiqliyi qorumaq üçün yalnız müəllimin yüklədiyi materiallara əsaslanıram. "
-                          "Sualı başqa sözlərlə yazın və ya **“Müəllimə göndər”** düyməsi ilə müəllimə ünvanlayın."),
+        return {"text": s("Bu sualın cavabını fənn materiallarında tapmadım.\n\nDəqiqliyi "
+                          "qorumaq üçün yalnız müəllimin yüklədiyi materiallara əsaslanıram. Sualı "
+                          "başqa sözlərlə yazın və ya **«Müəllimə göndər»** düyməsi ilə müəllimə ünvanlayın."),
                 "cites": [], "meta": {"mode": mode, "no_source": True}}
 
     # Concept passages first; worked examples are kept for the later hint step.
@@ -89,8 +89,8 @@ def compose_tutor(mode: str, question: str, hits: list[dict], history: list[dict
             ask = _pick([s("Sizcə, burada hansı qanun və ya qayda tətbiq olunur? **{c}** ilə necə bağlıdır?", c=cw),
                          s("**{c}** anlayışını öz sözlərinizlə necə izah edərdiniz?", c=cw),
                          s("**{c}** haqqında artıq nə bilirsiniz? Bir-iki cümlə ilə yazın.", c=cw)], q)
-        text = intro + s("Gəlin birlikdə düşünək.\n\n**1-ci addım.** {ask}\n\n**İpucu.** Materialda deyilir: “{key}” {ref}\n\n"
-                         "Cavabınızı yazın — sonra növbəti addıma keçəcəyik.", ask=ask, key=key, ref=c.ref(hi))
+        text = intro + s("Gəlin birlikdə düşünək.\n\n**1-ci addım.** {ask}\n\n**İpucu.** Materialda deyilir: «{key}» {ref}\n\nCavabınızı "
+                         "yazın — sonra növbəti addıma keçəcəyik.", ask=ask, key=key, ref=c.ref(hi))
     elif level == 1:
         if fs:
             fhi, f = fs[0]
@@ -98,21 +98,21 @@ def compose_tutor(mode: str, question: str, hits: list[dict], history: list[dict
                              "Məlum qiymətləri yerinə qoysanız, nə alınır? Vahidlərə diqqət edin.", f=f, ref=c.ref(fhi))
         else:
             nxt = hint_pool[1] if len(hint_pool) > 1 else (hi, key)
-            text = intro + s("Davam edək. **2-ci addım.** Bu fikrə diqqət edin: “{s}” {ref}\n\n"
-                             "Bu, sizin məsələnizə necə tətbiq olunur? Həll addımınızı yazın.", s=nxt[1], ref=c.ref(nxt[0]))
+            text = intro + s("Davam edək. **2-ci addım.** Bu fikrə diqqət edin: «{s}» {ref}\n\nBu, "
+                             "sizin məsələnizə necə tətbiq olunur? Həll addımınızı yazın.", s=nxt[1], ref=c.ref(nxt[0]))
     elif level == 2:
         if examples:
             ei = ordered.index(examples[0])
             exs = " ".join(split_sentences(examples[0]["text"])[:2])
-            text = intro + s("**3-cü addım.** Materialdakı oxşar nümunənin şərtinə baxın: “{ex}” {ref}\n\n"
-                             "Həllə baxmadan əvvəl eyni məntiqi öz məsələnizə tətbiq edin və nəticəni yazın — birlikdə yoxlayaq.",
+            text = intro + s("**3-cü addım.** Materialdakı oxşar nümunənin şərtinə baxın: «{ex}» {ref}\n\nHəllə "
+                             "baxmadan əvvəl eyni məntiqi öz məsələnizə tətbiq edin və nəticəni yazın — birlikdə yoxlayaq.",
                              ex=exs, ref=c.ref(ei))
         else:
             text = intro + s("**3-cü addım.** Əldə etdiklərinizi birləşdirib yekun nəticəni yazın. Vahidlərin uyğunluğunu və "
                              "qiymətin realistik olduğunu yoxlayın. Mənbəyə yenidən baxa bilərsiniz: {ref}", ref=c.ref(0))
     else:
-        text = s("Yaxşı irəliləyirsiniz. Hələ əmin deyilsinizsə, həllinizi **“Müəllimə göndər”** düyməsi ilə müəllimə göndərin — "
-                 "o, yoxlayıb şərh edəcək. Mövzunun qısa izahı üçün **İzah** rejiminə keçə bilərsiniz. {ref}", ref=c.ref(0))
+        text = s("Yaxşı irəliləyirsiniz. Hələ əmin deyilsinizsə, həllinizi **«Müəllimə göndər»** düyməsi ilə müəllimə göndərin — o, "
+                 "yoxlayıb şərh edəcək. Mövzunun qısa izahı üçün **İzah** rejiminə keçə bilərsiniz. {ref}", ref=c.ref(0))
     return {"text": text, "cites": c.order, "meta": {"mode": "socratic", "topic": topic, "level": level, "guardrail": direct}}
 
 

@@ -190,9 +190,9 @@ def build_syllabus(c, co, weeks=15):
     labs = any(w["kind"] == "Laboratoriya" for w in weekly)
     for w in range(1, weeks + 1):
         if w == 7:
-            plan.append({"week": w, "topic": "Kollokvium 1", "activity": "Yazılı kollokvium (mövzular 1–6)"})
+            plan.append({"week": w, "topic": "Kollokvium 1", "activity": "Yazılı kollokvium (1–6-cı mövzular)"})
         elif w == 13:
-            plan.append({"week": w, "topic": "Kollokvium 2", "activity": "Yazılı kollokvium (mövzular 8–12)"})
+            plan.append({"week": w, "topic": "Kollokvium 2", "activity": "Yazılı kollokvium (8–12-ci mövzular)"})
         elif w == weeks:
             plan.append({"week": w, "topic": "Təkrar və imtahana hazırlıq", "activity": "AI tutorun Məşq rejimi, sual-cavab"})
         else:
@@ -217,7 +217,7 @@ def build_syllabus(c, co, weeks=15):
         "policies": [
             f"Davamiyyət: buraxılmış dərslər ümumi saatların {rules['attendance']['limit_percent']:g}%-ni keçərsə, tələbə imtahana buraxılmaya bilər. "
             "Üzrlü səbəblər Zəka platformasında sənədlə təsdiqlənir.",
-            "Tapşırıqlar: gecikmiş tapşırıqlar üçün hər gecikmiş gün üçün balın 10%-i çıxılır (ən çox 3 gün).",
+            "Tapşırıqlar: vaxtında təqdim edilməyən tapşırıq üçün hər gecikmə günü balın 10%-i çıxılır (ən çox 3 gün).",
             "Akademik dürüstlük: köçürmə və plagiat qadağandır; aşkar edildikdə iş qiymətləndirilmir.",
             "Süni intellekt: AI tutordan izah və məşq üçün istifadə etmək olar; AI-ın yazdığı mətni və ya həlli öz işi kimi təqdim etmək qadağandır. AI istifadəsi tapşırıqda açıqlanmalıdır.",
             "Əlaqə: suallar Zəka platforması vasitəsilə göndərilir, cavab 2 iş günü ərzində verilir.",

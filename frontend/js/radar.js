@@ -38,7 +38,7 @@ on(document, "click", "[data-src]", (e, b) => { e.preventDefault(); e.stopPropag
 // ---------------------------------------------------------------- plan steps (shared: teacher preview, plan history, student page)
 function planSteps(plan, { interactive = false, links = false } = {}) {
   return html`<div class="rd-steps">${plan.steps.map((s, i) => html`<div class="rd-step ${s.done ? "done" : ""}">
-    ${interactive ? html`<button class="rd-check" data-step="${i}" data-done="${s.done ? "0" : "1"}" aria-pressed="${!!s.done}" aria-label="${s.done ? t("Yerinə yetirilməyib kimi qeyd et") : t("Yerinə yetirdim")}">${ic("check", 15)}</button>`
+    ${interactive ? html`<button class="rd-check" data-step="${i}" data-done="${s.done ? "0" : "1"}" aria-pressed="${!!s.done}" aria-label="${s.done ? t("Yerinə yetirilməmiş kimi qeyd et") : t("Yerinə yetirdim")}">${ic("check", 15)}</button>`
       : html`<span class="rd-check" aria-hidden="true">${ic("check", 15)}</span>`}
     <div class="grow"><div class="rd-step-t">${ic(STEP_IC[s.kind] || "target", 15)} ${s.title}
       ${s.done ? html`<span class="badge b-green">${s.auto ? t("Avtomatik qeyd olundu") : t("Yerinə yetirilib")}</span>` : ""}</div>
@@ -106,10 +106,10 @@ route("/radar", async (el, p, q) => {
           attendance: t("Üzrsüz qayıblar və ardıcıl buraxılan dərslər. Üzrlü qayıblar sayılmır."),
           assessment: t("Cari ballar və test nəticələri, nəticənin azalması."),
           concept: t("Tutorda tez-tez soruşulan və səhv cavablandırılan mövzular (son 4 həftə)."),
-          engagement: t("Tutordan və testlərdən uzaqlaşma — qrupun mediyanı ilə müqayisədə."),
+          engagement: t("Tutordan və testlərdən uzaqlaşma — qrupun medianı ilə müqayisədə."),
         }[key]}</div></div>`)}</div>
         <ul class="rd-principles">
-          <li>${ic("check", 15)} <span>${t("İzah olunan: hər bal səbəbləri və sübutları ilə göstərilir.")}</span></li>
+          <li>${ic("check", 15)} <span>${t("İzahlı: hər bal səbəbləri və sübutları ilə göstərilir.")}</span></li>
           <li>${ic("check", 15)} <span>${t("Ədalətli: üzrlü qayıblar heç vaxt sayılmır; az məlumatla qərar verilmir.")}</span></li>
           <li>${ic("check", 15)} <span>${t("Məxfi: tutor söhbətlərinin mətni oxunmur — yalnız mövzu və say.")}</span></li>
           <li>${ic("check", 15)} <span>${t("İnsan nəzarəti: plan yalnız müəllim təsdiqləyib göndərəndə tələbəyə çatır; tələbə risk balını görmür.")}</span></li>
@@ -162,7 +162,7 @@ route("/radar/student/:id", async (el, p, q) => {
         <div class="card" id="rd-why"><div class="card-b"><div class="rd-head">
             <div class="rd-gauge">${ring(pr.score, 112, LV[lv][2], num(pr.score, 0), 10)}</div>
             <div class="grow"><div class="row wrap">${levelBadge(lv)}<span class="badge b-gray">${t("Etibarlılıq: {c}", { c: CONF[pr.confidence] })}</span>
-              ${d.cohort.rank ? html`<span class="badge b-navy">${t("{n} tələbə arasında {r}-ci", { n: d.cohort.students, r: d.cohort.rank })}</span>` : ""}</div>
+              ${d.cohort.rank ? html`<span class="badge b-navy">${t("{n} tələbə arasında yer: {r}", { n: d.cohort.students, r: d.cohort.rank })}</span>` : ""}</div>
               <h3 class="mt-sm">${t("Niyə bu bal?")}</h3><div class="small muted">${t("Bal dörd siqnalın cəmidir. Hər siqnalın altında onu yaradan faktlar var.")}</div>
               <div class="mt-sm">${driverBar(pr.drivers, true)}</div></div></div>
           <div class="divider"></div>
@@ -183,8 +183,8 @@ route("/radar/student/:id", async (el, p, q) => {
             ${asm.series.length ? asm.series.map((x) => html`<div class="bar-row"><span class="ellipsis small" title="${x.title}">${x.title}</span>${progress(x.percent, x.percent < 50 ? "coral" : "green", x.title)}<b class="right small">${x.percent}%</b></div>`)
               : html`<div class="small muted">${t("Test cəhdi yoxdur")}</div>`}
             <div class="rd-compare mt">
-              <div><b>${att.rate == null ? "—" : att.rate + "%"}</b><span>${t("Davamiyyət")} · ${t("kurs: {n}%", { n: d.cohort.attendance ?? "—" })}</span></div>
-              <div><b>${asm.grade_pct == null ? "—" : asm.grade_pct + "%"}</b><span>${t("Cari ballar")} · ${t("kurs: {n}%", { n: d.cohort.grades ?? "—" })}</span></div>
+              <div><b>${att.rate == null ? "—" : att.rate + "%"}</b><span>${t("Davamiyyət")} · ${t("fənn üzrə orta: {n}%", { n: d.cohort.attendance ?? "—" })}</span></div>
+              <div><b>${asm.grade_pct == null ? "—" : asm.grade_pct + "%"}</b><span>${t("Cari ballar")} · ${t("fənn üzrə orta: {n}%", { n: d.cohort.grades ?? "—" })}</span></div>
               <div><b>${num(pr.stats.engagement.asks_14d)}</b><span>${t("Tutor sualı (14 gün)")}</span></div></div></div></div>
         </div>
       </div>
@@ -201,10 +201,10 @@ route("/radar/student/:id", async (el, p, q) => {
         <div class="card" id="rd-plans"><div class="card-h"><h3>${ic("target", 17)} ${t("Dəstək planları")}</h3><span class="small muted">${d.interventions.length}</span></div>
           <div class="card-b">${d.interventions.length ? d.interventions.map((x) => html`<div class="rd-iv">
             <div class="row between wrap"><b class="small">${x.plan.title}</b>${x.status === "open" ? html`<span class="badge b-violet">${t("Açıq")}</span>` : x.status === "completed" ? html`<span class="badge b-green">${t("Tamamlanıb")}</span>` : html`<span class="badge b-gray">${x.status}</span>`}</div>
-            <div class="tiny muted">${x.author} · ${fmtDate(x.created_at)} · ${t("risk o zaman: {s}", { s: num(x.risk_before, 0) })}</div>
+            <div class="tiny muted">${x.author} · ${fmtDate(x.created_at)} · ${t("o zamankı risk: {s}", { s: num(x.risk_before, 0) })}</div>
             <div class="row mt-sm">${progress(x.progress.percent, "green")}<span class="small nowrap">${x.progress.done}/${x.progress.total}</span></div>
             <details class="mt-sm"><summary class="small">${t("Addımlar")}</summary><div class="mt-sm">${planSteps(x.plan)}</div></details>
-            ${x.status === "open" && d.can_act ? html`<div class="row wrap mt-sm"><button class="btn btn-sm" data-ivs="completed" data-iv="${x.id}">${ic("check", 13)} ${t("Tamamlandı kimi bağla")}</button>
+            ${x.status === "open" && d.can_act ? html`<div class="row wrap mt-sm"><button class="btn btn-sm" data-ivs="completed" data-iv="${x.id}">${ic("check", 13)} ${t("Tamamlanmış kimi bağla")}</button>
               <button class="btn btn-sm btn-ghost" data-ivs="cancelled" data-iv="${x.id}">${t("Ləğv et")}</button></div>` : ""}</div>`)
             : empty("target", t("Hələ plan yoxdur"), d.can_act ? t("Tövsiyə olunan addımdan plan hazırlayın — tələbə onu bildiriş kimi alacaq.") : t("Müəllim və ya dekanlıq plan göndərdikdə burada görünəcək."))}</div></div>
         <div class="notice ai">${ic("shield", 16)}<div class="small">${t("Bu profil yalnız fənn müəlliminə, dekanlığa və rəhbərliyə görünür. Hər baxış audit jurnalına yazılır.")}</div></div>
@@ -213,7 +213,7 @@ route("/radar/student/:id", async (el, p, q) => {
   $("#rd-make", el)?.addEventListener("click", make);
   $("#rd-make2", el)?.addEventListener("click", make);
   on(el, "click", "[data-ivs]", async (e, b) => {
-    const okd = b.dataset.ivs === "completed" || await confirmBox(t("Planı ləğv etmək?"), t("Tələbə planı artıq görməyəcək."), t("Ləğv et"), true);
+    const okd = b.dataset.ivs === "completed" || await confirmBox(t("Plan ləğv edilsin?"), t("Tələbə planı artıq görməyəcək."), t("Ləğv et"), true);
     if (!okd) return;
     try { await api.post(`/api/interventions/${b.dataset.iv}/status`, { status: b.dataset.ivs }); toast(t("Plan yeniləndi"), "ok"); go(`/radar/student/${st.id}?course=${co.id}&r=${Date.now()}`); }
     catch (err) { toast(err.message, "err"); }
@@ -229,7 +229,7 @@ function composer(d, onDone) {
       <div class="seg" id="pk" role="tablist">${Object.entries(KIND).map(([key, [l, i]]) => html`<button data-k="${key}" class="${key === kind ? "active" : ""}" role="tab">${ic(i, 14)} ${l}${rec && rec.kind === key ? " ★" : ""}</button>`)}</div>
       <div id="pv" class="mt">${skelLines(5)}</div>
       <label class="field mt"><span class="label">${t("Tələbəyə qısa qeyd (istəyə görə)")}</span>
-        <textarea class="textarea" id="pn" rows="2" maxlength="600" placeholder="${t("Məsələn: Gəlin bu mövzunu birlikdə bərpa edək. Sualınız olsa, dərsdən sonra yaxınlaşın.")}"></textarea></label>
+        <textarea class="textarea" id="pn" rows="2" maxlength="600" placeholder="${t("Məsələn: Gəlin bu mövzunu birlikdə təkrarlayaq. Sualınız olarsa, dərsdən sonra yaxınlaşın.")}"></textarea></label>
       <div class="notice ai mt">${ic("shield", 16)}<div class="small">${t("Plan yalnız siz göndərdikdən sonra tələbəyə görünür. Tələbə risk balını və səbəbləri görmür — yalnız dəstək addımlarını.")}</div></div>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" },
       { html: `${icon("send", 15)} ${esc(t("Tələbəyə göndər"))}`, cls: "btn-ai", onClick: async (w) => {
@@ -287,7 +287,7 @@ route("/student/plan/:id?", async (el, p) => {
           <div class="card"><div class="card-h"><h3>${ic("help", 17)} ${t("Bu plan nədir?")}</h3></div><div class="card-b stack small">
             <div>${t("Bu, qiymət və ya cəza deyil. Müəlliminiz mövzunu daha yaxşı mənimsəməniz üçün qısa addımlar seçib.")}</div>
             <div>${ic("sparkles", 14)} ${t("Mövzu addımları tutorda açılır — cavablar müəllimin mühazirələrinə əsaslanır.")}</div>
-            <div>${ic("check", 14)} ${t("Tutorda izah istədikdə və məşqdə düzgün cavab verdikdə addım özü qeyd olunur.")}</div>
+            <div>${ic("check", 14)} ${t("Tutorda izah istədikdə və məşqdə düzgün cavab verdikdə addım avtomatik qeyd olunur.")}</div>
             <div>${ic("users", 14)} ${t("Konsultasiyaya gəlmək üçün dərsdən sonra müəlliminizə yaxınlaşın.")}</div></div></div>
           <div class="card pad"><div class="row"><span class="stat-ic ic-navy">${ic("message", 20)}</span><div class="grow"><b>${t("Sualınız var?")}</b>
             <div class="small muted">${t("Tutordan soruşun və ya sualı anonim olaraq müəllimə göndərin.")}</div></div>
@@ -324,7 +324,7 @@ export async function radarTeacherAlert(box) {
   if (!risky.length) { box.remove(); return; }
   mount(box, html`<div class="card mt" id="radar-alert" style="border-left:4px solid var(--rd-high)"><div class="card-b rd-alert">
     <span class="stat-ic ic-red">${ic("activity", 21)}</span>
-    <div class="grow"><b>${t("Zəka Radar: {h} tələbə yüksək risk, {w} tələbə diqqət siyahısında", { h: d.counts.high, w: d.counts.watch })}</b>
+    <div class="grow"><b>${t("Zəka Radar: {h} tələbə yüksək risk altında, {w} tələbə diqqət siyahısında", { h: d.counts.high, w: d.counts.watch })}</b>
       <div class="rd-names mt-sm">${risky.slice(0, 3).map((r) => html`<button class="chip" data-go="/radar/student/${r.id}?course=${r.course_id}"><span class="dot" style="background:${LV[r.level][2]};box-shadow:none"></span>${r.name} · ${num(r.score, 0)}</button>`)}</div></div>
     <button class="btn btn-primary" data-go="/radar">${ic("activity", 15)} ${t("Radarı aç")}</button></div></div>`);
 }
@@ -349,8 +349,8 @@ export function radarLeaderCard(box, s) {
 
 // ---------------------------------------------------------------- page guides
 registerTour("radar", { route: "/radar", roles: ["teacher", "office", "leader", "admin"], title: t("Zəka Radar"), group: t("Tədris"), icon: "activity", steps: [
-  { sel: "#rd-kpis", title: t("Bir baxışda"), text: t("Neçə tələbə yüksək risk altındadır, neçəsinə plan göndərilib və planlar nəticə verirmi.") },
-  { sel: "#rd-list", title: t("Kimə və niyə?"), text: t("Tələbələr risk balına görə sıralanır. Rəngli zolaq balın hansı siqnallardan yarandığını, “Niyə?” sütunu isə faktları göstərir.") },
+  { sel: "#rd-kpis", title: t("Bir baxışda"), text: t("Burada neçə tələbənin yüksək risk altında olduğunu, neçəsinə plan göndərildiyini və planların nəticə verib-vermədiyini görürsünüz.") },
+  { sel: "#rd-list", title: t("Kimə və niyə?"), text: t("Tələbələr risk balına görə sıralanır. Rəngli zolaq balın hansı siqnallardan yarandığını, «Niyə?» sütunu isə faktları göstərir.") },
   { sel: "#rd-gaps", title: t("Dərsə aid siqnal"), text: t("Bir neçə tələbənin eyni anda çətinlik çəkdiyi mövzu — onu növbəti dərsdə təkrarlamaq tövsiyə olunur.") },
   { sel: "#rd-model", title: t("Şəffaf model"), text: t("Çəkilər, hədlər və prinsiplər açıq göstərilir: üzrlü qayıblar sayılmır, söhbətlərin mətni oxunmur, qərarı insan verir.") },
 ] });

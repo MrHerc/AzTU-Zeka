@@ -104,7 +104,7 @@ def _since(req) -> datetime | None:
     try:
         return domain.moment(req.query.get("since"))                # the same reading as the screen and manage.py
     except ValueError:
-        raise HTTPError(400, E("«since» ISO 8601 vaxtı olmalıdır, məsələn 2026-12-01T00:00:00+04:00")) from None
+        raise HTTPError(400, E("«since» ISO 8601 formatında vaxt olmalıdır, məsələn, 2026-12-01T00:00:00+04:00")) from None
 
 
 def _v1(req, kind: str) -> Response:

@@ -133,7 +133,7 @@ def export(c, u: dict) -> dict:
 
 def request_erase(c, u: dict, reason: str) -> tuple[str, object]:
     if repo.open_privacy_request(c, u["id"]):
-        return "exists", E("Silmə sorğunuz artıq baxılır")
+        return "exists", E("Silmə sorğunuza artıq baxılır")
     rid = repo.add_privacy_request(c, u["id"], reason, iso(now()))
     audit(c, u["id"], "privacy_erase_request", "privacy_request", f"#{rid}")
     deciders = sorted({x for role in perms.PERMS["privacy.decide"] for x in step_actors(c, role, u["id"], {})} - {u["id"]})
@@ -162,7 +162,7 @@ def decide(c, user: dict, rid: int, approve: bool, note: str) -> tuple[str, obje
     if approve and target["username"] in (setting(c, "demo_logins", {}) or {}).values():
         return "invalid", E("Demo girişinin hesabı silinmir")
     if approve and target["role"] == "admin" and not repo.other_active_admins(c, target["id"]):     # Checkpoint F (SEC-F4)
-        return "invalid", E("Son aktiv administratorun hesabı silinmir: əvvəl başqa administrator təyin edin")
+        return "invalid", E("Son aktiv administratorun hesabı silinmir: əvvəlcə başqa administrator təyin edin")
     if not repo.decide_privacy_request(c, rid, "done" if approve else "rejected", user["id"], iso(now()), note):
         return "decided", E("Bu sorğu haqqında qərar artıq verilib")
     if not approve:

@@ -29,7 +29,7 @@ export async function privacyNotice() {
       <li>${ic("clock", 15)} <span>${t("Audit jurnalı")}: ${days(r.audit_days)}</span></li>
       <li>${ic("lock", 15)} <span>${t("Qiymətlər, davamiyyət, imtahan qeydləri və verilmiş sənədlər: qanunun tələb etdiyi müddət.")}</span></li></ul>`)}
     ${sec(t("Hüquqlarınız"), html`<p style="margin:0">${t("Profil səhifəsində məlumatlarınızın surətini yükləyə, razılığı geri götürə və məlumatlarınızın silinməsini istəyə bilərsiniz. AI tutor və kampus köməkçisi üçün razılığı geri götürəndə bu köməkçilərlə söhbətləriniz silinir. Qanunla saxlanmalı qeydlər (qiymətlər, davamiyyət, imtahan qeydləri, verilmiş sənədlər) silinmir; hesabınızdan ad və əlaqə məlumatları silinir.")}</p>
-      <p class="small muted" style="margin:0">${t("İmtahan variantları, imtahan sualları və açıqlanmamış imtahan balları ixraca düşmür. Nəticə açıqlanandan sonra ixracda yalnız öz cavablarınız və balınız olur.")}</p>`)}
+      <p class="small muted" style="margin:0">${t("İmtahan variantları, imtahan sualları və açıqlanmamış imtahan balları ixraca daxil edilmir. Nəticə açıqlandıqdan sonra ixraca yalnız öz cavablarınız və balınız daxil edilir.")}</p>`)}
   </div>`, actions: [{ label: t("Bağla"), cls: "btn-primary" }] });
 }
 document.addEventListener("click", (e) => { const a = e.target.closest("[data-privacy-notice]"); if (a) { e.preventDefault(); privacyNotice(); } });
@@ -51,14 +51,14 @@ export async function aiConsent(onGiven) {
     title: t("Məlumatlarınızın emalı"), onClose: () => { if (given) onGiven(); }, body: html`<div class="stack">
       <p style="margin:0">${t("AI tutor və kampus köməkçisi istəyə bağlı köməkçilərdir və suallarınızı yalnız razılığınızla emal edir. Razılıq vermədən də portalın qalan bölmələrindən tam istifadə edə bilərsiniz.")}</p>
       <ul class="consent-list">
-        <li>${ic("shield", 15)} <span>${t("Şəxsi məlumatlar (FİN, telefon, e-poçt) AI-yə göndərilməzdən əvvəl maskalanır.")}</span></li>
+        <li>${ic("shield", 15)} <span>${t("Şəxsi məlumatlar (FİN, telefon, e-poçt) AI-a göndərilməzdən əvvəl maskalanır.")}</span></li>
         <li>${ic("lock", 15)} <span>${t("Tələbə məlumatları AI modellərini öyrətmək üçün istifadə edilmir.")}</span></li>
         <li>${ic("eye", 15)} <span>${t("Tibbi sənədləri yalnız dekanlıq görür; müəllim fərdi söhbətlərinizi görmür.")}</span>
           ${infoTip(t("Söhbətlər universitet platformasında {n} gün saxlanılır. Hər sənədə baxış audit jurnalına yazılır.", { n: p.retention.chats_days }))}</li>
       </ul>
       <label class="check"><input type="checkbox" id="c1"> ${ai.text}</label>
       <label class="check"><input type="checkbox" id="c2" ${unnamed(p) ? "disabled" : current(ext) ? "checked" : ""}> ${ext.text} <span class="tiny muted">(${t("istəyə görə")})</span></label>
-      <span class="tiny muted">${t("Razılığı istənilən vaxt “Profil” bölməsində geri götürə bilərsiniz.")} <a href="#" data-privacy-notice>${t("Məxfilik bildirişi")}</a></span></div>`,
+      <span class="tiny muted">${t("Razılığı istənilən vaxt «Profil» bölməsində geri götürə bilərsiniz.")} <a href="#" data-privacy-notice>${t("Məxfilik bildirişi")}</a></span></div>`,
     actions: [{ label: t("İndi yox"), cls: "btn-ghost" }, { label: t("Qəbul edirəm"), cls: "btn-primary", onClick: async (w) => {
       if (!w.querySelector("#c1").checked) { toast(t("AI köməkçilərindən istifadə üçün birinci razılıq lazımdır"), "err"); return false; }
       await api.post("/api/consent", { ai: true, external: w.querySelector("#c2").checked, versions: { ai: ai.version, external_ai: ext.version } });
@@ -110,7 +110,7 @@ export async function privacyCard(box) {
     } catch (err) { toast(err.message, "err"); } finally { b.classList.remove("loading"); }
   });
   on(box, "click", "#pv-erase", () => modal({ title: t("Məlumatlarımın silinməsi"), body: html`<div class="stack">
-      <p style="margin:0">${t("Sorğunu tədris şöbəsi yoxlayır. Təsdiq olunsa, söhbətləriniz, mesajlarınız, bildirişləriniz və hesabınıza giriş silinir; qanunla saxlanmalı akademik qeydlər qalır, hesabınızdan ad və əlaqə məlumatları silinir. Bu əməliyyat geri qaytarılmır.")}</p>
+      <p style="margin:0">${t("Sorğunu tədris hissəsi yoxlayır. Sorğu təsdiq edilərsə, söhbətləriniz, mesajlarınız, bildirişləriniz, adınız və əlaqə məlumatlarınız silinir, hesabınıza giriş bağlanır. Qanunvericiliyə əsasən saxlanılmalı olan akademik qeydlər qalır. Bu əməliyyat geri qaytarılmır.")}</p>
       <label class="field"><span>${t("Səbəb")} <span class="muted">(${t("istəyə görə")})</span></span><textarea class="input" id="pv-reason" rows="3" maxlength="1000"></textarea></label></div>`,
     actions: [{ label: t("Ləğv et"), cls: "btn-ghost" }, { label: t("Sorğunu göndər"), cls: "btn-danger", onClick: async (w) => {
       try { await api.post("/api/me/erase", { reason: w.querySelector("#pv-reason").value }); toast(t("Sorğu göndərildi"), "ok"); draw(); }
@@ -124,7 +124,7 @@ route("/staff/privacy", async (el) => {
   const draw = async () => {
     let r;
     try { r = await api.get("/api/privacy/requests"); } catch (err) { return mount(el, failed(err.message)); }
-    mount(el, html`${pageHead(t("Məxfilik sorğuları"), t("Məlumatların silinməsi sorğuları: təsdiq inventara görə silir və ya anonimləşdirir."), "", [[t("Əsas"), HOME[S.user.role] || "/"], [t("Məxfilik sorğuları")]])}
+    mount(el, html`${pageHead(t("Məxfilik sorğuları"), t("Məlumatların silinməsi sorğuları: təsdiq edildikdə məlumatlar inventara uyğun olaraq silinir və ya anonimləşdirilir."), "", [[t("Əsas"), HOME[S.user.role] || "/"], [t("Məxfilik sorğuları")]])}
       ${r.items.length ? html`<div class="card"><div class="card-b stack">${r.items.map((x) => html`<div class="set-row"><div><b>${x.full_name}</b> <span class="small muted">${x.username}${x.student_no ? ` · ${x.student_no}` : ""}</span>
           <div class="small muted">${fmtDateTime(x.created_at)} · ${REQ_STATUS()[x.status] || x.status}${x.reason ? ` · ${x.reason}` : ""}${x.note ? ` · ${x.note}` : ""}</div></div>
           ${x.status === "pending" ? html`<div class="row"><button class="btn btn-sm btn-danger" data-decide="${x.id}" data-ok="1">${t("Təsdiqlə və sil")}</button>

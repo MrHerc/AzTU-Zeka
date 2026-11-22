@@ -150,7 +150,7 @@ def record_status(c, user, student, values: dict, history: bool = False) -> tupl
     into a group that may since have closed; ``apply_newest`` acts once every order of the file is in (Checkpoint F,
     AR-F1, AR-F7)."""
     if student["role"] != "student":
-        return "invalid", E("Status əmri yalnız tələbəyə verilir")
+        return "invalid", E("Status əmri yalnız tələbə barəsində verilir")
     if values["to_group_id"]:
         group = repo.get(c, "groups", values["to_group_id"])
         if not group or not (group["active"] or history):

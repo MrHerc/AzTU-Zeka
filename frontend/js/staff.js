@@ -28,9 +28,9 @@ route("/leader", async (el) => {
         { faculty: S.app.faculty.name, courses: a.courses.length, students: a.totals.students, teachers: a.totals.teachers }),
       html`<span class="demo-banner">${t("Pilot ssenarisi")}</span><button class="btn" id="print">${ic("printer", 15)} ${t("Hesabatı çap et")}</button>`,
       [[t("Rəhbərlik"), "/leader"], [t("Pilot idarə paneli")]],
-      { info: t("Hər göstərici bazadakı qeydlərdən hesablanır: tərifi kartın ⓘ işarəsində, zaman aralığı altındadır. Hədəflər universitetin rəqəmsallaşma proqramına uyğundur.") })}
+      { info: t("Hər göstərici verilənlər bazasındakı qeydlər əsasında hesablanır: tərifi kartdakı ⓘ işarəsində, zaman aralığı isə kartın aşağı hissəsində göstərilir. Hədəflər universitetin rəqəmsallaşma proqramına uyğundur.") })}
     <div class="grid g-4" id="kpis">${a.kpis.map((k) => html`<div class="card kpi"><div class="kpi-top"><span class="kpi-l">${k.label} ${infoTip(k.definition)}</span>
-      ${k.ok == null ? "" : html`<span class="badge ${k.ok ? "b-green" : "b-amber"}">${k.ok ? t("Hədəfdə") : t("İcrada")}</span>`}</div>
+      ${k.ok == null ? "" : html`<span class="badge ${k.ok ? "b-green" : "b-amber"}">${k.ok ? t("Hədəfə çatılıb") : t("İcrada")}</span>`}</div>
       <div class="row between"><span class="kpi-v">${kpiValue(k)}</span>${sparkline(zeros(k.series), COL[k.key], 96, 34)}</div>
       <span class="kpi-t">${k.target == null ? "" : `${t("Hədəf")}: ${kpiTarget(k)} · `}${period(k.range)}</span></div>`)}</div>
     <div id="leader-radar-slot"></div>
@@ -90,11 +90,11 @@ route("/leader/evidence", async (el) => {
   mount(el, loading());
   let ev;
   try { ev = await api.get("/api/insight/evidence"); } catch (err) { mount(el, failed(err.message)); return; }
-  mount(el, html`${pageHead(t("Akkreditasiya sübutu"), t("Göstəricilər üzrə canlı say · {period}", { period: period(ev.range) }),
+  mount(el, html`${pageHead(t("Akkreditasiya sübutu"), t("Göstəricilər üzrə cari dəyərlər · {period}", { period: period(ev.range) }),
       html`<a class="btn" href="/api/insight/evidence?format=csv&lang=${LANG}" download>${ic("download", 15)} CSV</a><button class="btn" id="print">${ic("printer", 15)} ${t("Çap et")}</button>`,
       [[t("Rəhbərlik"), "/leader"], [t("Akkreditasiya sübutu")]],
-      { info: t("Akkreditasiya meyarları (KQ-05, 30.09.2022) üzrə platformanın qeydlərindən sayılır. Göstərici adları qısa yazılıb: hesabata daxil etməzdən əvvəl qərarın mətni ilə tutuşdurun.") })}
-    <div class="card"><div class="table-wrap"><table class="table" id="evidence"><thead><tr><th>${t("Göstərici")}</th><th>${t("Canlı say")}</th><th>${t("Sübut")}</th></tr></thead><tbody>
+      { info: t("Göstəricilər akkreditasiya meyarları (KQ-05, 30.09.2022) üzrə platformanın qeydləri əsasında hesablanır. Göstəricilərin adları qısaldılıb: hesabata daxil etməzdən əvvəl onları qərarın mətni ilə tutuşdurun.") })}
+    <div class="card"><div class="table-wrap"><table class="table" id="evidence"><thead><tr><th>${t("Göstərici")}</th><th>${t("Cari dəyər")}</th><th>${t("Sübut")}</th></tr></thead><tbody>
       ${ev.indicators.map((i) => html`<tr><td><b>${i.code}</b> · ${i.title}${i.note ? html`<div class="tiny muted">${i.note}</div>` : ""}</td>
         <td>${i.measures.map((m) => html`<div class="row between small"><span class="muted">${m.label}${m.range.from ? html` <span class="tiny">(${period(m.range)})</span>` : ""}</span><b>${num(m.value)}</b></div>`)}</td>
         <td class="small">${i.links.length ? i.links.map((l) => html`<div><a href="#${l.href}">${l.label} ${ic("arrow", 12)}</a></div>`) : "—"}</td></tr>`)}</tbody></table></div></div>`);
@@ -113,7 +113,7 @@ route("/admin", async (el) => {
     <div class="grid g-2">
       <div class="card"><div class="card-h"><h3>${ic("cpu", 17)} ${t("AI provayderi")}</h3>${s.llm.configured ? html`<span class="badge b-green">${t("LLM qoşulub")}</span>` : html`<span class="badge b-navy">${t("Demo rejimi")}</span>`}</div><div class="card-b">
         <div class="review-grid">${[[t("Rejim"), s.engine.label], [t("Provayder"), s.llm.provider], [t("Model"), s.llm.model], [t("Ünvan (endpoint)"), s.llm.base_url]].map(([k, v]) => html`<div>${k}</div><div class="small">${v}</div>`)}</div>
-        <div class="notice info mt">${ic("info", 16)}<div>${t("Real modeli qoşmaq üçün layihə qovluğunda config.example.json faylını config.json adı ilə kopyalayın, API açarını yazın və serveri yenidən başladın. Model əlçatan olmadıqda sistem avtomatik demo rejimə keçir.")}</div></div>
+        <div class="notice info mt">${ic("info", 16)}<div>${t("Real modeli qoşmaq üçün layihə qovluğunda config.example.json faylını config.json adı ilə kopyalayın, API açarını yazın və serveri yenidən başladın. Model əlçatan olmadıqda sistem avtomatik olaraq demo rejiminə keçir.")}</div></div>
         <button class="btn mt" id="test">${ic("bolt", 15)} ${t("Bağlantını yoxla")}</button></div></div>
       <div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("Limitlər və məxfilik")}</h3></div><form class="card-b stack" id="settings-form" novalidate>
         <label class="field"><span>${t("Tələbə üçün gündəlik sual limiti")} ${infoTip(t("Bir tələbənin AI tutora və kampus köməkçisinə gün ərzində verə biləcəyi sualların sayı. 5 ilə 500 arasında."))}</span><input class="input" id="dl" type="number" min="5" max="500" value="${s.limits.daily_messages}"></label>

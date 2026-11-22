@@ -11,22 +11,22 @@ const STEPS = [
     say: t("Universitet tələbəni adətən imtahandan sonra itirir. Zəka davamiyyəti, balları, testləri və AI tutordakı fəaliyyəti birləşdirib riski həftələr əvvəl göstərir."),
     act: t("Radar kartını göstərin: yüksək risk, diqqət siyahısı və planların təsiri.") },
   { role: "teacher", path: "/radar", focus: "#rd-list", title: t("Müəllim: kimə kömək lazımdır?"),
-    say: t("Müəllim fənni üzrə 120 tələbəni risk balına görə görür. Rəngli zolaq balın səbəblərini, “Niyə?” sütunu faktları göstərir."),
+    say: t("Müəllim öz fənni üzrə 120 tələbəni risk balına görə sıralanmış siyahıda görür. Rəngli zolaq balın səbəblərini, «Niyə?» sütunu isə faktları göstərir."),
     act: t("Siyahının başındakı Murad Hüseynovu göstərin.") },
   { role: "teacher", path: () => `/radar/student/${story.students.murad}?course=${story.course_id}`, focus: "#rd-why", title: t("Niyə Murad?"),
     say: t("Son 4 dərsə gəlməyib, test nəticəsi 67%-dən 25%-ə düşüb, Kirxhof qanunu üzrə dəfələrlə sual verib. Söhbətlərin mətni göstərilmir — yalnız mövzu və say."),
     act: t("Riskin dinamikasını göstərin: bir həftə əvvəl hər şey normal görünürdü.") },
   { role: "teacher", path: () => `/radar/student/${story.students.murad}?course=${story.course_id}&plan=1`, focus: "#pv", title: t("Bir kliklə dəstək planı"),
-    say: t("AI planı müəllimin öz mühazirələrindən qurur: mövzunu təkrarlamaq, məşq, dərsə qayıdış, konsultasiya. Müəllim baxır və göndərir — qərarı insan verir."),
-    act: t("“Tələbəyə göndər” düyməsini basın.") },
+    say: t("AI planı müəllimin öz mühazirələri əsasında qurur: mövzunun təkrarı, məşq, dərsə qayıdış, konsultasiya. Müəllim baxır və göndərir — qərarı insan verir."),
+    act: t("«Tələbəyə göndər» düyməsini basın.") },
   { role: "student", user: "murad", path: "/student/plan", focus: "#plan-hero", title: t("Tələbə: etiket yox, dəstək"),
     say: t("Murad risk balını görmür — müəlliminin hazırladığı addımları görür. Hər addım mühazirənin konkret hissəsinə istinad edir."),
-    act: t("“Növbəti” düyməsi birinci addımı tutorda açacaq.") },
+    act: t("«Növbəti» düyməsi birinci addımı tutorda açacaq.") },
   { role: "student", user: "murad", path: stepLink, focus: "#chat", title: t("Öyrənmə dövrəsi"),
     say: t("Tutor cavabı mühazirəyə istinadla verir — [1] işarəsinə klikləyib mənbəni göstərin. Bu fəaliyyət planda avtomatik qeyd olunur."),
-    act: t("Cavab gəldikdən sonra “Növbəti” düyməsini basın.") },
-  { role: "student", user: "murad", path: "/student/plan", focus: "#plan-steps", title: t("Addım özü qeyd olundu"),
-    say: t("Birinci addım tamamlandı — tələbənin real fəaliyyətindən. Müəllim heç nəyi əl ilə yoxlamır, yalnız nəticəni görür."),
+    act: t("Cavab gəldikdən sonra «Növbəti» düyməsini basın.") },
+  { role: "student", user: "murad", path: "/student/plan", focus: "#plan-steps", title: t("Addım avtomatik qeyd olundu"),
+    say: t("Birinci addım tələbənin real fəaliyyəti əsasında tamamlandı. Müəllim heç nəyi əl ilə yoxlamır, yalnız nəticəni görür."),
     act: t("İstəsəniz, məşq addımında düzgün cavab yazın: B (yükün saxlanması).") },
   { role: "leader", path: "/radar", focus: "#rd-impact", title: t("Nəticə: ölçülən təsir"),
     say: t("Rəhbərlik bütün fənlər üzrə riski, göndərilən planları və onların nəticəsini görür. Pilot təklifi: bir fakültə, bir semestr, hədəf — riskli tələbələrin itkisini azaltmaq."),
@@ -74,7 +74,7 @@ async function run(i) {
   const s = STEPS[st.i];
   try {
     if (!story) story = await api.get("/api/demo/storyline");
-    if (!story.students.murad) { toast(t("Demo hekayəsi tapılmadı. Bazanı sıfırlayın: python run.py --reset"), "err"); return; }
+    if (!story.students.murad) { toast(t("Demo ssenarisi tapılmadı. Bazanı sıfırlayın: python run.py --reset"), "err"); return; }
     await become(s.role, s.user);
     const path = typeof s.path === "function" ? await s.path() : s.path;
     go(path);
@@ -99,7 +99,7 @@ function draw() {
   const s = STEPS[st.i];
   mount(box, html`<div class="dp-h">${ic("play", 15)}<div class="grow"><b>${t("3 dəqiqəlik demo")}</b></div>
       <span class="dp-timer" style="color:#dfe6f7">${fmt(Date.now() - st.t0)}</span>
-      <button data-dp="min" class="${st.min ? "" : "rot"}" aria-label="${st.min ? t("Panel aç") : t("Paneli kiçilt")}" title="${st.min ? t("Panel aç") : t("Paneli kiçilt")}">${ic("chevron", 14)}</button>
+      <button data-dp="min" class="${st.min ? "" : "rot"}" aria-label="${st.min ? t("Paneli aç") : t("Paneli kiçilt")}" title="${st.min ? t("Paneli aç") : t("Paneli kiçilt")}">${ic("chevron", 14)}</button>
       <button data-dp="x" aria-label="${t("Demonu bitir")}" title="${t("Demonu bitir")}">${ic("x", 14)}</button></div>
     <div class="dp-b"><div class="dp-step">${t("Addım {i} / {n}", { i: st.i + 1, n: STEPS.length })} · ${{ leader: t("Rəhbərlik"), teacher: t("Müəllim"), student: t("Tələbə") }[s.role]}</div>
       <h4>${s.title}</h4><p class="dp-say">${s.say}</p><div class="dp-do">${ic("bolt", 13)} ${s.act}</div>

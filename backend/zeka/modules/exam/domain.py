@@ -46,7 +46,7 @@ def exam_input(body, zone: tzinfo | None) -> tuple[dict, dict | None]:
         return {}, E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field="day")
     start, end = body.get("start"), body.get("end")
     if not (isinstance(start, str) and HHMM.fullmatch(start) and isinstance(end, str) and HHMM.fullmatch(end)) or start >= end:
-        return {}, E("Pəncərənin başlanğıcı və sonu SS:DD formatında olmalı, sonu başlanğıcdan sonra gəlməlidir")
+        return {}, E("Keçirilmə vaxtının başlanğıcı və sonu SS:DD formatında olmalı, son vaxt başlanğıcdan sonra olmalıdır")
     duration = body.get("duration_min")
     window = (datetime.combine(day, time.fromisoformat(end)) - datetime.combine(day, time.fromisoformat(start))).seconds // 60
     if not isinstance(duration, int) or isinstance(duration, bool) or not 5 <= duration <= window:
@@ -59,7 +59,7 @@ def exam_input(body, zone: tzinfo | None) -> tuple[dict, dict | None]:
         return {}, E("Qoruma rejimi açıq və ya SEB olmalıdır")
     cidrs = body.get("allowed_cidrs") or []
     if not isinstance(cidrs, list) or len(cidrs) > 50:
-        return {}, E("Şəbəkə siyahısı ən çox 50 ünvan blokudur")
+        return {}, E("Şəbəkə siyahısında ən çox 50 ünvan bloku ola bilər")
     try:
         cidrs = [str(ipaddress.ip_network(str(x), strict=False)) for x in cidrs]
     except ValueError:
@@ -132,11 +132,11 @@ def plan_problem(pool: list[dict], plan: list[dict]) -> dict | None:
     for item in plan:
         have = sum(1 for q in pool if _fits(q, item))
         if have < item["count"]:
-            return E("Hovuzda bu plan üçün kifayət qədər imtahan sualı yoxdur: lazımdır {need}, var {have}", need=item["count"], have=have)
+            return E("Sual bankında bu plan üçün kifayət qədər imtahan sualı yoxdur: tələb olunan {need}, mövcud {have}", need=item["count"], have=have)
     if _assign(pool, plan, random.Random(0)) is None:
         need = sum(item["count"] for item in plan)
         have = len({q["id"] for q in pool if any(_fits(q, item) for item in plan)})
-        return E("Hovuzda bu plan üçün kifayət qədər imtahan sualı yoxdur: lazımdır {need}, var {have}", need=need, have=have)
+        return E("Sual bankında bu plan üçün kifayət qədər imtahan sualı yoxdur: tələb olunan {need}, mövcud {have}", need=need, have=have)
     return None
 
 
@@ -150,7 +150,7 @@ def build_form(pool: list[dict], plan: list[dict], seed_hex: str) -> list[dict]:
     rng = random.Random(seed_hex)
     picked = _assign(pool, plan, rng)
     if picked is None:
-        raise ValueError("Sual bazası artıq imtahan planını ödəmir")
+        raise ValueError("Sual bankı artıq imtahan planı üçün kifayət etmir")
     chosen = [q for group in picked for q in group]
     rng.shuffle(chosen)
     out = []

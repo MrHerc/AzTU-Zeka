@@ -1,7 +1,7 @@
 {
  "Arxivdə": "В архиве",
  "Bilik bazası": "База знаний",
- "Kampus köməkçisinin cavab verdiyi məqalələr: mənbə, yenidən baxış tarixi, versiyalar": "Статьи, на основе которых отвечает помощник кампуса: источник, дата пересмотра, версии",
+ "Kampus köməkçisinin cavab verdiyi məqalələr: mənbə, yenidən baxış tarixi, versiyalar": "Статьи, на основе которых отвечает помощник по кампусу: источник, дата пересмотра, версии",
  "Başlıqda axtar": "Поиск по заголовкам",
  "Yeni məqalə": "Новая статья",
  "Yenidən baxış": "Пересмотр",
@@ -9,7 +9,7 @@
  "Məqaləni düzəlt": "Изменить статью",
  "Mənbə sənədi": "Документ-источник",
  "Bənd": "Пункт",
- "E-xidmətin kodu (könüllü)": "Код услуги (необязательно)",
+ "E-xidmətin kodu (istəyə görə)": "Код услуги (необязательно)",
  "Yenidən baxış tarixi": "Дата пересмотра",
  "Dəstək sorğusu № {id} yaradıldı": "Обращение в поддержку № {id} создано"
 }

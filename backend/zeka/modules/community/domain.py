@@ -26,7 +26,7 @@ def message_input(body) -> tuple[str, dict | None]:
 def mute_input(body) -> tuple[dict, dict | None]:
     v = {"minutes": body.integer("minutes", 0), "reason": " ".join(body.text("reason", 400).split())}
     if not 5 <= v["minutes"] <= MAX_MUTE_MIN:
-        return v, E("Susdurma 5 dəqiqədən 30 günə qədərdir")
+        return v, E("Susdurma müddəti 5 dəqiqədən 30 günədək olmalıdır")
     if not 3 <= len(v["reason"]) <= 300:
         return v, E("Səbəbi 3–300 simvolla yazın")
     return v, None

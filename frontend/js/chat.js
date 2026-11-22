@@ -69,7 +69,7 @@ export async function chatView(el, cfg) {
     if (uu && uu.limit) {
       const left = Math.max(0, uu.limit - uu.used);
       box.innerHTML = html`<span class="usage ${left === 0 ? "spent" : left <= 2 ? "low" : ""}" title="${t("Gündəlik sual limiti")}">${ic("timer", 13)} ${t("Bu gün: {used}/{limit} sual", { used: uu.used, limit: uu.limit })}</span>`.__html;
-      if (left === 0) lockComposer(t("Günlük sual limitiniz bitib. Limit sabah yenilənir."));
+      if (left === 0) lockComposer(t("Gündəlik sual limitiniz bitib. Limit sabah yenilənir."));
     } else {
       box.textContent = "";
     }
@@ -233,7 +233,7 @@ export async function chatView(el, cfg) {
   });
   el.querySelector("#clear").addEventListener("click", async () => {
     if (!st.messages.length) return;
-    const ok = await confirmBox(t("Söhbəti silmək?"), t("Bu söhbətin tarixçəsi silinəcək. Bu əməliyyat geri qaytarıla bilməz."), t("Sil"), true);
+    const ok = await confirmBox(t("Söhbət silinsin?"), t("Bu söhbətin tarixçəsi silinəcək. Bu əməliyyat geri qaytarıla bilməz."), t("Sil"), true);
     if (!ok) return;
     try { await api.post(clearUrl); } catch (e) { return toast(e.message, "err"); }
     st.messages = []; st.lastError = null;

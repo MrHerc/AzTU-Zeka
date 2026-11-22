@@ -32,7 +32,7 @@ function readOnly(d) {
     <div><b class="small">${t("Təlim nəticələri")}</b><div class="table-wrap"><table class="table"><tbody>${d.outcomes.map((o) => html`<tr><td><b>${o.id}</b></td><td>${o.text}</td><td class="nowrap">${label(BLOOM, o.bloom)}</td></tr>`)}</tbody></table></div></div>
     <div><b class="small">${t("Həftəlik plan")}</b><div class="table-wrap"><table class="table"><tbody>${d.plan.map((p) => html`<tr><td>${p.week}</td><td>${p.topic}</td><td class="nowrap">${p.outcomes.join(", ")}</td></tr>`)}</tbody></table></div></div>
     <div><b class="small">${t("Qiymətləndirmə")}</b><div class="table-wrap"><table class="table"><tbody>${d.assessment.map((a) => html`<tr><td>${a.name}</td><td>${label(KIND, a.kind)}</td><td>${a.weight}</td></tr>`)}</tbody></table></div></div>
-    <div class="small">${t("Davamiyyət həddi, %")}: <b>${d.rules.attendance_limit}</b> · ${t("Süni intellektdən istifadə")}: <b>${label(AI, d.rules.ai_policy)}</b></div>
+    <div class="small">${t("Buraxılmış dərslərin həddi, %")}: <b>${d.rules.attendance_limit}</b> · ${t("Süni intellektdən istifadə")}: <b>${label(AI, d.rules.ai_policy)}</b></div>
     <div class="small">${t("İş yükü, saat")}: ${WORK().map(([k, l]) => html`${l} <b>${d.workload[k]}</b> `)}</div></div>`;
 }
 
@@ -57,10 +57,10 @@ route("/teacher/syllabus", async (el, p, q) => {
 
   const draw = () => {
     const total = Math.round(sum() * 100) / 100, imported = st.imported || {};
-    mount(el, html`${pageHead(t("Sillabus"), t("Struktur sillabus: hər saxlama yeni versiyadır, dərc olunmuş versiya dəyişmir."),
+    mount(el, html`${pageHead(t("Sillabus"), t("Strukturlaşdırılmış sillabus: hər saxlama yeni versiyadır, dərc olunmuş versiya dəyişmir."),
         html`<select class="select" id="cs" style="width:auto" aria-label="${t("Fənn")}">${cs.map((x) => html`<option value="${x.id}" ${x.id === co.id ? "selected" : ""}>${x.name}</option>`)}</select>
         ${st.can_edit ? html`<button class="btn btn-ai" id="gen">${ic("sparkles", 15)} ${s ? t("Yeni layihə") : t("Layihə hazırla")}</button>` : ""}`, crumbs)}
-      ${!s ? html`<div class="card">${empty("layers", t("Sillabus hələ yoxdur"), st.can_edit ? t("“Layihə hazırla” materiallarınızdan və Forma №3-dən ilkin variant qurur.") : t("Fənnin müəllimi sillabusu hələ saxlamayıb."),
+      ${!s ? html`<div class="card">${empty("layers", t("Sillabus hələ yoxdur"), st.can_edit ? t("«Layihə hazırla» materiallarınızdan və Forma №3-dən ilkin variant qurur.") : t("Fənnin müəllimi sillabusu hələ saxlamayıb."),
           st.can_edit ? { label: t("Layihə hazırla"), id: "gen-empty", icon: "sparkles" } : undefined)}</div>` : html`
       ${st.latest && st.latest.status === "returned" && st.steps.length ? html`<div class="notice warn mb">${ic("alert", 16)}<div>
         <b>${t("Geri qaytarılıb")}</b>: ${st.steps[st.steps.length - 1].note || ""} <span class="tiny muted">· ${st.steps[st.steps.length - 1].who || ""}</span>
@@ -77,7 +77,7 @@ route("/teacher/syllabus", async (el, p, q) => {
           ${s.outcomes.map((o, i) => html`<tr><td><b>${o.id}</b></td><td><input class="input" data-o-text="${i}" value="${o.text}" aria-label="${t("Nəticə")}"></td>
             <td><select class="select" data-o-bloom="${i}" aria-label="${t("Bloom səviyyəsi")}">${opts(BLOOM(), o.bloom)}</select></td>
             <td><button class="btn btn-ghost btn-icon" data-o-del="${i}" aria-label="${t("Sil")}">${ic("x", 14)}</button></td></tr>`)}</tbody></table></div>
-          <div class="card-b tiny muted">${t("Ölçülə bilən fellər yazın: “izah edir”, “hesablayır”, “layihələndirir”.")}</div></div>
+          <div class="card-b tiny muted">${t("Ölçülə bilən fellərdən istifadə edin: «izah edir», «hesablayır», «layihələndirir».")}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Həftəlik plan")}</h3><button class="btn btn-sm" id="add-w">${ic("plus", 13)} ${t("Həftə əlavə et")}</button></div>
           <div class="table-wrap"><table class="table"><thead><tr><th>${t("Həftə")}</th><th>${t("Mövzu")}</th><th>${t("Nəticələr")}</th><th>${t("Fəaliyyət")}</th><th></th></tr></thead><tbody>
           ${s.plan.map((w, i) => html`<tr><td><input class="input" type="number" min="1" max="30" style="width:70px" data-p-week="${i}" value="${w.week}" aria-label="${t("Həftə")}"></td>
@@ -94,7 +94,7 @@ route("/teacher/syllabus", async (el, p, q) => {
           <div class="card-b stack sm"><button class="btn btn-sm" id="add-a">${ic("plus", 13)} ${t("Komponent əlavə et")}</button>
             <div class="tiny muted">${t("Çəkilərin cəmi 100 olmalıdır; imtahanın çəkisini universitet təyin edir.")}</div></div></div>
         <div class="card"><div class="card-h"><h3>${ic("shield", 17)} ${t("Qaydalar")}</h3></div><div class="card-b stack sm">
-          <div class="field"><label class="label" for="r-lim">${t("Davamiyyət həddi, %")}</label><input class="input" id="r-lim" type="number" min="1" max="${st.limit_percent}" step="0.5" data-r="attendance_limit" value="${s.rules.attendance_limit}">
+          <div class="field"><label class="label" for="r-lim">${t("Buraxılmış dərslərin həddi, %")}</label><input class="input" id="r-lim" type="number" min="1" max="${st.limit_percent}" step="0.5" data-r="attendance_limit" value="${s.rules.attendance_limit}">
             <div class="tiny muted">${t("Universitetin həddi {n}%: sillabus onu yalnız aşağı sala bilər.", { n: st.limit_percent })}</div></div>
           <div class="field"><label class="label" for="r-late">${t("Gecikmiş işlər")}</label><textarea class="textarea" id="r-late" data-r="late_policy" style="min-height:60px">${s.rules.late_policy}</textarea></div>
           <div class="field"><label class="label" for="r-ai">${t("Süni intellektdən istifadə")}</label><select class="select" id="r-ai" data-r="ai_policy">${opts(AI(), s.rules.ai_policy)}</select>
@@ -104,7 +104,7 @@ route("/teacher/syllabus", async (el, p, q) => {
           ${WORK().map(([k, l]) => html`<div class="row between"><label class="small" for="w-${k}">${l}</label><span class="row">
             ${imported[k] != null ? html`<span class="tiny ${+imported[k] !== +s.workload[k] ? "badge b-amber" : "muted"}">${t("Forma №3: {n}", { n: imported[k] })}</span>` : ""}
             <input class="input" id="w-${k}" type="number" min="0" step="0.5" style="width:90px" data-w="${k}" value="${s.workload[k]}"></span></div>`)}
-          ${Object.keys(imported).length ? html`<div class="tiny muted">${t("Forma №3-dən fərqlənən saat təsdiqdə kafedra müdirinə fərq kimi göstərilir.")}</div>` : html`<div class="tiny muted">${t("Bu fənn üçün Forma №3 idxal olunmayıb.")}</div>`}</div></div>
+          ${Object.keys(imported).length ? html`<div class="tiny muted">${t("Forma №3-dən fərqlənən saatlar təsdiq zamanı kafedra müdirinə fərq kimi göstərilir.")}</div>` : html`<div class="tiny muted">${t("Bu fənn üçün Forma №3 idxal olunmayıb.")}</div>`}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("list", 17)} ${t("Prerekvizitlər")}</h3></div><div class="card-b">
           <textarea class="textarea" data-pre style="min-height:60px" aria-label="${t("Prerekvizitlər")}" placeholder="${t("Hər sətirdə bir fənn")}">${s.prerequisites.join("\n")}</textarea></div></div>
         <div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Ədəbiyyat")}</h3><button class="btn btn-sm" id="add-l">${ic("plus", 13)} ${t("Əlavə et")}</button></div><div class="card-b stack sm">
@@ -250,7 +250,7 @@ route("/syllabi", async (el) => {
         ${x.published_id ? html`<div><b class="small">${t("Dərc olunmuş versiyadan fərq")}</b>${diffList(diff)}</div>` : ""}
         ${readOnly(v.data)}
         <div class="field"><label class="label" for="sv-note">${t("Şərh")}</label><textarea class="textarea" id="sv-note" style="min-height:60px"></textarea></div>
-        <div id="sv-override" hidden><label class="row small"><input type="checkbox" id="sv-ok"> ${t("Bu fəndə bal yazılıb: dərcə icazə verirəm (səbəb şərhdə yazılır və audit jurnalına düşür)")}</label></div></div>`,
+        <div id="sv-override" hidden><label class="row small"><input type="checkbox" id="sv-ok"> ${t("Bu fənn üzrə artıq bal qoyulub: dərcə icazə verirəm (səbəb şərhdə göstərilir və audit jurnalında qeydə alınır)")}</label></div></div>`,
       actions: [
         ...(x.actions.includes("return") ? [{ label: STEP().return, onClick: (w) => act("return", w) }] : []),
         ...(x.actions.includes("approve") ? [{ label: STEP().approve, cls: "btn-primary", onClick: (w) => act("approve", w) }] : []),

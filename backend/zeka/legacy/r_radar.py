@@ -148,7 +148,7 @@ def radar_plan(req):
     kind = b.get("kind") if b.get("kind") in KINDS else ((p["recommendation"] or {}).get("kind") or "plan")
     plan = radar.build_plan(c, p, course, kind, radar.clean_note(b.get("note")))
     if not plan["steps"]:
-        raise HTTPError(422, "Bu tələbə üçün plan addımı yaratmaq üçün kifayət qədər məlumat yoxdur")
+        raise HTTPError(422, "Bu tələbə üzrə plan addımları hazırlamaq üçün kifayət qədər məlumat yoxdur")
     if b.get("preview"):
         return {"plan": plan, "score": p["score"], "level": p["level"], "kind": kind}
     if row(c, "SELECT 1 FROM interventions WHERE student_id=? AND course_id=? AND status='open'", (st["id"], cid)):
@@ -259,7 +259,7 @@ def leader_insight(c):
     if not s:
         return {"level": "warn", "text": E("Zəka Radar: kampus üzrə göstəricilər hələ hesablanmayıb. Onları dövri iş «radar.summary» hesablayır."),
                 "link": "/radar", "at": None}
-    text = E("Zəka Radar, {at} tarixinə: {high} tələbə yüksək risk, {watch} tələbə diqqət siyahısındadır. "
-             "Dəstək planı alan {m} tələbədən {k}-nin riski azalıb.",
+    text = E("Zəka Radar, {at} tarixinə: {high} tələbə yüksək risk qrupunda, {watch} tələbə diqqət siyahısındadır. "
+             "Dəstək planı alan {m} tələbədən {k} nəfərin riski azalıb.",
              at=datetime.fromisoformat(s["at"]).strftime("%d.%m.%Y %H:%M"), high=s["high"], watch=s["watch"], m=s["measured"], k=s["improved"])
     return {"level": "warn" if s["high"] else "good", "text": text, "link": "/radar", "at": s["at"]}

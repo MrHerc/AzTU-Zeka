@@ -1,6 +1,6 @@
 {
- "E-poçt bildirişləri": "E-mail notifications",
- "Ünvan: {address}. Portaldakı bildirişlər həmişə görünür; burada yalnız e-poçt seçilir.": "Address: {address}. Notifications in the portal are always shown; here you choose only e-mail.",
- "Hesabınızda e-poçt ünvanı yoxdur: bildirişlər yalnız portalda görünür.": "Your account has no e-mail address: notifications appear only in the portal.",
- "Universitet e-poçt göndərişini hələ qoşmayıb.": "The university has not connected e-mail sending yet."
+ "E-poçt bildirişləri": "Email notifications",
+ "Ünvan: {address}. Portaldakı bildirişlər həmişə görünür; burada isə hansı bildirişlərin e-poçtla da göndəriləcəyini seçirsiniz.": "Address: {address}. Notifications always appear in the portal; here you choose which ones are also sent by email.",
+ "Hesabınızda e-poçt ünvanı yoxdur: bildirişlər yalnız portalda görünür.": "Your account has no email address: notifications appear only in the portal.",
+ "Universitet e-poçt göndərişini hələ qoşmayıb.": "The university has not set up email delivery yet."
 }

@@ -2,17 +2,17 @@
  "… tarixli … nömrəli": "от … № …",
  "Qrup və tələbə bileti nömrəsi yalnız tələbəyə verilir": "Группа и номер студенческого билета указываются только для студента",
  "«{field}» sahəsində {lo} ilə {hi} arasında tam ədəd olmalıdır": "В поле «{field}» должно быть целое число от {lo} до {hi}",
- "Dərsin növü mühazirə, məşğələ və ya laboratoriya olmalıdır": "Тип занятия: лекция, семинар или лабораторная",
+ "Dərsin növü mühazirə, məşğələ və ya laboratoriya olmalıdır": "Тип занятия: лекция, практическое занятие или лабораторная",
  "Əmrin növü düzgün deyil": "Неверный тип приказа",
  "Əmrin nömrəsini yazın": "Укажите номер приказа",
  "Yeni qrupu seçin": "Выберите новую группу",
  "İstifadəçi adı 3–40 kiçik latın hərfi, rəqəm, nöqtə, defis və ya alt xətdən ibarət olmalıdır": "Имя пользователя: 3–40 строчных латинских букв, цифр, точек, дефисов или подчёркиваний",
  "E-poçt ünvanı düzgün deyil": "Неверный адрес электронной почты",
  "Öz hesabınızın rolunu dəyişə və ya onu deaktiv edə bilməzsiniz": "Нельзя изменить роль своей учётной записи или деактивировать её",
- "Tələbə bu fənnə artıq qeydiyyatdadır": "Студент уже записан на этот предмет",
+ "Tələbə bu fənn üzrə artıq qeydiyyatdadır": "Студент уже записан на эту дисциплину",
  "«{field}» sahəsində müəllim seçin": "В поле «{field}» выберите преподавателя",
  "Qrupların siyahısı düzgün deyil": "Неверный список групп",
  "Yalnız aktiv tələbə qeydiyyata alınır": "Записать можно только активного студента",
  "Bitmə tarixi başlanğıc tarixindən sonra olmalıdır": "Дата окончания должна быть позже даты начала",
- "Status əmri yalnız tələbəyə verilir": "Приказ о статусе издаётся только для студента"
+ "Status əmri yalnız tələbə barəsində verilir": "Приказ о статусе издаётся только для студента"
 }

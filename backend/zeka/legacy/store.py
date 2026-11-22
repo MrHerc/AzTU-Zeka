@@ -149,7 +149,7 @@ def save_file(c, owner_id, filename, data: bytes, accept="doc", when=None) -> di
         if kind is None:
             raise ValueError("Material faylı DOCX, PPTX, PDF, MD və ya TXT olmalıdır")
     elif kind is None or (ext and ALLOWED.get(ext) != ALLOWED[kind]):
-        raise ValueError("Yalnız PDF, JPG, PNG və DOCX fayllar qəbul olunur")
+        raise ValueError("Yalnız PDF, JPG, PNG və DOCX faylları qəbul olunur")
     if accept == "image" and kind not in ("png", "jpg"):
         raise ValueError("Bu sahə üçün yalnız şəkil (JPG, PNG) qəbul olunur")
     UPLOADS.mkdir(parents=True, exist_ok=True)
@@ -853,16 +853,16 @@ def seed(c):
     sick_s = f"{min(sick):%d.%m}–{max(sick):%d.%m}"
     notify(c, aysel, "attendance", T3("{dates} tarixlərində 6 qayıbınız qeydə alınıb", dates=sick_s),
            T3("Üzrlü səbəbiniz varsa, təsdiqedici sənədi yükləyin — qayıblar üzrlü hesab ediləcək."), "/student/attendance", t0 - timedelta(hours=20))
-    notify(c, aysel, "news", T3("Hakaton: “AzTU AI Challenge 2026” — qeydiyyat açıqdır"), T3("Komandanızla qoşulun, yerlərin sayı məhduddur."),
+    notify(c, aysel, "news", T3("Hakaton: «AzTU AI Challenge 2026» — qeydiyyat açıqdır"), T3("Komandanızla qoşulun, yerlərin sayı məhduddur."),
            f"/news/{news_ids[hack]}", t0 - timedelta(days=2, hours=20))
     notify(c, aysel, "quiz", T3("Yeni test: {title}", title="Məşq: Sinusoidal cərəyan"), T3("{course} · {n} sual", course=tr3("Elektrik dövrələrinin nəzəriyyəsi"), n=4),
            "/student/quizzes", t0 - timedelta(days=2))
     notify(c, aysel, "request", T3("Arayışınız hazırdır"), T3("Təhsil aldığını təsdiq edən arayış (bank üçün)"), f"/student/requests/{r1}", t0 - timedelta(hours=64), read=True)
     notify(c, uid["rauf"], "question", T3("{n} yeni tələbə sualı", n=3), T3("AI tutordan müəllimə yönləndirilmiş suallar"), "/teacher/questions", t0 - timedelta(hours=5))
-    notify(c, uid["rauf"], "academy", T3("AI Akademiya: sertifikata 1 modul qalıb"), T3("“Təhsildə süni intellekt” istiqaməti"), "/teacher/academy", t0 - timedelta(days=1))
+    notify(c, uid["rauf"], "academy", T3("AI Akademiya: sertifikata 1 modul qalıb"), T3("«Təhsildə süni intellekt» istiqaməti"), "/teacher/academy", t0 - timedelta(days=1))
     notify(c, nigar, "request", T3("Yeni müraciətlər"), T3("Bu gün {n} yeni müraciət daxil olub", n=4), "/office", t0 - timedelta(hours=2))
     notify(c, nigar, "sla", T3("{n} müraciətin icra müddəti keçib", n=2), T3("Növbədə qırmızı rənglə işarələnib"), "/office", t0 - timedelta(hours=1))
-    notify(c, uid["rektorluq"], "report", T3("Həftəlik pilot hesabatı hazırdır"), T3("Göstəricilərin {n}-si hədəfdədir", n=7), "/leader", t0 - timedelta(hours=8))
+    notify(c, uid["rektorluq"], "report", T3("Həftəlik pilot hesabatı hazırdır"), T3("{n} göstərici hədəfə çatıb", n=7), "/leader", t0 - timedelta(hours=8))
     # Task 40: the demo's people have consented to the AI study aids (the profile withdraws it); prod seeds nobody.
     # Before the Radar seed: Radar reads tutor activity only on this consent (review F1)
     from ..modules.identity import privacy      # here: it imports this module

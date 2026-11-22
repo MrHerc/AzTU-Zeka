@@ -4,22 +4,22 @@ import { S, api, esc, t, TOURS, tourFor, currentPath, REDUCED, $ } from "./core.
 const ROLE_STEPS = {
   student: [
     { sel: ".brand", title: t("Xoş gəlmisiniz!"), text: t("Bu, AzTU-nun rəqəmsal kampusudur: dərslər, AI tutor, e-xidmətlər və xəbərlər bir yerdə. Qısa tanışlığa başlayaq.") },
-    { sel: "#today-card", title: t("Bu gün"), text: t("Bugünkü dərslər, otaqlar və cari dərs burada görünür. Tam cədvəl “Dərs cədvəli” bölməsindədir.") },
+    { sel: "#today-card", title: t("Bu gün"), text: t("Bugünkü dərslər, otaqlar və cari dərs burada görünür. Tam cədvəl «Dərs cədvəli» bölməsindədir.") },
     { sel: "[data-path='/student/tutor']", title: t("AI tutor"), text: t("Fənn materiallarına əsaslanan tutor hər cavabda mənbəni göstərir və tapşırığın hazır cavabını vermir.") },
     { sel: "[data-path='/student/services']", title: t("E-xidmətlər"), text: t("Arayış, transkript, akademik məzuniyyət və digər xidmətlər — kağız ərizəsiz, onlayn.") },
     { sel: "[data-path='/student/attendance']", title: t("Davamiyyət"), text: t("Xəstə olmusunuzsa, həkim arayışını buradan yükləyin: dekanlıq təsdiqlədikdə qayıb üzrlü sayılır.") },
     { sel: "[data-path='/achievements']", title: t("AzTU-nun nailiyyətləri"), text: t("Universitetin reytinqləri, elmi və tələbə uğurları — rəsmi mənbələrə keçidlərlə.") },
-    { sel: "#lang-btn", title: t("Interfeys dili"), text: t("Portalı azərbaycan, ingilis və ya rus dilində istifadə edin.") },
+    { sel: "#lang-btn", title: t("İnterfeys dili"), text: t("Portaldan Azərbaycan, ingilis və ya rus dilində istifadə edin.") },
     { sel: "#burger", title: t("Menyunu yığın"), text: t("Daha geniş iş sahəsi üçün sol paneli yığın. Qısayol: [ düyməsi.") },
-    { sel: "#help-btn", title: t("Kömək həmişə yanınızdadır"), text: t("Hər səhifənin öz bələdçisi var: “Bu səhifəni izah et” seçin. Sualınız qalsa, dəstək xidmətinə yazın.") },
+    { sel: "#help-btn", title: t("Kömək həmişə yanınızdadır"), text: t("Hər səhifənin öz bələdçisi var: «Bu səhifəni izah et» seçin. Sualınız qalsa, dəstək xidmətinə yazın.") },
   ],
   teacher: [
     { sel: ".brand", title: t("Xoş gəlmisiniz!"), text: t("Zəka tədrisdə vaxta qənaət və peşəkar inkişaf üçün hazırlanıb. Qısa tanışlığa başlayaq.") },
     { sel: "#insights-card", title: t("Tutor müşahidələri"), text: t("Tələbələrin ən çox soruşduğu mövzular və materiallarda cavabı olmayan suallar — anonim statistika.") },
     { sel: "[data-path='/teacher/courses']", title: t("Fənlərim"), text: t("Material yükləyin, tutor rejimlərini tənzimləyin və davamiyyəti izləyin.") },
-    { sel: "[data-path='/teacher/studio']", title: t("Test studiyası"), text: t("AI materialdan sual hazırlayır, siz yoxlayıb təsdiqləyirsiniz. Təsdiqlənməmiş sual tələbəyə getmir.") },
+    { sel: "[data-path='/teacher/studio']", title: t("Test studiyası"), text: t("AI materialdan sual hazırlayır, siz yoxlayıb təsdiqləyirsiniz. Təsdiqlənməmiş sual tələbələrə göstərilmir.") },
     { sel: "[data-path='/teacher/academy']", title: t("AI Akademiya"), text: t("İngilis dilində tədris, sillabus, akademik ünsiyyət və AI üzrə qısa modullar və sertifikatlar.") },
-    { sel: "#lang-btn", title: t("Interfeys dili"), text: t("Portalı azərbaycan, ingilis və ya rus dilində istifadə edin.") },
+    { sel: "#lang-btn", title: t("İnterfeys dili"), text: t("Portaldan Azərbaycan, ingilis və ya rus dilində istifadə edin.") },
     { sel: "#help-btn", title: t("Səhifə bələdçisi"), text: t("Hər səhifənin öz bələdçisi var. Turu istənilən vaxt buradan yenidən başlada bilərsiniz.") },
   ],
   office: [
@@ -34,7 +34,7 @@ const ROLE_STEPS = {
     { sel: "#kpis", title: t("Pilot göstəriciləri"), text: t("Əsas göstəricilər və hədəflər. Yaşıl nişan hədəfə çatıldığını bildirir.") },
     { sel: "#insights", title: t("Diqqət tələb edənlər"), text: t("Platforma avtomatik tövsiyələr verir: materiallardakı boşluqlar, gecikən müraciətlər və s.") },
     { sel: "[data-path='/staff/feedback']", title: t("Rəylər və məmnuniyyət"), text: t("İstifadəçi rəyləri, məmnuniyyət indeksi və NPS bir paneldə.") },
-    { sel: "#help-btn", title: t("Bələdçi"), text: t("Paneli necə oxumaq barədə izahat bələdçidədir.") },
+    { sel: "#help-btn", title: t("Bələdçi"), text: t("Panelin necə oxunması barədə izahat bələdçidədir.") },
   ],
   admin: [
     { sel: ".brand", title: t("Platformanın idarə edilməsi"), text: t("AI mühərriki, limitlər, məxfilik, dəstək və audit.") },

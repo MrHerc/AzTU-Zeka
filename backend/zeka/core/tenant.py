@@ -93,7 +93,7 @@ def _grading(g: dict) -> dict | None:
             and x["max"] > 0 for x in comps):
         return E("Qiymətləndirmə komponentlərinin adı və müsbət maksimal balı olmalıdır")
     if len({x["name"].strip() for x in comps}) != len(comps) or sum(bool(x.get("attendance")) for x in comps) > 1:
-        return E("Komponentlərin adları təkrarlanmamalıdır; davamiyyət ən çox bir komponentdir")
+        return E("Komponentlərin adları təkrarlanmamalıdır; davamiyyət komponenti birdən çox ola bilməz")
     if not (isinstance(exam, dict) and _text(exam.get("name")) and _num(exam.get("max")) and _num(exam.get("min"))
             and 0 <= exam["min"] <= exam["max"]):
         return E("İmtahanın adı, maksimal balı və minimumu (0 ilə maksimum arasında) olmalıdır")
@@ -113,13 +113,13 @@ def _grading(g: dict) -> dict | None:
 
 def _attendance(a: dict) -> dict | None:
     if not _num(a["limit_percent"]) or not 0 < a["limit_percent"] <= 100:
-        return E("Davamiyyət həddi 1 ilə 100 faiz arasında olmalıdır")
+        return E("Buraxılmış dərslərin həddi 1 ilə 100 faiz arasında olmalıdır")
     if not isinstance(a["excused_counts_toward_limit"], bool):
         return E("Ayarın quruluşu düzgün deyil")
     rule = a["points_rule"]
     if not isinstance(rule, list) or len(rule) > 20 or not all(
             isinstance(x, list) and len(x) == 2 and _num(x[0]) and _num(x[1]) and 0 <= x[0] <= 100 and x[1] >= 0 for x in rule):
-        return E("Davamiyyət balı cədvəli \"buraxılmış faiz → bal\" cütlərindən ibarətdir")
+        return E("Davamiyyət balı cədvəli «buraxılmış dərslərin faizi → bal» cütlərindən ibarət olmalıdır")
     if [x[0] for x in rule] != sorted({x[0] for x in rule}):
         return E("Davamiyyət balı cədvəlində faizlər artan sırada və təkrarsız olmalıdır")
     return None
@@ -130,7 +130,7 @@ def _journal(j: dict) -> dict | None:
         return E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field="cutover_date")
     h = j["edit_hours"]
     if type(h) is not int or not 1 <= h <= 720:
-        return E("Düzəliş pəncərəsi 1 ilə 720 saat arasında olmalıdır")
+        return E("Düzəliş müddəti 1 ilə 720 saat arasında olmalıdır")
     return None
 
 
