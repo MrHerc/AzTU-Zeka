@@ -195,6 +195,10 @@ def test_the_hours_report_names_the_reason_of_every_difference():
     real = domain.hours_report(p, placements, term, [], lessons=[{"unit_id": 1, "status": "held", "academic_hours": 2}] * 6
                                + [{"unit_id": 1, "status": "cancelled", "academic_hours": 2}])
     assert {x["unit_id"]: (x["planned_h"], x["reasons"]) for x in real["units"]}[1] == (12, ["cancelled"])
+    # published (acceptance on the real files): the lessons skip the holiday, and the reason is still the holiday, never
+    # a rounding of the weekly pattern
+    held = domain.hours_report(p, placements, term, ["2026-09-15"], lessons=[{"unit_id": 2, "status": "scheduled", "academic_hours": 2}] * 14)
+    assert {x["unit_id"]: (x["planned_h"], x["reasons"]) for x in held["units"]}[2] == (28, ["holidays"])
 
 
 # ---------------------------------------------------------------- the settings section

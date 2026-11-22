@@ -648,29 +648,28 @@ def hours_report(problem: dict, placements: list[dict], term: dict, holidays: It
         mine = [m for m in meetings if m["unit_id"] == u["id"]]
         reasons: list[str] = []
         planned = 0.0
-        if u["id"] in real:
+        lost = False                                    # a meeting's week that falls on a holiday or outside the term
+        for m in mine:
+            p = by_key.get(m["key"])
+            if p is None:
+                if "unplaced" not in reasons:
+                    reasons.append("unplaced")
+                continue
+            mask = week_mask(p["weeks"], n)
+            for wk in range(n):
+                day = monday + timedelta(days=7 * wk + p["weekday"] - 1)
+                if mask >> wk & 1:
+                    if first <= day <= last and day.isoformat() not in off:
+                        planned += st["pair_hours"] * m["duration"]
+                    else:
+                        lost = True
+        if u["id"] in real:                             # published: the lessons themselves; the placements still say why
             done = [x for x in real[u["id"]] if x["status"] != "cancelled"]
             planned = float(sum(x.get("academic_hours") or 0 for x in done))
             if len(done) < len(real[u["id"]]):
                 reasons.append("cancelled")
-        else:
-            lost = False
-            for m in mine:
-                p = by_key.get(m["key"])
-                if p is None:
-                    if "unplaced" not in reasons:
-                        reasons.append("unplaced")
-                    continue
-                mask = week_mask(p["weeks"], n)
-                for wk in range(n):
-                    day = monday + timedelta(days=7 * wk + p["weekday"] - 1)
-                    if mask >> wk & 1:
-                        if first <= day <= last and day.isoformat() not in off:
-                            planned += st["pair_hours"] * m["duration"]
-                        else:
-                            lost = True
-            if lost:
-                reasons.append("holidays")
+        if lost:
+            reasons.append("holidays")
         form = float(u.get("hours") or 0)
         delta = round(planned - form, 2)
         if not mine:
