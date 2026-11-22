@@ -77,7 +77,7 @@ route("/leader", async (el) => {
 
     <div class="grid g-2 mt" id="leader-extra"></div>`);
   $("#print", el).addEventListener("click", () => window.print());
-  radarLeaderCard($("#leader-radar-slot", el));
+  radarLeaderCard($("#leader-radar-slot", el), a.radar);
   // Async cross-module cards (feedback summary + achievements teaser)
   Promise.all([feedbackSummaryCard(true), achievementsTeaser(3)]).then(([fb, ach]) => {
     const box = $("#leader-extra", el);

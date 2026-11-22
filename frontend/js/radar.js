@@ -329,20 +329,21 @@ export async function radarTeacherAlert(box) {
     <button class="btn btn-primary" data-go="/radar">${ic("activity", 15)} ${t("Radarı aç")}</button></div></div>`);
 }
 
-export async function radarLeaderCard(box) {
+// The leadership dashboard's card: the radar.summary row that /api/analytics carries, the source of the Radar line above it
+// too (Task 42, F1). GET /api/radar is the live campus-wide analysis, seconds on a university's data: the Radar page only.
+export function radarLeaderCard(box, s) {
   if (!box) return;
-  let d;
-  try { d = await api.get("/api/radar"); } catch { box.remove(); return; }
-  const k = d.counts, im = d.impact;
+  if (!s) { box.remove(); return; }            // before the first radar.summary run; the line above says so
+  const trend = s.trend || [];                 // a summary written before Task 42's F1 has no trend or courses
   mount(box, html`<div class="card mt" id="leader-radar"><div class="card-h"><h3>${ic("activity", 17)} ${t("Zəka Radar · erkən xəbərdarlıq")}</h3><a class="small" href="#/radar">${t("Radarı aç")} ${ic("arrow", 13)}</a></div>
-    <div class="card-b grid g-12"><div>${lineChart({ labels: d.trend.map((x) => fmtDayMonth(x.week_start)), series: [{ name: t("Yüksək risk"), values: d.trend.map((x) => x.high), color: LV.high[2] }, { name: t("Diqqət"), values: d.trend.map((x) => x.watch), color: LV.watch[2] }], height: 170, label: t("Həftəlik risk dinamikası") })}</div>
+    <div class="card-b grid g-12"><div>${lineChart({ labels: trend.map((x) => fmtDayMonth(x.week_start)), series: [{ name: t("Yüksək risk"), values: trend.map((x) => x.high), color: LV.high[2] }, { name: t("Diqqət"), values: trend.map((x) => x.watch), color: LV.watch[2] }], height: 170, label: t("Həftəlik risk dinamikası") })}</div>
       <div class="stack sm">
-        <div class="row between"><span class="small muted">${t("Yüksək risk")}</span><b class="rd-score high">${k.high}</b></div>
-        <div class="row between"><span class="small muted">${t("Diqqət siyahısı")}</span><b class="rd-score watch">${k.watch}</b></div>
-        <div class="row between"><span class="small muted">${t("Plandan sonra riski azalanlar")}</span><b>${im.measured ? `${im.improved}/${im.measured}` : "—"}</b></div>
-        <div class="row between"><span class="small muted">${t("Orta dəyişmə")}</span><b class="rd-delta down">${im.avg_delta == null ? "—" : num(im.avg_delta, 1)}</b></div>
+        <div class="row between"><span class="small muted">${t("Yüksək risk")}</span><b class="rd-score high">${s.high}</b></div>
+        <div class="row between"><span class="small muted">${t("Diqqət siyahısı")}</span><b class="rd-score watch">${s.watch}</b></div>
+        <div class="row between"><span class="small muted">${t("Plandan sonra riski azalanlar")}</span><b>${s.measured ? `${s.improved}/${s.measured}` : "—"}</b></div>
+        <div class="row between"><span class="small muted">${t("Orta dəyişmə")}</span><b class="rd-delta down">${s.avg_delta == null ? "—" : num(s.avg_delta, 1)}</b></div>
         <div class="divider"></div>
-        ${d.course_counts.filter((c) => c.high || c.watch).sort((a, b) => b.high * 3 + b.watch - (a.high * 3 + a.watch)).slice(0, 4).map((c) => html`<div class="row between small">
+        ${(s.courses || []).map((c) => html`<div class="row between small">
           <span class="row"><span class="dot" style="background:${c.color};box-shadow:none"></span>${c.code}</span><span><b style="color:var(--rd-high)">${c.high}</b> · <span style="color:var(--rd-watch)">${c.watch}</span></span></div>`)}</div></div></div>`);
 }
 

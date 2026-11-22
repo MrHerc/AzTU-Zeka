@@ -454,12 +454,16 @@ def invalidate():
 
 
 def summarize(c) -> dict:
-    """The campus-wide counts and the plans' impact, written by the periodic job ``radar.summary`` (and the demo seed).
-    Task 42 (PERF-F1): the leadership dashboard and the staff's badge read them; analysing every student × course on each
-    open took 6 s on a university's data. The Radar page itself stays live."""
+    """The campus-wide counts, the plans' impact, the courses with most students at risk and the weekly trend, written by
+    the periodic job ``radar.summary`` (and the demo seed). Task 42 (PERF-F1): the leadership dashboard (its line and its
+    card) and the staff's badge read them; analysing every student × course on each open took 6 s on a university's data.
+    The Radar page itself stays live."""
     an = Analysis(Frame(c))                  # not the cache: a run every 15 minutes would fill it with campus-wide analyses
     im = impact(c, an)
-    out = {**an.counts(), "measured": im["measured"], "improved": im["improved"], "at": iso(now())}
+    top = sorted((x for x in an.course_counts() if x["high"] or x["watch"]), key=lambda x: -(x["high"] * 3 + x["watch"]))[:4]
+    out = {**an.counts(), "measured": im["measured"], "improved": im["improved"], "avg_delta": im["avg_delta"],
+           "courses": [{k: x[k] for k in ("id", "code", "color", "high", "watch")} for x in top],
+           "trend": [{k: x[k] for k in ("week_start", "high", "watch")} for x in trend(c, an)], "at": iso(now())}
     set_setting(c, "radar_summary", out)
     return out
 

@@ -6,6 +6,7 @@ dashboard is read first, then a plan is sent to the storyline student Murad, who
 """
 import re
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -261,3 +262,22 @@ def test_the_leadership_dashboard_and_the_staff_badge_read_the_summary_never_the
     assert line["at"] is None and "hesablanmayıb" in line["text"] and "radar" not in leader.get("/api/badges").json
     monkeypatch.undo()
     _db(radar.summarize)
+
+
+def test_the_dashboard_s_radar_card_is_the_summary_too(leader, monkeypatch):
+    """Checkpoint F (F1): the dashboard's Radar card asked GET /api/radar, the live campus-wide analysis (seconds on a
+    university's data), and could disagree with the summary line above it. /api/analytics carries the summary."""
+    an = _db(radar.analysis)
+    s = _db(radar.summarize)
+    top = sorted((x for x in an.course_counts() if x["high"] or x["watch"]), key=lambda x: -(x["high"] * 3 + x["watch"]))[:4]
+    assert s["courses"] and [x["id"] for x in s["courses"]] == [x["id"] for x in top]
+    assert s["avg_delta"] == _db(lambda c: radar.impact(c, an)["avg_delta"])
+    assert len(s["trend"]) > 1 and s["trend"][-1] == {"week_start": s["at"][:10], "high": s["high"], "watch": s["watch"]}
+
+    def analysed(*_a, **_k):
+        raise AssertionError("the campus-wide analysis ran in a request")
+    monkeypatch.setattr(radar, "analysis", analysed)
+    assert leader.get("/api/analytics").json["radar"] == s
+    src = (Path(__file__).resolve().parents[2] / "frontend" / "js" / "radar.js").read_text(encoding="utf-8")
+    card = src[src.index("export function radarLeaderCard"):]
+    assert "/api/radar" not in card[:card.index("\n}\n")], "the card asks for the live analysis"

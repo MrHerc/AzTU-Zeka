@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 
-from . import engine, store
+from . import engine, radar, store
 from .common import R, session_cookie, week_index
 from ..core.i18n import T3
 from .r_learning import course_insights
@@ -66,6 +66,7 @@ def analytics(req):
     return {"labels": LABELS, "wau_students": tile["wau_student"]["series"], "wau_teachers": tile["wau_teacher"]["series"],
             "active_by_role": insight.active_roles(c), "tutor_questions": q_weeks, "request_hours": tile["request_hours"]["series"],
             "kpis": kpis, "courses": cs, "insights": insights, "office": summary, "requests_by_type": req_by_type, "news": news,
+            "radar": radar.summary(c),          # the Radar card: the same summary as its line above (Task 42, F1)
             "attendance": {"rate": round(100 * (1 - ((att_all["a"] or 0) + (att_all["e"] or 0)) / (att_all["n"] or 1)), 1),
                            "absent": att_all["a"] or 0, "excused": att_all["e"] or 0},
             "ai": {"cited_rate": tile["cited"]["value"], "positive_rate": round(100 * sum(r == 1 for r in rated) / len(rated)) if rated else None,

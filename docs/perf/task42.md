@@ -14,12 +14,14 @@ cədvəl üzrə `SCAN` olmamasını tələb edir.
 | Qarışıq | `GET /api/student/home`, `/api/schedule`, `/api/courses`, `PUT /api/me/prefs`, `POST /api/news/{id}/save` | yoxdur |
 | İmtahan | `enter`, `start`, hər cavab (`PUT …/answers/{qid}`), `GET /api/exams/{id}`, gözətçi paneli `…/board`, `submit` | yoxdur |
 | Rəhbərlik | `GET /api/analytics`, `GET /api/insight/evidence` | `messages`, `courses`, `materials`, `users` (fənlərin və mesajların sayı); `attendance` artıq yoxdur |
+| Rəhbərlik, Radar səhifəsi | `GET /api/radar` | `enrollments`, `attendance`, `grades`, `attempts`, `messages`: canlı analiz hər tələbənin qeydlərini oxuyur |
 
 Ən yavaş marşrutlar (bir sorğu, keş soyuq):
 
 | Marşrut | Əvvəl | `0420`-dən sonra | PERF-F1-dən sonra | Sorğu sayı (indi) |
 |---|---|---|---|---|
-| `GET /api/analytics` | 13 335 ms | 6 196 ms | 94 ms | 5 178 |
+| `GET /api/analytics` | 13 335 ms | 6 196 ms | 94 ms (F1-dən sonra 169 ms) | 5 179 |
+| `GET /api/radar` (Radar səhifəsi, rəhbər) | — | — | 6 927 ms | 2 033 |
 | `GET /api/courses` | — | — | 9 ms | 60 |
 | `GET /api/student/home` | 11 ms | 7 ms | 6 ms | 93 |
 | `GET /api/insight/evidence` | 7 ms | 7 ms | 6 ms | 22 |
@@ -38,7 +40,7 @@ hesabı aparırdı.
 - Kampus üzrə sayları və dəstək planlarının təsirini dövri iş `radar.summary` hər 15 dəqiqədən bir hesablayır
   (`radar.summarize`, `settings` cədvəlində `radar_summary`). Demo bazasında ilk xülasəni seed yazır. Universitet
   dəstində iş təxminən 6 s çəkir: `--workers` ilə ayrıca prosesdə, tək proses rejimində işlərin axınında.
-- Panelin Radar sətri bu xülasəni oxuyur və hesablandığı vaxtı göstərir: «Zəka Radar, 19.11.2026 10:00 tarixinə: …».
+- Panelin Radar sətri və Radar kartı bu xülasəni oxuyur; sətir hesablandığı vaxtı göstərir: «Zəka Radar, 19.11.2026 10:00 tarixinə: …».
   İş hələ işləməyibsə, sətir bunu açıq yazır. Rəhbərliyin və dekanlığın Radar nişanı da xülasədən oxunur.
 - Radar səhifəsi (`/api/radar`), tələbə profili, dəstək planı və müəllimin öz fənləri üzrə nişanı əvvəlki kimi canlı
   hesablanır. Radar-ın modeli, səviyyələri və sayların mənası dəyişməyib.
@@ -47,9 +49,17 @@ hesabı aparırdı.
 
 Təzəlik qaydası dəyişib: panel və nişan ən çox 15 dəqiqə əvvəlki vəziyyəti göstərir (vaxtı yazılır). Bu, Checkpoint F-in
 rəy və təkzib mərhələsində yoxlanmalıdır. Yoxlayan testlər: `tests/integration/test_radar.py` (xülasə canlı analizə
-bərabərdir; panel və nişan analizi çağırmır; xülasə yoxdursa, sətir bunu deyir), `tests/integration/test_insight.py`
+bərabərdir; panel, onun kartı və nişan analizi çağırmır; xülasə yoxdursa, sətir bunu deyir), `tests/integration/test_insight.py`
 (panelin sorğularında `attendance` üzrə `SCAN` yoxdur; davamiyyət və test ortalamaları sətirlərin birbaşa sayına
 bərabərdir).
+
+**Düzəliş (Checkpoint F, F1).** «6,2 s-dən 94 ms-ə» əvvəlcə yalnız `GET /api/analytics` üçün doğru idi, səhifə üçün
+yox. Panelin Radar kartı (`frontend/js/radar.js`, `radarLeaderCard`) ayrıca `GET /api/radar` istəyirdi: kampus üzrə
+canlı analiz, universitet dəstində soyuq keşlə təxminən 7 s. Kartın rəqəmləri isə üstündəki sətirdən (xülasədən) fərqli
+ola bilirdi. İndi `radar.summarize` riskli tələbəsi ən çox olan 4 fənni, planlardan sonrakı orta dəyişməni və həftəlik
+dinamikanı da yazır; `/api/analytics` xülasəni `radar` sahəsində qaytarır, kart onu göstərir. Panel yalnız
+`/api/analytics` istəyir (brauzerdə yoxlanıb: `/api/radar` sorğusu yoxdur). `tools/queryplan.py` rəhbər ssenarisinə
+Radar səhifəsini də əlavə edib: o canlı qalır və 6 927 ms çəkir. Bu, panelin yox, Radar səhifəsinin açılışıdır.
 
 **AR-F11: aktiv istifadəçi göstəriciləri.** `insight/repo.active_weekly` və `active_by_role` 8 həftənin hər hadisə
 sətri üzrə `COUNT(DISTINCT user_id)` edirdi. `0421_active_days.sql` `active_days(day, role, user_id)` cədvəlini yaradır

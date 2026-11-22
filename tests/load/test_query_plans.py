@@ -2,8 +2,9 @@
 
 tools/queryplan.py builds the university dataset (10 000 students, 100 000 attempts, 100 000 chunks) in its own process,
 sends the mixed scenario (read and write routes) as a student, the exam scenario as a student and its proctor board (with a
-released exam of 1 200 students beside it, so every exam table is large), and the leader's dashboard, and explains every statement the handlers ran. The leader's scans are reported, not failed: the
-dashboard's Radar summary reads every student's records (docs/perf/task42.md).
+released exam of 1 200 students beside it, so every exam table is large), and the leader's dashboard and Radar page, and
+explains every statement the handlers ran. The leader's scans are reported, not failed: the dashboard counts every
+course's rows and the Radar page reads every student's records (docs/perf/task42.md).
 """
 import json
 import os

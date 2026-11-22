@@ -3,12 +3,14 @@
     python tools/queryplan.py [--dataset university] [--min-rows 1000]
 
 Builds the dataset in a throw-away ZEKA_DATA directory with an open exam (tools/loadtest.py exam_setup) and a released one
-that 1 200 students sat (``bulk_exam``: every exam table above --min-rows), serves the API in this process and sends, once each: every route of the mixed scenario (READ and WRITE) as a student; the exam scenario as
-a student (enter, start, every answer, view, submit) and the proctor board as the course's teacher; the leadership
-dashboard and the accreditation evidence (Task 39) as a leader. Records each SQL statement the handlers run and prints,
-as JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
+that 1 200 students sat (``bulk_exam``: every exam table above --min-rows), serves the API in this process and sends, once
+each: every route of the mixed scenario (READ and WRITE) as a student; the exam scenario as a student (enter, start, every
+answer, view, submit) and the proctor board as the course's teacher; as a leader, the leadership dashboard (its one
+request, /api/analytics: its Radar line and card are the periodic job's summary), the accreditation evidence (Task 39) and
+the Radar page (/api/radar, the live campus-wide analysis). Records each SQL statement the handlers run and prints, as
+JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
 slowest routes. Exit 1 when a read, mixed or exam route scans one; the leader's routes are reported, not failed: the
-dashboard counts every course's rows by design (docs/perf/task42.md). Its Radar line is the periodic job's summary.
+dashboard counts every course's rows and the Radar page reads every student's records by design (docs/perf/task42.md).
 """
 from __future__ import annotations
 
@@ -79,6 +81,7 @@ def _routes(student: str, news: list[int], exam: tuple[int, list[str], str]):
     leader = _sid(back, "leader: demo login")
     yield "leader", "GET", "/api/analytics", leader, None
     yield "leader", "GET", "/api/insight/evidence", leader, None
+    yield "leader", "GET", "/api/radar", leader, None
 
 
 BULK = 1200
