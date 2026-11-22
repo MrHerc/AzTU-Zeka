@@ -40,22 +40,56 @@ fənn → course → дисциплина · fənlərim → my courses → мо�
 məşq testi → practice test → тренировочный тест · qiymətli test → graded test → оцениваемый тест · cəhd → attempt → попытка
 e-xidmətlər → e-services → электронные услуги · müraciət → request → заявка · müraciətlərim → my requests → мои заявки
 arayış → certificate (enrolment certificate) → справка · sənəd → document → документ · sənəd reyestri → document registry → реестр документов
-dəstək xidməti → support → служба поддержки · dəstək sorğusu → support ticket → обращение в поддержку · rəy → feedback → отзыв
+dəstək xidməti → support → служба поддержки · dəstək sorğusu → support ticket → обращение в поддержку · rəy (portal feedback, surveys) → feedback → отзыв · rəy (a teacher's feedback to a student) → feedback → обратная связь · rəy (peer review of a paper) → review → рецензирование
 davamiyyət → attendance → посещаемость · qayıb → absence → пропуск · üzrlü → excused → по уважительной причине · həkim arayışı → medical certificate → медицинская справка
 qiymətlər → grades → оценки · bal → points → баллы · qiymətləndirmə → assessment → оценивание · kollokvium → colloquium (midterm) → коллоквиум
 dərs cədvəli → timetable → расписание · mühazirə → lecture → лекция · məşğələ → seminar → практическое занятие · laboratoriya → laboratory → лабораторная
-dekanlıq → dean's office → деканат · tədris hissəsi → academic office → учебная часть · rəhbərlik → leadership → руководство · rektorluq → rector's office → ректорат
+dekanlıq → dean's office → деканат · tədris hissəsi → academic office → учебная часть (also the role label; «Tədris şöbəsi» is retired) · rəhbərlik → leadership → руководство · rektorluq → rector's office → ректорат
 bildiriş → notification → уведомление · nailiyyətlər → achievements → достижения · əlaqə → contact → контакты
 bələdçi → guide → гид · Bələdçi mərkəzi → Help centre → Справочный центр · səhifə bələdçisi → page guide → гид по странице · tanışlıq turu → welcome tour → ознакомительный тур
-AI tutor → AI tutor → ИИ-тьютор · kampus köməkçisi → campus assistant → помощник по кампусу · Sokratik / İzah / Məşq → Socratic / Explain / Practice → Сократический / Объяснение / Практика
+AI tutor → AI tutor → ИИ-тьютор (in Russian running text AI → ИИ: сервис ИИ, ИИ-помощник; the brand «AI Akademiya» → AI Academy → AI-академия stays) · kampus köməkçisi → campus assistant → помощник по кампусу · Sokratik / İzah / Məşq → Socratic / Explain / Practice → Сократический / Объяснение / Практика
 material → material → материал · sillabus → syllabus → силлабус · AI Akademiya → AI Academy → AI-академия · texnoloji həllər → tech tools → технологические решения
-icra müddəti → deadline → срок исполнения · qaralama → draft → черновик · təsdiqlə → approve → утвердить · rədd et → reject → отклонить · dərc et → publish → опубликовать
-tələbə → student → студент · müəllim → teacher → преподаватель · kafedra → department → кафедра · fakültə → faculty → факультет · ixtisas → programme (specialty) → специальность
+icra müddəti → processing time (an SLA duration: "3 working days") → срок исполнения · son icra tarixi → due date → срок исполнения · qaralama → draft → черновик · təsdiqlə → approve → утвердить · rədd et → reject → отклонить · dərc et → publish → опубликовать
+tələbə → student → студент · müəllim → teacher → преподаватель · kafedra → department → кафедра · fakültə → faculty → факультет · ixtisas → programme → специальность
 semestr → semester → семестр · tədris ili → academic year → учебный год · kredit (AKTS) → credits (ECTS) → кредиты (ECTS)
 Dövlət sifarişi → state-funded → бюджет · Ödənişli → fee-paying → платное обучение · Əyani → full-time → очная форма · Qiyabi → part-time → заочная форма
 akademik məzuniyyət → academic leave → академический отпуск · yataqxana → dormitory → общежитие · təqaüd → scholarship → стипендия · tələbə bileti → student ID card → студенческий билет
 təcili / yüksək / normal / aşağı (prioritet) → urgent / high / normal / low → срочный / высокий / обычный / низкий
 Universitet hesabı (SSO) → university account (SSO) → учётная запись университета (SSO) · pilot mərhələsi → pilot phase → пилотный этап
+
+Terms decided in Task 20 (style rules for the Azerbaijani source: `i18n/STYLE.md`):
+- Əsas (menu group, breadcrumbs, exam kind, main literature; one shared key) → Main → Основное
+- e-poçt → email → эл. почта · istifadəçi adı → username → имя пользователя
+- FİN → FIN code → ФИН
+- müraciət (e-service) → request → заявка · sorğu (support) → ticket → обращение · sərbəst ərizə → free-form application → заявление в свободной форме
+- dərs (university class) → lesson / class → занятие (never урок) · N-ci cüt → Period N → N-я пара
+- reyestr → registry → реестр · doğrulama kodu → verification code → код проверки
+- universitet hesabını əlaqələndirmək → link a university account → связать учётную запись · Əlaqələndirilib → Linked → Связана
+- işçi hesabı → staff account → учётная запись сотрудника
+- qeyri-aktiv (state) → inactive → неактивный · Deaktiv et (button) → Deactivate → Деактивировать
+- kart (app tile) → tile → плитка · söndürülüb → off → отключён
+- sual bankı → question bank → банк вопросов
+- kəsid tarixi → cut-over date → дата перехода
+- buraxılmış dərslərin həddi → absence limit → лимит пропусков
+- düzəliş müddəti → edit window → срок исправления
+- keçirilmə vaxtı (exam slot) → time window → время проведения
+- imtahan-qiymət cədvəli → exam statement → ведомость (bare «imtahan cədvəli» is the exam timetable)
+- nəticəsi açıqlanmış → with released results → с опубликованными результатами · Açıqlanıb → Released → Опубликовано
+- imtahana buraxılmamaq → not admitted to the exam → не допущен к экзамену (statement: недопуск)
+- istisna qaydasında → by exception → в порядке исключения
+- Xam bal → raw score → первичный балл · Müddət (duration) → duration → длительность
+- akademik borc → failed course → академическая задолженность
+- Cari qiymətləndirmə → continuous assessment → текущий контроль
+- Həftəlik plan (syllabus) → weekly plan → план по неделям · prerekvizitlər → prerequisites → пререквизиты
+- üzrlü hesab etmək → excuse (an absence) → признать уважительным / оправдать (пропуск)
+- susdurmaq → mute → запретить писать (never заблокировать)
+- tutoru müvəqqəti bağlamaq → temporarily disable the tutor → временно отключить тьютора
+- qəbula yazılmaq (office hours) → book → записаться на приём
+- Demo ssenarisi → demo script → демо-сценарий
+- Giriş (audit event) → sign-in → вход
+- DSMF → SSPF → ГФСЗ · ASAN xidmət → ASAN Service → ASAN xidmət
+- jurnal (class journal) → journal → журнал (EN keeps «journal», used in 33 catalogue keys)
+- Forma №3 (the department's teaching-load file) → Form No. 3 → Форма №3 · təkrar imtahan (exam kind) → retake → пересдача
 
 ## Done = 
 Both output files exist, are valid JSON, contain every input key exactly, placeholders identical, plural objects where needed.

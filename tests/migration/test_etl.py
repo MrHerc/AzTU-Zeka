@@ -235,7 +235,7 @@ def test_one_form_per_student_and_course(world):
                               b"ETL-K2,ETL-S1,2026-11-03,09:00,absent\n", as_of=AS_OF)
     finally:
         c.close()
-    assert "dərs səviyyəli qeydlər idxal olunub" in opening["errors"][0]["reason"]["az"]
+    assert "ayrı-ayrı dərslərin qeydləri idxal olunub" in opening["errors"][0]["reason"]["az"]
     assert "açılış qalığı var" in lesson["errors"][0]["reason"]["az"]
 
 
@@ -376,8 +376,8 @@ LESSON = "classSourcedId,userSourcedId,date,start,status,hours,asOf\n"
 
 @pytest.mark.parametrize("row, as_of, reason", [
     ("ETL-K1,ETL-S1,2026-11-11,09:00,absent,,", AS_OF, "kəsid tarixindən sonradır"),
-    ("ETL-K1,ETL-S1,2026-11-03,09:00,absent,,2026-11-09", AS_OF, "--as-of ilə uyğun gəlmir"),
-    ("ETL-K1,ETL-S1,2026-11-03,09:00,absent,3,", AS_OF, "Faylda dərsin saatı (3), Zəka-da 2"),             # CR-F2
+    ("ETL-K1,ETL-S1,2026-11-03,09:00,absent,,2026-11-09", AS_OF, "--as-of tarixinə uyğun gəlmir"),
+    ("ETL-K1,ETL-S1,2026-11-03,09:00,absent,3,", AS_OF, "Dərsin saatı faylda 3, Zəka platformasında isə 2"),             # CR-F2
     ("ETL-K2,ETL-S1,2026-11-10,09:00,absent,,", AS_OF, "açılış qalığı var"),                               # on the opening's own date
     ("ETL-K1,ETL-S6,2026-11-13,09:00,absent,,", "2026-11-14", "siyahısında deyil"),                         # on leave from 12 November
 ])
@@ -399,7 +399,7 @@ def test_a_cancelled_lesson_and_a_zeka_final_grade_refuse_their_rows(world):
         assert "ləğv olunub" in r["errors"][0]["reason"]["az"]
         r = run_import("results", "userSourcedId,courseCode,courseTitle,termTitle,termStart,credits,score\n"
                                   "ETL-S1,OLD-9,Zəka fənni,2025/2026 yaz,2026-02-10,5,90\n", as_of=None)
-        assert "yekun qiyməti Zəka-da yazılıb" in r["errors"][0]["reason"]["az"]
+        assert "yekun qiyməti Zəka platformasında yazılıb" in r["errors"][0]["reason"]["az"]
     finally:
         sql("DELETE FROM lessons WHERE id=?", (off,))
         sql("DELETE FROM final_grades WHERE id=?", (fid,))

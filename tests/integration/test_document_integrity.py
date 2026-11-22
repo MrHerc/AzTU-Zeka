@@ -94,9 +94,9 @@ def test_a_document_without_a_payload_is_not_verified_and_not_rebuilt(app_db, is
     run("UPDATE documents SET payload=NULL WHERE id=?", (issued["id"],))
     try:
         page = app_db.client().get(f"/verify/{issued['verify_code']}").text
-        assert "doğrulanmır" in page and "SHA-256 ✓" not in page
+        assert "doğrulamaq mümkün deyil" in page and "SHA-256 ✓" not in page
         shown = app_db.client("office").get(f"/doc/{issued['id']}").text
-        assert "doğrulanmır" in shown and q("SELECT full_name FROM users WHERE id=?", (issued["holder_id"],))[0]["full_name"] not in shown
+        assert "doğrulamaq mümkün deyil" in shown and q("SELECT full_name FROM users WHERE id=?", (issued["holder_id"],))[0]["full_name"] not in shown
     finally:
         run("UPDATE documents SET payload=? WHERE id=?", (issued["payload"], issued["id"]))
 

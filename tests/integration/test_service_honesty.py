@@ -502,7 +502,7 @@ def test_an_excuse_whose_absences_were_corrected_claims_nothing(app_db, actors, 
     before = q("SELECT COUNT(*) n FROM notifications WHERE title LIKE '%qayıb üzrlü%'")[0]["n"]
     assert actors["office"].post(f"/api/requests/{rid}/action", {"action": "approve"}).status == 200
     done = actors["office"].post(f"/api/requests/{rid}/action", {"action": "issue"}).json
-    assert done["answer"].endswith("Zəka-da başqa heç bir qeyd dəyişməyib."), done["answer"]
+    assert done["answer"].endswith("Zəka platformasında başqa heç bir qeyd dəyişdirilməyib."), done["answer"]
     assert q("SELECT COUNT(*) n FROM notifications WHERE title LIKE '%qayıb üzrlü%'")[0]["n"] == before
     assert not q("SELECT 1 FROM attendance WHERE request_id=?", (rid,))
 
