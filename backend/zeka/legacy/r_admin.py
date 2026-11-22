@@ -102,7 +102,7 @@ def admin_settings(req):
     if "retention_days" in b:
         lim["retention_days"] = b.integer("retention_days", lim.get("retention_days", 180), 30, 3650)
     store.set_setting(req.db, "limits", lim)
-    purged = store.purge_expired(req.db)
+    purged = store.purge_expired(req.db, batched=False)    # the daily retention job purges a large backlog in batches
     audit(req.db, req.user["id"], "settings_update", "settings", json.dumps(lim) + (f" · {purged} köhnə mesaj silindi" if purged else ""))
     return lim
 

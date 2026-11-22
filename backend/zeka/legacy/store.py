@@ -928,12 +928,16 @@ def init(reset: bool = False):
         c.close()
 
 
-def purge_expired(c) -> int:
+def purge_expired(c, batched: bool = True) -> int:
     """Enforce the chat retention period: older AI conversations are deleted. The period is the one the privacy notice
-    shows (identity.privacy.retention, Task 40), a bad stored value included (Checkpoint F, SF-F8)."""
+    shows (identity.privacy.retention, Task 40), a bad stored value included (Checkpoint F, SF-F8). ``batched=False``
+    is one DELETE in the caller's open transaction, so a request commits or rolls back as a whole (Checkpoint F, R1)."""
     from ..modules.identity import privacy             # privacy reads the settings through this module
     days = privacy.retention(c)["chats_days"]
-    return purge(c, "messages", "created_at<?", (iso(now() - timedelta(days=days)),))
+    args = (iso(now() - timedelta(days=days)),)
+    if not batched:
+        return c.execute("DELETE FROM messages WHERE created_at<?", args).rowcount
+    return purge(c, "messages", "created_at<?", args)
 
 
 PURGE_BATCH = 5000

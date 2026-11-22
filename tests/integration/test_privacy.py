@@ -517,7 +517,28 @@ def test_the_retention_purge_deletes_in_batches(app_db, monkeypatch):
         c.commit()
     finally:
         c.close()
-    deletes = [s for s in ran if re.match(r'\s*DELETE FROM "?notifications"?\s', s)]
-    assert len(deletes) >= 3, deletes
-    assert ran.count("COMMIT") >= len(deletes), "each batch is its own transaction"
+    at = [i for i, s in enumerate(ran) if re.match(r'\s*DELETE FROM "?notifications"?\s', s)]
+    assert len(at) >= 3, at
+    assert all("COMMIT" in ran[i + 1:j] for i, j in zip(at, at[1:], strict=False)), "each batch is its own transaction"
     assert [x["created_at"] for x in q("SELECT created_at FROM notifications WHERE title='af5'")] == [young] * 3
+
+
+def test_a_failed_settings_request_keeps_the_settings_and_the_chats(app_db, monkeypatch):
+    """R1: PUT /api/admin/settings purges expired chats inside its own transaction; a failure after the purge (here the
+    audit) rolls back the settings change and the deleted messages together, so no change is left without its audit."""
+    from zeka.legacy import r_admin
+
+    def boom(*_a, **_k):
+        raise RuntimeError("audit failed")
+
+    before = json.loads(q("SELECT value FROM settings WHERE key='limits'")[0]["value"])
+    run("INSERT INTO messages(user_id,course_id,channel,role,content,created_at) VALUES(1,1,'tutor','user','r1',?)",
+        (store.iso(store.now() - timedelta(days=4000)),))
+    monkeypatch.setattr(r_admin, "audit", boom)
+    try:
+        assert app_db.client("admin").put("/api/admin/settings", {"daily_messages": before.get("daily_messages", 50) + 7}).status == 500
+        app_db.errors.clear()
+        assert json.loads(q("SELECT value FROM settings WHERE key='limits'")[0]["value"]) == before
+        assert q("SELECT COUNT(*) n FROM messages WHERE content='r1'")[0]["n"] == 1
+    finally:
+        run("DELETE FROM messages WHERE content='r1'")
