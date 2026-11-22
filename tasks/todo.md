@@ -1094,6 +1094,14 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 - [x] `docs/forms/forma-3.md` qaydaları və kafedranın cavablandıracağı 19 sualı rəsmi Azərbaycan dilində verir
 - [x] Yeni mətnlər tərcümə olunub: `tools/i18n.py stats` 100 %, `lint` 72
 
+**Yoxlamadan sonra (2026-11-22, təsdiqlənmiş 16 tapıntı):**
+- [x] T5 həqiqi yoxlamadır: kafedranın cəminə daxil olan ştatların dərsləri cədvəldən yenidən sayılan xanalarla, saatları isə `Cəmi` sətirlərinin auditoriya xanaları ilə tutuşdurulur; hesabatın bütün cəmləri eyni ştatlar üzrədir, kənarda qalanlar ayrıca sətirdə göstərilir (A: 348 dərs / 7 942 saat, vakansiya 9, digər yük 548 sətir; B: 1 233 dərs / 29 528,5 saat, digər yük 2 117 sətir)
+- [x] T6 vakant yük bölməsinin auditoriya xanasını və `Ümumi cəm` sətrini də yoxlayır (A: 69/69)
+- [x] Oxunuş pis sətirlərin sayına görə xəttidir: 20 000 pis sətir 20 saniyədən az çəkir (əvvəl 80 saniyə)
+- [x] Tədris vahidinin idxal açarı lövbər xanasıdır, məzmun açarı onun ikinci adıdır: doldurulmuş vakansiya ikinci vahid yazmır, əvvəlki halına qaytarılmış fayl konflikt vermir
+- [x] Arayış cədvəlinin saat hesabı bölməsi blokun dərslərinin ödənişini də təyin edir; iki ad yalnız soyad və daha bir söz uyğun gələndə bir şəxsdir; vərəqin adı `E4` ilə söz-söz müqayisə olunur; dəyəri olan hər gizli sətir göstərilir
+- [x] Məlumat sətrindəki xəta dəyəri konfliktdir; qrupu olub dərsi olmayan vərəq `no_units` alır; qrupu yazılmayan dərs sətrin tələbə sayını saxlayır; ilkin baxışın «tətbiq oluna bilən» sayı yazılanla eynidir; gizli vərəqin idxal olunmadığını test sübut edir; T3-ün oxuyucunun özünü yoxladığı yazılıb və testi var
+
 **Verification:**
 - [x] `python -m pytest tests/unit/test_forma3.py tests/integration/test_import.py tests/integration/test_checkpoint_b.py -q`
 - [x] `python backend/manage.py forma3-check tests/fixtures/forma3_blocks.xlsx`

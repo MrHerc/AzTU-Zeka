@@ -147,7 +147,7 @@ Tam mətn, qəbul meyarları və yoxlama addımları `tasks/todo.md`-dədir.
 - [ ] T42 E2E, əlçatanlıq və yük testi
 - [ ] T43 Runbook-lar
 - [ ] T44 Buraxılış
-- [x] T47 Forma №3 oxuyucusu kafedraların real fayllarına görə (2026-11-22; `docs/forms/forma-3.md`)
+- [x] T47 Forma №3 oxuyucusu kafedraların real fayllarına görə (2026-11-22; `docs/forms/forma-3.md`; yoxlamanın təsdiqlənmiş 16 tapıntısı düzəldilib)
 
 ### Checkpoint F · saat 72 — buraxılış qapısı
 - [ ] SPEC-dəki bütün Success Criteria təsdiqlənib və ya istisna yazılı qeyd olunub
