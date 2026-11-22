@@ -13,7 +13,8 @@ Hüquqi əsaslar hüquqşünasın rəyinə qədər təklifdir (SPEC, açıq sual
 ## Qaydalar
 
 **İxrac.** `GET /api/me/export` daxil olmuş şəxsə öz sətirlərini JSON faylı kimi verir. Hər ixrac auditə yazılır
-(`privacy_export`). Heç vaxt ixraca düşmür:
+(`privacy_export`). Bir şəxs saatda ən çox beş dəfə ixrac edə bilər, altıncı sorğuya 429 cavabı verilir. İxracın və
+silmənin oxuduğu hər şəxs sütununun indeksi var (`0401_privacy_indexes.sql`). Heç vaxt ixraca düşmür:
 
 - sirlər: parol hash-i, TOTP toxumu, bərpa və aktivləşdirmə kodlarının hash-i, təqvim lentinin və sessiyanın hash-i,
   SEB nonce (sütun adına görə süzülür: `password`, `secret`, `nonce`, `verifier`, `*_hash`, `totp_*`);
@@ -61,7 +62,8 @@ rədd: `privacy_erase_rejected`):
 ## Saxlama müddətləri (universitet ayarları)
 
 "Universitet ayarları" → "Saxlama müddətləri" (`PUT /api/admin/settings/retention`, `limits` ayarında). Gündəlik
-`retention.purge` işi (`backend/zeka/legacy/periodic.py`) bu müddətdən köhnə sətirləri silir.
+`retention.purge` işi (`backend/zeka/legacy/periodic.py`) bu müddətdən köhnə sətirləri silir. Sətirlər 5 000-lik
+hissələrlə silinir və hər hissədən sonra tranzaksiya təsdiqlənir: müddət qısaldılanda da yazma kilidi uzun tutulmur.
 
 | Ayar | Susmaya görə | Hədd | Nə silinir |
 |---|---|---|---|

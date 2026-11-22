@@ -33,21 +33,21 @@ def retention_purge(c) -> str:
     t = now()
     keep = privacy.retention(c)
     logs = timedelta(days=keep["logs_days"])
+    purge = store.purge                  # batches of store.PURGE_BATCH, each its own transaction (Checkpoint F, AR-F5)
     chats = store.purge_expired(c)
-    keys = c.execute("DELETE FROM doc_keys WHERE expires_at<?", (iso(t),)).rowcount
-    hits = c.execute("DELETE FROM rate_hits WHERE ts<?", (time.time() - 86400,)).rowcount        # the longest window is minutes
-    blocks = c.execute("DELETE FROM login_blocks WHERE COALESCE(until, first)<?", (time.time() - 86400,)).rowcount
-    sessions = c.execute("DELETE FROM sessions WHERE last_seen<?", (iso(t - timedelta(seconds=identity.MAX_IDLE)),)).rowcount
+    keys = purge(c, "doc_keys", "expires_at<?", (iso(t),))
+    hits = purge(c, "rate_hits", "ts<?", (time.time() - 86400,))        # the longest window is minutes
+    blocks = purge(c, "login_blocks", "COALESCE(until, first)<?", (time.time() - 86400,))
+    sessions = purge(c, "sessions", "last_seen<?", (iso(t - timedelta(seconds=identity.MAX_IDLE)),))
     old = (clock.now() - logs).isoformat(timespec="seconds")   # job and outbox times are aware UTC (Checkpoint D, AR-13)
-    runs = c.execute("DELETE FROM job_runs WHERE started_at<? AND status<>'running'", (old,)).rowcount
-    mails = c.execute("DELETE FROM outbox WHERE created_at<? AND status IN ('sent','failed','skipped')", (old,)).rowcount
+    runs = purge(c, "job_runs", "started_at<? AND status<>'running'", (old,))
+    mails = purge(c, "outbox", "created_at<? AND status IN ('sent','failed','skipped')", (old,))
     from ..modules.community import service as community     # club messages past their retention period (Task 35)
     club = community.purge(c)
-    hooks = c.execute("DELETE FROM webhook_deliveries WHERE status IN ('sent','failed') AND created_at<?",
-                      (iso(t - logs),)).rowcount                # Checkpoint E (AR-E7): finished deliveries
-    notes = c.execute("DELETE FROM notifications WHERE created_at<?", (iso(t - timedelta(days=keep["notifications_days"])),)).rowcount
-    logged = c.execute("DELETE FROM audit WHERE ts<?", (iso(t - timedelta(days=keep["audit_days"])),)).rowcount
-    events = c.execute("DELETE FROM events WHERE created_at<?", (iso(t - KEEP_EVENTS),)).rowcount
+    hooks = purge(c, "webhook_deliveries", "status IN ('sent','failed') AND created_at<?", (iso(t - logs),))   # Checkpoint E (AR-E7)
+    notes = purge(c, "notifications", "created_at<?", (iso(t - timedelta(days=keep["notifications_days"])),))
+    logged = purge(c, "audit", "ts<?", (iso(t - timedelta(days=keep["audit_days"])),))
+    events = purge(c, "events", "created_at<?", (iso(t - KEEP_EVENTS),))
     return (f"chats {chats} · keys {keys} · rate hits {hits} · sign-in blocks {blocks} · sessions {sessions} · job runs {runs} · mails {mails}"
             f" · club messages {club} · webhook deliveries {hooks} · notifications {notes} · audit {logged} · events {events}")
 

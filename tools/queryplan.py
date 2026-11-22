@@ -2,8 +2,8 @@
 
     python tools/queryplan.py [--dataset university] [--min-rows 1000]
 
-Builds the dataset in a throw-away ZEKA_DATA directory with an open exam (tools/loadtest.py exam_setup), serves the API in
-this process and sends, once each: every route of the mixed scenario (READ and WRITE) as a student; the exam scenario as
+Builds the dataset in a throw-away ZEKA_DATA directory with an open exam (tools/loadtest.py exam_setup) and a released one
+that 1 200 students sat (``bulk_exam``: every exam table above --min-rows), serves the API in this process and sends, once each: every route of the mixed scenario (READ and WRITE) as a student; the exam scenario as
 a student (enter, start, every answer, view, submit) and the proctor board as the course's teacher; the leadership
 dashboard and the accreditation evidence (Task 39) as a leader. Records each SQL statement the handlers run and prints,
 as JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
@@ -53,30 +53,62 @@ def _send(port: int, method: str, path: str, cookie: str, body=None) -> tuple[in
         conn.close()
 
 
-def _routes(port: int, data: Path, student: str, news: list[int], exam: tuple[int, list[str], str]):
-    """(scenario, method, path, cookie, body) in order; the exam's steps need the answers of the earlier ones."""
+def _sid(set_cookie: str, step: str) -> str:
+    m = re.search(r"zeka_sid=[^;]+", set_cookie)
+    if not m:
+        raise SystemExit(f"{step}: no session cookie")
+    return m.group(0)
+
+
+def _routes(student: str, news: list[int], exam: tuple[int, list[str], str]):
+    """(scenario, method, path, cookie, body) in order. The caller sends each step and passes its answer back with
+    ``send((set_cookie, body))``: the exam's steps need the session and the questions of the earlier ones. Every request
+    is a step, so each one is timed and its statements carry its scenario (Checkpoint F, PY-F5)."""
     for _, method, path in loadtest.READ + loadtest.WRITE:
         yield "mixed", method, path.format(news=news[0]), student, None if method == "GET" else ({"theme": "dark"} if path.endswith("prefs") else {})
     eid, cookies, proctor = exam
-    status, back, _ = _send(port, "POST", f"/api/exams/{eid}/enter", cookies[0], {})
-    m = re.search(r"zeka_sid=[^;]+", back)
-    if status != 200 or not m:
-        raise SystemExit(f"exam: enter: HTTP {status}")
-    sitting = m.group(0)
-    status, _, raw = _send(port, "POST", f"/api/exams/{eid}/start", sitting, {})
-    if status != 200:
-        raise SystemExit(f"exam: start: HTTP {status}")
+    back, _ = yield "exam", "POST", f"/api/exams/{eid}/enter", cookies[0], {}
+    sitting = _sid(back, "exam: enter")
+    _, raw = yield "exam", "POST", f"/api/exams/{eid}/start", sitting, {}
     for q in json.loads(raw)["questions"]:
         yield "exam", "PUT", f"/api/exams/{eid}/answers/{q['id']}", sitting, {"value": str(q["id"])}
     yield "exam", "GET", f"/api/exams/{eid}", sitting, None
     yield "exam", "GET", f"/api/exams/{eid}/board?after=0", proctor, None
     yield "exam", "POST", f"/api/exams/{eid}/submit", sitting, {}
-    status, back, _ = _send(port, "POST", "/api/auth/demo", "", {"role": "leader"})
-    m = re.search(r"zeka_sid=[^;]+", back)
-    if status != 200 or not m:
-        raise SystemExit(f"leader: demo login: HTTP {status}")
-    yield "leader", "GET", "/api/analytics", m.group(0), None
-    yield "leader", "GET", "/api/insight/evidence", m.group(0), None
+    back, _ = yield "leader", "POST", "/api/auth/demo", "", {"role": "leader"}
+    leader = _sid(back, "leader: demo login")
+    yield "leader", "GET", "/api/analytics", leader, None
+    yield "leader", "GET", "/api/insight/evidence", leader, None
+
+
+BULK = 1200
+
+
+def bulk_exam(data: Path, eid: int, n: int = BULK) -> None:
+    """A second exam of the same course, released, that ``n`` other students sat: roster, forms, attempts, answers and
+    events. One sitting student leaves every exam table under --min-rows, where a scan would not show (Checkpoint F, TE-F6)."""
+    db = sqlite3.connect(data / "campus.db")
+    try:
+        cid = db.execute("SELECT course_id FROM exams WHERE id=?", (eid,)).fetchone()[0]
+        qids = [r[0] for r in db.execute("SELECT id FROM questions WHERE course_id=? ORDER BY id LIMIT 3", (cid,))]
+        students = [r[0] for r in db.execute("SELECT id FROM users WHERE role='student' AND status='active' ORDER BY id LIMIT ? OFFSET 1", (n,))]
+        if len(students) < n:
+            raise SystemExit(f"the dataset has {len(students) + 1} students; the bulk exam needs {n + 1}")
+        t = "2026-01-15T09:00:00+00:00"
+        bulk = db.execute("INSERT INTO exams(course_id,kind,title,opens_at,closes_at,duration_min,plan,status,secret,created_at,opened_at,closed_at) "
+                          "VALUES(?,'main','Keçmiş yük imtahanı',?,?,120,'[]','released','bulk',?,?,?)", (cid, t, t, t, t, t)).lastrowid
+        db.executemany("INSERT INTO exam_roster(exam_id,student_id,status,added_at) VALUES(?,?,'eligible',?)", [(bulk, s, t) for s in students])
+        db.executemany("INSERT INTO exam_forms(exam_id,student_id,seed,items,created_at) VALUES(?,?,?,?,?)",
+                       [(bulk, s, str(s), json.dumps([{"qid": q} for q in qids]), t) for s in students])
+        db.executemany("INSERT INTO exam_attempts(exam_id,student_id,started_at,deadline_at,submitted_at,status,score,max_score) "
+                       "VALUES(?,?,?,?,?,'submitted',1,3)", [(bulk, s, t, t, t) for s in students])
+        attempts = [r[0] for r in db.execute("SELECT id FROM exam_attempts WHERE exam_id=?", (bulk,))]
+        db.executemany("INSERT INTO exam_answers(attempt_id,qid,value,saved_at) VALUES(?,?,'1',?)", [(a, q, t) for a in attempts for q in qids])
+        db.executemany("INSERT INTO exam_events(exam_id,seq,kind,actor_id,student_id,data,at) VALUES(?,?,'attempt.started',?,?,'{}',?)",
+                       [(bulk, i, s, s, t) for i, s in enumerate(students, 1)])
+        db.commit()
+    finally:
+        db.close()
 
 
 def main(argv=None) -> int:
@@ -89,6 +121,7 @@ def main(argv=None) -> int:
         data = Path(tmp)
         loadtest.build_dataset(data, args.dataset)       # sets ZEKA_DATA before store is imported
         exam = loadtest.exam_setup(data, 1)
+        bulk_exam(data, exam[0])
         from zeka.core import web
         from zeka.legacy import api, store
         seen: list[str] = []
@@ -107,14 +140,20 @@ def main(argv=None) -> int:
         port = srv.server_address[1]
         try:
             tokens, news = loadtest.sessions(port, data)
-            for name, method, path, cookie, body in _routes(port, data, tokens[0], news, exam):
+            steps, answer = _routes(tokens[0], news, exam), None
+            while True:
+                try:
+                    name, method, path, cookie, body = steps.send(answer)
+                except StopIteration:
+                    break
                 first, t = len(seen), time.perf_counter()
-                status, _, _ = _send(port, method, path, cookie, body)
+                status, back, raw = _send(port, method, path, cookie, body)
                 timing.append({"scenario": name, "route": f"{method} {re.sub(r'/[0-9]+', '/N', path)}",
                                "ms": round((time.perf_counter() - t) * 1000), "statements": len(seen) - first})
                 origin.update({sql: name for sql in seen[first:] if sql not in origin})
                 if status != 200:
                     raise SystemExit(f"{name}: {method} {path}: HTTP {status}")
+                answer = back, raw
         finally:
             srv.shutdown()
             srv.server_close()
@@ -131,7 +170,7 @@ def main(argv=None) -> int:
             db.close()
     timing.sort(key=lambda r: -r["ms"])
     print(json.dumps({"dataset": args.dataset, "statements": len(set(seen)), "scenarios": sorted({r["scenario"] for r in timing}),
-                      "scans": bad, "slowest": timing[:8]},
+                      "exam_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("exam")}, "scans": bad, "slowest": timing[:8]},
                      ensure_ascii=False, indent=1))
     return 1 if any(k != "leader" for k in bad) else 0
 

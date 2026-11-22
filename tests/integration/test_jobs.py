@@ -86,6 +86,25 @@ def test_one_runner_holds_the_lease_until_it_runs_out(db):
         other.close()
 
 
+def test_the_runner_loop_runs_nothing_while_another_runner_holds_the_lease(db, monkeypatch):
+    """Checkpoint F (TE-F11): jobs.loop itself, not a copy of its lease logic: one cycle with another holder's lease live
+    runs no job; the same cycle runs it once that lease is released."""
+    c, path = db
+    ran, logged = [], []
+    monkeypatch.setattr(jobs, "REGISTRY", {"t.loop": jobs.Job("t.loop", timedelta(hours=1), lambda c: ran.append(1))})
+
+    def one_cycle():
+        calls = iter([False, False])          # the first-delay check, the cycle; then stop
+        jobs.loop(lambda: sqlite3.connect(path, timeout=15), "a", every=0, stop=lambda: next(calls, True), log=logged.append)
+
+    assert jobs.acquire(c, "b")                # another runner, alive
+    one_cycle()
+    assert ran == [] and runs(c, "t.loop") == [] and logged == []
+    jobs.release(c, "b")
+    one_cycle()
+    assert ran == [1] and [r["status"] for r in runs(c, "t.loop")] == ["ok"] and logged == [], "the cycle really ran"
+
+
 def _runner(path, holder, out):
     jobs.periodic("t.once", timedelta(hours=1), lambda c: None)
     c = sqlite3.connect(path, timeout=15)

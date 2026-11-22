@@ -138,6 +138,7 @@ LIMITS = {
     "club_ask": RateLimiter(10, 600),       # club proposals, join requests and reports per user per 10 minutes (Checkpoint E)
     "ical": RateLimiter(30, 60),            # fetches of one calendar feed (Task 19) per minute
     "ical_client": RateLimiter(600, 60),    # calendar feed fetches per client per minute (calendar services share addresses)
+    "export": RateLimiter(5, 3600),         # a person's own data exports per hour: each reads every inventory table (Checkpoint F, AR-F4)
 }
 for _name, _lim in LIMITS.items():
     _lim.name = _name

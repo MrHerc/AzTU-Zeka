@@ -1,7 +1,7 @@
 """SQL of clubs and channels (tasks/todo.md, Task 35)."""
 from __future__ import annotations
 
-from ...legacy.store import row, rows
+from ...legacy.store import purge, row, rows
 
 
 def clubs_for(c, uid: int) -> list[dict]:
@@ -138,6 +138,6 @@ def led_clubs(c, uid: int) -> list[int]:
 
 
 def purge_messages(c, before: str) -> int:
-    """Messages past the retention period, with their reports."""
-    c.execute("DELETE FROM club_reports WHERE message_id IN (SELECT id FROM club_messages WHERE created_at<?)", (before,))
-    return c.execute("DELETE FROM club_messages WHERE created_at<?", (before,)).rowcount
+    """Messages past the retention period, with their reports, in batches (Checkpoint F, AR-F5)."""
+    purge(c, "club_reports", "message_id IN (SELECT id FROM club_messages WHERE created_at<?)", (before,))
+    return purge(c, "club_messages", "created_at<?", (before,))

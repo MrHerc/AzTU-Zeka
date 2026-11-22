@@ -56,6 +56,26 @@ def counts(uid: int) -> dict:
     return {(t, col): q(f'SELECT COUNT(*) n FROM "{t}" WHERE "{col}"=?', (uid,))[0]["n"] for t, col in repo.INVENTORY}  # nosec B608
 
 
+def exact(uid: int) -> dict:
+    """Checkpoint F (TE-F2): the rows the export must hold of the filtered and the VIA tables, filtered here in Python from
+    the whole tables, not with the inventory's SQL."""
+    released = {e["id"] for e in q("SELECT id, status FROM exams") if e["status"] == "released"}
+    reqs = {r["id"] for r in q("SELECT id, student_id FROM requests") if r["student_id"] == uid}
+    tickets = {r["id"] for r in q("SELECT id, user_id FROM support_tickets") if r["user_id"] == uid}
+    attempts = {a["id"] for a in q("SELECT id, exam_id, student_id FROM exam_attempts") if a["student_id"] == uid and a["exam_id"] in released}
+    return {
+        "grades": sum(g["user_id"] == uid and g["status"] == "published" for g in q("SELECT user_id, status FROM grades")),
+        "documents": sum(d["holder_id"] == uid and d["kind"] not in ("exam_protocol", "exam_statement")
+                         for d in q("SELECT holder_id, kind FROM documents")),
+        "exam_events": sum(e["student_id"] == uid and e["exam_id"] in released for e in q("SELECT student_id, exam_id FROM exam_events")),
+        "exam_answers": sum(a["attempt_id"] in attempts for a in q("SELECT attempt_id FROM exam_answers")),
+        "request_events": sum(e["request_id"] in reqs for e in q("SELECT request_id FROM request_events")),
+        "request_messages": sum(m["request_id"] in reqs or m["author_id"] == uid for m in q("SELECT request_id, author_id FROM request_messages")),
+        "support_messages": sum(m["author_id"] == uid or (not m["internal"] and m["ticket_id"] in tickets)
+                                for m in q("SELECT ticket_id, author_id, internal FROM support_messages")),
+    }
+
+
 def login_as(app_db, username):
     s = app_db.client()
     assert s.post("/api/auth/demo", {"role": "student", "user": username}).status == 200
@@ -84,19 +104,19 @@ def test_the_export_holds_every_own_row_and_nothing_else(app_db, role):
         run("INSERT INTO feedback(user_id,role,area,score,comment,created_at) VALUES(?,?,?,?,?,?)", (uid, "student", "tutor", 5, "əla", store.iso(store.now())))
         run("INSERT INTO grades(user_id,course_id,component,score,max,updated_at,status) VALUES(?,1,'Gizli qaralama',3,10,?,'draft')",
             (uid, store.iso(store.now())))
-    have = counts(uid)                          # before the export audits itself
+    have, want = counts(uid), exact(uid)        # before the export audits itself
+    if role == "student":                       # rows the mutations of the filtered and VIA conditions would lose
+        assert want["grades"] and want["documents"] and want["request_events"], want
     r = client.get("/api/me/export")
     assert r.status == 200 and "attachment" in r.headers.get("Content-Disposition", "")
     out = r.json
     tables = out["tables"]
     for (t, col), (cond, _) in repo.INVENTORY.items():
-        if cond is None:
+        if cond is None or (t, col) in FILTERED:
             continue
         got = sum(1 for x in tables[t] if x.get(col) == uid)
-        if (t, col) in FILTERED:                # published grades, released exams, a person's own documents
-            assert got <= have[t, col], (t, col)
-        else:
-            assert got == have[t, col], (t, col, got, have[t, col])
+        assert got == have[t, col], (t, col, got, have[t, col])
+    assert {t: len(tables[t]) for t in want} == want     # published grades, released exams, own documents, the VIA rows: exactly
     own = {t: [col for (tt, col), (cond, _) in repo.INVENTORY.items() if tt == t and cond] for t in tables}
     for t, rows_ in tables.items():
         for x in rows_:
@@ -447,3 +467,57 @@ def test_a_users_import_never_brings_an_erased_account_back(app_db):
         assert rep.get("overwritten", 0) == 0 and len(rep["conflicts"]) == 1, rep
     u = q("SELECT username, full_name, status, email FROM users WHERE id=?", (uid,))[0]
     assert (u["username"], u["full_name"], u["status"], u["email"]) == (f"erased-{uid}", f"#{uid}", "erased", None)
+
+
+def test_the_export_and_the_erasure_read_no_whole_table(app_db):
+    """AR-F4: every statement of the export and of the erasure (which runs inside the decider's write transaction) finds
+    the person's rows through an index; on a university's tables a scan per inventory table held the lock for seconds."""
+    uid = q("SELECT id FROM users WHERE synthetic=1 AND role='student' ORDER BY id LIMIT 1 OFFSET 14")[0]["id"]
+    c = store.connect()
+    ran: list[str] = []
+    try:
+        c.set_trace_callback(ran.append)
+        privacy.export(c, repo.user(c, uid))
+        repo.erase(c, uid)
+        c.set_trace_callback(None)
+        explained = [s for s in ran if s.lstrip().upper().startswith(("SELECT", "DELETE", "UPDATE"))]
+        scans = {s: d for s in explained for *_, d in c.execute("EXPLAIN QUERY PLAN " + s)
+                 if d.startswith("SCAN ") and not d.startswith("SCAN CONSTANT")}
+    finally:
+        c.rollback()
+        c.close()
+    assert len(explained) > 60, "the export and the erasure really ran"
+    assert scans == {}, json.dumps(scans, ensure_ascii=False, indent=1)
+
+
+def test_the_sixth_export_in_an_hour_is_refused(app_db, rate_limits):
+    """AR-F4: each export reads every table of the inventory; five an hour are enough for a person."""
+    s = app_db.client("teacher")
+    assert [s.get("/api/me/export").status for _ in range(5)] == [200] * 5
+    r = s.get("/api/me/export", lang="en")
+    assert r.status == 429, r.status
+    assert r.json["error"] == "You can download your data at most five times an hour. Please try again later."
+    assert app_db.client("student").get("/api/me/export").status == 200, "the limit is per person"
+
+
+def test_the_retention_purge_deletes_in_batches(app_db, monkeypatch):
+    """AR-F5: after a period is shortened the purge may meet millions of rows; it deletes and commits them a batch at a
+    time instead of holding the single write lock for all of them at once."""
+    monkeypatch.setattr(store, "PURGE_BATCH", 1000, raising=False)
+    t = store.now()
+    old, young = store.iso(t - timedelta(days=400)), store.iso(t - timedelta(days=1))
+    c = store.connect()
+    try:
+        c.executemany("INSERT INTO notifications(user_id,kind,title,created_at) VALUES(1,'request','af5',?)", [(old,)] * 2500 + [(young,)] * 3)
+        c.commit()
+        ran: list[str] = []
+        c.set_trace_callback(ran.append)
+        periodic.retention_purge(c)
+        c.set_trace_callback(None)
+        c.commit()
+    finally:
+        c.close()
+    deletes = [s for s in ran if re.match(r'\s*DELETE FROM "?notifications"?\s', s)]
+    assert len(deletes) >= 3, deletes
+    assert ran.count("COMMIT") >= len(deletes), "each batch is its own transaction"
+    assert [x["created_at"] for x in q("SELECT created_at FROM notifications WHERE title='af5'")] == [young] * 3

@@ -1,8 +1,8 @@
 """No full scan of a large table on the routes of the load scenarios (tasks/todo.md, Tasks 7 and 42).
 
 tools/queryplan.py builds the university dataset (10 000 students, 100 000 attempts, 100 000 chunks) in its own process,
-sends the mixed scenario (read and write routes) as a student, the exam scenario as a student and its proctor board, and
-the leader's dashboard, and explains every statement the handlers ran. The leader's scans are reported, not failed: the
+sends the mixed scenario (read and write routes) as a student, the exam scenario as a student and its proctor board (with a
+released exam of 1 200 students beside it, so every exam table is large), and the leader's dashboard, and explains every statement the handlers ran. The leader's scans are reported, not failed: the
 dashboard's Radar summary reads every student's records (docs/perf/task42.md).
 """
 import json
@@ -25,5 +25,7 @@ def test_the_mixed_and_exam_routes_never_scan_a_table_with_more_than_1000_rows()
     report = json.loads(run.stdout)
     assert report["statements"] > 50, report          # the routes really ran
     assert {"mixed", "exam", "leader"} <= set(report["scenarios"]), report["scenarios"]
+    big = {t for t, n in report["exam_rows"].items() if n > 1000}      # Checkpoint F (TE-F6): a scan of these would show
+    assert {"exam_answers", "exam_attempts", "exam_events", "exam_forms", "exam_roster"} <= big, report["exam_rows"]
     scans = {k: v for k, v in report["scans"].items() if k != "leader"}
     assert scans == {}, json.dumps(scans, ensure_ascii=False, indent=1)

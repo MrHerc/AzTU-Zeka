@@ -367,6 +367,8 @@ def privacy_state(req):
 @R("GET", "/api/me/export")
 def my_export(req):
     """Everything the platform holds about the signed-in person (the data inventory's own rows), as a JSON file."""
+    if not LIMITS["export"].hit(f"u{req.user['id']}"):
+        raise HTTPError(429, "Məlumatlarınızı bir saat ərzində ən çox beş dəfə yükləyə bilərsiniz. Bir qədər sonra yenidən cəhd edin.")
     return json_resp(privacy.export(req.db, req.user),
                      headers=[("Content-Disposition", f'attachment; filename="zeka-export-{req.user["id"]}.json"')])
 

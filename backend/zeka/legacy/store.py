@@ -933,7 +933,25 @@ def purge_expired(c) -> int:
     shows (identity.privacy.retention, Task 40), a bad stored value included (Checkpoint F, SF-F8)."""
     from ..modules.identity import privacy             # privacy reads the settings through this module
     days = privacy.retention(c)["chats_days"]
-    return c.execute("DELETE FROM messages WHERE created_at<?", (iso(now() - timedelta(days=days)),)).rowcount
+    return purge(c, "messages", "created_at<?", (iso(now() - timedelta(days=days)),))
+
+
+PURGE_BATCH = 5000
+
+
+def purge(c, table: str, where: str, args: tuple = ()) -> int:
+    """Delete the rows of ``table`` matching ``where`` PURGE_BATCH at a time, committing after each batch: a shortened
+    retention period never holds the single write lock for millions of rows (Checkpoint F, AR-F5). Commits what the
+    connection had open before."""
+    total = 0
+    while True:
+        # bandit B608: table names and conditions are the callers' constants
+        n = c.execute(f'DELETE FROM "{table}" WHERE rowid IN (SELECT rowid FROM "{table}" WHERE {where} LIMIT {int(PURGE_BATCH)})',  # nosec B608
+                      args).rowcount
+        c.commit()
+        total += n
+        if n < PURGE_BATCH:
+            return total
 
 
 def reseed():

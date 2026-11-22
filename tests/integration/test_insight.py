@@ -125,6 +125,31 @@ def test_every_tile_counts_the_rows_written_for_it(copy):
     assert {k["key"]: k["value"] for k in service.tiles(copy)}["journal"] == 75.0
 
 
+def test_a_28_day_tile_counts_20_days_back_and_not_30(copy):
+    """Checkpoint F (TE-F10): the period each definition names (28 days, 7 for the weekly active users) is the period counted."""
+    for table in COUNTED:
+        copy.execute(f"DELETE FROM {table}")  # nosec B608
+    t, u = store.now(), clock.now()
+    student = copy.execute("SELECT id FROM users WHERE role='student' AND status='active' LIMIT 1").fetchone()[0]
+    course = copy.execute("SELECT id FROM courses LIMIT 1").fetchone()[0]
+    for days, marked, hours in ((20, True, 10), (30, False, 40)):          # inside the 28 days, outside them
+        day = (t - timedelta(days=days)).date().isoformat()
+        lid = copy.execute("INSERT INTO lessons(course_id,day,start,\"end\",status) VALUES(?,?,'09:00','10:20','scheduled')", (course, day)).lastrowid
+        if marked:
+            copy.execute("INSERT INTO attendance(lesson_id,user_id,status) VALUES(?,?,'present')", (lid, student))
+        closed = t - timedelta(days=days)
+        copy.execute("INSERT INTO requests(type_code,student_id,data,status,created_at,updated_at) VALUES('ref',?,'{}','ready',?,?)",
+                     (student, store.iso(closed - timedelta(hours=hours)), store.iso(closed)))
+        copy.execute("INSERT INTO exams(course_id,title,opens_at,closes_at,duration_min,plan,secret,created_at,opened_at) "
+                     "VALUES(?,'x','2026-01-01','2026-01-02',60,'{}','s','2026-01-01',?)",
+                     (course, (u - timedelta(days=days)).isoformat(timespec="seconds")))
+    got = {k["key"]: k for k in service.tiles(copy)}
+    assert (got["journal"]["value"], got["request_hours"]["value"], got["exams"]["value"]) == (100.0, 10.0, 1)
+    span = {k: datetime.fromisoformat(v["range"]["to"]) - datetime.fromisoformat(v["range"]["from"]) for k, v in got.items() if v["range"]["from"]}
+    assert span == {"wau_student": timedelta(days=7), "wau_teacher": timedelta(days=7), "journal": timedelta(days=28),
+                    "request_hours": timedelta(days=28), "request_sla": timedelta(days=28), "cited": timedelta(days=28), "exams": timedelta(days=28)}
+
+
 # ---------------------------------------------------------------- the event log
 def test_a_sign_in_and_a_change_leave_an_event_and_a_read_does_not(app_db):
     s = app_db.client("student")
