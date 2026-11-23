@@ -73,9 +73,11 @@ def pending(c, status: str) -> list[dict]:
 
 
 def returned_before(c, cid: int, version: int):
-    """The latest returned version before ``version``: what a resubmission answers."""
+    """The latest returned version before ``version``: what a resubmission answers. A return that an approval or a
+    publication has answered since is not (F3)."""
     return row(c, "SELECT id, version, note, data FROM syllabus_versions WHERE course_id=? AND status='returned' AND version<? "
-                  "ORDER BY version DESC LIMIT 1", (cid, version))
+                  "AND version > (SELECT COALESCE(MAX(version), 0) FROM syllabus_versions WHERE course_id=? AND version<? "
+                  "AND status IN ('approved','published')) ORDER BY version DESC LIMIT 1", (cid, version, cid, version))
 
 
 def enrolled(c, cid: int, uid: int) -> bool:

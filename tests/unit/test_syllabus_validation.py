@@ -131,3 +131,21 @@ def test_the_checks_name_outcomes_never_taught_or_assessed_and_a_bloom_tag_of_an
     tags = {"N1": [{"key": "bloom", "code": "evaluate"}, {"key": "nice", "code": "K0001"}], "N3": [{"key": "bloom", "code": "create"}]}
     assert domain.checks(clean, tags) == {"untaught": ["N2", "N3"], "unassessed": ["N2", "N3"],
                                           "bloom": [{"outcome": "N1", "level": "apply", "tags": ["evaluate"]}]}
+
+
+@pytest.mark.parametrize("value", [5, {"N1": 1}, None])
+def test_a_components_outcomes_that_are_not_a_list_are_refused_not_raised(value):
+    # SYL-T7 (mutant M06): without the list check a number raised TypeError (a generic 400 and a server error in the
+    # log) and a dict of outcome codes was taken as its keys
+    assert domain.validate(changed(["assessment", 1, "outcomes"], value), RULES)[1] is not None
+
+
+def test_the_first_draft_links_every_outcome_to_a_week_and_to_the_exam():
+    # F7: the draft linked nothing, so every fresh draft warned that no outcome was taught or assessed
+    gen = {"description": "Təsvir", "outcomes": [f"Nəticə {i}: dövrəni izah edir" for i in range(1, 6)],
+           "plan": [{"week": w, "topic": f"Mövzu {w}", "activity": ""} for w in (3, 1, 2)], "workload": {"total": 150}}
+    d = domain.initial(gen, RULES, {}, [])
+    assert [(p["week"], p["outcomes"]) for p in d["plan"]] == [(1, ["N1", "N2"]), (2, ["N3", "N4"]), (3, ["N5"])]
+    assert d["assessment"][-1]["outcomes"] == ["N1", "N2", "N3", "N4", "N5"] and d["assessment"][0].get("outcomes", []) == []
+    clean, problem = domain.validate(d, RULES)
+    assert problem is None and domain.checks(clean, {}) == {"untaught": [], "unassessed": [], "bloom": []}

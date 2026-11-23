@@ -52,6 +52,7 @@ const BOTTOM = {
   admin: [["sliders", t("Panel"), "/admin"], ["ticket", t("Dəstək"), "/staff/support"], ["list", t("Audit"), "/admin/audit"], ["megaphone", t("Xəbərlər"), "/staff/news"]],
   proctor: [["shield", t("Nəzarət"), "/proctor"], ["buoy", t("Bələdçi"), "/guide"]],
   dept_head: [["inbox", t("Müraciətlər"), "/office"], ["check", t("Sillabus"), "/syllabi"], ["calcheck", t("Davamiyyət"), "/journal"], ["shield", t("Nəzarət"), "/proctor"]],
+  academic_office: [["inbox", t("Müraciətlər"), "/office"], ["check", t("Sillabus"), "/syllabi"], ["calendar", t("Cədvəl"), "/admin/timetable"], ["calcheck", t("Davamiyyət"), "/journal"]],
 };
 const QUICK = {
   student: [["file", t("Arayış sifariş et"), "/student/services?new=enrollment_certificate"], ["heart", t("Qayıbı üzrlü et (həkim arayışı)"), "/student/services?new=absence_excuse"],
@@ -226,11 +227,13 @@ function userMenu(host) {
   on(dd, "click", "[data-switch]", (e, b) => { closeDropdowns(); if (b.dataset.switch !== S.user.role) switchRole(b.dataset.switch); });
   on(dd, "click", "#um-theme", () => { closeDropdowns(); toggleTheme(); });
   on(dd, "click", "#um-password", () => { closeDropdowns(); passwordModal(false); });
-  // more than one role (Task 13): choose the one to act in; in the demo too (a demo user may hold a granted role)
+  // more than one role (Task 13): choose the one to act in; in the demo too (a demo user may hold a granted role). A grant
+  // of the primary role itself is no second role (F5); in the demo the label tells it from the switch to another person.
   api.get("/api/me/roles").then((r) => {
-    if (r.roles.length < 2) return;
+    const kinds = [...new Set(r.roles.map((x) => x.role))];
+    if (kinds.length < 2) return;
     const box = document.createElement("div");
-    mount(box, html`<div class="menu-sep"></div><div class="menu-label">${t("Rolu dəyiş")}</div>${[...new Set(r.roles.map((x) => x.role))].map((k) =>
+    mount(box, html`<div class="menu-sep"></div><div class="menu-label">${S.app.mode === "prod" ? t("Rolu dəyiş") : t("Bu istifadəçinin rolları")}</div>${kinds.map((k) =>
       html`<button class="menu-item" data-role-to="${k}">${ROLE_LABEL[k] || k}${k === r.active ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}`);
     dd.querySelector("#logout")?.before(...box.childNodes);
   }).catch(() => {});

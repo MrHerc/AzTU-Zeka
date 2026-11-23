@@ -291,8 +291,8 @@ def syllabus_page(req):
                        f"<td>{'<br>'.join(e(tag(x)) for x in tags.get(o['id'], [])) or '—'}</td></tr>" for o in d.get("outcomes", []))
     plan = "".join(f"<tr><td>{e(str(p['week']))}</td><td>{e(p['topic'])}</td><td>{e(', '.join(p.get('outcomes', [])))}</td>"
                    f"<td>{e(p.get('activity', ''))}</td></tr>" for p in d.get("plan", []))
-    ass = "".join(f"<tr><td>{e(a['name'])}</td><td>{e(KIND_AZ.get(a['kind'], a['kind']))}</td><td>{e(_num(a['weight']))}</td></tr>"
-                  for a in d.get("assessment", []))
+    ass = "".join(f"<tr><td>{e(a['name'])}</td><td>{e(KIND_AZ.get(a['kind'], a['kind']))}</td><td>{e(_num(a['weight']))}</td>"
+                  f"<td>{e(', '.join(a.get('outcomes', [])) or '—')}</td></tr>" for a in d.get("assessment", []))   # F8
     r = d.get("rules", {})
     lit = d.get("literature", [])
     state = (f"Versiya {e(str(v['version']))} · {e(STATUS_AZ.get(v['status'], v['status']))} · {e(v['created_at'][:10])}" if v
@@ -307,7 +307,7 @@ def syllabus_page(req):
 <h3>Fənnin təsviri</h3><p>{e(d.get('description', ''))}</p>
 <h3>Təlim nəticələri</h3><table class="grades"><tr><th>Kod</th><th>Nəticə</th><th>Bloom səviyyəsi</th><th>Çərçivə bəndləri</th></tr>{outcomes}</table>
 <h3>Həftəlik plan</h3><table class="grades"><tr><th>Həftə</th><th>Mövzu</th><th>Nəticələr</th><th>Fəaliyyət</th></tr>{plan}</table>
-<h3>Qiymətləndirmə</h3><table class="grades"><tr><th>Komponent</th><th>Növ</th><th>Çəki</th></tr>{ass}<tr><th>Cəmi</th><th></th><th>100</th></tr></table>
+<h3>Qiymətləndirmə</h3><table class="grades"><tr><th>Komponent</th><th>Növ</th><th>Çəki</th><th>Nəticələr</th></tr>{ass}<tr><th>Cəmi</th><th></th><th>100</th><th></th></tr></table>
 <h3>Qaydalar</h3><ul><li>Davamiyyət: buraxılmış saatlar ümumi saatların {e(_num(r.get('attendance_limit')))}%-ni keçərsə, tələbə imtahana buraxılmır.</li>
 {f"<li>Gecikmə: {e(r['late_policy'])}</li>" if r.get('late_policy') else ''}
 <li>Süni intellekt: {e(AI_AZ.get(r.get('ai_policy', ''), ''))}{(' — ' + e(r['ai_note'])) if r.get('ai_note') else ''}</li></ul>

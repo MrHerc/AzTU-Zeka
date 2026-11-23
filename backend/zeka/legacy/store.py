@@ -548,15 +548,6 @@ def seed(c):
             " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (u["username"], u["full_name"], u.get("patronymic"), u["role"], u["title"], gids.get(u.get("group")), u["color"],
              u.get("student_no"), u.get("admission_year"), u.get("funding"), u.get("form"), u.get("dept"))).lastrowid
-    # the departments of the demo's teachers; the demo's department head holds the grant of its own (the syllabus approval)
-    for d in s["departments"]:
-        did = c.execute("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(?,?,?,1,?,?)",
-                        (fid, d["code"], d["name"], stamp, stamp)).lastrowid
-        c.execute("UPDATE users SET department_id=? WHERE dept=?", (did, d["dept"]))
-    for u in s["users"]:
-        if u["role"] == "dept_head":
-            c.execute("INSERT INTO role_grants(user_id,role,scope_type,scope_id,granted_at) SELECT id,'dept_head','department',"
-                      "department_id,? FROM users WHERE id=?", (stamp, uid[u["username"]]))
     for u in s["users"]:                  # a dean's office serves its own faculty (Task 13): the demo's one faculty
         if u["role"] == "office":
             c.execute("INSERT INTO role_grants(user_id,role,scope_type,scope_id,granted_at) VALUES(?,'office','faculty',?,?)",
@@ -582,6 +573,18 @@ def seed(c):
     teachers_synth = [c.execute("INSERT INTO users(username,full_name,role,title,color,synthetic,dept) VALUES(?,?,?,?,?,1,?)",
                                 (f"t{i:02d}", f"{rng.choice(F_NAMES + M_NAMES)} {rng.choice(SURN)}", "teacher", "Müəllim",
                                  rng.choice(COLORS), depts[i % len(depts)])).lastrowid for i in range(18)]
+    # the departments of the demo's teachers, the synthetic ones too (F10); the demo's department head holds the grant of
+    # its own (the syllabus approval), and its department runs the demo's specialty (F6: the coverage report)
+    for d in s["departments"]:
+        did = c.execute("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(?,?,?,1,?,?)",
+                        (fid, d["code"], d["name"], stamp, stamp)).lastrowid
+        c.execute("UPDATE users SET department_id=? WHERE dept=?", (did, d["dept"]))
+        if d.get("specialty"):
+            c.execute("UPDATE specialties SET department_id=? WHERE id=?", (did, spid))
+    for u in s["users"]:
+        if u["role"] == "dept_head":
+            c.execute("INSERT INTO role_grants(user_id,role,scope_type,scope_id,granted_at) SELECT id,'dept_head','department',"
+                      "department_id,? FROM users WHERE id=?", (stamp, uid[u["username"]]))
 
     # ---- courses, materials, timetable, lessons
     course_ids, mats, chunk_by = {}, {}, {}

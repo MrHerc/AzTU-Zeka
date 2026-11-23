@@ -34,7 +34,7 @@
   ],
   "demo_logins": {"student": "aysel", "teacher": "rauf", "office": "nigar", "leader": "rektorluq", "admin": "admin",
     "dept_head": "kafedra", "academic_office": "tedris"},
-  "departments": [{"code": "EL-K", "name": "Elektronika kafedrası", "dept": "Elektronika"},
+  "departments": [{"code": "EL-K", "name": "Elektronika kafedrası", "dept": "Elektronika", "specialty": true},
     {"code": "KT-K", "name": "Kompüter texnologiyaları kafedrası", "dept": "Kompüter texnologiyaları"},
     {"code": "AR-K", "name": "Ali riyaziyyat kafedrası", "dept": "Ali riyaziyyat"},
     {"code": "FZ-K", "name": "Fizika kafedrası", "dept": "Fizika"},

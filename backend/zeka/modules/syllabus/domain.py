@@ -183,10 +183,16 @@ def initial(generated: dict, rules: dict, imported: dict, prerequisites: list[st
     grading = rules["grading"]
     texts = [str(t)[:500] for t in generated.get("outcomes", []) if len(str(t).strip()) >= 10][:20]
     outcomes = [{"id": f"N{i}", "text": t, "bloom": "understand" if i == 1 else "apply"} for i, t in enumerate(texts, start=1)]
-    plan = [{"week": int(p["week"]), "topic": str(p.get("topic") or "")[:300], "outcomes": [], "activity": str(p.get("activity") or "")[:500]}
-            for p in generated.get("plan", []) if isinstance(p, dict) and isinstance(p.get("week"), int) and 1 <= p["week"] <= 30][:30]
-    assessment = [{"name": x["name"], "kind": "attendance" if x.get("attendance") else "component", "weight": float(x["max"])}
-                  for x in grading["components"]] + [{"name": grading["exam"]["name"], "kind": "exam", "weight": float(grading["exam"]["max"])}]
+    plan: list[dict] = [{"week": int(p["week"]), "topic": str(p.get("topic") or "")[:300], "outcomes": [], "activity": str(p.get("activity") or "")[:500]}
+                        for p in generated.get("plan", []) if isinstance(p, dict) and isinstance(p.get("week"), int) and 1 <= p["week"] <= 30][:30]
+    plan.sort(key=lambda p: p["week"])
+    # a first guess the teacher corrects (F7): the outcomes spread over the weeks in order, and the exam assesses them all;
+    # unlinked, every fresh draft warned that nothing was taught or assessed
+    for i, o in enumerate(outcomes if plan else []):
+        plan[i * len(plan) // len(outcomes)]["outcomes"].append(o["id"])
+    assessment = [{"name": x["name"], "kind": "attendance" if x.get("attendance") else "component", "weight": float(x["max"]), "outcomes": []}
+                  for x in grading["components"]] + [{"name": grading["exam"]["name"], "kind": "exam", "weight": float(grading["exam"]["max"]),
+                                                      "outcomes": [o["id"] for o in outcomes]}]
     literature = [{"title": str(m)[:500], "kind": "extra"} for m in generated.get("materials", [])
                   if len(str(m)) >= 3 and not str(m).startswith("[")][:50]
     w = generated.get("workload") or {}

@@ -161,6 +161,8 @@ route("/teacher/syllabus", async (el, p, q) => {
 
   // the warnings follow the editor as it changes, without redrawing it
   const drawChecks = () => { const box = el.querySelector("#syl-checks"); if (box && s) mount(box, checksNotice(checksOf(s, tags))); };
+  // an outcome's, a topic's or an activity's field grows with its text: two rows cut it off on a phone (F4)
+  const fit = (n) => { n.style.height = "auto"; n.style.height = `${n.scrollHeight + n.offsetHeight - n.clientHeight}px`; };
   const draw = () => {
     const total = Math.round(sum() * 100) / 100, imported = st.imported || {};
     mount(el, html`${pageHead(t("Sillabus"), t("Strukturlaşdırılmış sillabus: hər saxlama yeni versiyadır, dərc olunmuş versiya dəyişmir."),
@@ -230,12 +232,14 @@ route("/teacher/syllabus", async (el, p, q) => {
             ${st.can_edit ? html`<button class="btn btn-sm" data-from="${v.id}">${t("Bundan davam et")}</button>` : ""}</div>`) : html`<span class="small muted">${t("Hələ versiya yoxdur")}</span>`}</div></div>
       </div></div>`}`);
     drawChecks();
+    el.querySelectorAll(".syl-text").forEach(fit);
   };
   draw();
 
   el.addEventListener("input", (e) => {
     if (!s) return;
     const d = e.target.dataset, v = e.target.value;
+    if (e.target.classList.contains("syl-text")) fit(e.target);
     if (d.f) s[d.f] = v;
     else if (d.oText !== undefined) s.outcomes[+d.oText].text = v;
     else if (d.pWeek !== undefined) s.plan[+d.pWeek].week = +v;

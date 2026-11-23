@@ -224,7 +224,8 @@ button { font: inherit; color: inherit; }
 [data-theme="dark"] .tab.active { color: #fff; }
 
 /* ---------- modal, toast, dropdown */
-.modal-back { position: fixed; inset: 0; background: rgba(11, 19, 48, .55); backdrop-filter: blur(3px); display: grid; place-items: center; z-index: 60; padding: 20px; animation: fadeIn .15s ease; }
+.modal-back { position: fixed; inset: 0; background: rgba(11, 19, 48, .55); backdrop-filter: blur(3px); display: grid; place-items: center; z-index: 60; padding: 20px; animation: fadeIn .15s ease;
+  grid-template-columns: minmax(0, 1fr); }   /* a wide table scrolls in its .table-wrap, never widens the window (F2) */
 .modal { width: min(640px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg); border: 1px solid var(--border); animation: pop .2s ease; }
 .modal.lg { width: min(900px, 100%); } .modal.xl { width: min(1100px, 100%); } .modal.sm { width: min(460px, 100%); }
@@ -237,7 +238,7 @@ button { font: inherit; color: inherit; }
 .toast.ok { background: #0b6b4c; } .toast.err { background: #a32a2e; }
 .dropdown { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; width: 380px; max-width: calc(100vw - 24px); background: var(--surface);
   border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg); animation: pop .15s ease; overflow: hidden; }
-.dropdown.menu { width: 260px; padding: 6px; }
+.dropdown.menu { width: 260px; padding: 6px; max-height: calc(100vh - 84px); overflow-y: auto; }   /* «Çıxış» stays reachable (F1) */
 .menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 11px; border-radius: 9px; border: 0; background: none; cursor: pointer; font-size: 13.5px;
   text-align: left; color: var(--text); text-decoration: none !important; }
 .menu-item:hover { background: var(--surface-3); } .menu-sep { height: 1px; background: var(--border); margin: 6px 4px; }
@@ -656,7 +657,7 @@ body.lang-switching #root { opacity: .35; transition: opacity .15s; }
 .tour-hint .th-ic { width: 12px; height: 12px; border-radius: 50%; background: var(--coral); flex: none; box-shadow: 0 0 0 0 rgba(238, 124, 126, .6); animation: beacon 1.6s infinite; }
 @keyframes beacon { 0% { box-shadow: 0 0 0 0 rgba(238, 124, 126, .6); } 70% { box-shadow: 0 0 0 12px rgba(238, 124, 126, 0); } 100% { box-shadow: 0 0 0 0 rgba(238, 124, 126, 0); } }
 body.touring .fab-feedback, body.touring .tour-hint { display: none; }
-body:has(.modal-back) .tour-hint { display: none; }      /* it sits above dialogs, e.g. the AI page's consent dialog */
+body:has(.modal-back) .tour-hint, body:has(.dropdown) .tour-hint { display: none; }      /* it sits above dialogs and menus (F1) */
 
 /* ---------- floating feedback, bottom nav */
 .fab-feedback { position: fixed; right: 22px; bottom: 22px; z-index: 60; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px;

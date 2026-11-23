@@ -1,7 +1,8 @@
 """The syllabus approval as the demo shows it (the acceptance walk and the audit of 2026-11-23): the demo's department
 head and academic office sign in from the login page, the demo courses carry Forma №3 hours, the approver sees the
 version's frozen tags and warnings, a resubmission is compared with the returned version, one odd literature title does
-not break the queue, and a ticked permission without a reason says so."""
+not break the queue, and a ticked permission without a reason says so. Each test builds the versions it needs with the
+helpers below (audit SYL-T8: three tests failed alone or in reverse order), all on ELM-2105."""
 import pytest
 
 from zeka.legacy import store
@@ -29,6 +30,8 @@ def save(w, change=None):
     d["outcomes"] = [{"id": "N1", "text": "Dövrəni təhlil edir və hesablayır", "bloom": "analyze"},
                      {"id": "N2", "text": "Keçid proseslərini izah edir", "bloom": "understand"}]
     d["plan"] = [{"week": 1, "topic": "Giriş mövzusu", "outcomes": ["N1"], "activity": "Mühazirə və məsələ həlli"}]
+    for a in d["assessment"]:                          # the draft's exam assesses the draft's own outcomes (F7)
+        a["outcomes"] = []
     if change:
         change(d)
     r = t.put(f"/api/syllabi/{cid}", {"data": d})
@@ -38,6 +41,38 @@ def save(w, change=None):
 
 def step(client, w, vid, action, **body):
     return client.post(f"/api/syllabi/{w['course']}/versions/{vid}/{action}", body)
+
+
+def submitted(w, change=None):
+    vid = save(w, change)
+    assert step(w["teacher"], w, vid, "submit").status == 200
+    return vid
+
+
+def returned(w, note, change=None):
+    vid = submitted(w, change)
+    assert step(w["head"], w, vid, "return", note=note).status == 200
+    return vid
+
+
+def approved(w, change=None):
+    vid = submitted(w, change)
+    assert step(w["head"], w, vid, "approve").status == 200
+    return vid
+
+
+def published(w):
+    vid = approved(w)
+    assert step(w["office"], w, vid, "publish", override=True, note="Qiymət sxemi dəyişmir").status == 200
+    return vid
+
+
+def queued(w, vid):
+    return next(x for x in w["head"].get("/api/syllabi/queue").json if x["id"] == vid)
+
+
+def lab(hours):
+    return lambda d: d["workload"].update(lab=hours)
 
 
 def test_the_demo_department_head_and_academic_office_sign_in_and_reach_the_queue(app_db, walk):
@@ -66,14 +101,33 @@ def test_the_demo_courses_have_forma3_hours_so_a_draft_is_prefilled_and_a_change
 
 def test_a_resubmission_is_compared_with_the_returned_version(walk):
     # walk D5: the queue said «ilk dərc» and listed no change, though the head had returned the earlier version
-    back = q("SELECT id, version FROM syllabus_versions WHERE course_id=? AND status='returned' ORDER BY version DESC", (walk["course"],))[0]
-    vid = save(walk, lambda d: d["workload"].update(lab=30))
-    assert step(walk["teacher"], walk, vid, "submit").status == 200
-    mine = next(x for x in walk["head"].get("/api/syllabi/queue").json if x["id"] == vid)
-    assert mine["returned_id"] == back["id"] and mine["returned_note"] == "Laboratoriya saatlarını Forma №3-ə uyğunlaşdırın"
-    diff = walk["head"].get(f"/api/syllabi/{walk['course']}/diff?a={back['id']}&b={vid}").json
+    back = returned(walk, "Laboratoriya saatlarını Forma №3-ə uyğunlaşdırın", lab(24))
+    vid = submitted(walk, lab(30))
+    mine = queued(walk, vid)
+    assert mine["returned_id"] == back and mine["returned_note"] == "Laboratoriya saatlarını Forma №3-ə uyğunlaşdırın"
+    diff = walk["head"].get(f"/api/syllabi/{walk['course']}/diff?a={back}&b={vid}").json
     assert mine["changes_returned"] == len(diff) == 1 and diff[0]["section"] == "workload"
     assert step(walk["head"], walk, vid, "return", note="Yenə baxın").status == 200
+
+
+def test_after_two_returns_a_resubmission_answers_the_later_one(walk):
+    # audit SYL-T2 (mutant M22, ORDER BY version ASC): with one return in the walk the order was never seen
+    returned(walk, "Birinci qeyd: laboratoriya", lab(24))
+    second = returned(walk, "İkinci qeyd: məşğələ", lab(26))
+    mine = queued(walk, submitted(walk, lab(30)))
+    assert (mine["returned_id"], mine["returned_note"]) == (second, "İkinci qeyd: məşğələ")
+
+
+def test_a_return_answered_by_an_approval_or_a_publication_is_not_compared_again(walk):
+    # F3: v5, submitted after v4's publication, was compared with v3, returned before it, and showed v3's old note
+    returned(walk, "Ədəbiyyatı tamamlayın", lab(24))
+    approved(walk, lab(30))
+    after_approval = queued(walk, submitted(walk, lab(28)))
+    published(walk)
+    after_publication = queued(walk, submitted(walk, lab(26)))
+    for mine in (after_approval, after_publication):
+        assert (mine["returned_id"], mine["returned_version"], mine["returned_note"], mine["changes_returned"]) == (None, None, None, None), mine
+    assert after_publication["changes"] == 1
 
 
 def test_the_reviewer_reads_the_frozen_tags_and_the_warnings(walk):
@@ -99,19 +153,50 @@ def test_the_reviewer_reads_the_frozen_tags_and_the_warnings(walk):
 
 def test_a_ticked_permission_without_a_reason_says_what_is_missing(walk):
     # walk D7: the same long message came back whether the box was ticked or not
-    vid = q("SELECT id FROM syllabus_versions WHERE course_id=? AND status='approved'", (walk["course"],))[0]["id"]
+    vid = approved(walk)
     r = step(walk["office"], walk, vid, "publish", override=True, note=" ")
     assert r.status == 409 and r.json["error"] == "Xüsusi icazənin səbəbini şərhdə yazın"
     assert "xüsusi icazəsi" in step(walk["office"], walk, vid, "publish").json["error"]
-    assert step(walk["office"], walk, vid, "publish", override=True, note="Qiymət sxemi dəyişmir").status == 200
+    # audit SYL-T6: only a ticked box (true, not a truthy "yes") asks for the reason alone (M23); three letters are a reason (M24)
+    assert "xüsusi icazəsi" in step(walk["office"], walk, vid, "publish", override="yes").json["error"]
+    assert step(walk["office"], walk, vid, "publish", override=True, note="abc").status == 200
 
 
 def test_a_literature_title_of_superscript_digits_does_not_break_the_queue(walk):
-    # audit SYL-D1: int('²³⁴') raised in the diff and the head's whole queue answered 400
-    vid = save(walk, lambda d: d.update(literature=[{"title": "²³⁴", "kind": "main"}]))
-    assert step(walk["teacher"], walk, vid, "submit").status == 200
+    # audit SYL-D1: int('²³⁴') raised in the diff and the head's whole queue answered 400; the diff runs against a publication
+    published(walk)
+    vid = submitted(walk, lambda d: d.update(literature=[{"title": "²³⁴", "kind": "main"}]))
     r = walk["head"].get("/api/syllabi/queue")
     assert r.status == 200 and any(x["id"] == vid and x["changes"] is not None for x in r.json), r.text
     dup = walk["teacher"].put(f"/api/syllabi/{walk['course']}", {"data": {**walk["teacher"].get(f"/api/syllabi/{walk['course']}").json["latest"]["data"],
                                                                          "literature": [{"title": "Kitab", "kind": "main"}, {"title": "Kitab", "kind": "extra"}]}})
     assert dup.status == 400 and dup.json["error"] == "Ədəbiyyat siyahısında eyni adlı iki mənbə ola bilməz", "audit SYL-D2"
+
+
+def test_a_units_hours_count_its_weekly_slots(walk):
+    # audit SYL-T5 (mutant M20): ELM-2105 has one slot of each kind; İNG-1105 has two «Məşğələ» slots: 2 × 15 × 2
+    assert q("SELECT u.hours FROM teaching_units u JOIN courses c ON c.id=u.course_id WHERE c.code='İNG-1105'") == [{"hours": 60}]
+
+
+def test_every_seeded_teacher_belongs_to_the_department_of_its_dept(walk):
+    # F10: the 18 synthetic teachers were inserted after the departments were bound, so their department_id stayed empty
+    assert q("SELECT username FROM users WHERE dept IS NOT NULL AND department_id IS NULL") == []
+    assert q("SELECT COUNT(*) n FROM users u JOIN departments d ON d.id=u.department_id WHERE u.dept='Elektronika' AND u.synthetic=1")[0]["n"] == 3
+
+
+def test_the_demo_department_head_sees_its_programme_in_the_coverage_report(walk):
+    # F6: the demo specialty had no department, so the department head's coverage page said «Sizə aid ixtisas yoxdur»
+    assert [p["code"] for p in walk["head"].get("/api/frameworks/programmes").json] == ["KM-050616"]
+
+
+def test_the_printed_and_published_syllabus_shows_what_each_component_assesses(app_db, walk):
+    # F8: the reviewer approved «Sərbəst iş → N1, N2», but /syllabus/{id} listed only a component's name, kind and weight
+    def assess(d):
+        for a in d["assessment"]:
+            a["outcomes"] = ["N1", "N2"] if a["kind"] == "exam" else ["N2"] if a["kind"] == "component" else []
+    vid = approved(walk, assess)
+    assert step(walk["office"], walk, vid, "publish", override=True, note="Qiymət sxemi dəyişmir").status == 200
+    cid = walk["course"]
+    for page in (app_db.client("student").get(f"/syllabus/{cid}").text, walk["head"].get(f"/syllabus/{cid}?v={vid}").text):
+        table = page.split("<h3>Qiymətləndirmə</h3>", 1)[1].split("</table>", 1)[0]
+        assert "<th>Nəticələr</th>" in table and "<td>N1, N2</td>" in table and "<td>N2</td>" in table, table

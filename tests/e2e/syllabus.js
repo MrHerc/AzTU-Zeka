@@ -4,6 +4,9 @@
 // signs nobody in (D2); the editor's outcome and week fields are readable at 1280 and 390 px (D3) and show the warnings;
 // the picker resets its search and lists Bloom by level (D6); the reviewer reads the tags, every section and the print
 // view (D4), a resubmission's difference from the returned version (D5) and a toast that names the step (D7).
+// The review of 2026-11-23 added: the user menu fits the screen and names one role switcher per kind (F1, F5, SYL-T3),
+// the reviewer's window fits 390 px (F2), the editor's fields grow with their text (F4), the academic office's own
+// bottom bar (F9), and the editor's untaught and Bloom warnings word for word (SYL-T1, SYL-T4).
 // Prints one JSON line: { <step>: {...what was seen} } and, for a step that threw, { <step>: {error} }.
 const { chromium } = require("playwright");
 
@@ -85,17 +88,23 @@ async function run(id, fn, out) {
       { id: "N2", text: "Keçid proseslərini zaman sabiti ilə izah edir və RC dövrəsinin cavabını qiymətləndirir", bloom: "understand" }];
     d.plan = [{ week: 1, topic: "Əsas anlayışlar, Om qanunu və sabit cərəyan dövrələrinin hesablanması üsulları", outcomes: ["N1"], activity: "Mühazirə, sonra kiçik qruplarda məsələ həlli" }];
     d.literature = [{ title: "Elektrik dövrələrinin nəzəriyyəsi, dərslik", kind: "main" }];
+    d.assessment.forEach((a) => { a.outcomes = []; });
     await api(teacher, "PUT", `/api/syllabi/${course}`, { data: d });
     const fws = await api(teacher, "GET", "/api/frameworks");
     const bloom = fws.find((f) => f.key === "bloom");
     const items = (await api(teacher, "GET", `/api/frameworks/${bloom.id}/items?size=10`)).items;
-    await api(teacher, "PUT", `/api/syllabi/${course}/outcomes/N1/items`, { items: [items.find((i) => i.code === "evaluate").id] });
+    const nice = fws.find((f) => f.key === "nice");
+    const niceItem = (await api(teacher, "GET", `/api/frameworks/${nice.id}/items?kind=task&size=1`)).items[0];
+    await api(teacher, "PUT", `/api/syllabi/${course}/outcomes/N1/items`,
+      { items: [items.find((i) => i.code === "evaluate").id, items.find((i) => i.code === "apply").id, niceItem.id] });
     const seen = {};
     for (const [w, h] of [[1280, 900], [390, 844]]) {
       await teacher.p.setViewportSize({ width: w, height: h });
       await open(teacher.p, `/teacher/syllabus?course=${course}`);
-      const box = (sel) => teacher.p.$eval(sel, (n) => ({ tag: n.tagName, width: Math.round(n.getBoundingClientRect().width), fits: n.scrollHeight <= n.clientHeight + 2 || n.tagName === "TEXTAREA" }));
-      seen[w] = { outcome: await box("[data-o-text]"), topic: await box("[data-p-topic]"), activity: await box("[data-p-act]"),
+      const box = (sel) => teacher.p.$eval(sel, (n) => ({ tag: n.tagName, width: Math.round(n.getBoundingClientRect().width), fits: n.scrollHeight <= n.clientHeight + 2 }));
+      // F4: every outcome, topic and activity field shows its whole text (rows=2 cut 5 of 6 at 390 px)
+      const cut = await teacher.p.$$eval(".syl-text", (xs) => xs.filter((n) => n.scrollHeight > n.clientHeight + 2).map((n) => `${n.scrollHeight}/${n.clientHeight}`));
+      seen[w] = { cut, outcome: await box("[data-o-text]"), topic: await box("[data-p-topic]"), activity: await box("[data-p-act]"),
         pageScroll: await teacher.p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth) };
     }
     await teacher.p.setViewportSize({ width: 1280, height: 900 });
@@ -135,11 +144,27 @@ async function run(id, fn, out) {
     return { ...m, returned, errors: head.S.errors };
   }, out);
 
+  const d2 = (await api(teacher, "GET", `/api/syllabi/${course}`)).latest.data;
+  d2.literature.push({ title: "Elektrotexnikanın nəzəri əsasları, məsələlər toplusu", kind: "extra" });
+  const v2 = (await api(teacher, "PUT", `/api/syllabi/${course}`, { data: d2 })).latest.id;
+  await api(teacher, "POST", `/api/syllabi/${course}/versions/${v2}/submit`, {});
+
+  await run("narrow", async () => {
+    const x = await viaCard("dept_head", { width: 390, height: 844 });
+    await open(x.p, "/syllabi");
+    await x.p.click(`[data-open="${v2}"]`);
+    await x.p.waitForSelector(".modal #sv-note");
+    await sleep(400);                                                      // the sheet's opening animation
+    const r = await x.p.evaluate(() => {
+      const right = (sel) => Math.max(0, ...[...document.querySelectorAll(sel)].map((n) => Math.round(n.getBoundingClientRect().right)));
+      return { modal: Math.round(document.querySelector(".modal").getBoundingClientRect().width), close: right(".modal .modal-h button"),
+        note: right("#sv-note"), buttons: right(".modal .modal-f button"), view: window.innerWidth };
+    });
+    await x.ctx.close();
+    return { ...r, errors: x.S.errors };
+  }, out);
+
   await run("resubmit", async () => {
-    const d = (await api(teacher, "GET", `/api/syllabi/${course}`)).latest.data;
-    d.literature.push({ title: "Elektrotexnikanın nəzəri əsasları, məsələlər toplusu", kind: "extra" });
-    const v2 = (await api(teacher, "PUT", `/api/syllabi/${course}`, { data: d })).latest.id;
-    await api(teacher, "POST", `/api/syllabi/${course}/versions/${v2}/submit`, {});
     await open(head.p, "/syllabi");
     const row = await head.p.$eval(`[data-open="${v2}"]`, (b) => b.closest("tr").innerText);
     await head.p.click(`[data-open="${v2}"]`);
@@ -161,6 +186,40 @@ async function run(id, fn, out) {
     await office.p.fill("#sv-note", "Qiymət sxemi dəyişmir");
     const done = await said(office.p, publish);
     return { blocked, noReason, done, errors: office.S.errors };
+  }, out);
+
+  // F1: «Çıxış» below the 720 px screen; F5: a one-item «Rolu dəyiş» for the head; SYL-T3: the demo's own-role switcher
+  await run("menu", async () => {
+    const seen = {};
+    for (const [role, w, h] of [["office", 1280, 720], ["office", 390, 844], ["dept_head", 1280, 720]]) {
+      const x = await viaCard(role, { width: w, height: h });
+      await x.p.click("#user-btn");
+      await x.p.waitForSelector(".dropdown.menu #logout");
+      await sleep(500);                                                    // the roles arrive after the menu opens
+      const menu = await x.p.evaluate(() => {
+        const dd = document.querySelector(".dropdown.menu");
+        // what a click at an item's centre reaches, once the item is scrolled into the menu's view (a cover, e.g. the tour hint, wins)
+        const reach = (n) => { n.scrollIntoView({ block: "nearest" }); const b = n.getBoundingClientRect();
+          const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return !!hit && n.contains(hit) && b.bottom <= innerHeight; };
+        return { labels: [...dd.querySelectorAll(".menu-label")].map((n) => n.textContent.trim()),
+          roleTo: [...dd.querySelectorAll("[data-role-to]")].map((n) => n.dataset.roleTo),
+          reachable: [...dd.querySelectorAll("[data-role-to], #logout")].every(reach), bottom: Math.round(dd.getBoundingClientRect().bottom) };
+      });
+      let out1 = "";
+      try { await x.p.click("#logout", { timeout: 5000 }); await x.p.waitForFunction(() => location.hash === "#/login", null, { timeout: 5000 }); out1 = "login"; }
+      catch (e) { out1 = String(e).split("\n")[0]; }
+      seen[`${role}@${w}`] = { ...menu, logout: out1, view: h, errors: x.S.errors };
+      await x.ctx.close();
+    }
+    return seen;
+  }, out);
+
+  // F9: the academic office's bottom bar was the dean's office's (Reyestr, Dəstək) with no Sillabus
+  await run("bottom", async () => {
+    const x = await viaCard("academic_office", { width: 390, height: 844 });
+    const paths = await x.p.$$eval(".bottom-nav a", (xs) => xs.map((a) => a.dataset.path));
+    await x.ctx.close();
+    return { paths, errors: x.S.errors };
   }, out);
 
   await browser.close();
