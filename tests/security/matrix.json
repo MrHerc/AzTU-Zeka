@@ -1444,6 +1444,18 @@
   "perm": "timetable.prepare",
   "slow": false
  },
+ "GET /api/timetable/versions/{id:int}/hours": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": "timetable.prepare",
+  "slow": false
+ },
  "GET /api/timetable/versions/{id:int}/placements/{pid:int}/options": {
   "access": [
    "academic_office",

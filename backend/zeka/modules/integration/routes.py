@@ -78,14 +78,16 @@ def _since(req):
 @R("GET", "/api/integration/export/{kind}", perm="integration.manage", slow=True)     # a long export: the slow slots (AR-E1)
 def export_file(req):
     """A file: ``grades`` and ``attendance`` (``?since=``), ``oneroster`` (zip), ``registry`` (``?registry=students|users``,
-    ``?columns=a,b``), ``status-changes`` (``?since=``). The same service as ``manage.py export``."""
+    ``?columns=a,b``), ``status-changes`` (``?since=``), ``timetable`` (``?term=`` or ``?version=``). The same service as
+    ``manage.py export``."""
     kind = req.params["kind"]
     if kind not in export.KINDS:
         raise HTTPError(404, "Tapılmadı")
     columns = [x.strip() for x in (req.query.get("columns") or "").split(",") if x.strip()]
     try:
         name, ctype, body = export.run(req.db, kind, since=_since(req), registry=req.query.get("registry") or "students",
-                                       columns=columns or None, user_id=req.user["id"], cap=export.HTTP_CAP)
+                                       columns=columns or None, user_id=req.user["id"], cap=export.HTTP_CAP,
+                                       term_id=req.qint("term", None, lo=1), version_id=req.qint("version", None, lo=1))
     except ValueError as ex:
         raise HTTPError(400, ex.args[0]) from None
     return Response(body, 200, ctype, [("Content-Disposition", f'attachment; filename="{name}"'), ("Cache-Control", "private, no-store")])

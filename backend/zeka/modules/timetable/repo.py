@@ -201,7 +201,7 @@ def _chunks(ids: list, size: int = 500):
 
 
 UNIT_COLS = ("u.id, u.course_id, u.kind, u.teacher_id, u.subgroup, u.hours, u.students, co.department_id, d.faculty_id, "
-             "co.name course, co.term_id")
+             "co.name course, co.code course_code, co.term_id")
 UNIT_FROM = "teaching_units u JOIN courses co ON co.id=u.course_id LEFT JOIN departments d ON d.id=co.department_id"
 
 

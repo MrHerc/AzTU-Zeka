@@ -189,8 +189,16 @@ async function runEnds(p, ms = 120000) {
     await p.selectOption("#vr-pick", rauf);
     await p.waitForSelector(".tt-item.fixed");
     const fixedRows = await p.$$eval(".tt-item.fixed", (xs) => xs.length);
+    await p.click("#vr-hours");                                       // the draft's hours report: Forma №3 against the placements
+    await p.waitForSelector("#hr-q1");
+    const hours = await p.evaluate(() => ({ q1: document.querySelector("#hr-q1").innerText, rows: document.querySelectorAll("#hr-table tbody tr").length,
+      flagged: Number(document.querySelector("#hr-flagged").innerText), csv: document.querySelector("a[download][href*='format=csv']").getAttribute("href") }));
+    await p.click("#hr-outside");
+    await p.waitForSelector("#hr-outside:checked");
+    hours.outside = await p.$$eval("#hr-table tbody tr", (xs) => xs.length);
     await ctx.close();
-    return { solved, title, draftMark, printFor, pickName, hintPrinted, reason, status, moved, target: plan.target, stale, checked, url, teachers, fixedRows, errors: S.errors };
+    return { solved, title, draftMark, printFor, pickName, hintPrinted, reason, status, moved, target: plan.target, stale, checked, url, teachers, fixedRows, hours,
+      errors: S.errors };
   }, out);
 
   await run("no-publish", async () => {

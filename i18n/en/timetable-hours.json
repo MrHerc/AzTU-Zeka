@@ -1,0 +1,22 @@
+{
+ "Dərslərin bir hissəsi yerləşdirilməyib": "Some of the classes are not placed",
+ "Bəzi həftələrdə dərs günü bayrama və ya semestrin dərs dövründən kənara düşür": "In some weeks the class day falls on a public holiday or outside the term's teaching period",
+ "Ləğv olunmuş dərslər var": "Some classes were cancelled",
+ "Saatların həftələrə bölgüsü əl ilə müəyyən edilib": "The distribution of hours over the weeks was set by hand",
+ "Saatın qalığı iki həftədən bir keçirilən dərsə yuvarlaqlaşdırılıb": "The remaining hours were rounded to a fortnightly class",
+ "Saatın qalığı ardıcıl həftələr blokuna yuvarlaqlaşdırılıb": "The remaining hours were rounded to a block of consecutive weeks",
+ "Yol verilən həddə": "Within the tolerance",
+ "Saat fərqi": "Difference in hours",
+ "Saat hesabatı": "Hours report",
+ "{term}: hər tədris vahidinin Forma №3 üzrə saatı və cədvəlin semestrdə verdiyi saat (bayram günləri və semestrin sərhədləri nəzərə alınır).": "{term}: each teaching unit's hours in Form No. 3 and the hours the timetable gives it in the term (public holidays and the term's start and end are taken into account).",
+ "Bayram günlərinə düşən saatların başqa vaxtda keçirilib-keçirilməyəcəyi hələ müəyyən edilməyib, ona görə saat fərqi dərcə mane olmur.": "It has not yet been decided whether hours that fall on public holidays will be held at another time, so a difference in hours does not stop publication.",
+ "Forma №3 üzrə saat": "Hours in Form No. 3",
+ "Cədvəl üzrə saat": "Hours in the timetable",
+ "Yol verilən həddən ({h} saat) kənar vahidlər": "Units beyond the tolerance ({h} h)",
+ "Yalnız yol verilən həddən kənar olanlar": "Only those beyond the tolerance",
+ "Bütün kafedralar": "All departments",
+ "Həddən kənar": "Beyond the tolerance",
+ "Yol verilən həddən kənar vahid yoxdur": "No unit is beyond the tolerance",
+ "Vahid yoxdur": "No units",
+ "Hələ baxıla bilən cədvəl versiyası yoxdur.": "There is no timetable version to view yet."
+}

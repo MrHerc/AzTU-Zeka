@@ -163,6 +163,9 @@ def test_a_run_a_keyboard_move_with_reasons_in_text_and_a_check(seen):
     vid = int(s["url"].rsplit("/", 1)[1])
     wd, period = map(int, s["target"].split(":"))
     assert q("SELECT COUNT(*) n FROM tt_placements WHERE version_id=? AND weekday=? AND period=? AND origin='manual'", (vid, wd, period))[0]["n"] == 1
+    h = s["hours"]                                                    # the hours report, reached from the draft's page
+    assert "dərcə mane olmur" in h["q1"] and h["rows"] > 0 and h["outside"] == h["flagged"], h
+    assert h["csv"].startswith(f"/api/timetable/versions/{vid}/hours?") and "format=csv" in h["csv"]
 
 
 def test_publish_controls_are_absent_for_the_administrator_and_a_faculty_scoped_academic_office(seen):

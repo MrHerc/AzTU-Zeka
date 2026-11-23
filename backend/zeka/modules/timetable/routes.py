@@ -297,6 +297,17 @@ def tt_scorecard(req):
     return builder.scorecard(req.db, req.user, req.params["id"])
 
 
+@R("GET", V + "/hours", perm="timetable.prepare")
+def tt_hours(req):
+    """The hours report: ``?department_id=``, ``?outside=1`` (beyond the tolerance only), ``?offset=``; ``?format=csv``."""
+    dep, outside = _int(req, "department_id"), req.query.get("outside") == "1"
+    if req.query.get("format") != "csv":
+        return builder.hours(req.db, req.user, req.params["id"], dep, outside, req.qint("offset", 0, lo=0))
+    body = builder.hours_csv(req.db, req.user, req.params["id"], dep, outside, req.lang)
+    return Response(body.encode("utf-8"), 200, "text/csv; charset=utf-8",
+                    [("Content-Disposition", f'attachment; filename="saat-hesabati-{req.params["id"]}.csv"'), ("Cache-Control", "private, no-store")])
+
+
 @R("GET", V + "/placements/{pid:int}/options", perm="timetable.manage")
 def tt_options(req):
     return builder.options(req.db, req.user, req.params["id"], req.params["pid"])

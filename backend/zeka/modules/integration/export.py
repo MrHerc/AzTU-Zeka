@@ -7,6 +7,7 @@ call ``run``; there is no second path. Like ``repo.py`` this file holds SQL; tab
   ``marked_at``: the university's naive wall clock, ``store.now()``).
 - A register of students or users with columns chosen from a fixed list.
 - The change list for the "Tələbə-məzun" operator: status orders entered after a moment, with the days left to report.
+- The timetable (Task 48): a version's placements, or the rows in force of a term (``timetable.service.export_rows``).
 """
 from __future__ import annotations
 
@@ -21,9 +22,10 @@ from ...core import clock
 from ...core.i18n import E
 from ...legacy.store import audit, iso, now, row, rows
 from ..timetable import domain as timetable_rules
+from ..timetable import service as timetable
 from . import domain
 
-KINDS = ("grades", "attendance", "oneroster", "registry", "status-changes")
+KINDS = ("grades", "attendance", "oneroster", "registry", "status-changes", "timetable")
 HTTP_CAP = 300_000         # rows of grades or attendance in one HTTP export; more: since, or manage.py export (AR-E1)
 FILES = ("orgs", "terms", "users", "courses", "classes", "enrollments")      # also the order they are imported in
 # Assumption (SPEC Open Questions 17): the 10 days to report a status order to "Tələbə-məzun" are counted from the
@@ -250,10 +252,11 @@ def mark_reported(c, user: dict | None, event_id: int) -> dict | None:
 
 # ---------------------------------------------------------------- the one path
 def run(c, kind: str, *, since: datetime | None = None, registry: str = "students", columns: list[str] | None = None,
-        user_id: int | None = None, cap: int | None = None) -> tuple[str, str, bytes]:
+        user_id: int | None = None, cap: int | None = None, term_id: int | None = None, version_id: int | None = None) -> tuple[str, str, bytes]:
     """(file name, media type, body) of an export; ``since`` counts for grades, attendance and status changes; ``cap``:
-    the most rows of grades or attendance (HTTP_CAP over HTTP, none on the command line). Raises ValueError (a
-    translatable message) for a register or column not on the lists or a file over the cap. Audited, after the reading."""
+    the most rows of grades or attendance (HTTP_CAP over HTTP, none on the command line); ``term_id``/``version_id``: the
+    timetable's term (default: the current one) or version. Raises ValueError (a translatable message) for a register or
+    column not on the lists, a file over the cap, or a term or version that does not exist. Audited, after the reading."""
     report: dict = {}
     if kind == "oneroster":
         name, ctype, body = "oneroster.zip", "application/zip", oneroster_zip(c, report)
@@ -266,9 +269,12 @@ def run(c, kind: str, *, since: datetime | None = None, registry: str = "student
             text = registry_csv(c, registry, columns)
         elif kind == "status-changes":
             text = _csv(STATUS_COLUMNS, status_changes(c, since))
+        elif kind == "timetable":
+            text = _csv(timetable.EXPORT_COLUMNS, timetable.export_rows(c, term_id, version_id))
         else:
             raise ValueError(kind)
         name, ctype, body = f"registry-{registry}.csv" if kind == "registry" else f"{kind}.csv", "text/csv; charset=utf-8", text.encode("utf-8")
-    audit(c, user_id, "export", kind, " · ".join(x for x in (registry if kind == "registry" else "", _wall(since) if since else "",
+    scope = f"version {version_id}" if version_id else f"term {term_id}" if term_id else ""
+    audit(c, user_id, "export", kind, " · ".join(x for x in (registry if kind == "registry" else scope if kind == "timetable" else "", _wall(since) if since else "",
                                                              f"enrolments left out {report['dropped']}" if report.get("dropped") else "") if x))
     return name, ctype, body

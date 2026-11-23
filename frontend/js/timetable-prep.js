@@ -52,6 +52,13 @@ export const readinessTable = (r) => html`<div class="table-wrap"><table class="
   </tbody></table></div>`;
 
 // ---------------------------------------------------------------- availability grid (a teacher's own, or a head's for a teacher)
+/** The versions of a term the caller may read, each with a link to its hours report (/timetable/hours/:id). */
+export const hoursCard = (vs) => html`<div class="card mt" id="tt-hours"><div class="card-h"><h3>${ic("clock", 17)} ${t("Saat hesabatı")}</h3></div>
+  ${vs.length ? html`<div class="list card-b">${vs.map((v) => html`<div class="list-item"><div class="grow small"><b>#${v.id}</b> ${v.name || ""}
+    <span class="muted">· ${{ draft: t("Layihə"), review: t("Rəydə"), published: t("Dərc olunub"), superseded: t("Əvəz olunub") }[v.status] || v.status}</span></div>
+    <a class="btn btn-ghost btn-sm" href="#/timetable/hours/${v.id}">${t("Saat hesabatı")}</a></div>`)}</div>`
+    : html`<div class="card-b"><p class="muted small" style="margin:0">${t("Hələ baxıla bilən cədvəl versiyası yoxdur.")}</p></div>`}</div>`;
+
 function availabilityEditor(host, termId, uid, { onSaved } = {}) {
   let data, cells, sel = null;
   const mine = uid === S.user.id;
@@ -179,7 +186,7 @@ route("/dept/timetable", async (el, p, q) => {
   try { ({ terms, term } = await pickTerm(q)); } catch (err) { return mount(el, failed(err.message)); }
   const crumbs = [[t("Əsas"), HOME[S.user.role]], [t("Kafedra cədvəli")]];
   const head = () => html`${pageHead(t("Kafedra cədvəli"), t("Semestr cədvəli üçün kafedranın hazırlığı: vahidlərin tələbləri və müəllimlərin məşğulluq vaxtları."),
-    terms.length > 1 ? termSelect(terms, term) : "", crumbs)}${tabs([["ready", t("Hazırlıq")], ["units", t("Tələblər")], ["teachers", t("Müəllimlər")]], tab)}`;
+    terms.length > 1 ? termSelect(terms, term) : "", crumbs)}${tabs([["ready", t("Hazırlıq")], ["units", t("Tələblər")], ["teachers", t("Müəllimlər")], ["hours", t("Saat hesabatı")]], tab)}`;
   if (!term) return mount(el, html`${head()}${empty("calendar", t("Semestr yoxdur"), t("Tədris hissəsi semestri yaratdıqdan sonra burada görünəcək."))}`);
   const B = `/api/timetable/build/${term.id}`;
   let offset = 0, board = null, rooms = null, unitsNow = [], open = null, gnames = {};
@@ -191,6 +198,8 @@ route("/dept/timetable", async (el, p, q) => {
       if (tab === "ready") {
         const r = await api.get(`${B}/readiness`);
         mount(body, html`<div class="card"><div class="card-h"><h3>${ic("check", 17)} ${t("Hazırlıq siyahısı")}</h3></div>${readinessTable(r)}</div>`);
+      } else if (tab === "hours") {
+        mount(body, hoursCard(await api.get(`${B}/versions`)));
       } else if (tab === "units") {
         const [r, b, gs] = await Promise.all([api.get(`${B}/units?offset=${offset}`), board || api.get(`${B}/teachers`), api.get(`${B}/groups`)]);
         gnames = Object.fromEntries(gs.map((g) => [g.id, g.name]));
@@ -258,10 +267,11 @@ route("/dept/timetable", async (el, p, q) => {
 // ---------------------------------------------------------------- dean's office: the groups' shifts
 route("/office/timetable", async (el, p, q) => {
   mount(el, loading());
-  let terms, term, groups, st;
+  let terms, term, groups, st, vs;
   try {
     ({ terms, term } = await pickTerm(q));
-    if (term) [groups, st] = await Promise.all([api.get(`/api/timetable/build/${term.id}/groups`), api.get("/api/timetable/settings")]);
+    if (term) [groups, st, vs] = await Promise.all([api.get(`/api/timetable/build/${term.id}/groups`), api.get("/api/timetable/settings"),
+      api.get(`/api/timetable/build/${term.id}/versions`)]);
   } catch (err) { return mount(el, failed(err.message)); }
   const head = pageHead(t("Fakültə cədvəli"), t("Qrupların növbəsi: cədvəl qurularkən qrupun dərsləri yalnız öz növbəsinin cütlərinə qoyulur."),
     terms.length > 1 ? termSelect(terms, term) : "", [[t("Əsas"), HOME[S.user.role]], [t("Fakültə cədvəli")]]);
@@ -274,7 +284,7 @@ route("/office/timetable", async (el, p, q) => {
     ${groups.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Qrup")}</th><th>${t("Qrupun növbəsi")}</th></tr></thead><tbody>
       ${groups.map((g) => html`<tr><td>${g.name}</td><td><select class="input input-sm" data-group="${g.id}" aria-label="${t("Qrupun növbəsi")}: ${g.name}">
         <option value="">${t("Göstərilməyib")}</option>${shifts.map((k) => html`<option value="${k}" ${g.shift === k ? "selected" : ""}>${label(k)}</option>`)}</select></td></tr>`)}</tbody></table></div>`
-      : html`<div class="card-b">${empty("users", t("Qrup yoxdur"), t("Fakültənin bu semestrdə dərsi olan qrupları burada görünür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("users", t("Qrup yoxdur"), t("Fakültənin bu semestrdə dərsi olan qrupları burada görünür."))}</div>`}</div>${hoursCard(vs)}`);
   on(el, "change", ".tt-term", (e, s) => { location.hash = `#/office/timetable?term=${s.value}`; });
   on(el, "change", "#og-all", (e, s) => { if (s.value) $$("[data-group]", el).forEach((x) => { x.value = s.value; }); });
   on(el, "click", "#og-save", async (e, b) => {

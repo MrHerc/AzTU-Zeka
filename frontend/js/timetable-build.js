@@ -3,7 +3,7 @@
 // editor: grids by group, teacher or room; a meeting moved by drag or by keyboard (Enter, arrows, Enter) with the live
 // clash check of every slot (a blocked slot says why, in text); locks; unplaced meetings with reasons; the check run;
 // and the publication (shown only to an unscoped academic office: the server refuses everyone else anyway).
-import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, t, S, isoDay, fmtDate, fmtDateTime, progress, num, $, $$ } from "./core.js";
+import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, t, S, isoDay, fmtDate, fmtDateTime, progress, num, LANG, $, $$ } from "./core.js";
 import { HOME } from "./shell.js";
 import { DAYS, KIND, PAIR, SHIFT, CONFIRM, pickTerm, termSelect, tabs, readinessTable, weeksLabel } from "./timetable-prep.js";
 
@@ -140,7 +140,8 @@ route(ROOT, async (el, p, q) => {
               <td><input type="checkbox" data-pick="${v.id}" aria-label="${t("Müqayisə üçün seç")}: #${v.id}" ${checked.has(v.id) ? "checked" : ""}></td><td>${v.id}</td><td>${v.name || "—"}</td><td>${badgeOf(STATUS, v.status)}</td>
               <td class="nowrap">${fmtDateTime(v.created_at)}</td><td>${v.unplaced}</td><td>${v.violations ?? "—"}</td>
               <td>${v.checked_rev === v.rev ? html`<span class="badge b-green">${t("Yoxlanılıb")}</span>` : html`<span class="badge b-amber">${t("Yoxlanılmayıb")}</span>`}</td>
-              <td><a class="btn btn-ghost btn-sm" href="#${ROOT}/version/${v.id}">${t("Aç")}</a></td></tr>`)}</tbody></table></div>`
+              <td class="nowrap"><a class="btn btn-ghost btn-sm" href="#${ROOT}/version/${v.id}">${t("Aç")}</a>
+                <a class="btn btn-ghost btn-sm" href="#/timetable/hours/${v.id}">${t("Saat hesabatı")}</a></td></tr>`)}</tbody></table></div>`
             : html`<div class="card-b">${empty("layers", t("Hələ layihə yoxdur"), t("Hazırlıq başa çatdıqda hesablamanı başladın."))}</div>`}</div>`;
   // a run's end refreshes the list of drafts only: its card stays, with its final state
   const ended = async () => {
@@ -248,6 +249,7 @@ route(`${ROOT}/version/:id`, async (el, p, q) => {
   const title = () => (["draft", "review"].includes(v().status) ? t("Layihə #{id}", { id: vid }) : t("Versiya #{id}", { id: vid }));
   const head = () => html`${pageHead(title() + (v().name ? ` · ${v().name}` : ""), editable() ? t("Dərsi sürüşdürün və ya seçib Enter, oxlar, Enter ilə köçürün: hər vaxtın mümkün olub-olmadığı dərhal yoxlanır.") : "",
     html`${badgeOf(STATUS, v().status)}${editable() ? html`<button class="btn btn-sm" id="vr-check">${ic("check", 15)} ${t("Tam yoxla")}</button>` : ""}
+      <a class="btn btn-sm" id="vr-hours" href="#/timetable/hours/${vid}">${ic("clock", 15)} ${t("Saat hesabatı")}</a>
       <button class="btn btn-sm" id="vr-print">${ic("printer", 15)} ${t("Çap et")}</button>
       ${start.can_publish && editable() ? html`<button class="btn btn-sm btn-primary" id="vr-publish">${ic("upload", 15)} ${t("Dərc et")}</button>` : ""}`,
     [[t("Əsas"), HOME[S.user.role]], [t("Cədvəl qurucusu"), `${ROOT}?tab=versions&term=${v().term_id}`], [title()]])}`;
@@ -411,3 +413,47 @@ route(`${ROOT}/version/:id`, async (el, p, q) => {
   draw();
 });
 
+
+// ---------------------------------------------------------------- a version's hours report: Forma №3 against the placements
+// Every role of the builder reaches it (its own units only); publication never waits on it (the owner's question Q1).
+const BACK = () => ({ dept_head: [t("Kafedra cədvəli"), "/dept/timetable?tab=hours"], office: [t("Fakültə cədvəli"), "/office/timetable"] });
+route("/timetable/hours/:id", async (el, p, q) => {
+  const vid = Number(p.id);
+  let outside = q.outside === "1", dep = q.department_id || "", offset = 0;
+  const query = () => new URLSearchParams({ ...(outside ? { outside: "1" } : {}), ...(dep ? { department_id: dep } : {}) }).toString();
+  const draw = async () => {
+    mount(el, loading());
+    let r;
+    try { r = await api.get(`/api/timetable/versions/${vid}/hours?${query()}&offset=${offset}`); } catch (err) { return mount(el, failed(err.message)); }
+    const vt = ["draft", "review"].includes(r.version.status) ? t("Layihə #{id}", { id: vid }) : t("Versiya #{id}", { id: vid });
+    const [backLabel, back] = BACK()[S.user.role] || [vt, `${ROOT}/version/${vid}`];
+    const sign = (d) => (d > 0 ? "+" : d < 0 ? "−" : "") + num(Math.abs(d));
+    mount(el, html`${pageHead(t("Saat hesabatı"), t("{term}: hər tədris vahidinin Forma №3 üzrə saatı və cədvəlin semestrdə verdiyi saat (bayram günləri və semestrin sərhədləri nəzərə alınır).", { term: r.term.name }),
+      html`${badgeOf(STATUS, r.version.status)}<a class="btn btn-sm" href="/api/timetable/versions/${vid}/hours?${query()}&format=csv&lang=${LANG}" download>${ic("download", 15)} CSV</a>`,
+      [[t("Əsas"), HOME[S.user.role]], [backLabel, back], [t("Saat hesabatı")]])}
+      <p class="small muted" id="hr-q1">${ic("info", 13)} ${t("Bayram günlərinə düşən saatların başqa vaxtda keçirilib-keçirilməyəcəyi hələ müəyyən edilməyib, ona görə saat fərqi dərcə mane olmur.")}</p>
+      <div class="grid tt-summary">
+        <div class="card card-b"><div class="tiny muted">${t("Forma №3 üzrə saat")}</div><b>${num(r.totals.form_h)}</b></div>
+        <div class="card card-b"><div class="tiny muted">${t("Cədvəl üzrə saat")}</div><b>${num(r.totals.planned_h)}</b></div>
+        <div class="card card-b"><div class="tiny muted">${t("Saat fərqi")}</div><b>${sign(r.totals.delta)}</b></div>
+        <div class="card card-b"><div class="tiny muted">${t("Yol verilən həddən ({h} saat) kənar vahidlər", { h: num(r.tolerance) })}</div><b id="hr-flagged">${r.flagged}</b></div></div>
+      <div class="card"><div class="card-h wrap"><h3>${ic("clock", 17)} ${t("Tədris vahidləri")}</h3><span class="muted small">${t("{n} vahid", { n: r.total })}</span>
+        <label class="row small"><input type="checkbox" id="hr-outside" ${outside ? "checked" : ""}> ${t("Yalnız yol verilən həddən kənar olanlar")}</label>
+        ${r.departments.length > 1 || dep ? html`<select class="input input-sm" id="hr-dep" aria-label="${t("Kafedra")}"><option value="">${t("Bütün kafedralar")}</option>
+          ${r.departments.map((d) => html`<option value="${d.id}" ${String(d.id) === String(dep) ? "selected" : ""}>${d.name}</option>`)}</select>` : ""}</div>
+        ${r.items.length ? html`<div class="table-wrap"><table class="table" id="hr-table"><thead><tr><th>${t("Fənn")}</th><th>${t("Növ")}</th><th>${t("Qrup")}</th><th>${t("Müəllim")}</th>
+          <th>${t("Forma №3 üzrə saat")}</th><th>${t("Cədvəl üzrə saat")}</th><th>${t("Saat fərqi")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
+          ${r.items.map((x) => html`<tr data-unit="${x.unit_id}" class="${x.flagged ? "tt-flagged" : ""}"><td>${x.course}${r.departments.length > 1 ? html`<div class="tiny muted">${x.department}</div>` : ""}</td>
+            <td>${KIND()[x.kind] || x.kind}${x.subgroup ? " · " + x.subgroup : ""}</td><td>${x.groups.join(", ") || "—"}</td><td>${x.teacher || html`<span class="badge b-amber">${t("Vakansiya")}</span>`}</td>
+            <td>${num(x.form_h)}</td><td>${num(x.planned_h)}</td>
+            <td>${sign(x.delta)} ${x.flagged ? html`<span class="badge b-amber">${t("Həddən kənar")}</span>` : ""}</td>
+            <td class="small">${x.reasons.map((m) => m.title).join("; ") || "—"}</td></tr>`)}</tbody></table></div>
+          ${r.total > r.items.length ? html`<div class="card-b row"><button class="btn btn-sm" data-hpage="-1" ${offset ? "" : "disabled"}>${t("Əvvəlki")}</button>
+            <button class="btn btn-sm" data-hpage="1" ${offset + r.items.length < r.total ? "" : "disabled"}>${t("Növbəti")}</button></div>` : ""}`
+          : html`<div class="card-b">${empty("clock", outside ? t("Yol verilən həddən kənar vahid yoxdur") : t("Vahid yoxdur"))}</div>`}</div>`);
+  };
+  on(el, "change", "#hr-outside", (e, c) => { outside = c.checked; offset = 0; draw(); });
+  on(el, "change", "#hr-dep", (e, s) => { dep = s.value; offset = 0; draw(); });
+  on(el, "click", "[data-hpage]", (e, b) => { offset = Math.max(0, offset + Number(b.dataset.hpage) * 200); draw(); });
+  draw();
+});

@@ -148,7 +148,7 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `POST` | `/api/admin/import` | admin | Bulk import of one file (below); `dry_run` is true unless it is sent as `false` |
 | `POST` | `/api/admin/activation-codes` | admin | One-time activation codes for a faculty's students without a password, as CSV, shown once |
 | `POST` | `/api/auth/activate` | public | `{"student_no", "code", "password"}`: a student chooses a password with the code and is signed in |
-| `GET` | `/api/integration/export/{kind}` | `integration.manage` | A file: `grades`, `attendance`, `oneroster` (zip), `registry`, `status-changes` (Task 37, below) |
+| `GET` | `/api/integration/export/{kind}` | `integration.manage` | A file: `grades`, `attendance`, `oneroster` (zip), `registry`, `status-changes` (Task 37, below), `timetable` (`?term=`, `?version=`; Task 48) |
 | `GET` | `/api/integration/status-changes?since=` | `students.status.read` | The "Tələbə-məzun" change list: status orders entered after `since` (below) |
 | `POST` | `/api/integration/status-changes/{id}/reported` | `students.status` | Mark an order as entered into "Tələbə-məzun": `reported_at` is set once |
 | `GET` | `/api/admin/settings` | admin | The university settings by section (Task 17) |
@@ -164,6 +164,7 @@ Demo login is by role and has no password. It exists only in demo mode (`ZEKA_MO
 | `GET` | `/api/lessons?day=&group_id=&teacher_id=` | `directory.read` | The lessons of one day |
 | `POST` | `/api/lessons/{id}/cancel` | `timetable.manage` | `{"reason"}`; `409` once attendance is recorded; the lesson's students are told |
 | `POST` | `/api/lessons/{id}/move` | `timetable.manage` | `{"day", "start", "end", "room"?}`; checked for clashes on that day; the students are told |
+| `GET` | `/api/timetable/versions/{id}/hours?department_id=&outside=1&offset=&format=csv` | `timetable.prepare` | A builder version's hours report (Task 48): per unit in the caller's scope the Forma №3 hours, the hours its placements yield in the term (holidays and term edges), the difference and whether it is within the tolerance; totals of the listed units; 200 a page; CSV with a BOM. Same scope as the builder (a draft only to `timetable.manage`, an id outside the scope `404`); publication does not wait on it |
 | `GET` / `POST` / `DELETE` | `/api/me/calendar` | any | Whether one has a calendar feed / a new secret feed address (shown once; the old one stops) / revoke it |
 | `GET` | `/ical/{token}` | public (the token) | The feed as iCalendar (RFC 5545), lessons from 60 days back to 200 ahead; 30 per minute per address |
 | `GET` | `/api/journal/lessons?day=` | staff | The user's own lessons (the last two weeks, or one day) with how many marks they have (Task 20) |
@@ -246,7 +247,7 @@ student and course).
 
 One export service (`backend/zeka/modules/integration/export.py`) behind the screen and the command:
 `GET /api/integration/export/{kind}` (`integration.manage`, a file with `Content-Disposition: attachment`) and
-`python backend/manage.py export --kind grades|attendance|oneroster|registry|status-changes [--since ISO] [--out FILE]`
+`python backend/manage.py export --kind grades|attendance|oneroster|registry|status-changes|timetable [--since ISO] [--term T] [--version V] [--out FILE]`
 (a CSV goes to standard output without `--out`; `oneroster` needs `--out`; the `--out` file is opened before the export
 and written 0600). Every export writes `export` to the audit log; a OneRoster export adds how many enrolments it left out.
 Over HTTP (the screen and `/api/v1/`) the export routes run in the slow handler slots, and a grades or attendance file
@@ -274,6 +275,11 @@ written or changed at or after that second (so a row written in the second of th
   `admission_year`, `funding`, `form`, `status`; users: `username`, `full_name`, `patronymic`, `role`, `email`,
   `department`, `status`); all of them when none is given; an unknown one is `400` naming the allowed columns.
 - `status-changes`: the change list below as CSV.
+- `timetable` (Task 48): `--version V` / `?version=` a builder version's placements (draft or published), else
+  `--term T` / `?term=` (default: the current term) the term's rows in force, published and hand-written. Columns
+  `group`, `subgroup`, `course_code`, `course`, `kind`, `teacher`, `room`, `day` (1 = Monday), `pair`, `start`, `end`,
+  `weeks` (`all | odd | even | N[-M],...`), `effective_from` (of the version that published the row; empty for a
+  hand-written one); one line per group of the row. An unknown term or version is `400` (exit 2).
 
 **"Tələbə-məzun" change list.** `GET /api/integration/status-changes?since=` gives every status order entered
 (`created_at`) after `since`: an order entered late with an earlier effective date is still new to the operator. Each

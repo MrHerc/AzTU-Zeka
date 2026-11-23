@@ -8,7 +8,9 @@ Handlers raise ``HTTPError`` with a translated message; an id outside the caller
 """
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import sqlite3
 import time
@@ -20,6 +22,7 @@ from ...core.i18n import LANGS, E, S, S_, T3
 from ...core.web import HTTPError
 from ...legacy.store import J, audit, iso, notify, now
 from ..directory import service as directory
+from ..integration.domain import csv_cell
 from . import domain, repo, solver
 from . import service as rows_service
 
@@ -946,6 +949,73 @@ def scorecard(c, user, vid: int) -> dict:
         ok = {x["unit_id"] for x in _in_scope(c, user, [{"unit_id": _unit_of(k)} for p in score["problems"] for k in p.get("keys") or []])}
         score = {**score, "problems": [p for p in score["problems"] if any(_unit_of(k) in ok for k in p.get("keys") or [])]}
     return {"version": _version_out(v), "score": score, "stale": v["checked_rev"] != v["rev"]}
+
+
+HOURS_REASONS = {   # why a unit's hours differ from Forma №3 (domain.hours_report)
+    "unplaced": S_("Dərslərin bir hissəsi yerləşdirilməyib"),
+    "holidays": S_("Bəzi həftələrdə dərs günü bayrama və ya semestrin dərs dövründən kənara düşür"),
+    "cancelled": S_("Ləğv olunmuş dərslər var"),
+    "pattern_override": S_("Saatların həftələrə bölgüsü əl ilə müəyyən edilib"),
+    "fortnight_rounding": S_("Saatın qalığı iki həftədən bir keçirilən dərsə yuvarlaqlaşdırılıb"),
+    "block_rounding": S_("Saatın qalığı ardıcıl həftələr blokuna yuvarlaqlaşdırılıb"),
+    "no_groups": TITLES["no_groups"], "no_hours": TITLES["no_hours"],
+}
+HOURS_PAGE = 200
+
+
+def hours(c, user, vid: int, department_id: int | None, outside: bool, offset: int | None) -> dict:
+    """The hours report of a version (Task 48), draft or published: per unit of the version the caller's scope covers,
+    the Forma №3 hours, the hours its placements yield in the term (holidays and term edges, ``domain.lost_weeks``),
+    the difference and whether it is within the tolerance; ``outside`` lists only those beyond it. Totals are over the
+    filtered units; ``offset`` pages the list (None: every line, for the CSV). Publication is never refused on hours:
+    whether lost holiday hours are made up is the owner's open question Q1."""
+    v = version_for(c, user, vid)
+    t, s = term(c, v["term_id"]), scope_of(c, user)
+    if department_id is not None and not _covers_department(c, s, department_id):
+        raise HTTPError(404, "Kafedra tapılmadı")
+    problem, _ = snapshot(c, t, J(v["scope"], {"all": True}) or {"all": True})
+    pls = [_as_meeting(p) for p in repo.placements(c, v["id"])]
+    rep = domain.hours_report(problem, pls, t, tenant.load(c)["calendar"]["holidays"])
+    units = {u["id"]: u for u in repo.units_by_id(c, [x["unit_id"] for x in rep["units"]])}
+    mine = [x for x in rep["units"] if x["unit_id"] in units and covers(s, units[x["unit_id"]])]
+    deps = sorted({units[x["unit_id"]]["department_id"] for x in mine if units[x["unit_id"]]["department_id"]})
+    if department_id is not None:
+        mine = [x for x in mine if units[x["unit_id"]]["department_id"] == department_id]
+    flagged = sum(x["flagged"] for x in mine)
+    if outside:
+        mine = [x for x in mine if x["flagged"]]
+    page = mine if offset is None else mine[offset:offset + HOURS_PAGE]
+    names = repo.user_names(c, sorted({x["teacher_id"] for x in page if x["teacher_id"]}))
+    groups = repo.groups_info(c, sorted({g for x in page for g in x["groups"]}))
+    dnames = {d: (directory.get(c, "departments", d) or {}).get("name") or f"#{d}" for d in deps}
+    lines = [{**{k: x[k] for k in ("unit_id", "form_h", "planned_h", "delta", "flagged")}, "course": units[x["unit_id"]]["course"],
+              "kind": units[x["unit_id"]]["kind"], "subgroup": units[x["unit_id"]]["subgroup"],
+              "department": dnames.get(units[x["unit_id"]]["department_id"], ""), "teacher": names.get(x["teacher_id"], ""),
+              "groups": [groups[g]["name"] for g in x["groups"] if g in groups],
+              "reasons": [{"code": r, "title": T3(HOURS_REASONS[r]) if r in HOURS_REASONS else r} for r in x["reasons"]]} for x in page]
+    form, planned = sum(x["form_h"] for x in mine), sum(x["planned_h"] for x in mine)
+    return {"version": _version_out(v), "term": {k: t[k] for k in ("id", "name", "teaching_start", "teaching_end")},
+            "tolerance": settings(c)["hours_tolerance"], "departments": [{"id": d, "name": dnames[d]} for d in deps],
+            "total": len(mine), "offset": offset or 0, "flagged": flagged, "items": lines,
+            "totals": {"form_h": form, "planned_h": planned, "delta": round(planned - form, 2)}}
+
+
+HOURS_CSV = (S_("Kafedra"), S_("Fənn"), S_("Növ"), S_("Qrup"), S_("Müəllim"), S_("Forma №3 üzrə saat"), S_("Cədvəl üzrə saat"),
+             S_("Saat fərqi"), S_("Yol verilən həddə"), S_("Səbəb"))
+
+
+def hours_csv(c, user, vid: int, department_id: int | None, outside: bool, lang: str) -> str:
+    """The hours report as a spreadsheet (UTF-8 with a BOM, so a spreadsheet program reads the letters): one row per unit."""
+    rep = hours(c, user, vid, department_id, outside, None)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow([S(h, lang) for h in HOURS_CSV])
+    for x in rep["items"]:
+        kind = S(domain.KIND_LABEL.get(x["kind"], x["kind"] or ""), lang) + (f" · {x['subgroup']}" if x["subgroup"] else "")
+        w.writerow([csv_cell(x["department"]), csv_cell(x["course"]), csv_cell(kind), csv_cell(", ".join(x["groups"])),
+                    csv_cell(x["teacher"]), x["form_h"], x["planned_h"], x["delta"], S("Xeyr", lang) if x["flagged"] else S("Bəli", lang),
+                    csv_cell("; ".join(S(HOURS_REASONS[r["code"]], lang) if r["code"] in HOURS_REASONS else r["code"] for r in x["reasons"]))])
+    return "\ufeff" + buf.getvalue()
 
 
 def _neighbourhood(c, v: dict, t: dict, p: dict, extra_rooms: tuple = ()) -> tuple[dict, list[dict]]:
