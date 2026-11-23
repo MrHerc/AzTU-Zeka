@@ -229,9 +229,11 @@ def group_for(c, user, t: dict, gid: int, write: bool) -> dict:
 
 
 def _visible(c, user, v: dict, s: dict | None = None) -> bool:
-    """One in review, published or superseded: to every holder (a scoped one reads its own units of it). A draft: to a
-    timetable.manage holder whose scope covers the draft's (Checkpoint F, SEC-TT-3)."""
-    return v["status"] in VISIBLE_PREPARE or (manages(user) and _covers_scope(c, s or scope_of(c, user), J(v["scope"], {"all": True}) or {}))
+    """One in review, published or superseded: to every holder. A draft: to a timetable.manage holder; one of named
+    departments only to a holder that covers each of them (Checkpoint F, SEC-TT-3). A scoped holder reads and edits only
+    its own units of a university-wide one (grid, unplaced, scorecard problems, moves)."""
+    sc = J(v["scope"], {"all": True}) or {}
+    return v["status"] in VISIBLE_PREPARE or (manages(user) and (bool(sc.get("all")) or _covers_scope(c, s or scope_of(c, user), sc)))
 
 
 def version_for(c, user, vid: int) -> dict:
@@ -937,7 +939,11 @@ def unplaced(c, user, vid: int) -> list[dict]:
 
 def scorecard(c, user, vid: int) -> dict:
     v = version_for(c, user, vid)
-    return {"version": _version_out(v), "score": J(v["score"], {}), "stale": v["checked_rev"] != v["rev"]}
+    score = J(v["score"], {}) or {}
+    if score.get("problems") and not scope_of(c, user)["all"]:      # a scoped holder reads the problems of its own units (SEC-TT-3)
+        ok = {x["unit_id"] for x in _in_scope(c, user, [{"unit_id": _unit_of(k)} for p in score["problems"] for k in p.get("keys") or []])}
+        score = {**score, "problems": [p for p in score["problems"] if any(_unit_of(k) in ok for k in p.get("keys") or [])]}
+    return {"version": _version_out(v), "score": score, "stale": v["checked_rev"] != v["rev"]}
 
 
 def _neighbourhood(c, v: dict, t: dict, p: dict, extra_rooms: tuple = ()) -> tuple[dict, list[dict]]:

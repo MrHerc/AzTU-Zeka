@@ -6,6 +6,7 @@ needs, group shifts, availability (one grid above the cap, decided by the academ
 runner, the draft's grid, options and moves (a clash and a stale edit lose), a check run, the publish gate, and a
 publication to timetable rows, lessons from the effective date and one notification per person; then a second
 publication that is interrupted after every batch and still writes everything exactly once."""
+import json
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -365,7 +366,7 @@ def test_publishing_needs_a_check_the_confirmations_and_the_right_numbers(office
     assert scoped.post(f"/api/admin/users/{world['rauf']}/roles", {"role": "academic_office", "scope_type": "faculty", "scope_id": 1}).status == 200
     faculty_ao = app_db.client("teacher")
     assert faculty_ao.post("/api/me/role", {"role": "academic_office"}).status == 200
-    assert faculty_ao.post(f"/api/timetable/versions/{vid}/publish", body).status == 404      # a university-wide draft is not its own
+    assert faculty_ao.post(f"/api/timetable/versions/{vid}/publish", body).status == 403
     queued = office_ao.post(f"/api/timetable/versions/{vid}/publish", body)
     assert queued.status == 200 and queued.json["kind"] == "publish", queued.text
     manual = office_ao.post("/api/timetable", {"unit_id": world["units"][0], "weekday": 6, "start": "15:05", "end": "16:25", "room": "X",
@@ -618,11 +619,8 @@ def test_a_faculty_scoped_office_reaches_no_draft_or_run_of_another_faculty(app_
     assert ao2.get(f"{base}/placements/{p['id']}/options").status == 404
     assert ao2.post(f"{base}/placements/{p['id']}/move", {"weekday": 1, "period": 1, "room_id": p["room_id"], "rev": rev}).status == 404
     assert ao2.post(f"{base}/lock", {"ids": [p["id"]], "locked": True, "rev": rev}).status == 404
-    # SEC-TT-3: a university-wide draft is outside a faculty's scope: not listed, no grid, no scorecard
-    for path in (f"{base}/grid?room_id={p['room_id']}", f"{base}/unplaced", f"{base}/scorecard"):
-        assert ao2.get(path).status == 404, path
-    assert vid not in [v["id"] for v in ao2.get(f"{B}/versions").json]
-    assert vid in [v["id"] for v in office_ao.get(f"{B}/versions").json]
+    assert ao2.get(f"{base}/grid?room_id={p['room_id']}").json["items"] == []
+    assert ao2.get(f"{base}/unplaced").json == []
     assert q("SELECT rev FROM tt_versions WHERE id=?", (vid,))[0]["rev"] == rev
     # SEC-TT-2: a check of that draft with the office's own department is refused before a run takes the term's slot
     assert ao2.post(f"{B}/runs", {"kind": "check", "version_id": vid, "departments": [d2]}).status == 404
@@ -683,6 +681,25 @@ def test_a_refused_publication_names_the_lesson_and_the_rule_and_the_grid_marks_
     line = next(x for x in pr["report"]["precheck"] if x["code"] == "no_room_capacity" and x["key"].startswith(f"{p['unit_id']}:"))
     assert "500" in line["title"] and line["courses"] == [course], line
     assert office_ao.put(needs, {"need": None}).status == 200
+
+
+def test_a_scoped_office_reads_only_its_own_units_of_a_draft(app_db, office_ao, world):
+    """SEC-TT-3: a faculty-scoped office read every problem of a university-wide draft, and every draft of named departments."""
+    vid = world["draft"]
+    assert office_ao.get(f"/api/timetable/versions/{vid}/scorecard").json["score"]["problems"]
+    ao2 = app_db.client("leader")                                       # the academic office of the faculty with no unit here
+    assert ao2.post("/api/me/role", {"role": "academic_office"}).status == 200
+    assert ao2.get(f"/api/timetable/versions/{vid}/scorecard").json["score"]["problems"] == []
+    c = store.connect()
+    try:
+        other = c.execute("INSERT INTO tt_versions(term_id,status,scope,rev,created_by,created_at) SELECT term_id,'draft',?,0,created_by,"
+                          "created_at FROM tt_versions WHERE id=?", (json.dumps({"departments": [world["dep"]]}), vid)).lastrowid
+        c.commit()
+    finally:
+        c.close()
+    assert ao2.get(f"/api/timetable/versions/{other}/scorecard").status == 404
+    assert other not in [v["id"] for v in ao2.get(f"{B}/versions").json]
+    assert other in [v["id"] for v in office_ao.get(f"{B}/versions").json]
 
 
 def test_a_run_and_the_readiness_say_which_units_hand_written_rows_keep_out(office_ao, world):
