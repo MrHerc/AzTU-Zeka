@@ -6,16 +6,26 @@ needs, group shifts, availability (one grid above the cap, decided by the academ
 runner, the draft's grid, options and moves (a clash and a stale edit lose), a check run, the publish gate, and a
 publication to timetable rows, lessons from the effective date and one notification per person; then a second
 publication that is interrupted after every batch and still writes everything exactly once."""
+import copy
+import csv
+import io
 import json
+import os
+import subprocess
+import sys
+from collections import Counter
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
-from zeka.core import jobs
+from zeka.core import jobs, tenant
 from zeka.legacy import periodic, store             # periodic registers timetable.work
 from zeka.modules.timetable import builder, domain
+from zeka.modules.timetable import service as rows_service
 
 TERM = 1
+ROOT = Path(__file__).resolve().parents[2]
 EFF, EFF2 = "2026-11-23", "2026-11-30"
 
 
@@ -740,3 +750,139 @@ def test_the_weekly_schedule_shows_a_publication_only_from_its_effective_date(ap
     published = {x["id"] for x in q("SELECT id FROM timetable WHERE version_id IS NOT NULL")}
     assert shown and not shown & published, shown & published
     assert week["week_start"] == "2026-11-16"
+
+
+# ---------------------------------------------------------------- the hours report and the timetable export (Task 48, deferred parts)
+def _published_version():
+    return q("SELECT id FROM tt_versions WHERE term_id=? AND status='published' ORDER BY id DESC LIMIT 1", (TERM,))[0]["id"]
+
+
+def _tenant_with(monkeypatch, holidays=(), **timetable):
+    """The university settings as the builder reads them, with extra holidays or other timetable settings."""
+    real = tenant.load
+
+    def load(c):
+        d = copy.deepcopy(real(c))
+        d["calendar"]["holidays"] = [*d["calendar"]["holidays"], *holidays]
+        d["timetable"].update(timetable)
+        return d
+    monkeypatch.setattr(tenant, "load", load)
+
+
+def test_the_hours_report_counts_the_weeks_each_placement_holds(office_ao, world, monkeypatch):
+    """The hours page: per unit the Forma №3 hours and the hours the placements yield in the term, counted here week by
+    week over the term's teaching days without holidays; a new holiday takes its pair off and says why."""
+    vid, url = world["draft"], f"/api/timetable/versions/{world['draft']}/hours?department_id={world['dep']}"
+    term = q("SELECT * FROM academic_terms WHERE id=?", (TERM,))[0]
+    c = store.connect()
+    try:
+        st = tenant.load(c)
+    finally:
+        c.close()
+    hol, ph, tol = set(st["calendar"]["holidays"]), st["timetable"]["pair_hours"], st["timetable"]["hours_tolerance"]
+    first, last, n = date.fromisoformat(term["teaching_start"]), date.fromisoformat(term["teaching_end"]), domain.term_weeks(term)
+    monday = first - timedelta(days=first.isoweekday() - 1)
+    pls = q("SELECT p.* FROM tt_placements p JOIN teaching_units u ON u.id=p.unit_id JOIN courses co ON co.id=u.course_id "
+            "WHERE p.version_id=? AND co.department_id=? ORDER BY p.id", (vid, world["dep"]))
+
+    def days(p):
+        mask = domain.week_mask(p["weeks"], n)
+        return [d for d in (monday + timedelta(days=7 * w + p["weekday"] - 1) for w in range(n) if mask >> w & 1) if first <= d <= last]
+
+    def held(off):
+        out: dict = {}
+        for p in pls:
+            out[p["unit_id"]] = out.get(p["unit_id"], 0) + ph * p["duration"] * sum(d.isoformat() not in off for d in days(p))
+        return out
+
+    r = office_ao.get(url)
+    assert r.status == 200, r.text
+    got = {x["unit_id"]: x for x in r.json["items"]}
+    assert pls and {u: got[u]["planned_h"] for u in held(hol)} == held(hol)
+    assert all(x["delta"] == round(x["planned_h"] - x["form_h"], 2) and x["flagged"] == (abs(x["delta"]) > tol) for x in got.values())
+    assert [m["code"] for m in got[world["lonely"]]["reasons"]] == ["no_groups"] and got[world["lonely"]]["reasons"][0]["title"]
+    assert r.json["totals"] == {"form_h": sum(x["form_h"] for x in got.values()), "planned_h": sum(x["planned_h"] for x in got.values()),
+                                "delta": round(sum(x["planned_h"] - x["form_h"] for x in got.values()), 2)}
+    assert r.json["flagged"] == sum(x["flagged"] for x in got.values()) and r.json["total"] == len(got)
+    p = next(p for p in pls if any(d.isoformat() not in hol for d in days(p)))
+    day = next(d.isoformat() for d in days(p) if d.isoformat() not in hol)
+    _tenant_with(monkeypatch, holidays=[day])
+    after = {x["unit_id"]: x for x in office_ao.get(url).json["items"]}
+    assert after[p["unit_id"]]["planned_h"] == got[p["unit_id"]]["planned_h"] - ph * p["duration"] == held(hol | {day})[p["unit_id"]]
+    assert "holidays" in [m["code"] for m in after[p["unit_id"]]["reasons"]]
+
+
+def test_the_hours_report_filters_totals_and_downloads_as_csv(office_ao, world, monkeypatch):
+    """Outside the tolerance only, totals of what is listed, and the CSV (a BOM, the headings in the reader's language)."""
+    _tenant_with(monkeypatch, hours_tolerance=0)
+    base = f"/api/timetable/versions/{world['draft']}/hours"
+    every = office_ao.get(base).json
+    out = office_ao.get(f"{base}?outside=1").json
+    assert every["flagged"] and out["total"] == every["flagged"] < every["total"]
+    assert all(x["flagged"] for x in out["items"])
+    assert out["totals"]["form_h"] == sum(x["form_h"] for x in out["items"])
+    got = office_ao.get(f"{base}?outside=1&format=csv", lang="en")
+    assert got.status == 200 and got.headers["Content-Type"].startswith("text/csv")
+    assert got.body.startswith("\ufeff".encode())
+    lines = list(csv.reader(io.StringIO(got.text.lstrip("\ufeff"))))
+    assert lines[0][:2] == ["Department", "Course"] and len(lines) == out["total"] + 1
+    assert {x[8] for x in lines[1:]} == {"No"}                                     # within the tolerance: no, on every line
+
+
+def test_the_hours_report_keeps_to_the_callers_scope(app_db, office_ao, head, world):
+    """As the builder: a draft only to the builders, an id out of scope 404, a scoped office reads only its own units."""
+    draft, pub = world["draft"], _published_version()
+    assert app_db.client("student").get(f"/api/timetable/versions/{pub}/hours").status == 403
+    assert head.get(f"/api/timetable/versions/{draft}/hours").status == 404
+    mine = head.get(f"/api/timetable/versions/{pub}/hours").json
+    deps = {r["id"]: r["department_id"] for r in q("SELECT u.id, co.department_id FROM teaching_units u JOIN courses co ON co.id=u.course_id")}
+    assert mine["items"] and {deps[x["unit_id"]] for x in mine["items"]} == {world["dep"]}
+    ao2 = app_db.client("leader")                                          # the academic office of a faculty with no unit here
+    assert ao2.post("/api/me/role", {"role": "academic_office"}).status == 200
+    none = ao2.get(f"/api/timetable/versions/{draft}/hours").json
+    assert none["items"] == [] and none["total"] == 0 and none["totals"]["form_h"] == 0
+    assert ao2.get(f"/api/timetable/versions/{draft}/hours?department_id={world['dep']}").status == 404
+    assert ao2.get(f"/api/timetable/versions/{draft}/hours?format=csv").text.lstrip("\ufeff").count("\n") == 1     # the headings only
+    c = store.connect()
+    try:
+        named = c.execute("INSERT INTO tt_versions(term_id,status,scope,rev,created_by,created_at) SELECT term_id,'draft',?,0,created_by,"
+                          "created_at FROM tt_versions WHERE id=?", (json.dumps({"departments": [world["dep"]]}), draft)).lastrowid
+        c.commit()
+    finally:
+        c.close()
+    assert ao2.get(f"/api/timetable/versions/{named}/hours").status == 404
+    assert office_ao.get(f"/api/timetable/versions/{named}/hours").status == 200
+
+
+def test_the_timetable_export_writes_a_version_or_the_terms_rows(office_ao, world):
+    """manage.py export --kind timetable: a version's placements (--version) or the term's rows in force (--term), one line
+    per group, weeks in the canonical text, the effective date of the publishing version."""
+    pub = _published_version()
+    eff = q("SELECT effective_from FROM tt_versions WHERE id=?", (pub,))[0]["effective_from"]
+    env = {**os.environ, "ZEKA_DATA": str(store.DATA)}
+    man = [sys.executable, str(ROOT / "backend" / "manage.py"), "export", "--kind", "timetable"]
+    r = subprocess.run([*man, "--version", str(pub)], capture_output=True, env=env, timeout=120)
+    assert r.returncode == 0, r.stderr.decode("utf-8", "replace")
+    got = list(csv.DictReader(io.StringIO(r.stdout.decode("utf-8"))))
+    assert got and list(got[0]) == list(rows_service.EXPORT_COLUMNS)
+    pls = q("SELECT p.*, g.name grp FROM tt_placements p JOIN teaching_unit_groups ug ON ug.unit_id=p.unit_id "
+            "JOIN study_groups g ON g.id=ug.group_id WHERE p.version_id=?", (pub,))
+    n = domain.term_weeks(q("SELECT * FROM academic_terms WHERE id=?", (TERM,))[0])
+    assert sorted((x["group"], int(x["day"]), int(x["pair"]), x["weeks"]) for x in got) == \
+        sorted((p["grp"], p["weekday"], p["period"], domain.week_text(domain.week_mask(p["weeks"], n), n)) for p in pls)
+    assert {x["effective_from"] for x in got} == {eff} and all(x["course"] and x["kind"] and x["start"] and x["room"] for x in got)
+    rows_ = subprocess.run([*man, "--term", str(TERM)], capture_output=True, env=env, timeout=120)
+    assert rows_.returncode == 0, rows_.stderr.decode("utf-8", "replace")
+    term_lines = list(csv.DictReader(io.StringIO(rows_.stdout.decode("utf-8"))))
+    # every row the version published is in force (with rows earlier publications keep, TT-SEC-2), each with its date
+    built = [x for x in term_lines if x["effective_from"]]
+    key = ("group", "day", "pair", "weeks", "course", "room")
+    assert not Counter(tuple(x[k] for k in key) for x in got) - Counter(tuple(x[k] for k in key) for x in built)
+    dates = q("SELECT DISTINCT v.effective_from d FROM timetable t JOIN tt_versions v ON v.id=t.version_id JOIN courses co ON co.id=t.course_id "
+              "WHERE t.active=1 AND co.term_id=?", (TERM,))
+    assert {x["effective_from"] for x in built} == {x["d"] for x in dates}     # a row unchanged by a publication keeps its own date
+    assert any(not x["effective_from"] for x in term_lines)                          # the term's hand-written rows, without one
+    assert all(x["pair"] and (x["weeks"] in ("all", "odd", "even") or x["weeks"][0].isdigit()) for x in term_lines)
+    bad = subprocess.run([*man, "--version", "999999"], capture_output=True, env=env, timeout=120)
+    assert bad.returncode == 2 and b"tap" in bad.stderr
+    assert office_ao.get(f"/api/integration/export/timetable?version={pub}").status == 403          # integration.manage only

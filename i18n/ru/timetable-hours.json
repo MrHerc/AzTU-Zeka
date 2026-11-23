@@ -1,0 +1,22 @@
+{
+ "Dərslərin bir hissəsi yerləşdirilməyib": "Часть занятий не размещена",
+ "Bəzi həftələrdə dərs günü bayrama və ya semestrin dərs dövründən kənara düşür": "В некоторые недели день занятия приходится на праздник или выходит за пределы учебного периода семестра",
+ "Ləğv olunmuş dərslər var": "Есть отменённые занятия",
+ "Saatların həftələrə bölgüsü əl ilə müəyyən edilib": "Распределение часов по неделям задано вручную",
+ "Saatın qalığı iki həftədən bir keçirilən dərsə yuvarlaqlaşdırılıb": "Остаток часов округлён до занятия раз в две недели",
+ "Saatın qalığı ardıcıl həftələr blokuna yuvarlaqlaşdırılıb": "Остаток часов округлён до блока идущих подряд недель",
+ "Yol verilən həddə": "В пределах допуска",
+ "Saat fərqi": "Расхождение часов",
+ "Saat hesabatı": "Отчёт по часам",
+ "{term}: hər tədris vahidinin Forma №3 üzrə saatı və cədvəlin semestrdə verdiyi saat (bayram günləri və semestrin sərhədləri nəzərə alınır).": "{term}: часы каждой учебной единицы по Форме № 3 и часы, которые расписание даёт ей в семестре (с учётом праздничных дней и границ семестра).",
+ "Bayram günlərinə düşən saatların başqa vaxtda keçirilib-keçirilməyəcəyi hələ müəyyən edilməyib, ona görə saat fərqi dərcə mane olmur.": "Решение о том, будут ли часы, выпавшие на праздничные дни, проведены в другое время, ещё не принято, поэтому расхождение часов не препятствует публикации.",
+ "Forma №3 üzrə saat": "Часы по Форме № 3",
+ "Cədvəl üzrə saat": "Часы по расписанию",
+ "Yol verilən həddən ({h} saat) kənar vahidlər": "Учебные единицы сверх допуска ({h} ч)",
+ "Yalnız yol verilən həddən kənar olanlar": "Только сверх допуска",
+ "Bütün kafedralar": "Все кафедры",
+ "Həddən kənar": "Сверх допуска",
+ "Yol verilən həddən kənar vahid yoxdur": "Нет учебных единиц сверх допуска",
+ "Vahid yoxdur": "Нет учебных единиц",
+ "Hələ baxıla bilən cədvəl versiyası yoxdur.": "Пока нет версии расписания, доступной для просмотра."
+}

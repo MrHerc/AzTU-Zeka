@@ -55,13 +55,16 @@ def main(argv=None) -> int:
     ac = sub.add_parser("activation-codes", help="one-time activation codes for a faculty's students, as CSV (Task 16)")
     ac.add_argument("--faculty", required=True, help="faculty code")
     ac.add_argument("--out", required=True, help="CSV file to write (handed to the dean's office)")
-    xp = sub.add_parser("export", help="grades, attendance, OneRoster files, a register or the status change list (Task 37)")
+    xp = sub.add_parser("export", help="grades, attendance, OneRoster files, a register, the status change list (Task 37) "
+                                       "or the timetable (Task 48)")
     xp.add_argument("--kind", required=True, choices=export.KINDS)
     xp.add_argument("--since", help="grades, attendance, status-changes: only what was written or changed after this ISO "
                                     "date-time, e.g. 2026-12-01T00:00:00+04:00 (without an offset: the university's clock)")
     xp.add_argument("--registry", choices=tuple(export.REGISTRY), default="students", help="registry: which register")
     xp.add_argument("--columns", default="", help="registry: comma-separated columns (default: all)")
     xp.add_argument("--out", help="file to write; without it a CSV goes to standard output (oneroster needs it: a zip)")
+    xp.add_argument("--term", type=int, help="timetable: the term's id (default: the current term); its rows in force")
+    xp.add_argument("--version", type=int, help="timetable: a builder version's id (draft or published); its placements")
     jb = sub.add_parser("jobs", help="periodic jobs (Task 36)")
     jb.add_argument("action", choices=("status", "run"), help="status: each job's last run; run: run what is due now, once")
     ev = sub.add_parser("exam-verify", help="check an exam's hash chain, its frozen answers and scores (Task 30)")
@@ -85,7 +88,7 @@ def main(argv=None) -> int:
     if args.cmd == "jobs":
         return run_jobs(args.action)
     if args.cmd == "export":
-        return run_export(args.kind, args.since, args.registry, args.columns, args.out)
+        return run_export(args.kind, args.since, args.registry, args.columns, args.out, args.term, args.version)
     if args.cmd == "import":
         return run_import(args.kind, args.source, Path(args.file), args.dry_run, args.prefer == "source", args.as_of, args.force,
                           args.wave, args.exported_at, args.by)
@@ -433,7 +436,8 @@ def run_reconcile(wave: int, source: str, folder: Path, sample: int, out: str | 
     return 0 if r["ok"] else 1
 
 
-def run_export(kind: str, since: str | None, registry: str, columns: str, out: str | None) -> int:
+def run_export(kind: str, since: str | None, registry: str, columns: str, out: str | None, term: int | None = None,
+               version: int | None = None) -> int:
     """The same export service as the screen. Exit 0: written; 2: a wrong argument or a database that cannot be read."""
     try:
         moment = integration_rules.moment(since)
@@ -457,7 +461,7 @@ def run_export(kind: str, since: str | None, registry: str, columns: str, out: s
     c = store.connect()
     try:
         name, _, body = export.run(c, kind, since=moment, registry=registry,
-                                   columns=[x.strip() for x in columns.split(",") if x.strip()] or None)
+                                   columns=[x.strip() for x in columns.split(",") if x.strip()] or None, term_id=term, version_id=version)
         c.commit()                                     # the audit row of the export
     except (ValueError, sqlite3.Error) as ex:
         print(f"error: {_az(ex.args[0]) if isinstance(ex, ValueError) else ex}", file=sys.stderr)

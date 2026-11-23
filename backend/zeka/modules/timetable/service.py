@@ -163,6 +163,52 @@ def term_rows(c, term_id: int | None) -> list[dict]:
     return [{**r, "from": eff[r["version_id"]]} if r.get("version_id") in eff else r for r in rs]
 
 
+EXPORT_COLUMNS = ("group", "subgroup", "course_code", "course", "kind", "teacher", "room", "day", "pair", "start", "end", "weeks",
+                  "effective_from")
+
+
+def export_rows(c, term_id: int | None, version_id: int | None) -> list[dict]:
+    """The timetable export (Task 48): a version's placements (draft or published) when ``version_id`` is given, else
+    the rows in force of the term (the current one when None): published and hand-written. One line per group of the
+    row (a row without a group: one line); day 1 = Monday; weeks in the canonical text (``domain.week_text``); the
+    effective date of the version that published the row (none for a hand-written one). ValueError when there is no
+    such version or term."""
+    if version_id is not None:
+        v = repo.version(c, version_id)
+        if not v:
+            raise ValueError(E("Cədvəl versiyası tapılmadı"))
+        term_id = v["term_id"]
+    t = term(c, term_id)
+    if not t:
+        raise ValueError(E("Semestr tapılmadı"))
+    n, times = domain.term_weeks(t), tenant.load(c)["calendar"]["lesson_times"] or domain.DEFAULT_TIMES
+    rooms = {r["id"]: r["code"] for r in repo.rooms(c)}
+    if version_id is not None:
+        pls = repo.placements(c, version_id)
+        units = {u["id"]: u for u in repo.units_by_id(c, sorted({p["unit_id"] for p in pls}))}
+        names = repo.user_names(c, sorted({u["teacher_id"] for u in units.values() if u["teacher_id"]}))
+        items = []
+        for p in pls:
+            u = units.get(p["unit_id"]) or {}
+            span = domain.pair_span(times, p["period"], p["duration"]) or ("", "")
+            items.append({"unit_id": p["unit_id"], "subgroup": u.get("subgroup"), "course_code": u.get("course_code"), "course": u.get("course"),
+                          "kind": u.get("kind"), "teacher": names.get(u.get("teacher_id") or 0), "room": rooms.get(p["room_id"]),
+                          "day": p["weekday"], "pair": p["period"], "start": span[0], "end": span[1], "weeks": p["weeks"],
+                          "effective_from": v["effective_from"]})
+    else:
+        items = [{"unit_id": r["unit_id"], "subgroup": r["subgroup"], "course_code": r["course_code"], "course": r["course"],
+                  "kind": r["unit_kind"] or r["kind"], "teacher": r["teacher"], "room": rooms.get(r["room_id"]) or r["room"],
+                  "day": r["weekday"], "pair": r["period"] or (domain.pairs_of(times, r["start"], r["end"]) or (None,))[0],
+                  "start": r["start"], "end": r["end"], "weeks": r["weeks"] or "all", "effective_from": r.get("from")} for r in term_rows(c, t["id"])]
+    groups = repo.groups_of_units(c, sorted({x["unit_id"] for x in items if x["unit_id"]}))
+    gnames = {g: x["name"] for g, x in repo.groups_info(c, sorted({g for gs in groups.values() for g in gs})).items()}
+    out = []
+    for x in items:
+        x["weeks"] = domain.week_text(domain.week_mask(x["weeks"], n), n)
+        out += [{**x, "group": gnames.get(g, "")} for g in groups.get(x["unit_id"], [])] or [{**x, "group": ""}]
+    return sorted(out, key=lambda x: (x["group"], x["day"], x["pair"] or 0, x["start"], x["course"] or "", x["unit_id"] or 0))
+
+
 def week_of(c, course_ids: list[int], monday: date) -> list[dict]:
     """The classes of these courses in the week from ``monday`` as they are held (Task 48 review, UX9): a row's lessons
     of that week where it has them (a publication moves a row only from its effective date, so a row's time and its

@@ -89,7 +89,7 @@ def _routes(student: str, news: list[int], exam: tuple[int, list[str], str], tt:
     b, v = f"/api/timetable/build/{term}", f"/api/timetable/versions/{vid}"
     for path in (b, f"{b}/readiness", f"{b}/units", f"{b}/groups", f"{b}/versions", f"{b}/teachers", f"{b}/teachers/{tt['teacher']}/availability",
                  f"{v}/grid?group_id={tt['group']}", f"{v}/grid?teacher_id={tt['teacher']}", f"{v}/grid?room_id={tt['room']}",
-                 f"{v}/unplaced", f"{v}/scorecard", f"{v}/placements/{tt['placement']['id']}/options", "/api/timetable/settings"):
+                 f"{v}/unplaced", f"{v}/scorecard", f"{v}/hours", f"{v}/placements/{tt['placement']['id']}/options", "/api/timetable/settings"):
         yield "timetable", "GET", path, ao, None
     p = tt["placement"]
     yield "timetable", "POST", f"{v}/placements/{p['id']}/move", ao, {"weekday": p["weekday"], "period": p["period"],
