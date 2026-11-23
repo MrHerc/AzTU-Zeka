@@ -282,8 +282,13 @@ def syllabus_page(req):
     total = contact + float(w.get("independent") or 0)
     work = (f"{total:g} saat: mühazirə {_num(w.get('lecture'))}, məşğələ {_num(w.get('seminar'))}, "
             f"laboratoriya {_num(w.get('lab'))}, sərbəst {_num(w.get('independent'))}")
-    outcomes = "".join(f"<tr><td>{e(o['id'])}</td><td>{e(o['text'])}</td><td>{e(BLOOM_AZ.get(o['bloom'], o['bloom']))}</td></tr>"
-                       for o in d.get("outcomes", []))
+    from ..modules.syllabus import frameworks          # the outcomes' framework items, read-only (Task 24)
+    tags = frameworks.outcome_items(c, co["id"], [o["id"] for o in d.get("outcomes", [])])
+
+    def tag(x):
+        return f"{x['key'].upper()} {x['version']} · {x['code']} — {x['title'] or x['text']}"
+    outcomes = "".join(f"<tr><td>{e(o['id'])}</td><td>{e(o['text'])}</td><td>{e(BLOOM_AZ.get(o['bloom'], o['bloom']))}</td>"
+                       f"<td>{'<br>'.join(e(tag(x)) for x in tags.get(o['id'], [])) or '—'}</td></tr>" for o in d.get("outcomes", []))
     plan = "".join(f"<tr><td>{e(str(p['week']))}</td><td>{e(p['topic'])}</td><td>{e(', '.join(p.get('outcomes', [])))}</td>"
                    f"<td>{e(p.get('activity', ''))}</td></tr>" for p in d.get("plan", []))
     ass = "".join(f"<tr><td>{e(a['name'])}</td><td>{e(KIND_AZ.get(a['kind'], a['kind']))}</td><td>{e(_num(a['weight']))}</td></tr>"
@@ -300,7 +305,7 @@ def syllabus_page(req):
 <tr><th>Müəllim</th><td>{e(teacher['full_name'] if teacher else '')}</td><th>Davamiyyət həddi</th><td>{e(_num(r.get('attendance_limit')))}%</td></tr>
 <tr><th>Prerekvizitlər</th><td>{e(', '.join(d.get('prerequisites', [])) or '—')}</td><th>İş yükü</th><td>{e(work)}</td></tr></table>
 <h3>Fənnin təsviri</h3><p>{e(d.get('description', ''))}</p>
-<h3>Təlim nəticələri</h3><table class="grades"><tr><th>Kod</th><th>Nəticə</th><th>Bloom səviyyəsi</th></tr>{outcomes}</table>
+<h3>Təlim nəticələri</h3><table class="grades"><tr><th>Kod</th><th>Nəticə</th><th>Bloom səviyyəsi</th><th>Çərçivə bəndləri</th></tr>{outcomes}</table>
 <h3>Həftəlik plan</h3><table class="grades"><tr><th>Həftə</th><th>Mövzu</th><th>Nəticələr</th><th>Fəaliyyət</th></tr>{plan}</table>
 <h3>Qiymətləndirmə</h3><table class="grades"><tr><th>Komponent</th><th>Növ</th><th>Çəki</th></tr>{ass}<tr><th>Cəmi</th><th></th><th>100</th></tr></table>
 <h3>Qaydalar</h3><ul><li>Davamiyyət: buraxılmış saatlar ümumi saatların {e(_num(r.get('attendance_limit')))}%-ni keçərsə, tələbə imtahana buraxılmır.</li>

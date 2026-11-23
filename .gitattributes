@@ -9,3 +9,5 @@
 *.xlsx binary
 *.pdf binary
 *.zip binary
+# NIST-in dərc etdiyi çərçivə faylları bayt-bayt saxlanılır: idxalçının sha256 yoxlaması heç bir çevrilməyə dözmür (Task 24)
+content/frameworks/*.json -text

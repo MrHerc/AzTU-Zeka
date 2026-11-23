@@ -551,6 +551,60 @@
   "perm": null,
   "slow": true
  },
+ "GET /api/frameworks": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/frameworks/coverage": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/frameworks/programmes": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/frameworks/{id:int}/items": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/grades": {
   "access": [
    "student"
@@ -1179,6 +1233,21 @@
   "slow": false
  },
  "GET /api/syllabi/{id:int}/diff": {
+  "access": [
+   "academic_office",
+   "admin",
+   "dept_head",
+   "leader",
+   "office",
+   "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/syllabi/{id:int}/frameworks": {
   "access": [
    "academic_office",
    "admin",
@@ -2925,6 +2994,15 @@
   "slow": false
  },
  "PUT /api/syllabi/{id:int}": {
+  "access": [
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "PUT /api/syllabi/{id:int}/outcomes/{oid}/items": {
   "access": [
    "teacher"
   ],

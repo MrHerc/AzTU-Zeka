@@ -1,0 +1,4381 @@
+{
+ "documents": [
+  {
+   "doc_identifier": "SP_800_181_2_2_0",
+   "name": "Workforce Framework for Cybersecurity (NICE Framework) (NIST SP 800-181 Rev 1)",
+   "version": "0.0.0-sample",
+   "website": "https://csrc.nist.gov/pubs/sp/800/181/r1/final"
+  }
+ ],
+ "relationship_types": [
+  {
+   "relationship_identifier": "projection",
+   "description": "Represents a relationship between two elements."
+  }
+ ],
+ "elements": [
+  {
+   "element_type": "sort",
+   "element_identifier": "S-OG-WRL-015",
+   "title": "00001.00015",
+   "text": "",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "sort",
+   "element_identifier": "S-IO-WRL-003",
+   "title": "00003.00003",
+   "text": "",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "work_role",
+   "element_identifier": "OG-WRL-015",
+   "title": "Technology Portfolio Management",
+   "text": "Responsible for managing a portfolio of technology investments that align with the overall needs of mission and enterprise priorities.",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "work_role",
+   "element_identifier": "IO-WRL-003",
+   "title": "Knowledge Management",
+   "text": "Responsible for managing and administering processes and tools to identify, document, and access an organization’s intellectual capital.",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "work_role",
+   "element_identifier": "DD-WRL-009",
+   "title": "Operational Technology (OT) Cybersecurity Engineering",
+   "text": "Responsible for working within the engineering department to design and create systems, processes, and procedures that maintain the safety, reliability, controllability and security of industrial systems in the face of intentional and incidental cyber events. Interfaces with Chief Information Security Officer, plant managers and industrial cybersecurity technicians.",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "category",
+   "element_identifier": "DD",
+   "title": "DESIGN and DEVELOPMENT",
+   "text": "Conducts research, conceptualizes, designs, develops, and tests secure technology systems, including on perimeter and cloud-based networks.",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "category",
+   "element_identifier": "IO",
+   "title": "IMPLEMENTATION and OPERATION",
+   "text": "Provides implementation, administration, configuration, operation, and maintenance to ensure effective and efficient technology system performance and security.",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "category",
+   "element_identifier": "OG",
+   "title": "OVERSIGHT and GOVERNANCE",
+   "text": "Provides leadership, management, direction, and advocacy so the organization may effectively manage cybersecurity-related risks to the enterprise and conduct cybersecurity work.",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "competency_area",
+   "element_identifier": "NF-COM-002",
+   "title": "Artificial Intelligence (AI) Security",
+   "text": "This Competency Area describes a learner’s capability to understand Artificial Intelligence (AI) systems and to use them in a secure manner that maximizes AI’s benefits while minimizing potential negative risks.",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "opm_code",
+   "element_identifier": "431",
+   "title": "",
+   "text": "",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "opm_code",
+   "element_identifier": "804",
+   "title": "",
+   "text": "",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T0067",
+   "title": "",
+   "text": "Develop architectures or system components consistent with technical specifications",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T0220",
+   "title": "",
+   "text": "Resolve conflicts in laws, regulations, policies, standards, or procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1020",
+   "title": "",
+   "text": "Determine the operational and safety impacts of cybersecurity lapses",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1026",
+   "title": "",
+   "text": "Determine procurement requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1069",
+   "title": "",
+   "text": "Evaluate organizational cybersecurity policy regulatory compliance",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1070",
+   "title": "",
+   "text": "Evaluate organizational cybersecurity policy alignment with organizational directives",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1105",
+   "title": "",
+   "text": "Construct access paths to suites of information",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1124",
+   "title": "",
+   "text": "Restore essential system capabilities and business functions after catastrophic failure events",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1163",
+   "title": "",
+   "text": "Develop cybersecurity countermeasures for systems and applications",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1164",
+   "title": "",
+   "text": "Develop risk mitigation strategies for systems and applications",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1185",
+   "title": "",
+   "text": "Maintain stakeholder communication channels",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1187",
+   "title": "",
+   "text": "Establish internal and external cross-team relationships",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1222",
+   "title": "",
+   "text": "Determine security requirements for new information technologies",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1223",
+   "title": "",
+   "text": "Determine security requirements for new operational technologies",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1227",
+   "title": "",
+   "text": "Manage cybersecurity budget, staffing, and contracting",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1239",
+   "title": "",
+   "text": "Monitor the usage of knowledge management assets and resources",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1240",
+   "title": "",
+   "text": "Create knowledge management assets and resources usage reports",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1243",
+   "title": "",
+   "text": "Oversee configuration management",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1244",
+   "title": "",
+   "text": "Develop configuration management recommendations",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1273",
+   "title": "",
+   "text": "Plan knowledge management projects",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1274",
+   "title": "",
+   "text": "Deliver knowledge management projects",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1296",
+   "title": "",
+   "text": "Recommend data structures for use in the production of reports",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1306",
+   "title": "",
+   "text": "Conduct technology program and project audits",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1338",
+   "title": "",
+   "text": "Develop cybersecurity capability strategies for custom hardware and software development",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1345",
+   "title": "",
+   "text": "Recommend improvements to procurement activities to address cybersecurity requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1354",
+   "title": "",
+   "text": "Identify system cybersecurity requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1369",
+   "title": "",
+   "text": "Determine if acquisitions, procurement, and outsourcing efforts address cybersecurity requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1394",
+   "title": "",
+   "text": "Develop independent cybersecurity audit processes for application software, networks, and systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1395",
+   "title": "",
+   "text": "Implement independent cybersecurity audit processes for application software, networks, and systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1396",
+   "title": "",
+   "text": "Oversee independent cybersecurity audits",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1397",
+   "title": "",
+   "text": "Determine if research and design processes and procedures are in compliance with cybersecurity requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1398",
+   "title": "",
+   "text": "Determine if research and design processes and procedures are accurately followed by cybersecurity staff when performing their day-to-day activities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1399",
+   "title": "",
+   "text": "Develop supply chain, system, network, and operational security contract language",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1472",
+   "title": "",
+   "text": "Gather customer satisfaction and service performance feedback",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1498",
+   "title": "",
+   "text": "Determine if cybersecurity requirements included in contracts are delivered",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1504",
+   "title": "",
+   "text": "Manage organizational knowledge repositories",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1523",
+   "title": "",
+   "text": "Design organizational knowledge management frameworks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1524",
+   "title": "",
+   "text": "Implement organizational knowledge management frameworks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1525",
+   "title": "",
+   "text": "Maintain organizational knowledge management frameworks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1527",
+   "title": "",
+   "text": "Define baseline system security requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1619",
+   "title": "",
+   "text": "Perform risk and vulnerability assessments",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1621",
+   "title": "",
+   "text": "Prepare supply chain security reports",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1622",
+   "title": "",
+   "text": "Prepare risk management reports",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1658",
+   "title": "",
+   "text": "Determine customer requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T1913",
+   "title": "",
+   "text": "Identify system security requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2028",
+   "title": "",
+   "text": "Develop OT inventory model for cybersecurity ",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2029",
+   "title": "",
+   "text": "Serve as OT engineering subject matter expert during development of change management policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2030",
+   "title": "",
+   "text": "Determine if implementation of security measures and controls meets regulatory standards and is in compliance with legal or policy requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2031",
+   "title": "",
+   "text": "Identify gaps in OT network architecture",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2032",
+   "title": "",
+   "text": "Assign security level targets to network zones for control systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2033",
+   "title": "",
+   "text": "Create a change management plan",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2034",
+   "title": "",
+   "text": "Design cybersecurity tools for OT systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2035",
+   "title": "",
+   "text": "Perform a process hazard analysis (PHA)",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2036",
+   "title": "",
+   "text": "Review policies, standards, and regulations for conflicts that may create control system vulnerabilities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2037",
+   "title": "",
+   "text": "Create cybersecurity inspection and test policies and procedures for OT systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2038",
+   "title": "",
+   "text": "Develop system procurement specifications",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2039",
+   "title": "",
+   "text": "Determine the impact of cybersecurity requirements on costs and budgeting",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2040",
+   "title": "",
+   "text": "Conduct cybersecurity reviews of OT system engineering plans and documentation",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2041",
+   "title": "",
+   "text": "Participate in safety system design processes to counteract potential cybersecurity sabotage",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2042",
+   "title": "",
+   "text": "Generate cyberattack scenarios of serious physical consequence",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2043",
+   "title": "",
+   "text": "Oversee implementation of system controls",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2044",
+   "title": "",
+   "text": "Develop system upgrade specifications",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2045",
+   "title": "",
+   "text": "Assign networked engineering assets to security zones",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2046",
+   "title": "",
+   "text": "Communicate implication of new and upgraded technologies to cybersecurity program stakeholders",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2047",
+   "title": "",
+   "text": "Inventory OT assets",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2048",
+   "title": "",
+   "text": "Recommend cybersecurity requirements for integration in continuity planning",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2049",
+   "title": "",
+   "text": "Serve as OT engineering subject matter expert for cybersecurity standards, policies, and procedures development",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2050",
+   "title": "",
+   "text": "Serve as OT engineering subject matter expert for development of organizational cybersecurity risk management plan",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "task",
+   "element_identifier": "T2051",
+   "title": "",
+   "text": "Train cybersecurity defense technicians on OT system processes and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0658",
+   "title": "",
+   "text": "Knowledge of cognitive biases",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0660",
+   "title": "",
+   "text": "Knowledge of appropriate use policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0674",
+   "title": "",
+   "text": "Knowledge of computer networking protocols",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0675",
+   "title": "",
+   "text": "Knowledge of risk management processes",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0676",
+   "title": "",
+   "text": "Knowledge of cybersecurity laws and regulations",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0677",
+   "title": "",
+   "text": "Knowledge of cybersecurity policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0678",
+   "title": "",
+   "text": "Knowledge of privacy laws and regulations",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0679",
+   "title": "",
+   "text": "Knowledge of privacy policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0680",
+   "title": "",
+   "text": "Knowledge of cybersecurity principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0681",
+   "title": "",
+   "text": "Knowledge of privacy principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0682",
+   "title": "",
+   "text": "Knowledge of cybersecurity threats",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0683",
+   "title": "",
+   "text": "Knowledge of cybersecurity vulnerabilities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0684",
+   "title": "",
+   "text": "Knowledge of cybersecurity threat characteristics",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0688",
+   "title": "",
+   "text": "Knowledge of common application vulnerabilities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0691",
+   "title": "",
+   "text": "Knowledge of cyber defense tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0692",
+   "title": "",
+   "text": "Knowledge of vulnerability assessment tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0694",
+   "title": "",
+   "text": "Knowledge of computer algorithm capabilities and applications",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0699",
+   "title": "",
+   "text": "Knowledge of data administration policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0703",
+   "title": "",
+   "text": "Knowledge of data mining principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0711",
+   "title": "",
+   "text": "Knowledge of evaluation and validation principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0721",
+   "title": "",
+   "text": "Knowledge of risk management principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0728",
+   "title": "",
+   "text": "Knowledge of Confidentiality, Integrity and Availability (CIA) principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0729",
+   "title": "",
+   "text": "Knowledge of non-repudiation principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0730",
+   "title": "",
+   "text": "Knowledge of cyber safety principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0734",
+   "title": "",
+   "text": "Knowledge of Risk Management Framework (RMF) requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0735",
+   "title": "",
+   "text": "Knowledge of risk management models and frameworks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0736",
+   "title": "",
+   "text": "Knowledge of information technology (IT) security principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0742",
+   "title": "",
+   "text": "Knowledge of identity and access management (IAM) principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0751",
+   "title": "",
+   "text": "Knowledge of system threats",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0752",
+   "title": "",
+   "text": "Knowledge of system vulnerabilities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0754",
+   "title": "",
+   "text": "Knowledge of resource management principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0757",
+   "title": "",
+   "text": "Knowledge of system design tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0769",
+   "title": "",
+   "text": "Knowledge of system design standards and best practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0774",
+   "title": "",
+   "text": "Knowledge of content creation tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0775",
+   "title": "",
+   "text": "Knowledge of information management tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0776",
+   "title": "",
+   "text": "Knowledge of collaboration tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0803",
+   "title": "",
+   "text": "Knowledge of supply chain risk management principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0814",
+   "title": "",
+   "text": "Knowledge of secure coding tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0818",
+   "title": "",
+   "text": "Knowledge of new and emerging cybersecurity risks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0820",
+   "title": "",
+   "text": "Knowledge of supply chain risks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0822",
+   "title": "",
+   "text": "Knowledge of risk tolerance principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0835",
+   "title": "",
+   "text": "Knowledge of risk assessment principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0836",
+   "title": "",
+   "text": "Knowledge of threat assessment principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0838",
+   "title": "",
+   "text": "Knowledge of supply chain risk management policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0863",
+   "title": "",
+   "text": "Knowledge of cloud computing principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0864",
+   "title": "",
+   "text": "Knowledge of knowledge management principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0865",
+   "title": "",
+   "text": "Knowledge of data classification standards and best practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0866",
+   "title": "",
+   "text": "Knowledge of data classification tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0895",
+   "title": "",
+   "text": "Knowledge of taxonomy models and frameworks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0896",
+   "title": "",
+   "text": "Knowledge of semantic ontology models and frameworks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0904",
+   "title": "",
+   "text": "Knowledge of machine learning principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0917",
+   "title": "",
+   "text": "Knowledge of Personally Identifiable Information (PII) data security standards and best practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0918",
+   "title": "",
+   "text": "Knowledge of Payment Card Industry (PCI) data security standards and best practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0919",
+   "title": "",
+   "text": "Knowledge of Personal Health Information (PHI) data security standards and best practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0922",
+   "title": "",
+   "text": "Knowledge of the acquisition life cycle models and frameworks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0929",
+   "title": "",
+   "text": "Knowledge of content synchronization tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0934",
+   "title": "",
+   "text": "Knowledge of data classification policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0953",
+   "title": "",
+   "text": "Knowledge of data mining tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0957",
+   "title": "",
+   "text": "Knowledge of root cause analysis tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0970",
+   "title": "",
+   "text": "Knowledge of auditing policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0983",
+   "title": "",
+   "text": "Knowledge of computer networking principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0991",
+   "title": "",
+   "text": "Knowledge of database administration principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K0992",
+   "title": "",
+   "text": "Knowledge of database maintenance principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1014",
+   "title": "",
+   "text": "Knowledge of network security principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1051",
+   "title": "",
+   "text": "Knowledge of collection data flow from origin into repositories and tools",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1071",
+   "title": "",
+   "text": "Knowledge of continuous monitoring processes",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1076",
+   "title": "",
+   "text": "Knowledge of risk scoring principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1077",
+   "title": "",
+   "text": "Knowledge of data security controls",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1088",
+   "title": "",
+   "text": "Knowledge of knowledge management tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1117",
+   "title": "",
+   "text": "Knowledge of coding and testing standards",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1122",
+   "title": "",
+   "text": "Knowledge of configuration management principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1123",
+   "title": "",
+   "text": "Knowledge of continuous monitoring principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1125",
+   "title": "",
+   "text": "Knowledge of continuous monitoring tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1137",
+   "title": "",
+   "text": "Knowledge of cybersecurity requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1147",
+   "title": "",
+   "text": "Knowledge of data integrity principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1158",
+   "title": "",
+   "text": "Knowledge of evaluation and validation requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1180",
+   "title": "",
+   "text": "Knowledge of organizational cybersecurity goals and objectives",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1182",
+   "title": "",
+   "text": "Knowledge of organizational cybersecurity policies and configurations",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1192",
+   "title": "",
+   "text": "Knowledge of organizational privacy policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1206",
+   "title": "",
+   "text": "Knowledge of research and design processes and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1208",
+   "title": "",
+   "text": "Knowledge of risk acceptance and documentation",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1245",
+   "title": "",
+   "text": "Knowledge of data exfiltration tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1281",
+   "title": "",
+   "text": "Knowledge of data types and characteristics",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1285",
+   "title": "",
+   "text": "Knowledge of assessment remediation requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1286",
+   "title": "",
+   "text": "Knowledge of Business Impact Analysis (BIA)",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1287",
+   "title": "",
+   "text": "Knowledge of change management processes",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1288",
+   "title": "",
+   "text": "Knowledge of OT cybersecurity compliance requirements and best practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1289",
+   "title": "",
+   "text": "Knowledge of control system environment risks, threats, and vulnerabilities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1290",
+   "title": "",
+   "text": "Knowledge of the Active Cyber Defense Cycle (ACDC)",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1291",
+   "title": "",
+   "text": "Knowledge of active defense principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1292",
+   "title": "",
+   "text": "Knowledge of OT cybersecurity risk tolerance levels",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1293",
+   "title": "",
+   "text": "Knowledge of Purdue Model levels",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1294",
+   "title": "",
+   "text": "Knowledge of change management policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1295",
+   "title": "",
+   "text": "Knowledge of OT cybersecurity inspection and testing policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1296",
+   "title": "",
+   "text": "Knowledge of control system policies and procedures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1297",
+   "title": "",
+   "text": "Knowledge of OT safety systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1298",
+   "title": "",
+   "text": "Knowledge of anomaly detection tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1300",
+   "title": "",
+   "text": "Knowledge of control system network architectures",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1301",
+   "title": "",
+   "text": "Knowledge of cyber incidents impacting OT",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1302",
+   "title": "",
+   "text": "Knowledge of industry hazards",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1303",
+   "title": "",
+   "text": "Knowledge of life cycle management principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1304",
+   "title": "",
+   "text": "Knowledge of operational priorities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1305",
+   "title": "",
+   "text": "Knowledge of OT asset management tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1306",
+   "title": "",
+   "text": "Knowledge of OT assets",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1307",
+   "title": "",
+   "text": "Knowledge of OT inventory principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1308",
+   "title": "",
+   "text": "Knowledge of OT network detection tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1309",
+   "title": "",
+   "text": "Knowledge of OT protocols",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1310",
+   "title": "",
+   "text": "Knowledge of process hazard analysis (PHA) assessments",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1311",
+   "title": "",
+   "text": "Knowledge of system assets and boundaries",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1315",
+   "title": "",
+   "text": "Knowledge of system safety and reliability metrics",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1316",
+   "title": "",
+   "text": "Knowledge of system validation processes",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1317",
+   "title": "",
+   "text": "Knowledge of AI bias types",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1318",
+   "title": "",
+   "text": "Knowledge of AI model development processes",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1319",
+   "title": "",
+   "text": "Knowledge of code review processes",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1320",
+   "title": "",
+   "text": "Knowledge of common AI security risks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1321",
+   "title": "",
+   "text": "Knowledge of common business and cybersecurity applications of AI systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1322",
+   "title": "",
+   "text": "Knowledge of data aggregation tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1323",
+   "title": "",
+   "text": "Knowledge of data de-identification tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1324",
+   "title": "",
+   "text": "Knowledge of data poisoning cyberattacks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1325",
+   "title": "",
+   "text": "Knowledge of energy implications of resource-heavy computing systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1326",
+   "title": "",
+   "text": "Knowledge of environmental implications of resource-heavy computing systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1327",
+   "title": "",
+   "text": "Knowledge of ethical responsibilities of AI system users and providers",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1328",
+   "title": "",
+   "text": "Knowledge of human-AI interaction principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1329",
+   "title": "",
+   "text": "Knowledge of impact of data sparsity",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1330",
+   "title": "",
+   "text": "Knowledge of individual and societal impacts related to risks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1331",
+   "title": "",
+   "text": "Knowledge of intellectual property laws and regulations",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1332",
+   "title": "",
+   "text": "Knowledge of legal responsibilities of AI system users",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1333",
+   "title": "",
+   "text": "Knowledge of misinformation and disinformation vulnerabilities in AI systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1334",
+   "title": "",
+   "text": "Knowledge of NIST AI Risk Management Framework",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1335",
+   "title": "",
+   "text": "Knowledge of recall and precision metrics for classification tasks",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1336",
+   "title": "",
+   "text": "Knowledge of residual risk principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1337",
+   "title": "",
+   "text": "Knowledge of responsible use principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1338",
+   "title": "",
+   "text": "Knowledge of simulation testing tools and techniques",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1339",
+   "title": "",
+   "text": "Knowledge of statistical principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1340",
+   "title": "",
+   "text": "Knowledge of system safety considerations",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1341",
+   "title": "",
+   "text": "Knowledge of test, evaluation, verification, and validation (TEVV) processes",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1342",
+   "title": "",
+   "text": "Knowledge of training, validation, and test data sets",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1343",
+   "title": "",
+   "text": "Knowledge of uncertainty measurement principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1344",
+   "title": "",
+   "text": "Knowledge of data science principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "knowledge",
+   "element_identifier": "K1345",
+   "title": "",
+   "text": "Knowledge of agentic AI principles and practices",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0011",
+   "title": "",
+   "text": "Skill in conducting information searches",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0109",
+   "title": "",
+   "text": "Skill in identifying hidden patterns or relationships",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0141",
+   "title": "",
+   "text": "Skill in assessing security systems designs",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0384",
+   "title": "",
+   "text": "Skill in applying standards",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0385",
+   "title": "",
+   "text": "Skill in communicating complex concepts",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0386",
+   "title": "",
+   "text": "Skill in communicating verbally",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0387",
+   "title": "",
+   "text": "Skill in communicating in writing",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0391",
+   "title": "",
+   "text": "Skill in creating technical documentation",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0406",
+   "title": "",
+   "text": "Skill in developing policy plans",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0416",
+   "title": "",
+   "text": "Skill in evaluating policies",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0430",
+   "title": "",
+   "text": "Skill in collaborating with others",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0431",
+   "title": "",
+   "text": "Skill in applying critical thinking",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0443",
+   "title": "",
+   "text": "Skill in mitigating cognitive biases",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0459",
+   "title": "",
+   "text": "Skill in creating security assessment reports",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0461",
+   "title": "",
+   "text": "Skill in integrating security requirements and contracts",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0480",
+   "title": "",
+   "text": "Skill in evaluating product trustworthiness",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0507",
+   "title": "",
+   "text": "Skill in collecting terminal or environment data",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0530",
+   "title": "",
+   "text": "Skill in conducting research",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0531",
+   "title": "",
+   "text": "Skill in assessing security hardware and software",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0557",
+   "title": "",
+   "text": "Skill in creating knowledge maps",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0586",
+   "title": "",
+   "text": "Skill in administering databases",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0610",
+   "title": "",
+   "text": "Skill in communicating effectively",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0631",
+   "title": "",
+   "text": "Skill in performing data preprocessing",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0673",
+   "title": "",
+   "text": "Skill in translating operational requirements into security controls",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0686",
+   "title": "",
+   "text": "Skill in performing risk assessments",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0687",
+   "title": "",
+   "text": "Skill in performing administrative planning activities",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0744",
+   "title": "",
+   "text": "Skill in performing technical writing",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0806",
+   "title": "",
+   "text": "Skill in performing incident responses",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0811",
+   "title": "",
+   "text": "Skill in managing intelligence collection requirements",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0827",
+   "title": "",
+   "text": "Skill in communicating with internal and external stakeholders",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0900",
+   "title": "",
+   "text": "Skill in analyzing information from multiple sources",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0939",
+   "title": "",
+   "text": "Skill in performing event analysis",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0940",
+   "title": "",
+   "text": "Skill in performing risk-based gap analysis",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0941",
+   "title": "",
+   "text": "Skill in identifying gaps in control system network and connectivity architecture",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0942",
+   "title": "",
+   "text": "Skill in performing system recovery for control system environments",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0943",
+   "title": "",
+   "text": "Skill in connecting to OT assets",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0944",
+   "title": "",
+   "text": "Skill in designing and specifying OT systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0945",
+   "title": "",
+   "text": "Skill in evaluating OT vendor products",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0946",
+   "title": "",
+   "text": "Skill in interpreting OT network drawings",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0947",
+   "title": "",
+   "text": "Skill in interpreting risk assessments",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0948",
+   "title": "",
+   "text": "Skill in performing zone conduit requirement analysis",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0949",
+   "title": "",
+   "text": "Skill in recognizing and acknowledging unique contributions from varying skillsets",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0950",
+   "title": "",
+   "text": "Skill in reviewing access control lists and firewall rules",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0951",
+   "title": "",
+   "text": "Skill in securing control system communication protocols and media",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0952",
+   "title": "",
+   "text": "Skill in developing appropriate system use cases",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0953",
+   "title": "",
+   "text": "Skill in developing prompts for generative AI systems",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0954",
+   "title": "",
+   "text": "Skill in dividing data into training, validation, and test data sets",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0955",
+   "title": "",
+   "text": "Skill in evaluating machine learning models",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0956",
+   "title": "",
+   "text": "Skill in evaluating the performance of algorithms",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0957",
+   "title": "",
+   "text": "Skill in identifying possible mistakes or hallucinations in AI-generated outputs",
+   "doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "element_type": "skill",
+   "element_identifier": "S0958",
+   "title": "",
+   "text": "Skill in measuring non-explainable risk",
+   "doc_identifier": "SP_800_181_2_2_0"
+  }
+ ],
+ "relationships": [
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "431",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "804",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "DD-WRL-009",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "IO-WRL-003",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "OG-WRL-015",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S-OG-WRL-015",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S-IO-WRL-003",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0674",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0675",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0676",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0677",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0678",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0679",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0680",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0681",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0682",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0683",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0684",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0721",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0734",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0735",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0751",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0752",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0754",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0803",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0820",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0835",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0836",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0838",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0922",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0983",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1014",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1137",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1180",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1206",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0687",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0811",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T0220",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1020",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1026",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1227",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1306",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1369",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1394",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1395",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1396",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1397",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1398",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1399",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1472",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1498",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1621",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "OG-WRL-015",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1622",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0676",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0677",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0678",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0679",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0680",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0681",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0721",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0728",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0729",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0730",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0734",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0735",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0822",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0835",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1076",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1122",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1180",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1182",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1285",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1286",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1287",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1288",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1289",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1290",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1291",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1292",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1293",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1294",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1295",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1296",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1297",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1298",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1300",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1301",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1302",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1303",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1304",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1305",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1306",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1307",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1308",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1309",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1310",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1311",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0141",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0384",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0385",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0386",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0387",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0391",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0430",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0459",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0461",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0531",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0673",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0686",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0806",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0939",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0940",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0941",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0942",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0943",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0944",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0945",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0946",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0947",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0948",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0949",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0950",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0951",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T0067",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1069",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1070",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1124",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1163",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1164",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1185",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1187",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1243",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1244",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1338",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1345",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1527",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1619",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2028",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2029",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2030",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2031",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2032",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2033",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2034",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2035",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2036",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2037",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2038",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2039",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2040",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2041",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2042",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2043",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2044",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2045",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2046",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2047",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2048",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2049",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2050",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "DD-WRL-009",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T2051",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0675",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0676",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0677",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0678",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0679",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0680",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0681",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0682",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0683",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0684",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0691",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0692",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0703",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0736",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0751",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0752",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0774",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0775",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0776",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0863",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0864",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0865",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0866",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0895",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0896",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0917",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0918",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0919",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0929",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0934",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0953",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0983",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0991",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0992",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1014",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1051",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1088",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0011",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0507",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0530",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0557",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0586",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0744",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1020",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1105",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1222",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1223",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1239",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1240",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1273",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1274",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1296",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1354",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1504",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1523",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1524",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1525",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1658",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "IO-WRL-003",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "T1913",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0658",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0660",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0678",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0681",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0683",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0688",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0694",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0699",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0711",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0728",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0729",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0730",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0735",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0742",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0752",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0757",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0769",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0814",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0818",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0822",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0835",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0865",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0904",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0957",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K0970",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1071",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1076",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1077",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1117",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1123",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1125",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1147",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1158",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1192",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1206",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1208",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1245",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1281",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1315",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1316",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1317",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1318",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1319",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1320",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1321",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1322",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1323",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1324",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1325",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1326",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1327",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1328",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1329",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1330",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1331",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1332",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1333",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1334",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1335",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1336",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1337",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1338",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1339",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1340",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1341",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1342",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1343",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1344",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "K1345",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0109",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0385",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0391",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0406",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0416",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0431",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0443",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0480",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0610",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0631",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0827",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0900",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0952",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0953",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0954",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0955",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0956",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0957",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  },
+  {
+   "source_element_identifier": "NF-COM-002",
+   "source_doc_identifier": "SP_800_181_2_2_0",
+   "dest_element_identifier": "S0958",
+   "dest_doc_identifier": "SP_800_181_2_2_0",
+   "relationship_identifier": "projection",
+   "provenance_doc_identifier": "SP_800_181_2_2_0"
+  }
+ ]
+}

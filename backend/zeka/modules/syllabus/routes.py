@@ -1,10 +1,11 @@
 """HTTP routes of the structured syllabus (tasks/todo.md, Task 23)."""
 from __future__ import annotations
 
+from ...core.i18n import localize
 from ...core.perms import STAFF_ROLES
-from ...core.web import HTTPError
+from ...core.web import HTTPError, Response
 from ...legacy.common import R
-from . import service
+from . import frameworks, service
 
 
 @R("GET", "/api/syllabi/{id:int}", roles=STAFF_ROLES)
@@ -96,3 +97,59 @@ def course_syllabus(req):
     """The course's published syllabus: its students see only this version (Task 25)."""
     req.raw_i18n = True
     return {"published": service.published_for(req.db, req.user, req.params["id"])}
+
+
+# ---------------------------------------------------------------- frameworks and the outcome map (Task 24)
+@R("GET", "/api/frameworks", roles=STAFF_ROLES)
+def framework_list(req):
+    return frameworks.listing(req.db)
+
+
+@R("GET", "/api/frameworks/{id:int}/items", roles=STAFF_ROLES)
+def framework_items(req):
+    """The picker's search: ``?q=&kind=&role=<work role code>&page=&size=``, server side and paged."""
+    out = frameworks.search(req.db, req.params["id"], req.query.get("q"), req.query.get("kind"), req.query.get("role"),
+                            req.qint("page", 1, lo=1, hi=100000), req.qint("size", 20, lo=1, hi=100))
+    if out is None:
+        raise HTTPError(404, "Çərçivə tapılmadı")
+    return out
+
+
+@R("GET", "/api/syllabi/{id:int}/frameworks", roles=STAFF_ROLES)
+def outcome_map(req):
+    out = frameworks.course_map(req.db, req.user, req.params["id"])
+    if out is None:
+        raise HTTPError(404, "Fənn tapılmadı")
+    return out
+
+
+@R("PUT", "/api/syllabi/{id:int}/outcomes/{oid}/items", roles=("teacher",))
+def map_outcome(req):
+    """Replace one outcome's framework items: ``{"items": [<item id>, ...]}``."""
+    status, value = frameworks.set_outcome(req.db, req.user, req.params["id"], req.params["oid"], req.json())
+    if status != "ok":
+        raise HTTPError(404 if status == "missing" else 400, value)
+    return value
+
+
+@R("GET", "/api/frameworks/programmes", roles=frameworks.COVERAGE_ROLES)
+def framework_programmes(req):
+    return frameworks.programmes(req.db, req.user)
+
+
+@R("GET", "/api/frameworks/coverage", roles=frameworks.COVERAGE_ROLES)
+def framework_coverage(req):
+    """``?programme=<specialty id>&framework=<id, default the newest NICE>&role=<work role code>``; ``&format=csv``
+    for the whole report as a spreadsheet. A programme outside the caller's scope is 404."""
+    req.raw_i18n = True                                 # course names and outcomes are the teachers' text, NICE is English
+    sid, fid = req.qint("programme", 0, lo=0), req.qint("framework", 0, lo=0) or None
+    if req.query.get("format") == "csv":
+        out = frameworks.coverage_csv(req.db, req.user, sid, fid, req.lang)
+        if out is None:
+            raise HTTPError(404, "İxtisas tapılmadı")
+        return Response(out[1], 200, "text/csv; charset=utf-8",
+                        [("Content-Disposition", f'attachment; filename="{out[0]}"'), ("Cache-Control", "private, no-store")])
+    rep = frameworks.coverage(req.db, req.user, sid, fid, req.query.get("role") or None)
+    if rep is None:
+        raise HTTPError(404, "İxtisas tapılmadı")
+    return localize({k: rep[k] for k in ("framework", "labels")}, req.lang) | {k: v for k, v in rep.items() if k not in ("framework", "labels")}

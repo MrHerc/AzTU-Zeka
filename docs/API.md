@@ -1240,6 +1240,12 @@ Audience: students see `all` and `students`, teachers see `all` and `teachers`, 
 | `GET` | `/api/courses/{id}/syllabus` | the course's students and readers | `{"published": <version or null>}` |
 | `POST` | `/api/syllabus/{cid}/generate` | `teacher` | The syllabus assistant's output (the first draft's source) |
 | `POST` | `/api/syllabus/{cid}/link` | `teacher` | One-time link to the printable syllabus |
+| `GET` | `/api/frameworks` | staff | Every framework version (Task 24): built-in Bloom and EQF first, then each key's newest version first |
+| `GET` | `/api/frameworks/{id}/items?q=&kind=&role=&page=&size=` | staff | One page of a framework's items, searched on the server |
+| `GET` | `/api/syllabi/{id}/frameworks` | staff who read the course | The course's outcome map: `{"outcomes": {"N1": [<item>, ...]}, "can_map"}` |
+| `PUT` | `/api/syllabi/{id}/outcomes/{oid}/items` | a teacher of the course | Replace one outcome's framework items: `{"items": [<item id>, ...]}` |
+| `GET` | `/api/frameworks/programmes` | `dept_head`, `academic_office` (their scope), `leader`, `admin` | The programmes (specialties) the caller's report covers |
+| `GET` | `/api/frameworks/coverage?programme=&framework=&role=` | `dept_head`, `academic_office` (their scope), `leader`, `admin` | A programme's coverage report; `&format=csv` for the spreadsheet |
 
 **`PUT /api/academy/assessment`.** Body: `{"values": {"<track key>": 1..5}}`. Track keys: `ai`, `emi`, `syllabus`, `communication`, `pedagogy`, `research`, `edtech`. Recommended tracks are the three lowest-rated tracks that are not complete. Returns the same object as `GET /api/academy`.
 
@@ -1267,6 +1273,41 @@ Socratic only, locked), and recomputes the course's final grades. A course that 
 with `{"override": true, "note": "<reason>"}` from the academic office (`409` otherwise; an audit entry
 `syllabus_publish_override`). Scores of components the new scheme no longer has stay in the database but are not
 shown. A student reads only the published version (`GET /api/courses/{id}/syllabus`, `/syllabus/{id}`).
+
+**Frameworks (Task 24).** A framework is a version of a published reference: `frameworks` (key, version, title, source,
+SHA-256, items per kind), `framework_items` (code, kind, parent, title, text) and `framework_links` (the source's
+relationships). NICE Framework Components come from the unchanged NIST file (`content/frameworks/README.md`) through
+`python backend/manage.py import-framework --file <file>`: every element is an item of its own type (work_role, task,
+knowledge, skill, competency_area, category, opm_code, sort) and every relationship a link; a work role's `parent` is its
+category. The command prints the rows per kind beside the file's element counts and exits `1` when they differ. A second
+run changes nothing; a version is never re-imported from a different file; a known version (2.2.0) whose SHA-256 differs
+from the file NIST published is refused; a newer version is a new row, and the older one with its items and maps stays
+readable. Bloom (revised, 2001: six levels) and EQF (2017: eight levels with their knowledge, skill and responsibility
+descriptors) are built in and written at every start, prod included; their Azerbaijani and Russian texts are working
+translations (`note`).
+
+Each framework in `GET /api/frameworks` has `counts` and `kinds` (`kind`, `label`, `count`, `mappable`). An item is
+`{id, code, kind, parent, title, text, label}`. `GET /api/frameworks/{id}/items`: `q` (up to 100 characters) is found in
+the code, title or text (`%` and `_` are literal), `kind` filters, `role` (a work role's code) limits the page to the
+items that role links to, `size` is 1–100 (default 20); the answer is `{framework, items, page, more}`; an unknown
+framework or role is `404`.
+
+The outcome map's key is the course and the outcome's code (`N1` …), which every new version of the syllabus keeps; each
+row records who mapped it and when (`outcome_items`). `PUT /api/syllabi/{id}/outcomes/{oid}/items` takes up to 50
+different items of any frameworks, of a mappable kind (task, knowledge, skill, level, responsibility; `400` otherwise),
+for an outcome of the latest saved version (`404` otherwise). Only the course's head teacher and the teachers of its
+active units map; anyone else gets `404`. The printable syllabus lists each outcome's items read-only; a student sees
+them on the published version.
+
+`GET /api/frameworks/coverage`: a programme is a specialty; its courses are those with an active teaching unit for one
+of its groups; an outcome counts in the published syllabus, else the latest version. `framework` defaults to the newest
+NICE version. The answer: `programme`, `framework`, `courses`, `outcomes`, `labels`, `roles` (per work role: `code`,
+`title`, `category`, `kinds` with `total` and `covered` for task, knowledge and skill, `total`, `covered`) and, with
+`role=<code>`, `role.statements` (`code`, `kind`, `text`, `covered_by`: the course and outcome of each covering
+outcome; an empty list is an uncovered statement). `&format=csv`: one row per work role and statement (UTF-8 with a BOM),
+headers in the caller's language. A department head and the academic office read the programmes of their grants (an
+unscoped grant: all; a faculty or department grant: that faculty's or department's programmes); a programme, framework or
+role outside that is `404`.
 
 ## Support desk and feedback
 

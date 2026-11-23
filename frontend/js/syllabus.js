@@ -1,7 +1,7 @@
 // The structured syllabus (Task 23): outcomes with a Bloom level, a weekly plan that names its outcomes, weighted
 // assessment, rules, prerequisites, literature and the workload from Forma №3. Every save is a new version; the server
 // checks the university's rules (weights, the exam's weight, the attendance limit) and says what is wrong.
-import { api, html, mount, on, ic, toast, route, go, t, pageHead, fmtDate, loading, empty, failed, confirmBox, openSyllabus, registerTour, modal, S } from "./core.js";
+import { api, html, mount, on, ic, toast, route, go, t, pageHead, fmtDate, loading, empty, failed, confirmBox, openSyllabus, registerTour, modal, S, LANG } from "./core.js";
 import { HOME } from "./shell.js";
 
 const BLOOM = () => [["remember", t("Xatırlama")], ["understand", t("Anlama")], ["apply", t("Tətbiq")], ["analyze", t("Təhlil")],
@@ -36,6 +36,78 @@ function readOnly(d) {
     <div class="small">${t("İş yükü, saat")}: ${WORK().map(([k, l]) => html`${l} <b>${d.workload[k]}</b> `)}</div></div>`;
 }
 
+// Framework items of one outcome (Task 24): the server searches, a page at a time, within a framework, a kind and, for NICE,
+// one work role's statements. One outcome may carry items of several frameworks; the key is the course and the outcome.
+let FWS = null;
+const tagText = (x) => `${x.key ? `${x.key.toUpperCase()} ${x.version} · ` : ""}${x.code}`;
+const tagChips = (list) => (list.length ? html`<div class="chips">${list.map((x) => html`<span class="badge b-navy" title="${x.title ? `${x.title}: ${x.text}` : x.text}">${tagText(x)}</span>`)}</div>` : "");
+
+async function pickTags(cid, oid, current, done) {
+  try { FWS = FWS || await api.get("/api/frameworks"); } catch (err) { toast(err.message, "err"); return; }
+  const chosen = new Map(current.map((x) => [x.id, x]));
+  let fw = FWS.find((f) => !f.builtin) || FWS[0], kind = "", role = "", q = "", page = 1, items = [], timer = null;
+  modal({ title: t("{id} nəticəsinin çərçivə bəndləri", { id: oid }), size: "lg", body: html`<div class="stack sm">
+      <div class="row wrap"><select class="select" id="fw-f" style="width:auto" aria-label="${t("Çərçivə")}">${FWS.map((f) => html`<option value="${f.id}" ${f.id === fw.id ? "selected" : ""}>${f.title} · ${f.version}</option>`)}</select>
+        <select class="select" id="fw-k" style="width:auto" aria-label="${t("Növ")}"></select>
+        <select class="select" id="fw-r" style="width:auto;max-width:260px" aria-label="${t("İş rolu")}"></select>
+        <input class="input grow" id="fw-q" type="search" maxlength="100" placeholder="${t("Kod və ya mətn üzrə axtarış")}" aria-label="${t("Axtar")}"></div>
+      <div class="tiny muted" id="fw-note"></div>
+      <div class="list" id="fw-list" aria-live="polite"></div>
+      <div class="row between"><button class="btn btn-sm" id="fw-prev">${t("Əvvəlki")}</button><span class="tiny muted" id="fw-page"></span><button class="btn btn-sm" id="fw-next">${t("Növbəti")}</button></div>
+      <div><b class="small">${t("Seçilmiş bəndlər")}</b><div class="chips mt-sm" id="fw-chosen"></div></div></div>`,
+    actions: [{ label: t("Bağla") }, { label: t("Yadda saxla"), cls: "btn-primary", onClick: async () => {
+      done(await api.put(`/api/syllabi/${cid}/outcomes/${encodeURIComponent(oid)}/items`, { items: [...chosen.keys()] }));
+      toast(t("Saxlanıldı"), "ok");
+    } }],
+    onMount: (w) => {
+      const $ = (sel) => w.querySelector(sel);
+      const drawChosen = () => mount($("#fw-chosen"), chosen.size ? html`${[...chosen.values()].map((x) => html`<button class="badge b-navy" data-unpick="${x.id}" aria-label="${t("Sil")}: ${tagText(x)}">${tagText(x)} ×</button>`)}`
+        : html`<span class="tiny muted">${t("Hələ seçilməyib")}</span>`);
+      const load = async () => {
+        const p = new URLSearchParams({ page: String(page), size: "10" });
+        if (q) p.set("q", q);
+        if (kind) p.set("kind", kind);
+        if (role) p.set("role", role);
+        let r;
+        try { r = await api.get(`/api/frameworks/${fw.id}/items?${p}`); } catch (err) { mount($("#fw-list"), html`<span class="small muted">${err.message}</span>`); return; }
+        items = r.items;
+        mount($("#fw-list"), items.length ? html`${items.map((x) => html`<label class="list-item"><input type="checkbox" data-pick="${x.id}" ${chosen.has(x.id) ? "checked" : ""}>
+          <div class="grow"><b class="small">${x.code}</b> <span class="badge b-gray">${x.label}</span><div class="small">${x.title ? html`<b>${x.title}</b> ` : ""}${x.text}</div></div></label>`)}`
+          : html`<span class="small muted">${t("Heç nə tapılmadı")}</span>`);
+        $("#fw-prev").disabled = page <= 1;
+        $("#fw-next").disabled = !r.more;
+        $("#fw-page").textContent = t("Səhifə {n}", { n: page });
+      };
+      const setFw = async () => {
+        kind = (fw.kinds.find((k) => k.mappable) || {}).kind || "";
+        role = "";
+        page = 1;
+        mount($("#fw-k"), html`${fw.kinds.filter((k) => k.mappable).map((k) => html`<option value="${k.kind}" ${k.kind === kind ? "selected" : ""}>${k.label}</option>`)}`);
+        let roles = [];
+        try { roles = fw.counts.work_role ? (await api.get(`/api/frameworks/${fw.id}/items?kind=work_role&size=100`)).items : []; } catch (err) { toast(err.message, "err"); }
+        $("#fw-r").hidden = !roles.length;
+        mount($("#fw-r"), html`<option value="">${t("Bütün iş rolları")}</option>${roles.map((r) => html`<option value="${r.code}">${r.code} · ${r.title}</option>`)}`);
+        $("#fw-note").textContent = fw.note || "";
+        await load();
+      };
+      on(w, "change", "#fw-f", (e, n) => { fw = FWS.find((f) => f.id === +n.value) || fw; setFw(); });
+      on(w, "change", "#fw-k", (e, n) => { kind = n.value; page = 1; load(); });
+      on(w, "change", "#fw-r", (e, n) => { role = n.value; page = 1; load(); });
+      on(w, "input", "#fw-q", (e, n) => { clearTimeout(timer); timer = setTimeout(() => { q = n.value.trim(); page = 1; load(); }, 300); });
+      on(w, "click", "#fw-prev", () => { page = Math.max(1, page - 1); load(); });
+      on(w, "click", "#fw-next", () => { page += 1; load(); });
+      on(w, "change", "[data-pick]", (e, n) => {
+        const x = items.find((y) => y.id === +n.dataset.pick);
+        if (n.checked && x) chosen.set(x.id, { ...x, key: fw.key, version: fw.version });
+        else chosen.delete(+n.dataset.pick);
+        drawChosen();
+      });
+      on(w, "click", "[data-unpick]", (e, b) => { chosen.delete(+b.dataset.unpick); drawChosen(); load(); });
+      drawChosen();
+      setFw();
+    } });
+}
+
 const opts = (list, cur) => list.map(([k, l]) => html`<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`);
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const nextId = (outs) => `N${Math.max(0, ...outs.map((o) => +o.id.slice(1) || 0)) + 1}`;
@@ -48,9 +120,9 @@ route("/teacher/syllabus", async (el, p, q) => {
   if (!cs.length) return mount(el, html`${pageHead(t("Sillabus"), "", "", crumbs)}
     ${empty("layers", t("Fənn tapılmadı"), t("Sillabus hazırlamaq üçün sizə təyin olunmuş fənn lazımdır."), { label: t("Fənlərim"), go: "/teacher/courses", icon: "book" })}`);
   const co = cs.find((x) => x.id === +q.course) || cs[0];
-  let st, s = null, dirty = false;
+  let st, s = null, dirty = false, tags = {};
   try {
-    st = await api.get(`/api/syllabi/${co.id}`);
+    [st, tags] = await Promise.all([api.get(`/api/syllabi/${co.id}`), api.get(`/api/syllabi/${co.id}/frameworks`).then((r) => r.outcomes)]);
     s = st.latest ? clone(st.latest.data) : null;
   } catch (err) { return mount(el, failed(err.message)); }
   const sum = () => (s ? s.assessment.reduce((a, x) => a + (+x.weight || 0), 0) : 0);
@@ -73,9 +145,12 @@ route("/teacher/syllabus", async (el, p, q) => {
       <div class="grid g-12"><div class="stack">
         <div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Fənnin təsviri")}</h3></div><div class="card-b"><textarea class="textarea" data-f="description" maxlength="4000" aria-label="${t("Fənnin təsviri")}">${s.description}</textarea></div></div>
         <div class="card" data-tour="outcomes"><div class="card-h"><h3>${ic("target", 17)} ${t("Təlim nəticələri")}</h3><button class="btn btn-sm" id="add-o">${ic("plus", 13)} ${t("Əlavə et")}</button></div>
-          <div class="table-wrap"><table class="table"><thead><tr><th>${t("Kod")}</th><th>${t("Nəticə")}</th><th>${t("Bloom səviyyəsi")}</th><th></th></tr></thead><tbody>
+          <div class="table-wrap"><table class="table"><thead><tr><th>${t("Kod")}</th><th>${t("Nəticə")}</th><th>${t("Bloom səviyyəsi")}</th><th>${t("Çərçivə bəndləri")}</th><th></th></tr></thead><tbody>
           ${s.outcomes.map((o, i) => html`<tr><td><b>${o.id}</b></td><td><input class="input" data-o-text="${i}" value="${o.text}" aria-label="${t("Nəticə")}"></td>
             <td><select class="select" data-o-bloom="${i}" aria-label="${t("Bloom səviyyəsi")}">${opts(BLOOM(), o.bloom)}</select></td>
+            <td>${tagChips(tags[o.id] || [])}${st.latest && st.latest.data.outcomes.some((x) => x.id === o.id)
+              ? html`<button class="btn btn-ghost btn-sm" data-o-tags="${o.id}">${ic("plus", 13)} ${t("Bəndlər")}</button>`
+              : html`<span class="tiny muted">${t("Saxladıqdan sonra")}</span>`}</td>
             <td><button class="btn btn-ghost btn-icon" data-o-del="${i}" aria-label="${t("Sil")}">${ic("x", 14)}</button></td></tr>`)}</tbody></table></div>
           <div class="card-b tiny muted">${t("Ölçülə bilən fellərdən istifadə edin: «izah edir», «hesablayır», «layihələndirir».")}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Həftəlik plan")}</h3><button class="btn btn-sm" id="add-w">${ic("plus", 13)} ${t("Həftə əlavə et")}</button></div>
@@ -160,6 +235,7 @@ route("/teacher/syllabus", async (el, p, q) => {
     const [gone] = s.outcomes.splice(+b.dataset.oDel, 1);
     s.plan.forEach((w) => { w.outcomes = w.outcomes.filter((x) => x !== gone.id); });
   }));
+  on(el, "click", "[data-o-tags]", (e, b) => pickTags(co.id, b.dataset.oTags, tags[b.dataset.oTags] || [], (r) => { tags = r.outcomes; draw(); }));
   on(el, "click", "#add-w", () => edit(() => s.plan.push({ week: Math.max(0, ...s.plan.map((w) => w.week)) + 1, topic: "", outcomes: [], activity: "" })));
   on(el, "click", "[data-p-del]", (e, b) => edit(() => s.plan.splice(+b.dataset.pDel, 1)));
   on(el, "click", "#add-a", () => edit(() => s.assessment.splice(Math.max(0, s.assessment.length - 1), 0, { name: "", kind: "component", weight: 5 })));
@@ -210,6 +286,50 @@ registerTour("teacher.syllabus", { route: "/teacher/syllabus", roles: ["teacher"
   { sel: '[data-tour="outcomes"]', title: t("Təlim nəticələri"), text: t("Hər nəticənin kodu və Bloom səviyyəsi var; həftəlik plan nəticələrə istinad edir.") },
   { sel: '[data-tour="actions"]', title: t("Versiyalar"), text: t("Hər saxlama yeni versiyadır. Çap görünüşü portalın daxilində açılır.") },
 ] });
+
+// The coverage report of a programme (Task 24): per NICE work role, how many of its task, knowledge and skill statements
+// an outcome of the programme's courses covers; a role's page lists the covering outcomes and the uncovered statements.
+const STATEMENT_KINDS = ["task", "knowledge", "skill"];
+route("/frameworks/coverage", async (el, p, qs) => {
+  mount(el, loading());
+  let progs, fws, rep = null;
+  try { [progs, fws] = await Promise.all([api.get("/api/frameworks/programmes"), api.get("/api/frameworks")]); } catch (err) { return mount(el, failed(err.message)); }
+  const crumbs = [[t("Əsas"), HOME[S.user.role] || "/"], [t("Çərçivə əhatəsi")]];
+  const nice = fws.filter((f) => f.counts.work_role);
+  const sid = +qs.programme || (progs[0] || {}).id, fid = +qs.framework || (nice[0] || {}).id;
+  const head = (actions = "") => pageHead(t("Çərçivə əhatəsi"), t("İxtisasın fənlərindəki təlim nəticələri NICE iş rollarının bəyanatlarını nə qədər örtür."), actions, crumbs);
+  if (!progs.length || !nice.length) {
+    return mount(el, html`${head()}<div class="card">${empty("target", progs.length ? t("NICE çərçivəsi idxal olunmayıb") : t("Sizə aid ixtisas yoxdur"),
+      progs.length ? t("Administrator faylı manage.py import-framework əmri ilə idxal edir.") : "")}</div>`);
+  }
+  try { rep = await api.get(`/api/frameworks/coverage?programme=${sid}&framework=${fid}${qs.role ? `&role=${encodeURIComponent(qs.role)}` : ""}`); }
+  catch (err) { return mount(el, failed(err.message)); }
+  const pct = (a, b) => (b ? Math.round((a * 100) / b) : 0);
+  const to = (patch) => go(`/frameworks/coverage?${new URLSearchParams({ programme: sid, framework: fid, ...patch })}`);
+  const role = rep.role;
+  const bad = role ? role.statements.filter((x) => !x.covered_by.length) : [];
+  mount(el, html`${head(html`<select class="select" id="cv-p" style="width:auto" aria-label="${t("İxtisas")}">${progs.map((x) => html`<option value="${x.id}" ${x.id === sid ? "selected" : ""}>${x.code} · ${x.name}</option>`)}</select>
+      <select class="select" id="cv-f" style="width:auto" aria-label="${t("Çərçivə")}">${nice.map((f) => html`<option value="${f.id}" ${f.id === fid ? "selected" : ""}>${f.title} · ${f.version}</option>`)}</select>
+      <a class="btn" href="/api/frameworks/coverage?programme=${sid}&framework=${fid}&format=csv&lang=${LANG}" download>${ic("download", 15)} CSV</a>`)}
+    <p class="small muted">${t("Fənlər: {c}. Təlim nəticələri: {o}. Dərc olunmuş sillabus, yoxdursa son versiya oxunur.", { c: rep.courses, o: rep.outcomes })}</p>
+    ${role ? html`<div class="card mb"><div class="card-h"><h3>${role.code} · ${role.title}</h3><button class="btn btn-sm" id="cv-close">${t("Bağla")}</button></div>
+      <div class="card-b stack sm"><p class="small muted" style="margin:0">${role.text}</p>
+        <b class="small">${t("Örtülən bəyanatlar")}</b>
+        ${role.statements.filter((x) => x.covered_by.length).map((x) => html`<div class="list-item"><div class="grow"><b class="small">${x.code}</b> <span class="badge b-gray">${rep.labels[x.kind]}</span>
+          <div class="small">${x.text}</div></div><div class="chips">${x.covered_by.map((b) => html`<span class="badge b-green" title="${b.name}: ${b.text}">${b.course} ${b.outcome}</span>`)}</div></div>`)}
+        <b class="small">${t("Örtülməyən bəyanatlar: {n}", { n: bad.length })}</b>
+        ${bad.map((x) => html`<div class="list-item"><div class="grow"><b class="small">${x.code}</b> <span class="badge b-gray">${rep.labels[x.kind]}</span><div class="small">${x.text}</div></div></div>`)}</div></div>` : ""}
+    <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>${t("İş rolu")}</th><th>${t("Kateqoriya")}</th>
+      ${STATEMENT_KINDS.map((k) => html`<th>${rep.labels[k]}</th>`)}<th>${t("Örtülür")}</th><th></th></tr></thead><tbody>
+      ${rep.roles.map((r) => html`<tr><td><b class="small">${r.code}</b> · ${r.title}</td><td class="small muted">${r.category || ""}</td>
+        ${STATEMENT_KINDS.map((k) => html`<td class="nowrap">${r.kinds[k].covered}/${r.kinds[k].total}</td>`)}
+        <td><span class="badge ${r.covered ? "b-blue" : "b-gray"}">${pct(r.covered, r.total)}%</span></td>
+        <td><button class="btn btn-sm" data-role="${r.code}">${t("Bax")}</button></td></tr>`)}</tbody></table></div></div>`);
+  on(el, "change", "#cv-p", (e, n) => to({ programme: n.value }));
+  on(el, "change", "#cv-f", (e, n) => to({ framework: n.value }));
+  on(el, "click", "[data-role]", (e, b) => to({ role: b.dataset.role }));
+  on(el, "click", "#cv-close", () => to({}));
+});
 
 // The approval queue (Task 25): a department head approves or returns submitted versions of the courses the grant
 // covers, the academic office publishes or returns approved ones. Publication configures the course.
