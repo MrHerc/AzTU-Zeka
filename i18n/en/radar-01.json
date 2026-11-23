@@ -96,7 +96,7 @@
  "İzahlı: hər bal səbəbləri və sübutları ilə göstərilir.": "Explainable: every score is shown with its reasons and evidence.",
  "Ədalətli: üzrlü qayıblar heç vaxt sayılmır; az məlumatla qərar verilmir.": "Fair: excused absences never count; no verdict from too little data.",
  "Məxfi: tutor söhbətlərinin mətni oxunmur — yalnız mövzu və say.": "Private: tutor chat text is never read — only topics and counts.",
- "İnsan nəzarəti: plan yalnız müəllim təsdiqləyib göndərəndə tələbəyə çatır; tələbə risk balını görmür.": "Human oversight: a plan reaches the student only after the teacher approves and sends it; students never see a risk score.",
+ "İnsan nəzarəti: plan tələbəyə yalnız müəllim onu təsdiqləyib göndərdikdən sonra çatır; tələbə risk balını görmür.": "Human oversight: a plan reaches the student only after the teacher approves and sends it; students never see a risk score.",
  "Bu filtrə uyğun tələbə yoxdur": "No students match this filter",
  "Filtri dəyişin və ya axtarışı təmizləyin.": "Change the filter or clear the search.",
  "Risk": "Risk",

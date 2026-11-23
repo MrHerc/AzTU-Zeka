@@ -117,7 +117,7 @@ route("/office-hours", async (el) => {
             <div class="row wrap" style="gap:8px"><select class="input" name="weekday">${WEEKDAY().slice(1).map((d, i) => html`<option value="${i + 1}">${d}</option>`)}</select>
               <input class="input" name="start" type="time" value="14:00" aria-label="${t("Başlanğıc")}"><input class="input" name="end" type="time" value="16:00" aria-label="${t("Son")}">
               <select class="input" name="slot_min">${[10, 15, 20, 30, 45, 60].map((m) => html`<option value="${m}" ${m === 15 ? "selected" : ""}>${t("{n} dəq.", { n: m })}</option>`)}</select>
-              <input class="input" name="place" placeholder="${t("Otaq, məsələn EK-305")}"><input class="input" name="online_url" placeholder="https://…">
+              <input class="input" name="place" placeholder="${t("Otaq, məsələn, EK-305")}"><input class="input" name="online_url" placeholder="https://…">
               <button class="btn btn-primary" data-add>${t("Əlavə et")}</button></div></div>${mine}`);
       }
       const teachers = await api.get("/api/office-hours/teachers");

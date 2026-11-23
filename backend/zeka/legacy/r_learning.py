@@ -63,7 +63,7 @@ def next_lesson(c, course_id):
         d = t.date() + timedelta(days=add)
         for x in tt:
             if x["weekday"] == d.isoweekday() and (add > 0 or x["start"] > t.strftime("%H:%M")):
-                return {"date": d.isoformat(), "weekday": WEEKDAYS[x["weekday"]], **x}
+                return {**x, "date": d.isoformat(), "weekday": WEEKDAYS[x["weekday"]]}     # the name, not the row's number (L6)
     return None
 
 

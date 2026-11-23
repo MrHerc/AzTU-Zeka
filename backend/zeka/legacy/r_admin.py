@@ -5,7 +5,7 @@ import json
 
 from . import engine, radar, store
 from .common import R, session_cookie, week_index
-from ..core.i18n import T3
+from ..core.i18n import T3, num3
 from .r_learning import course_insights
 from .r_services import office_summary
 from .store import audit, row, rows, setting
@@ -53,7 +53,7 @@ def analytics(req):
     kpis = insight.tiles(c)
     tile = {k["key"]: k for k in kpis}
     insights = [{"level": "warn", "text": T3("{course}: sualların {rate}%-inin cavabı materiallarda tapılmır — material əlavə edilməsi tövsiyə olunur.",
-                                             course=x["name"], rate=str(x["no_source_rate"]).replace(".", ","))}
+                                             course=x["name"], rate=num3(x["no_source_rate"]))}
                 for x in cs if x["no_source_rate"] and x["no_source_rate"] > 5]
     acad = tile["academy"]
     if acad["ok"] is False:

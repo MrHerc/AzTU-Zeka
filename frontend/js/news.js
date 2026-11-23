@@ -40,7 +40,7 @@ function eventRow(n) {
       <div class="tiny muted">${fmtTime(n.event_start)} · ${n.location}</div>
       ${n.capacity ? html`<div class="tiny muted">${t("{a} / {b} yer", { a: n.registered_count, b: n.capacity })}</div>` : ""}</div>
     ${n.registration && !n.past ? html`<button class="btn btn-sm ${n.registered ? "" : "btn-accent"}" data-rsvp="${n.id}" ${full && !n.registered ? "disabled" : ""}>
-      ${n.registered ? t("Ləğv et") : full ? t("Yer yoxdur") : t("Qeydiyyat")}</button>`
+      ${n.registered ? t("Ləğv et") : full ? t("Yer yoxdur") : t("Qeydiyyatdan keç")}</button>`
       : n.past ? html`<span class="badge b-gray">${t("Başa çatıb")}</span>` : ""}</div>`;
 }
 
@@ -178,7 +178,7 @@ route("/news/:id", async (el, p) => {
             <div class="card-b stack">
               <div class="row event-when">${datebox(n.event_start)}<div><b>${fmtDayLong(n.event_start)}</b><div class="small muted">${fmtTime(n.event_start)} – ${fmtTime(n.event_end)}</div></div></div>
               <div class="row small">${ic("pin", 15)} ${n.location}</div>
-              ${n.capacity ? html`<div><div class="row between small"><span class="muted">${t("Qeydiyyat")}</span><b>${t("{a} / {b}", { a: n.registered_count, b: n.capacity })}</b></div>
+              ${n.capacity ? html`<div><div class="row between small"><span class="muted">${t("Qeydiyyatlar")}</span><b>${t("{a} / {b}", { a: n.registered_count, b: n.capacity })}</b></div>
                 ${progress((100 * n.registered_count) / n.capacity, "coral", t("Qeydiyyat doluluğu"))}</div>` : ""}
               ${n.registration && !n.past
                 ? html`<button class="btn btn-lg ${n.registered ? "" : "btn-accent"} btn-block" id="rsvp" ${full && !n.registered ? "disabled" : ""}>
@@ -218,7 +218,7 @@ route("/staff/news", async (el, p, q) => {
     const live = d.items.filter((n) => n.status === "published");
     const section = (title, list, isDraft) => html`<div class="card"><div class="card-h"><h3>${ic(isDraft ? "edit" : "news", 17)} ${title}</h3><span class="muted small">${t("{n}", { n: list.length })}</span></div>
       <div class="card-b ${list.length ? "no-pad" : ""}">${list.length ? html`<div class="table-wrap"><table class="table"><thead><tr>
-        <th>${t("Xəbər")}</th><th>${t("Növ")}</th><th>${t("Auditoriya")}</th><th>${t("Dərc")}</th><th>${t("Oxunma")}</th><th>${t("Qeydiyyat")}</th><th class="right">${t("Əməliyyatlar")}</th></tr></thead><tbody>
+        <th>${t("Xəbər")}</th><th>${t("Növ")}</th><th>${t("Hədəf auditoriya")}</th><th>${t("Dərc")}</th><th>${t("Oxunma")}</th><th>${t("Qeydiyyatlar")}</th><th class="right">${t("Əməliyyatlar")}</th></tr></thead><tbody>
         ${list.map((n) => html`<tr><td><div class="row"><span class="stat-ic tone-${(n.cover || {}).tone || "navy"}" style="width:34px;height:34px;color:#fff">${ic((n.cover || {}).icon || "news", 16)}</span>
           <div><b class="small">${n.title}</b><div class="tiny muted">${n.pinned ? html`${ic("pin", 11)} ` : ""}${n.important ? t("Vacib") + " · " : ""}${n.author}</div></div></div></td>
           <td><span class="badge ${KIND_BADGE[n.kind] || "b-gray"}">${kindName(n.kind)}</span></td>
@@ -262,7 +262,7 @@ route("/staff/news", async (el, p, q) => {
     const m = modal({ title: n ? t("Xəbəri redaktə et") : t("Yeni xəbər"), size: "xl",
       body: html`<div class="grid g-12"><form class="form-grid" id="e-form" novalidate>
         <label class="field"><span>${t("Növ")}</span><select class="input" data-v="kind">${Object.entries(d.kinds).map(([code, label]) => html`<option value="${code}" ${v.kind === code ? "selected" : ""}>${label}</option>`)}</select></label>
-        <label class="field"><span>${t("Auditoriya")}</span><select class="input" data-v="audience">${[["students", aud.students], ["teachers", aud.teachers], ["all", aud.all]].map(([k, l]) => html`<option value="${k}" ${v.audience === k ? "selected" : ""}>${l}</option>`)}</select></label>
+        <label class="field"><span>${t("Hədəf auditoriya")}</span><select class="input" data-v="audience">${[["students", aud.students], ["teachers", aud.teachers], ["all", aud.all]].map(([k, l]) => html`<option value="${k}" ${v.audience === k ? "selected" : ""}>${l}</option>`)}</select></label>
         <label class="field full"><span>${t("Başlıq")}</span><input class="input" data-v="title" value="${v.title}" maxlength="200" placeholder="${t("Məsələn: Robototexnika üzrə açıq seminar")}"></label>
         <label class="field full"><span>${t("Qısa məzmun")}</span><input class="input" data-v="summary" value="${v.summary}" maxlength="400" placeholder="${t("Lentdə görünən bir cümləlik xülasə")}"></label>
         <label class="field full"><span>${t("Mətn")} ${infoTip(t("Markdown dəstəklənir: **qalın**, *maili*, başlıqlar və - ilə siyahı. Sağdakı önizləmədə dərhal görünür."))}</span><textarea class="input" data-v="body" rows="7" placeholder="${t("Məsələn: Seminar barədə ətraflı məlumat, iştirak şərtləri və proqram.")}">${v.body}</textarea></label>
@@ -320,7 +320,7 @@ route("/staff/news", async (el, p, q) => {
   on(el, "click", "[data-edit]", (e, b) => editor(d.items.find((x) => x.id === +b.dataset.edit)));
   on(el, "click", "[data-unpub]", async (e, b) => {
     const n = d.items.find((x) => x.id === +b.dataset.unpub); if (!n) return;
-    if (!(await confirmBox(t("Xəbəri gizlətmək?"), t("Xəbər qaralamaya qaytarılacaq və auditoriyadan gizlədiləcək. Qeydiyyatlar saxlanılır."), t("Gizlət")))) return;
+    if (!(await confirmBox(t("Xəbər gizlədilsin?"), t("Xəbər qaralamaya qaytarılacaq və auditoriyadan gizlədiləcək. Qeydiyyatlar saxlanılır."), t("Gizlət")))) return;
     try {
       await api.put(`/api/news/${n.id}`, { kind: n.kind, title: n.title, summary: n.summary, body: n.body, audience: n.audience,
         icon: (n.cover || {}).icon, tone: (n.cover || {}).tone, tags: (n.tags || []).join(", "), pinned: n.pinned, important: false, draft: true,

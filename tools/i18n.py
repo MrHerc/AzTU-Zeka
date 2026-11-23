@@ -363,6 +363,9 @@ def content_strings(reads: dict | None = None):
             if row:
                 add(row[0], "seed.past_semesters")
     walk({k: seed[k] for k in ("university", "faculty", "specialty", "service_categories", "request_types") if k in seed}, "", "seed")
+    grading = (seed.get("tenant") or {}).get("grading") or {}
+    for comp in grading.get("components", []) + [grading.get("exam") or {}]:      # the grade table's headers (L7)
+        add(comp.get("name"), "seed.tenant.grading")
     academy = json.loads((CONTENT / "academy.json").read_text(encoding="utf-8"))
     walk(academy, "", "academy")
     for tr_ in academy.get("tracks", []):

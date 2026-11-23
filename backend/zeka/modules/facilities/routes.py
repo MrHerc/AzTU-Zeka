@@ -36,7 +36,7 @@ def _route_html(req, here: str, lang: str) -> str:
     to = str(req.query.get("to") or "").strip()[:40]
     step_free = req.query.get("sf") == "1"
     form = (f'<form method="get" action="/r/{e(here)}"><input type="text" name="to" value="{e(to)}" '
-            f'placeholder="{e(S("Otaq kodu, məsələn EK-305", lang))}" aria-label="{e(S("Hara getmək istəyirsiniz?", lang))}">'
+            f'placeholder="{e(S("Otaq kodu, məsələn, EK-305", lang))}" aria-label="{e(S("Hara getmək istəyirsiniz?", lang))}">'
             f'<label><input type="checkbox" name="sf" value="1"{" checked" if step_free else ""}> {e(S("Pilləsiz marşrut (lift)", lang))}</label>'
             f'<button type="submit">{e(S("Yol göstər", lang))}</button></form>')
     body = ""

@@ -1,7 +1,7 @@
 {
  "Tam ekran": "Во весь экран",
  "İmtahan dayandırılıb": "Экзамен приостановлен",
- "Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; imtahan davam edəndə cavablarınız göndəriləcək.": "Наблюдатель временно приостановил экзамен. Время остановлено; ответы будут отправлены после возобновления.",
+ "Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; imtahan davam etdikdə cavablarınız göndəriləcək.": "Наблюдатель временно приостановил экзамен. Время остановлено; ответы будут отправлены после возобновления.",
  "Şəbəkə siyahısı: imtahan otağının ünvan blokları, vergüllə (boş: hər yerdən)": "Список сетей: блоки адресов экзаменационной аудитории через запятую (пусто — откуда угодно)",
  "Şəbəkə: {list}": "Сеть: {list}",
  "Şəbəkə məhdudiyyəti yoxdur": "Без ограничения по сети",

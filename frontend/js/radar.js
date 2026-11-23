@@ -112,7 +112,7 @@ route("/radar", async (el, p, q) => {
           <li>${ic("check", 15)} <span>${t("İzahlı: hər bal səbəbləri və sübutları ilə göstərilir.")}</span></li>
           <li>${ic("check", 15)} <span>${t("Ədalətli: üzrlü qayıblar heç vaxt sayılmır; az məlumatla qərar verilmir.")}</span></li>
           <li>${ic("check", 15)} <span>${t("Məxfi: tutor söhbətlərinin mətni oxunmur — yalnız mövzu və say.")}</span></li>
-          <li>${ic("check", 15)} <span>${t("İnsan nəzarəti: plan yalnız müəllim təsdiqləyib göndərəndə tələbəyə çatır; tələbə risk balını görmür.")}</span></li>
+          <li>${ic("check", 15)} <span>${t("İnsan nəzarəti: plan tələbəyə yalnız müəllim onu təsdiqləyib göndərdikdən sonra çatır; tələbə risk balını görmür.")}</span></li>
         </ul></div></div>`);
 
   const draw = () => {

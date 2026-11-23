@@ -163,7 +163,7 @@
  "Axşam növbəsi": "Evening shift",
  "Növbələr": "Shifts",
  "Otaqlar və tutumları": "Rooms and capacities",
- "Günlük və həftəlik hədlər": "Daily and weekly limits",
+ "Gündəlik və həftəlik hədlər": "Daily and weekly limits",
  "Binalar arası keçid vaxtı": "Travel time between buildings",
  "Universitet üzrə sabit vaxtlar": "University-wide fixed slots",
  "Yumşaq qaydaların çəkiləri": "Soft rule weights",
@@ -252,7 +252,7 @@
  "Bütün həftələr təcrübə və ya başqa səbəblə dərsdən azaddır": "Every week is free of classes because of a placement or another reason",
  "Müəllim başqa dərsdədir": "The teacher has another class",
  "Qrup başqa dərsdədir": "The group has another class",
- "Günlük cüt həddi aşılır": "The daily limit of periods is exceeded",
+ "Gündəlik cüt həddi aşılır": "The daily limit of periods is exceeded",
  "Kilidli yerləşdirmə qaydalara uyğun deyil": "A locked placement breaks the rules",
  "Boş vaxt var, lakin axtarış onu tapmadı": "A free time exists, but the search did not find it"
 }

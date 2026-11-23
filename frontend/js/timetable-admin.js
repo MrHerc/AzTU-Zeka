@@ -29,7 +29,7 @@ route("/admin/timetable", async (el, p, q) => {
     [groups, courses, terms] = await Promise.all(["groups", "courses", "terms"].map((n) => api.all(`/api/directory/${n}?active=1`)));
   } catch (err) { mount(el, failed(err.message)); return; }
 
-  const head = () => html`${pageHead(t("Dərs cədvəli"), t("Tədris vahidlərinin həftəlik cədvəli. Saxlananda otaq, müəllim və qrup toqquşması yoxlanır."), "",
+  const head = () => html`${pageHead(t("Dərs cədvəli"), t("Tədris vahidlərinin həftəlik cədvəli. Saxlanıldıqda otaq, müəllim və qrup toqquşması yoxlanılır."), "",
       [[t("Əsas"), HOME[role]], [t("Dərs cədvəli")]])}
     <div class="seg mb" role="tablist"><button role="tab" aria-selected="${view === "rows"}" class="${view === "rows" ? "active" : ""}" data-view="rows">${t("Həftəlik cədvəl")}</button>
       <button role="tab" aria-selected="${view === "lessons"}" class="${view === "lessons" ? "active" : ""}" data-view="lessons">${t("Günün dərsləri")}</button></div>`;

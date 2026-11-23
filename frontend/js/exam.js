@@ -100,19 +100,19 @@ function draw() {
     ${a && a.status === "paused" ? `<div class="exam-right"><div class="exam-timer paused" role="timer">${clock(a.remaining_s)}</div></div>` : ""}</header>`;
   if (!a) {
     root.innerHTML = `${head}<section class="exam-card"><p>${esc(t("Müddət: {n} dəqiqə. Vaxt server saatı ilə ölçülür; cavablar dəyişən kimi saxlanılır.", { n: e.duration_min }))}</p>
-      <p class="exam-muted">${esc(t("Bağlantı kəsilərsə, cavablar bu brauzerdə saxlanılır və bağlantı bərpa olunanda göndərilir."))}</p>
+      <p class="exam-muted">${esc(t("Bağlantı kəsilərsə, cavablar bu brauzerdə saxlanılır və bağlantı bərpa olunduqda göndərilir."))}</p>
       <button class="btn btn-primary" id="start">${esc(t("Başla"))}</button></section>`;
     return;
   }
   if (a.status === "paused") {
     root.innerHTML = `${head}<section class="exam-card"><h2>${esc(t("İmtahan dayandırılıb"))}</h2>
-      <p>${esc(t("Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; imtahan davam edəndə cavablarınız göndəriləcək."))}</p></section>`;
+      <p>${esc(t("Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; imtahan davam etdikdə cavablarınız göndəriləcək."))}</p></section>`;
     return;
   }
   if (a.status !== "in_progress") {
     root.innerHTML = `${head}<section class="exam-card"><h2>${esc(t("Cavablarınız qəbul olundu"))}</h2>
-      ${lateDropped ? `<p class="exam-badge warn">${esc(t("{n} cavab vaxt bitəndən sonra çatdı və qəbul olunmadı", { n: lateDropped }))}</p>` : ""}
-      <p class="exam-muted">${esc(t("Nəticəni müəllim açıqlayandan sonra portalda görəcəksiniz."))}</p>
+      ${lateDropped ? `<p class="exam-badge warn">${esc(t("{n} cavab vaxt bitdikdən sonra çatdı və qəbul olunmadı", { n: lateDropped }))}</p>` : ""}
+      <p class="exam-muted">${esc(t("Nəticəni müəllim açıqladıqdan sonra portalda görəcəksiniz."))}</p>
       <button class="btn" id="leave">${esc(t("Çıxış"))}</button></section>`;
     return;
   }

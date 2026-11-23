@@ -137,7 +137,7 @@ route("/admin", async (el) => {
       toast(t("Tənzimləmələr yadda saxlanıldı"), "ok"); } catch (err) { toast(err.message, "err"); } finally { b.disabled = false; }
   });
   $("#reset", el).addEventListener("click", async () => {
-    if (!(await confirmBox(t("Demo məlumatlarını sıfırlamaq?"), t("Bütün demo dəyişiklikləri silinəcək və ilkin vəziyyət bərpa olunacaq. Bu əməliyyat geri qaytarılmır."), t("Sıfırla"), true))) return;
+    if (!(await confirmBox(t("Demo məlumatları sıfırlansın?"), t("Bütün demo dəyişiklikləri silinəcək və ilkin vəziyyət bərpa olunacaq. Bu əməliyyat geri qaytarılmır."), t("Sıfırla"), true))) return;
     try { await api.post("/api/admin/reset"); toast(t("Demo məlumatları sıfırlandı"), "ok"); setTimeout(() => location.reload(), 700); }
     catch (err) { toast(err.message, "err"); }
   });
@@ -156,7 +156,7 @@ const ACTIONS = {
   material_delete: [t("Material silindi"), "b-red"], tutor_settings: [t("Tutor tənzimləmələri"), "b-navy"], settings_update: [t("Tənzimləmələr dəyişdirildi"), "b-navy"],
   certificate_issue: [t("Sertifikat verildi"), "b-green"], syllabus_generate: [t("Sillabus hazırlandı"), "b-violet"], forward_question: [t("Sual müəllimə göndərildi"), "b-blue"],
   support_create: [t("Dəstək sorğusu yaradıldı"), "b-blue"], support_update: [t("Dəstək sorğusu yeniləndi"), "b-navy"], feedback: [t("Rəy bildirildi"), "b-gray"],
-  seed: [t("Demo məlumatları yaradıldı"), "b-gray"],
+  seed: [t("Demo məlumatları yaradıldı"), "b-gray"], rooms_linked: [t("Cədvəl otaqlarla əlaqələndirildi"), "b-navy"],
 };
 const actionLabel = (code) => (ACTIONS[code] || [code, "b-gray"]);
 

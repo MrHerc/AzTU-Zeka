@@ -225,7 +225,7 @@ route("/syllabi", async (el) => {
         <td>${x.forma3.length ? html`<span class="badge b-amber">${t("{n} fərq", { n: x.forma3.length })}</span>` : html`<span class="tiny muted">—</span>`}</td>
         <td>${x.changes == null ? html`<span class="tiny muted">${t("ilk dərc")}</span>` : x.changes}</td>
         <td><button class="btn btn-sm" data-open="${x.id}">${t("Bax")}</button></td></tr>`)}</tbody></table></div>`
-      : html`<div class="card-b">${empty("check", t("Təsdiq gözləyən sillabus yoxdur"), t("Müəllim versiyanı təqdim edəndə burada görünür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("check", t("Təsdiq gözləyən sillabus yoxdur"), t("Müəllim versiyanı təqdim etdikdə burada görünür."))}</div>`}</div>`);
   on(el, "click", "[data-open]", async (e, b) => {
     const x = list.find((y) => y.id === Number(b.dataset.open));
     let v, diff = [];

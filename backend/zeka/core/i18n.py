@@ -61,10 +61,21 @@ def tr(text, lang: str, n=None):
     return v
 
 
+class Lit(str):
+    """A message parameter shown as written in every language: a value read from an uploaded file or typed by a person
+    («Fizika» in a Forma №3 cell is that cell's text, not the catalogue's course name; Checkpoint F, L2)."""
+
+
+def date3(d, time: bool = False) -> dict:
+    """A date (and time) as each interface language writes it: dd.mm.yyyy in az and ru, dd/mm/yyyy in en (L15)."""
+    t = d.strftime(" %H:%M") if time else ""
+    return {"az": d.strftime("%d.%m.%Y") + t, "en": d.strftime("%d/%m/%Y") + t, "ru": d.strftime("%d.%m.%Y") + t}
+
+
 def _fmt(s: str, params: dict, lang: str) -> str:
     if not params:
         return s
-    vals = {k: L(tr(v, lang) if isinstance(v, str) else v, lang) for k, v in params.items()}
+    vals = {k: L(tr(v, lang) if isinstance(v, str) and not isinstance(v, Lit) else v, lang) for k, v in params.items()}
     try:
         return s.format(**vals)
     except (KeyError, IndexError, ValueError):

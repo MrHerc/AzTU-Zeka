@@ -166,7 +166,7 @@
  "Axşam növbəsi": "Вечерняя смена",
  "Növbələr": "Смены",
  "Otaqlar və tutumları": "Аудитории и вместимость",
- "Günlük və həftəlik hədlər": "Дневные и недельные ограничения",
+ "Gündəlik və həftəlik hədlər": "Дневные и недельные ограничения",
  "Binalar arası keçid vaxtı": "Время перехода между корпусами",
  "Universitet üzrə sabit vaxtlar": "Общеуниверситетские фиксированные часы",
  "Yumşaq qaydaların çəkiləri": "Веса мягких правил",
@@ -260,7 +260,7 @@
  "Bütün həftələr təcrübə və ya başqa səbəblə dərsdən azaddır": "Все недели свободны от занятий из-за практики или по другой причине",
  "Müəllim başqa dərsdədir": "У преподавателя другое занятие",
  "Qrup başqa dərsdədir": "У группы другое занятие",
- "Günlük cüt həddi aşılır": "Превышен дневной предел пар",
+ "Gündəlik cüt həddi aşılır": "Превышен дневной предел пар",
  "Kilidli yerləşdirmə qaydalara uyğun deyil": "Закреплённое размещение нарушает правила",
  "Boş vaxt var, lakin axtarış onu tapmadı": "Свободное время есть, но поиск его не нашёл"
 }

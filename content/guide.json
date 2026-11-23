@@ -10,7 +10,7 @@
      "link": "/student/tutor", "link_label": "AI tutoru aç"},
     {"id": "certificate", "roles": ["student"], "icon": "file", "title": "Arayışı necə sifariş etmək olar", "tags": ["arayış", "e-xidmət", "sənəd", "təyinat"],
      "summary": "Təyinatı seçin, mətn avtomatik hazırlanır; QR kodlu PDF bir iş günü ərzində.",
-     "steps": ["E-xidmətlər bölməsində Təhsil aldığını təsdiq edən arayışı seçin.", "Arayışın təyinatını seçin: hərbi komissarlıq, DSMF, bank, səfirlik, iş yeri və sair.", "Dili, nüsxə sayını və təhvil formasını seçin; istəsəniz qurumun adını yazın.", "Yoxlama ekranında məlumatları təsdiqləyib göndərin.", "Arayış hazır olanda bildiriş gəlir; Müraciətlərim bölməsindən QR kodlu PDF-i yükləyin."],
+     "steps": ["E-xidmətlər bölməsində Təhsil aldığını təsdiq edən arayışı seçin.", "Arayışın təyinatını seçin: hərbi komissarlıq, DSMF, bank, səfirlik, iş yeri və sair.", "Dili, nüsxə sayını və təhvil formasını seçin; istəsəniz qurumun adını yazın.", "Yoxlama ekranında məlumatları təsdiqləyib göndərin.", "Arayış hazır olduqda bildiriş gəlir; Müraciətlərim bölməsindən QR kodlu PDF-i yükləyin."],
      "link": "/student/services?new=enrollment_certificate", "link_label": "Arayış sifariş et"},
     {"id": "absence", "roles": ["student"], "icon": "file", "title": "Xəstəlik səbəbindən qayıbın üzrlü hesab edilməsi", "tags": ["qayıb", "xəstəlik", "arayış", "davamiyyət"],
      "summary": "Təsdiqedici sənədi yükləyin; dekanlıq təsdiqlədikdə qayıblar avtomatik üzrlü olur.",

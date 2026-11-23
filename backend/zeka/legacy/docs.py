@@ -262,7 +262,7 @@ def unverified_card(doc: dict, lang: str, state: str) -> str:
     s = lambda text, **k: S(text, lang, **k)  # noqa: E731
     if state == "changed":
         head = (f'<div class="v-icon">!</div><h1>{e(s("Sənəd dəyişdirilib"))}</h1>'
-                f'<p>{e(s("Reyestrdəki məzmun sənəd veriləndə saxlanmış məzmunla uyğun gəlmir. Bu sənədə etibar etməyin və universitetlə əlaqə saxlayın."))}</p>')
+                f'<p>{e(s("Reyestrdəki məzmun sənəd verildikdə saxlanmış məzmunla uyğun gəlmir. Bu sənədə etibar etməyin və universitetlə əlaqə saxlayın."))}</p>')
     else:
         head = (f'<div class="v-icon">?</div><h1>{e(s("Bu sənədi doğrulamaq mümkün deyil"))}</h1>'
                 f'<p>{e(s("Bu sənəd verilmə anındakı məzmunun saxlanılmasına başlanmazdan əvvəl verilib. Sənədin həqiqiliyini universitetdə dəqiqləşdirin."))}</p>')

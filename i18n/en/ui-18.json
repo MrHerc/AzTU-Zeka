@@ -15,7 +15,7 @@
  "qrup məşğuldur": "group busy",
  "Cədvəldə toqquşma var": "Timetable clash",
  "Sətir saxlanmadı. Bu dərslərlə eyni vaxtdadır:": "The row was not saved. It clashes with these lessons:",
- "Tədris vahidlərinin həftəlik cədvəli. Saxlananda otaq, müəllim və qrup toqquşması yoxlanır.": "The weekly timetable of teaching units. Room, teacher and group clashes are checked on saving.",
+ "Tədris vahidlərinin həftəlik cədvəli. Saxlanıldıqda otaq, müəllim və qrup toqquşması yoxlanılır.": "The weekly timetable of teaching units. Room, teacher and group clashes are checked on saving.",
  "Günün dərsləri": "Lessons of the day",
  "Bütün qruplar": "All groups",
  "Yeni sətir": "New row",

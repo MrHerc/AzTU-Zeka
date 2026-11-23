@@ -44,7 +44,7 @@ route("/journal", async (el, p, q) => {
         ${grid && grid.students.some((s) => s.writable) ? html`<button class="btn btn-primary btn-sm" id="g-save">${t("Saxla")}</button>
           <button class="btn btn-sm" id="g-publish">${t("Dərc et ({n} qaralama)", { n: grid.drafts })}</button>` : ""}
         ${grid ? html`<button class="btn btn-ghost btn-sm" id="g-log">${t("Dəyişiklik jurnalı")}</button>` : ""}</div>
-      ${grid ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("Yeni bal qaralamadır: tələbə onu dərc olunandan sonra görür. Dərc olunmuş balın dəyişdirilməsi üçün səbəb göstərilməlidir. Excel-dən köçürülmüş sütunları xanaya yapışdıra bilərsiniz.")}</p></div>
+      ${grid ? html`<div class="card-b"><p class="small muted" style="margin:0">${t("Yeni bal qaralamadır: tələbə onu dərc olunduqdan sonra görür. Dərc olunmuş balın dəyişdirilməsi üçün səbəb göstərilməlidir. Excel-dən köçürülmüş sütunları xanaya yapışdıra bilərsiniz.")}</p></div>
         <div class="table-wrap"><table class="table" id="g-table"><thead><tr><th>${t("Tələbə")}</th>${cols.map((c) => html`<th class="center">${c.name}<br><span class="tiny">${t("maks. {n}", { n: c.max })}</span></th>`)}
           <th class="center">${t("Cəmi")}</th><th class="center">${t("Qiymət")}</th></tr></thead><tbody>
         ${grid.students.map((s) => html`<tr><td>${s.full_name} <span class="tiny muted">${s.group || ""}</span></td>${cols.map((c) => cell(s, c))}

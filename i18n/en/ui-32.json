@@ -1,6 +1,6 @@
 {
  "Brauzer cavabları yadda saxlaya bilmir: səhifəni bağlamayın": "The browser cannot store your answers: do not close the page",
- "{n} cavab vaxt bitəndən sonra çatdı və qəbul olunmadı": {
+ "{n} cavab vaxt bitdikdən sonra çatdı və qəbul olunmadı": {
   "one": "{n} answer arrived after time was up and was not accepted",
   "other": "{n} answers arrived after time was up and were not accepted"
  },

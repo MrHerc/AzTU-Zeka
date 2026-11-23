@@ -21,8 +21,8 @@
   "other": "{n} exam questions in the bank"
  },
  "avtomatik": "automatic",
- "Siyahı imtahan açılanda jurnal əsasında tərtib edilir.": "The roster is drawn from the journal when the exam opens.",
+ "Siyahı imtahan açıldıqda jurnal əsasında tərtib edilir.": "The roster is drawn from the journal when the exam opens.",
  "İmtahan sualı": "Exam question",
- "İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə daxil edilmir. Təyinatı sonradan dəyişmək olmaz.": "An exam question is shown to a student only in an exam: never in practice, the tutor or tests. The purpose cannot be changed later.",
+ "İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə daxil edilmir. Təyinatı sonradan dəyişmək mümkün deyil.": "An exam question is shown to a student only in an exam: never in practice, the tutor or tests. The purpose cannot be changed later.",
  "İmtahan sualı kimi təsdiqlə": "Approve as an exam question"
 }

@@ -312,7 +312,7 @@
  "Bəzi düymələr kiçikdir.": "Некоторые кнопки маленькие.",
  "Səhifə yavaş açıldı.": "Страница загружалась медленно.",
  "Tutor cavabında mənbəyə keçid açılmır": "Ссылка на источник в ответе тьютора не открывается",
- "Elektrik dövrələri fənnində tutorun cavabındakı [2] mənbəyinə klik edəndə pəncərə açılmır.": "В дисциплине «Электрические цепи» при клике на источник [2] в ответе тьютора окно не открывается.",
+ "Elektrik dövrələri fənnində tutorun cavabındakı [2] mənbəyinə klik etdikdə pəncərə açılmır.": "В дисциплине «Электрические цепи» при клике на источник [2] в ответе тьютора окно не открывается.",
  "Arayışda ata adım səhv yazılıb": "В справке моё отчество написано неверно",
  "Bank üçün aldığım arayışda ata adım səhv göstərilib. Düzəliş etmək mümkündürmü?": "В справке, которую я получил для банка, моё отчество указано неверно. Можно ли это исправить?",
  "PPTX faylından mətn tam çıxarılmır": "Текст из файла PPTX извлекается не полностью",

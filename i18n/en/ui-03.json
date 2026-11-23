@@ -86,7 +86,7 @@
  "Testi bitir": "Finish the test",
  "Cavablar yoxlanılır…": "Checking answers…",
  "Vaxt bitdi — cavablar avtomatik göndərildi": "Time is up — answers were submitted automatically",
- "Testi bitirmək?": "Finish the test?",
+ "Test bitirilsin?": "Finish the test?",
  "{n} sual cavabsız qalıb. Cavabları göndərmək istəyirsiniz?": {"one": "{n} question is unanswered. Do you want to submit your answers?", "other": "{n} questions are unanswered. Do you want to submit your answers?"},
  "Bütün suallar cavablandırılıb. Cavabları göndərmək istəyirsiniz?": "All questions are answered. Do you want to submit your answers?",
  "Əla nəticə.": "Excellent result.",

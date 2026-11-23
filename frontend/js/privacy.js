@@ -16,7 +16,7 @@ export async function privacyNotice() {
     ${sec(t("Kim emal edir"), html`<p style="margin:0">${t("{operator} Zəka platformasında fərdi məlumatlarınızın operatorudur. Suallarınızı dekanlığa yazın.", { operator: p.operator || t("Universitet") })}</p>`)}
     ${sec(t("Hansı məlumatlar"), html`<p style="margin:0">${t("Universitet reyestrindən gələn şəxsi və təhsil məlumatları; davamiyyət, qiymətlər, imtahan cəhdləri və verilmiş sənədlər; müraciətləriniz, mesajlarınız və AI söhbətləriniz; giriş və audit jurnalları.")}</p>`)}
     ${sec(t("Nə üçün"), html`<p style="margin:0">${t("Təhsil prosesini təşkil etmək, qanunla tələb olunan akademik qeydləri aparmaq, e-xidmətləri göstərmək və platformanın təhlükəsizliyini qorumaq. AI tutor və kampus köməkçisi istəyə bağlı köməkçilərdir: suallarınızı yalnız razılığınızla emal edir, razılıq vermədən də portalın qalan bölmələrindən tam istifadə edə bilərsiniz.")}</p>`)}
-    ${sec(t("Xarici AI xidməti"), html`<p style="margin:0">${t("Suallarınız xarici AI xidmətinə yalnız ayrıca razılığınızla və şəxsi məlumatlar maskalandıqdan sonra göndərilir. Razılıq mətni və ya xidmət dəyişəndə razılıq yenidən soruşulur.")}</p>
+    ${sec(t("Xarici AI xidməti"), html`<p style="margin:0">${t("Suallarınız xarici AI xidmətinə yalnız ayrıca razılığınızla və şəxsi məlumatlar maskalandıqdan sonra göndərilir. Razılıq mətni və ya xidmət dəyişdikdə razılıq yenidən soruşulur.")}</p>
       <p style="margin:0">${p.external_ai.enabled
         ? t("Qoşulmuş xidmət: {vendor}. Xidmətin yerləşdiyi ölkə: {country}.", { vendor: p.external_ai.vendor || t("göstərilməyib"), country: p.external_ai.country || t("göstərilməyib") })
         : t("Hazırda xarici AI xidməti qoşulmayıb: suallarınıza platformanın öz mühərriki cavab verir.")}</p>`)}
@@ -28,7 +28,7 @@ export async function privacyNotice() {
       <li>${ic("clock", 15)} <span>${t("Texniki jurnallar")}: ${days(r.logs_days)}</span></li>
       <li>${ic("clock", 15)} <span>${t("Audit jurnalı")}: ${days(r.audit_days)}</span></li>
       <li>${ic("lock", 15)} <span>${t("Qiymətlər, davamiyyət, imtahan qeydləri və verilmiş sənədlər: qanunun tələb etdiyi müddət.")}</span></li></ul>`)}
-    ${sec(t("Hüquqlarınız"), html`<p style="margin:0">${t("Profil səhifəsində məlumatlarınızın surətini yükləyə, razılığı geri götürə və məlumatlarınızın silinməsini istəyə bilərsiniz. AI tutor və kampus köməkçisi üçün razılığı geri götürəndə bu köməkçilərlə söhbətləriniz silinir. Qanunla saxlanmalı qeydlər (qiymətlər, davamiyyət, imtahan qeydləri, verilmiş sənədlər) silinmir; hesabınızdan ad və əlaqə məlumatları silinir.")}</p>
+    ${sec(t("Hüquqlarınız"), html`<p style="margin:0">${t("Profil səhifəsində məlumatlarınızın surətini yükləyə, razılığı geri götürə və məlumatlarınızın silinməsini istəyə bilərsiniz. AI tutor və kampus köməkçisi üçün razılığı geri götürdükdə bu köməkçilərlə söhbətləriniz silinir. Qanunla saxlanmalı qeydlər (qiymətlər, davamiyyət, imtahan qeydləri, verilmiş sənədlər) silinmir; hesabınızdan ad və əlaqə məlumatları silinir.")}</p>
       <p class="small muted" style="margin:0">${t("İmtahan variantları, imtahan sualları və açıqlanmamış imtahan balları ixraca daxil edilmir. Nəticə açıqlandıqdan sonra ixraca yalnız öz cavablarınız və balınız daxil edilir.")}</p>`)}
   </div>`, actions: [{ label: t("Bağla"), cls: "btn-primary" }] });
 }
@@ -92,7 +92,7 @@ export async function privacyCard(box) {
   };
   on(box, "click", "[data-consent]", async (e, b) => {
     const id = b.dataset.consent, grant = b.dataset.grant === "1";
-    if (id === "ai" && !grant && !(await confirmBox(t("AI razılığını geri götürmək?"),
+    if (id === "ai" && !grant && !(await confirmBox(t("AI razılığı geri götürülsün?"),
       t("AI tutor və kampus köməkçisi sizin üçün bağlanacaq, bu köməkçilərlə bütün söhbətləriniz silinəcək. Portalın qalan bölmələri əvvəlki kimi işləyəcək. Razılığı sonra yenidən verə bilərsiniz."),
       t("Geri götür"), true))) return;
     try {

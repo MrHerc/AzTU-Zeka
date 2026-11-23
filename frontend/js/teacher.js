@@ -60,7 +60,7 @@ route("/teacher", async (el) => {
             ${d.courses.map((c) => html`<tr><td><div class="row"><span class="course-ic sm" style="background:${c.color}">${c.code.split("-")[0]}</span>
               <div><b class="small">${c.name}</b><div class="tiny muted">${c.code} · ${t("{n} kredit", { n: c.credits })}</div></div></div></td>
               <td>${num(c.students)}</td><td>${num(c.materials)}</td>
-              <td>${c.tutor_locked ? html`<span class="badge b-amber">${ic("lock", 11)} ${t("Bağlı")}</span>` : html`<span class="badge b-green">${t("Aktiv")}</span>`}</td>
+              <td>${c.tutor_locked ? html`<span class="badge b-amber">${ic("lock", 11)} ${t("Bağlıdır")}</span>` : html`<span class="badge b-green">${t("Aktiv")}</span>`}</td>
               <td>${t("{n} sual", { n: c.insights.this_week })}</td><td class="right"><button class="btn btn-sm" data-go="/teacher/course/${c.id}">${t("İdarə et")}</button></td></tr>`)}</tbody></table></div>`
             : empty("book", t("Bu semestr üçün fənn yoxdur"), t("Fənlər təyin olunduqda burada görünəcək."))}</div></div>
       </div>
@@ -346,7 +346,7 @@ function qCard(qq, actions = true) {
       : html`<div class="opts-mini"><div class="om ok">${t("Cavab")}: ${qq.qtype === "tf" ? (qq.answer ? t("Doğru") : t("Yanlış")) : `${qq.answer}${qq.unit ? " " + qq.unit : ""}`}</div></div>`}
     <div class="small muted">${md(qq.explanation)}</div>${qq.source ? html`<div class="tiny muted mt-sm">${ic("book", 11)} ${qq.source.material} · ${qq.source.heading}</div>` : ""}
     ${actions ? html`<div class="row mt wrap">${qq.status === "draft" ? html`<button class="btn btn-sm btn-success" data-approve="${qq.id}">${ic("check", 14)} ${t("Təsdiqlə")}</button>
-      <button class="btn btn-sm" data-approve="${qq.id}" data-purpose="exam" title="${t("İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə daxil edilmir. Təyinatı sonradan dəyişmək olmaz.")}">${ic("shield", 14)} ${t("İmtahan sualı kimi təsdiqlə")}</button>` : ""}
+      <button class="btn btn-sm" data-approve="${qq.id}" data-purpose="exam" title="${t("İmtahan sualı tələbəyə yalnız imtahanda görünür: məşqə, tutora və testlərə daxil edilmir. Təyinatı sonradan dəyişmək mümkün deyil.")}">${ic("shield", 14)} ${t("İmtahan sualı kimi təsdiqlə")}</button>` : ""}
       <button class="btn btn-sm" data-edit="${qq.id}">${ic("edit", 14)} ${t("Redaktə et")}</button>
       <button class="btn btn-sm btn-danger btn-icon" data-delq="${qq.id}" aria-label="${t("Sil")}">${ic("trash", 14)}</button></div>` : ""}</div>`;
 }

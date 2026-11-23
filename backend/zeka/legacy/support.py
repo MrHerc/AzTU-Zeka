@@ -76,7 +76,7 @@ def seed(c, uid: dict, t0):
     aysel, rauf = uid.get("aysel"), uid.get("rauf")
     if aysel:
         ticket(aysel, "ai", "normal", "Tutor cavabında mənbəyə keçid açılmır",
-               "Elektrik dövrələri fənnində tutorun cavabındakı [2] mənbəyinə klik edəndə pəncərə açılmır.", "resolved",
+               "Elektrik dövrələri fənnində tutorun cavabındakı [2] mənbəyinə klik etdikdə pəncərə açılmır.", "resolved",
                t0 - timedelta(days=9), [(staff_admin, "Salam, Aysel xanım. Problem aradan qaldırıldı — mənbə indi yan paneldə açılır. Bildirdiyiniz üçün təşəkkür edirik.", False)],
                rating=5, assignee=staff_admin, page="/student/tutor/1")
         ticket(aysel, "services", "high", "Arayışda ata adım səhv yazılıb",

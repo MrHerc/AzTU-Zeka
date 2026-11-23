@@ -60,7 +60,6 @@
  "Digər müəllim dərsi olmayan sətirdə yazılıb: {x}": "Another teacher is named on a row that has no class: {x}",
  "Ştat sətrindəki iş növü arayış cədvəlindəkindən fərqlidir; arayış cədvəli əsas götürüldü: {x}": "The type of employment in the staff line differs from the summary table; the summary table was followed: {x}",
  "Elmi dərəcə və ya vəzifə arayış cədvəlindəkindən fərqlidir: {x}": "The academic degree or position differs from the summary table: {x}",
- "Arayış cədvəlinin yanında əlavə siyahı var: {x} xana": "There is an extra list beside the summary table: {x} cells",
  "Arayış cədvəlinin sətri heç bir blokla əlaqələndirilmədi": "A row of the summary table could not be linked to any block",
  "Vərəqin ümumi cəm sətri blokların cəminə bərabər deyil: {x}": "The sheet's grand total row does not equal the sum of the blocks: {x}",
  "«Cəmi» sətrinin düsturları bölmənin sətirlərini düzgün əhatə etmir ({x} xana); cəm sətirlərdən hesablanıb": "The formulas of the “Cəmi” row do not cover the section's rows correctly ({x} cells); the total was calculated from the rows",

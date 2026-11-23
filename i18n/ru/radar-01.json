@@ -98,7 +98,7 @@
  "İzahlı: hər bal səbəbləri və sübutları ilə göstərilir.": "Объяснимость: каждый балл показан с причинами и фактами.",
  "Ədalətli: üzrlü qayıblar heç vaxt sayılmır; az məlumatla qərar verilmir.": "Справедливость: уважительные пропуски не учитываются; по малому объёму данных выводы не делаются.",
  "Məxfi: tutor söhbətlərinin mətni oxunmur — yalnız mövzu və say.": "Конфиденциальность: текст переписки с тьютором не читается — только темы и количество.",
- "İnsan nəzarəti: plan yalnız müəllim təsdiqləyib göndərəndə tələbəyə çatır; tələbə risk balını görmür.": "Контроль человека: план попадает к студенту только после того, как преподаватель его утвердит и отправит; студент не видит балл риска.",
+ "İnsan nəzarəti: plan tələbəyə yalnız müəllim onu təsdiqləyib göndərdikdən sonra çatır; tələbə risk balını görmür.": "Контроль человека: план попадает к студенту только после того, как преподаватель его утвердит и отправит; студент не видит балл риска.",
  "Bu filtrə uyğun tələbə yoxdur": "Нет студентов, подходящих под фильтр",
  "Filtri dəyişin və ya axtarışı təmizləyin.": "Измените фильтр или очистите поиск.",
  "Risk": "Риск",

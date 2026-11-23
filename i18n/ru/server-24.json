@@ -5,7 +5,7 @@
  "İmtahanın adı 3–200 simvol olmalıdır": "Название экзамена — от 3 до 200 символов",
  "İmtahanın növü əsas, təkrar və ya fərdi vaxt olmalıdır": "Вид экзамена: основной, пересдача или индивидуальное время",
  "Keçirilmə vaxtının başlanğıcı və sonu SS:DD formatında olmalı, son vaxt başlanğıcdan sonra olmalıdır": "Начало и конец времени проведения должны быть в формате ЧЧ:ММ, конец — позже начала",
- "Müddət 5 dəqiqə ilə pəncərənin uzunluğu ({n} dəq.) arasında olmalıdır": "Длительность — от 5 минут до длины окна ({n} мин)",
+ "Müddət 5 dəqiqə ilə imtahanın keçirilmə vaxtının uzunluğu ({n} dəq.) arasında olmalıdır": "Длительность — от 5 минут до длины окна ({n} мин)",
  "Qoruma rejimi açıq və ya SEB olmalıdır": "Режим защиты: открытый или SEB",
  "Şəbəkə siyahısında ən çox 50 ünvan bloku ola bilər": "В списке сетей может быть не более 50 блоков адресов",
  "İmtahan planında 1 ilə 20 arasında bənd olmalıdır": "В плане экзамена должно быть от 1 до 20 пунктов",
@@ -17,7 +17,7 @@
  "İstisnanın səbəbini yazın": "Укажите причину исключения",
  "Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.": "Вы не допущены к экзамену из-за превышения предела пропусков. Обратитесь в деканат.",
  "Siz bu imtahanın siyahısında deyilsiniz. Dekanlığa müraciət edin.": "Вас нет в списке этого экзамена. Обратитесь в деканат.",
- "İmtahan pəncərəsi açıq deyil": "Окно экзамена не открыто",
+ "İmtahanın keçirilmə vaxtı deyil": "Сейчас не время проведения экзамена",
  "İmtahanın vaxtı bitib: cavab qəbul olunmur": "Время экзамена истекло: ответ не принимается",
  "Cavabın formatı düzgün deyil": "Неверный формат ответа",
  "Yalnız açıq imtahan bağlanır": "Закрыть можно только открытый экзамен"

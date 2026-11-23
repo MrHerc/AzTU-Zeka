@@ -158,7 +158,7 @@ def may_enter(c, user, eid: int, ip: str = "") -> tuple[str, object]:
     if not e or e["status"] == "draft":
         return "missing", None
     if e["status"] != "open":                         # a closed exam's chain takes no more refusals (Checkpoint D, CR-11)
-        return "closed", E("İmtahan pəncərəsi açıq deyil")
+        return "closed", E("İmtahanın keçirilmə vaxtı deyil")
     r = repo.roster_of(c, eid, user["id"])
     if not r or r["status"] == "excluded":
         _refusal(c, eid, "session.refused", user["id"], {"reason": r["reason"] if r else "not_on_roster"})
@@ -167,7 +167,7 @@ def may_enter(c, user, eid: int, ip: str = "") -> tuple[str, object]:
     a = repo.attempt(c, eid, user["id"])
     running = bool(a and a["status"] in LIVE and _now() < _t(a["deadline_at"]))
     if e["status"] != "open" or (_now() >= _t(e["closes_at"]) and not running):   # an extended attempt still comes back in (TM-18)
-        return "closed", E("İmtahan pəncərəsi açıq deyil")
+        return "closed", E("İmtahanın keçirilmə vaxtı deyil")
     if not domain.ip_allowed(json.loads(e["allowed_cidrs"] or "[]"), ip):
         _refusal(c, eid, "session.refused", user["id"], {"reason": "network", "ip": ip})
         return "refused", NETWORK
@@ -232,7 +232,7 @@ def start(c, user, eid: int) -> tuple[str, object]:
         _refusal(c, eid, "attempt.refused", user["id"], {"reason": r["reason"] if r else "not_on_roster"})
         return "refused", why
     if e["status"] != "open" or not _t(e["opens_at"]) <= t < _t(e["closes_at"]):
-        return "closed", E("İmtahan pəncərəsi açıq deyil")
+        return "closed", E("İmtahanın keçirilmə vaxtı deyil")
     _form(c, e, user["id"])
     if repo.add_attempt(c, eid, user["id"], _iso(t), _iso(domain.deadline(t, e["duration_min"], _t(e["closes_at"])))):
         repo.add_event(c, eid, "attempt.started", user["id"], user["id"], {}, _iso(t))

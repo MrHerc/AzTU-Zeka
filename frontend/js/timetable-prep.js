@@ -15,7 +15,7 @@ const LEVEL_SHORT = () => ({ "": "—", unavailable: t("Məşğul"), undesired: 
 export const SHIFT = () => ({ morning: t("Səhər növbəsi"), afternoon: t("Günorta növbəsi"), evening: t("Axşam növbəsi") });
 const ROOM_KINDS = () => [["lecture_hall", t("Mühazirə zalı")], ["classroom", t("Auditoriya")], ["lab", t("Laboratoriya")], ["computer_lab", t("Kompüter laboratoriyası")]];
 export const CONFIRM = () => ({ term_dates: t("Semestrin dərs tarixləri"), lesson_times: t("Zəng cədvəli"), pattern: t("Saatların həftələrə bölgü qaydası"),
-  shifts: t("Növbələr"), rooms: t("Otaqlar və tutumları"), limits: t("Günlük və həftəlik hədlər"), travel: t("Binalar arası keçid vaxtı"),
+  shifts: t("Növbələr"), rooms: t("Otaqlar və tutumları"), limits: t("Gündəlik və həftəlik hədlər"), travel: t("Binalar arası keçid vaxtı"),
   fixed_slots: t("Universitet üzrə sabit vaxtlar"), weights: t("Yumşaq qaydaların çəkiləri"), availability_cap: t("Məşğulluq həddi"),
   review: t("Rəy mərhələsi"), approver: t("Təsdiq edən şəxs"), practice: t("Təcrübə həftələri"), reserved_weeks: t("Ehtiyat həftələr"), online: t("Onlayn dərslər") });
 /** A week set as people read it: nothing for all weeks, "odd"/"even" and ranges in words. */
@@ -41,7 +41,7 @@ export const tabs = (list, cur) => html`<div class="seg mb" role="tablist">${lis
   html`<button role="tab" aria-selected="${k === cur}" class="${k === cur ? "active" : ""}" data-tab="${k}">${l}</button>`)}</div>`;
 
 /** The readiness checklist: level as text, what it stops, counts, samples (ids) and the page that fixes it. */
-export const readinessTable = (r) => html`<div class="table-wrap"><table class="table tt-ready"><thead><tr><th>${t("Vəziyyət")}</th><th>${t("Bənd")}</th>
+export const readinessTable = (r) => html`<div class="table-wrap"><table class="table tt-ready"><thead><tr><th>${t("Vəziyyət")}</th><th>${t("Hazırlıq bəndi")}</th>
   <th>${t("Say")}</th><th>${t("Nəyi dayandırır")}</th><th>${t("Nümunələr")}</th><th></th></tr></thead><tbody>
   ${r.lines.map((x) => { const [l, c, i] = LINE_LEVEL()[x.level] || [x.level, "b-gray", "info"];
     return html`<tr data-line="${x.code}"><td><span class="badge ${c}">${ic(i, 13)} ${l}</span></td><td>${x.title}</td>

@@ -1,7 +1,7 @@
 {
  "Tam ekran": "Full screen",
  "İmtahan dayandırılıb": "The exam is paused",
- "Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; imtahan davam edəndə cavablarınız göndəriləcək.": "The proctor has paused the exam. The clock has stopped; your answers will be sent when the exam resumes.",
+ "Nəzarətçi imtahanı müvəqqəti dayandırıb. Vaxt dayanıb; imtahan davam etdikdə cavablarınız göndəriləcək.": "The proctor has paused the exam. The clock has stopped; your answers will be sent when the exam resumes.",
  "Şəbəkə siyahısı: imtahan otağının ünvan blokları, vergüllə (boş: hər yerdən)": "Network list: the exam room's address blocks, comma-separated (empty: from anywhere)",
  "Şəbəkə: {list}": "Network: {list}",
  "Şəbəkə məhdudiyyəti yoxdur": "No network restriction",

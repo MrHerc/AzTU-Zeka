@@ -1,11 +1,13 @@
 // Bulk import (Task 16): a CSV or XLSX file of one kind from one source system is checked first (dry run), then
 // imported all or nothing. Conflicts (rows changed in Zəka since the last import) are listed, not overwritten.
 // Activation codes for a faculty's students are made here once and handed to the dean's office as CSV.
-import { api, html, mount, on, ic, toast, route, pageHead, loading, failed, $, t, S } from "./core.js";
+import { api, html, mount, on, ic, toast, route, pageHead, loading, failed, num, $, t, S } from "./core.js";
+// hours of the form: the file keeps floats such as 44.3333; shown with at most two decimals in the interface language (L15)
+const hrs = (x) => (x == null || x === "" ? "—" : num(Math.round(Number(x) * 100) / 100));
 import { HOME } from "./shell.js";
 
 const KINDS = () => [["users", t("İstifadəçilər")], ["orgs", t("Fakültə və kafedralar")], ["terms", t("Semestrlər")],
-  ["courses", t("Fənlər")], ["classes", t("Tədris vahidləri")], ["enrollments", t("Qeydiyyat")], ["timetable", t("Dərs cədvəli")],
+  ["courses", t("Fənlər")], ["classes", t("Tədris vahidləri")], ["enrollments", t("Fənlərə yazılış")], ["timetable", t("Dərs cədvəli")],
   ["rooms", t("Otaqlar")], ["attendance-opening", t("Davamiyyətin açılış qalığı")], ["grades", t("Ballar")], ["teaching-load", t("Forma №3: kafedranın akademik yükü")]];
 
 const readFile = (f) => new Promise((ok, bad) => {
@@ -16,7 +18,7 @@ const readFile = (f) => new Promise((ok, bad) => {
 });
 
 // Forma №3 (Task 47): what the reader found, so the dean's office can correct the file before applying it.
-const LOAD = () => ({ consultation: t("Məsləhət"), credit: t("Məqbul"), exam: t("İmtahan"), exam_prep: t("İmtahan suallarının hazırlanması"),
+const LOAD = () => ({ consultation: t("Məsləhətlər"), credit: t("Məqbul"), exam: t("İmtahan"), exam_prep: t("İmtahan suallarının hazırlanması"),
   course_project: t("Kurs layihəsi (işi)"), essay: t("Referat"), master_work: t("Magistrların işi"),
   master_supervision: t("Magistr dissertasiyasına rəhbərlik"), master_consulting: t("Magistr dissertasiyası üzrə məsləhət"),
   research: t("Tədqiqat işinin aparılması"), project_management: t("Layihələrin idarə olunması"), practice: t("Təcrübə"),
@@ -41,16 +43,16 @@ function forma3(f) {
         ${f.units.refused ? tile(f.units.refused, t("reyestrdə tapılmayan"), "warn") : ""}
         ${tile(f.units.joint, t("birləşmiş dərs"))}${tile(f.units.hourly, t("saat hesabı"))}${tile(f.units.vacancy, t("vakansiya"))}${tile(f.units.hidden, t("gizli vərəqdə"))}</div>
       ${f.excluded && f.excluded.posts.length ? html`<p class="small muted" style="margin:0">${t("Kafedranın cəminə daxil olmayan ştat və bölmələr: {p} — dərs: {u} ({h} saat), digər yük: {l} saat",
-        { p: f.excluded.posts.join(", "), u: f.excluded.units, h: f.excluded.hours, l: f.excluded.load_hours })}</p>` : ""}
+        { p: f.excluded.posts.join(", "), u: f.excluded.units, h: hrs(f.excluded.hours), l: hrs(f.excluded.load_hours) })}</p>` : ""}
       ${blocked.length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bloklanmış ştatın və ya bölmənin dərsləri tətbiq olunmur. Fayldakı xananı düzəldib yenidən yoxlayın.")}</div></div>` : ""}
       ${f.unclassified ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("{n} xana heç bir qaydaya uyğun gəlmədi; onlar qeydlərdə göstərilib.", { n: f.unclassified })}</div></div>` : ""}
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Müəllim")}</th><th>${t("Ödəniş")}</th><th>${t("Vəziyyət")}</th>
         <th>${t("Yoxlamalar")}</th><th>${t("Dərs")}</th><th>${t("Auditoriya saatı")}</th><th>${t("İllik cəm")}</th></tr></thead><tbody>
         ${f.posts.map((p) => html`<tr><td>${p.ref}</td><td>${who(p)}</td><td>${p.pay === "hourly" ? t("Saat hesabı") : t("Ştat")}${p.fraction ? ` · ${p.fraction}` : ""}</td>
           <td>${status(p)}${p.year_conflict ? html` <span class="badge b-amber">${t("Tədris ili fərqlidir")}</span>` : ""}</td><td>${checks(p)}</td>
-          <td>${p.units}</td><td>${p.hours}</td><td>${p.year_total ?? "—"}</td></tr>`)}</tbody></table></div>
-      ${f.controls.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Yoxlama")}</th><th>${t("Xana")}</th><th>${t("Gözlənilən")}</th><th>${t("Tapılan")}</th><th></th></tr></thead><tbody>
-        ${f.controls.map((c) => html`<tr><td>${c.check}</td><td>${c.ref || t("Fayl")}</td><td>${c.expected ?? "—"}</td><td>${c.found ?? "—"}</td>
+          <td>${p.units}</td><td>${hrs(p.hours)}</td><td>${hrs(p.year_total)}</td></tr>`)}</tbody></table></div>
+      ${f.controls.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Yoxlama qaydası")}</th><th>${t("Xana")}</th><th>${t("Gözlənilən")}</th><th>${t("Tapılan")}</th><th></th></tr></thead><tbody>
+        ${f.controls.map((c) => html`<tr><td>${c.check}</td><td>${c.ref || t("Fayl")}</td><td>${hrs(c.expected)}</td><td>${hrs(c.found)}</td>
           <td><span class="badge ${c.ok ? "b-green" : "b-red"}">${c.ok ? "✓" : "✗"}</span></td></tr>`)}</tbody></table></div>` : ""}
       ${f.conflict_count ? html`<h4 style="margin:0">${t("Konfliktlər: {n} (bloklayan: {b})", { n: f.conflict_count, b: f.blocking_count })}</h4>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Növ")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
@@ -59,9 +61,9 @@ function forma3(f) {
       ${f.note_count ? html`<details><summary>${t("Qeydlər: {n}", { n: f.note_count })}</summary>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Qeyd")}</th></tr></thead><tbody>
         ${f.notes.map((n) => html`<tr><td>${n.cell}</td><td>${n.message}</td></tr>`)}</tbody></table></div></details>` : ""}
-      <details><summary>${t("Dərsdən kənar yük: {h} saat", { h: f.load_hours })}</summary>
+      <details><summary>${t("Dərsdən kənar yük: {h} saat", { h: hrs(f.load_hours) })}</summary>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Yükün növü")}</th><th>${t("Sətir")}</th><th>${t("Saat")}</th></tr></thead><tbody>
-        ${Object.entries(f.load).map(([k, v]) => html`<tr><td>${labels[k] || k}</td><td>${v.lines}</td><td>${v.hours}</td></tr>`)}</tbody></table></div></details>
+        ${Object.entries(f.load).map(([k, v]) => html`<tr><td>${labels[k] || k}</td><td>${v.lines}</td><td>${hrs(v.hours)}</td></tr>`)}</tbody></table></div></details>
       ${skipped.length ? html`<details><summary>${t("İdxal olunmayan vərəqlər: {n}", { n: skipped.length })}</summary>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Vərəq")}</th><th>${t("Səbəb")}</th><th>${t("Dərs")}</th></tr></thead><tbody>
         ${skipped.map((x) => html`<tr><td>#${x.index} ${x.name}</td><td>${x.reason}</td><td>${x.units}</td></tr>`)}</tbody></table></div></details>` : ""}
@@ -79,7 +81,7 @@ function report(r) {
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.errors.map((e) => html`<tr><td>${e.row}</td><td>${e.reason}</td></tr>`)}</tbody></table></div>` : ""}
       ${r.conflicts.length ? html`<div class="notice info">${ic("info", 16)}<div>${t("Bu sətirlər Zəka platformasında dəyişdirilib və mənbənin dəyərləri yazılmayıb. Mənbəni üstün tutmaq üçün işarəni qoyub yenidən idxal edin.")}</div></div>
-        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Sahələr")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Dəyişən sahələr")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.conflicts.slice(0, 500).map((x) => html`<tr><td>${x.row}</td><td>${(x.fields || []).join(", ") || "—"}</td><td>${x.reason}</td></tr>`)}</tbody></table></div>` : ""}
       ${(r.warnings || []).length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bu sətirlər yazılır, amma yoxlanmalıdır.")}</div></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
@@ -105,7 +107,7 @@ route("/admin/import", async (el) => {
         <div class="field"><label class="label" for="imp-file">${t("CSV və ya XLSX faylı (bu səhifədən ən çox 20 000 sətir)")}</label>
           <input class="input" id="imp-file" type="file" accept=".csv,.xlsx,text/csv"></div>
         <label class="check"><input type="checkbox" id="imp-prefer"> ${t("Konflikt olduqda mənbəni üstün tut (dəyişiklik audit jurnalına yazılır)")}</label>
-        <div class="row wrap"><button class="btn" id="imp-check">${ic("eye", 15)} ${t("Yoxla")}</button>
+        <div class="row wrap"><button class="btn" id="imp-check">${ic("eye", 15)} ${t("Faylı yoxla")}</button>
           <button class="btn btn-primary" id="imp-run" disabled>${ic("upload", 15)} ${t("İdxal et")}</button></div>
         <p class="small muted" style="margin:0">${t("Sütun adları OneRoster 1.2 və ya azərbaycanca başlıqlardır. Böyük faylı serverdə manage.py import ilə idxal edin.")}</p>
       </div></div>

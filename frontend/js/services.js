@@ -231,7 +231,7 @@ route("/student/requests", async (el, p, q) => {
   mount(el, html`${pageHead(t("Müraciətlərim"), t("Statusu izləyin, dekanlıqla yazışın, hazır sənədləri yükləyin."),
       html`<button class="btn btn-primary" data-go="/student/services">${ic("plus", 16)} ${t("Yeni müraciət")}</button>`, crumbsS([t("Müraciətlərim")]),
       { info: t("Aktiv — baxılan müraciətlər; Bağlanmış — hazır, rədd və ya ləğv edilənlər.") })}
-    <div class="seg mb" role="tablist" data-tour="req-tabs">${[["active", t("Aktiv")], ["done", t("Bağlanmış")], ["all", t("Hamısı")]].map(([k, l]) => html`<button class="${tab === k ? "active" : ""}" role="tab" aria-selected="${tab === k}" data-go="/student/requests?tab=${k}">${l}</button>`)}</div>
+    <div class="seg mb" role="tablist" data-tour="req-tabs">${[["active", t("Aktiv olanlar")], ["done", t("Bağlanmış")], ["all", t("Hamısı")]].map(([k, l]) => html`<button class="${tab === k ? "active" : ""}" role="tab" aria-selected="${tab === k}" data-go="/student/requests?tab=${k}">${l}</button>`)}</div>
     ${shown.length ? html`<div class="stack" data-tour="req-list">${shown.map((r) => reqRow(r))}</div>`
       : html`<div class="card">${empty("inbox", tab === "active" ? t("Aktiv müraciət yoxdur") : t("Müraciət yoxdur"),
           t("E-xidmətlər bölməsindən arayış, icazə və digər müraciətləri göndərə bilərsiniz."), { label: t("E-xidmətlər"), go: "/student/services", icon: "grid", cls: "btn" })}</div>`}`);
@@ -387,10 +387,10 @@ route("/office", async (el, p, q) => {
   };
   mount(el, html`${pageHead(t("Müraciətlər"), t("Tələbə müraciətlərinin yoxlanması, təsdiqi və sənədlərin elektron verilməsi."), "", crumbsO([t("Müraciətlər")]),
       { info: t("Növbə prioritet və icra müddətinə görə sıralanır. Müraciəti açmaq üçün sətrə toxunun.") })}
-    <div class="grid g-4" id="office-stats">${stat("inbox", "ic-blue", cnt(sum.new), t("Yeni müraciət"))}${stat("timer", "ic-violet", cnt(sum.in_progress), t("İcrada"))}
+    <div class="grid g-4" id="office-stats">${stat("inbox", "ic-blue", cnt(sum.new), t("Yeni müraciətlər"))}${stat("timer", "ic-violet", cnt(sum.in_progress), t("İcrada"))}
       ${stat("alert", sum.overdue ? "ic-red" : "ic-green", cnt(sum.overdue), t("Müddəti keçmiş"))}
       ${stat("check", "ic-green", cnt(sum.issued_week), sum.avg_hours != null ? t("Bu həftə tamamlanıb · orta {n} saat", { n: num(sum.avg_hours, 1) }) : t("Bu həftə tamamlanıb"))}</div>
-    <div class="card mt" id="queue"><div class="card-h wrap"><div class="seg" role="tablist">${[["open", t("Açıq")], ["done", t("Bağlanmış")], ["all", t("Hamısı")]].map(([k, l]) =>
+    <div class="card mt" id="queue"><div class="card-h wrap"><div class="seg" role="tablist">${[["open", t("Açıq olanlar")], ["done", t("Bağlanmış")], ["all", t("Hamısı")]].map(([k, l]) =>
       html`<button class="${status === k ? "active" : ""}" role="tab" aria-selected="${status === k}" data-go="/office?status=${k}">${l}</button>`)}</div>
       <div class="search-field sm"><span class="sfi">${ic("search", 15)}</span><input class="input input-sm" id="qf" placeholder="${t("Tələbə, № və ya xidmət")}" aria-label="${t("Axtarış")}"></div></div>
       <div class="card-b queue-filters"><div class="chips"><button class="chip ${!cat ? "on" : ""}" data-cat="">${t("Hamısı")}</button>

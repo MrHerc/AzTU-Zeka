@@ -22,7 +22,7 @@ import re
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field, replace
 
-from ...core.i18n import E, S_
+from ...core.i18n import E, Lit, S_
 from . import forma3_text as tx
 from .forma3_text import col_name, key
 from .tables import Sheet
@@ -105,7 +105,7 @@ MSG = {
     "counterpart_no_class": S_("Digər müəllim dərsi olmayan sətirdə yazılıb: {x}"),
     "summary_category": S_("Ştat sətrindəki iş növü arayış cədvəlindəkindən fərqlidir; arayış cədvəli əsas götürüldü: {x}"),
     "summary_position": S_("Elmi dərəcə və ya vəzifə arayış cədvəlindəkindən fərqlidir: {x}"),
-    "summary_list": S_("Arayış cədvəlinin yanında əlavə siyahı var: {x} xana"),
+    "summary_list": S_("Arayış cədvəlinin yanında əlavə siyahı var: {n} xana"),
     "summary_unlinked": S_("Arayış cədvəlinin sətri heç bir blokla əlaqələndirilmədi"),
     "sheet_totals": S_("Vərəqin ümumi cəm sətri blokların cəminə bərabər deyil: {x}"),
     "formula_range": S_("«Cəmi» sətrinin düsturları bölmənin sətirlərini düzgün əhatə etmir ({x} xana); cəm sətirlərdən hesablanıb"),
@@ -122,7 +122,10 @@ MSG = {
 
 
 def _m(code: str, **p) -> dict:
-    return E(MSG[code], **{k: (f"{v:g}" if isinstance(v, float) else str(v))[:120] for k, v in p.items()})
+    """A message in every language; a count ``n`` stays a number (its plural forms), every other value is the file's text,
+    shown as written (Checkpoint F, L2)."""
+    return E(MSG[code], **{k: v if k == "n" and type(v) is int else Lit((f"{v:g}" if isinstance(v, float) else str(v))[:120])
+                           for k, v in p.items()})
 
 
 # ---------------------------------------------------------------- the result (docs/forms/forma-3.md, "Oxunan məlumat")
@@ -1311,7 +1314,7 @@ def _summary(R: _Reader, g: Grid, by_name: dict[str, int]):
             want, found = tx.number(g.t(grand, contact_c)) or 0.0, sum(p.contact_hours + doctoral[p.ref] for p in blocks)
             form.controls.append(Control("file", g.ref(grand, contact_c), "T6", round(want, 4), round(found, 4), abs(want - found) <= TOL_SUM))
     if extra:
-        form.notes.append(Note(f"#{g.i}", "", "summary_list", _m("summary_list", x=extra)))
+        form.notes.append(Note(f"#{g.i}", "", "summary_list", _m("summary_list", n=extra)))
     if linked:
         for p in a_posts.values():
             if p.ref not in linked:

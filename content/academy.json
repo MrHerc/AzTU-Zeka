@@ -9,7 +9,7 @@
     {"track": "edtech", "q": "Fənnimə uyğun simulyasiya və rəqəmsal alətləri tanıyıram"}
   ],
   "tracks": [
-    {"key": "ai", "title": "Təhsildə süni intellekt", "icon": "sparkles", "color": "#5a9bd3", "level": "Başlanğıc", "audience": "Bütün müəllimlər",
+    {"key": "ai", "title": "Təhsildə süni intellekt", "icon": "sparkles", "color": "#5a9bd3", "level": "Başlanğıc səviyyə", "audience": "Bütün müəllimlər",
      "summary": "Generativ AI-ın imkanları və riskləri, AI tutorun qurulması, AI ilə qiymətləndirmə və akademik dürüstlük.",
      "outcomes": ["AI alətlərinin məhdudiyyətlərini izah etmək", "Fənn üçün AI tutor qurmaq və tənzimləmək", "AI dövründə ədalətli qiymətləndirmə qurmaq"],
      "modules": [
@@ -50,7 +50,7 @@
        "quiz": [{"q": "Parametrik sualların əsas üstünlüyü nədir?", "o": ["Daha qısa olması", "Hər tələbəyə fərqli ədədlərlə məsələ verilməsi", "Cavabın olmaması", "Yalnız müəllim üçün olması"], "a": 1},
                 {"q": "Virtual laboratoriyalar haqqında hansı fikir doğrudur?", "o": ["Real laboratoriyanı tam əvəz edir", "Real laboratoriyanı tamamlayır və hazırlıq üçün faydalıdır", "Faydasızdır", "Yalnız riyaziyyat üçündür"], "a": 1}]}
      ]},
-    {"key": "emi", "title": "İngilis dilində tədris (EMI)", "icon": "globe", "color": "#db2777", "level": "Orta", "audience": "İngilis dilində dərs deyən və ya deyəcək müəllimlər",
+    {"key": "emi", "title": "İngilis dilində tədris (EMI)", "icon": "globe", "color": "#db2777", "level": "Orta səviyyə", "audience": "İngilis dilində dərs deyən və ya deyəcək müəllimlər",
      "summary": "Mühazirəni ingilis dilində strukturlaşdırmaq, texniki anlayışları sadə dillə izah etmək, sualları idarə etmək və rəsmi yazışma.",
      "outcomes": ["Mühazirəni aydın keçid ifadələri ilə qurmaq", "Texniki anlayışı sadə ingilis dilində izah etmək", "Beynəlxalq həmkarlarla rəsmi yazışma aparmaq"],
      "modules": [
@@ -83,7 +83,7 @@
        "quiz": [{"q": "Rəsmi e-poçtun sonunda hansı ifadə uyğundur?", "o": ["«Bye!»", "«Kind regards,»", "«See ya»", "«Thx»"], "a": 1},
                 {"q": "Yaxşı mövzu sətri hansıdır?", "o": ["«Hello»", "«Joint seminar proposal: AI in Engineering Education, March 2027»", "«Important!!!»", "Boş buraxmaq"], "a": 1}]}
      ]},
-    {"key": "syllabus", "title": "Sillabus və kurs dizaynı", "icon": "layers", "color": "#1a2355", "level": "Başlanğıc", "audience": "Bütün müəllimlər",
+    {"key": "syllabus", "title": "Sillabus və kurs dizaynı", "icon": "layers", "color": "#1a2355", "level": "Başlanğıc səviyyə", "audience": "Bütün müəllimlər",
      "summary": "Ölçülə bilən təlim nəticələri, AKTS üzrə iş yükü, qiymətləndirmə strategiyası və müasir sillabusun strukturu. AI sillabus köməkçisi ilə.",
      "outcomes": ["Bloom felləri ilə ölçülə bilən təlim nəticələri yazmaq", "Kreditə uyğun tələbə iş yükünü planlaşdırmaq", "Tam sillabus layihəsi hazırlamaq"],
      "modules": [
@@ -112,7 +112,7 @@
        "quiz": [{"q": "Sillabusun qaydalar bölməsinə nə daxil edilməlidir?", "o": ["Yalnız imtahan tarixi", "Davamiyyət, akademik dürüstlük və AI istifadəsi qaydaları", "Müəllimin tərcümeyi-halı", "Heç nə"], "a": 1},
                 {"q": "Sillabus tələbələrə nə vaxt təqdim olunmalıdır?", "o": ["İmtahandan sonra", "Semestrin əvvəlində", "Yalnız soruşduqda", "Semestrin ortasında"], "a": 1}]}
      ]},
-    {"key": "communication", "title": "Akademik ünsiyyət", "icon": "message", "color": "#0e9f6e", "level": "Başlanğıc", "audience": "Bütün müəllimlər",
+    {"key": "communication", "title": "Akademik ünsiyyət", "icon": "message", "color": "#0e9f6e", "level": "Başlanğıc səviyyə", "audience": "Bütün müəllimlər",
      "summary": "Tələbələrə konstruktiv rəy, akademik yazı, elmi çıxış və peşəkar rəqəmsal etiket.",
      "outcomes": ["Konkret və tətbiq oluna bilən rəy vermək", "Elmi məqaləni IMRaD strukturunda qurmaq", "Konfransda aydın və reqlamentə uyğun çıxış etmək"],
      "modules": [
@@ -141,7 +141,7 @@
        "quiz": [{"q": "Tələbələrin qiymətlərini harada paylaşmaq olar?", "o": ["Ümumi messencer qrupunda", "Yalnız rəsmi platformada, fərdi qaydada", "Sosial şəbəkədə", "Lövhədə adlarla"], "a": 1},
                 {"q": "Yazışmada cavab müddəti ilə bağlı düzgün yanaşma hansıdır?", "o": ["Heç vaxt cavab verməmək", "Cavab müddətini əvvəlcədən bildirmək", "Gecə yarısı cavab vermək məcburiyyəti", "Yalnız şifahi cavab"], "a": 1}]}
      ]},
-    {"key": "pedagogy", "title": "Müasir tədris metodları", "icon": "users", "color": "#d97706", "level": "Orta", "audience": "Bütün müəllimlər",
+    {"key": "pedagogy", "title": "Müasir tədris metodları", "icon": "users", "color": "#d97706", "level": "Orta səviyyə", "audience": "Bütün müəllimlər",
      "summary": "Aktiv öyrənmə, çevrilmiş sinif və mühəndislikdə layihə əsaslı öyrənmə.",
      "outcomes": ["Mühazirəyə aktiv öyrənmə fəaliyyətləri əlavə etmək", "Çevrilmiş sinif modelini planlaşdırmaq", "Real problemə əsaslanan layihə tapşırığı hazırlamaq"],
      "modules": [
@@ -164,7 +164,7 @@
        "quiz": [{"q": "Layihə əsaslı öyrənmənin əsas xüsusiyyəti nədir?", "o": ["Yalnız nəzəriyyə", "Real problem üzərində komanda işi", "Fərdi test", "Mühazirəni əzbərləmək"], "a": 1},
                 {"q": "Komanda layihəsində fərdi töhfəni görmək üçün nə kömək edir?", "o": ["Həmyaşıd qiymətləndirməsi", "Yalnız yekun təqdimat", "Davamiyyət", "Heç nə"], "a": 0}]}
      ]},
-    {"key": "research", "title": "Tədqiqat, nəşr və qrantlar", "icon": "book", "color": "#475569", "level": "Orta", "audience": "Tədqiqat aparan müəllimlər",
+    {"key": "research", "title": "Tədqiqat, nəşr və qrantlar", "icon": "book", "color": "#475569", "level": "Orta səviyyə", "audience": "Tədqiqat aparan müəllimlər",
      "summary": "Nüfuzlu jurnal seçimi, yırtıcı jurnallardan qorunma, qrant müraciəti və akademik dürüstlük.",
      "outcomes": ["Jurnalın etibarlılığını yoxlamaq", "Qrant müraciətinin əsas hissələrini yazmaq", "AI istifadəsini nəşr qaydalarına uyğun açıqlamaq"],
      "modules": [
@@ -187,7 +187,7 @@
        "quiz": [{"q": "AI-ı məqalənin müəllifi kimi göstərmək olarmı?", "o": ["Bəli, həmişə", "Xeyr, əksər jurnallar bunu qəbul etmir; istifadə açıqlanmalıdır", "Yalnız ingilis dilində", "Yalnız konfransda"], "a": 1},
                 {"q": "Hansı hal plagiat sayıla bilər?", "o": ["Mənbəyə düzgün istinad", "Əvvəlki öz məqaləsindən açıqlamadan geniş təkrar", "Sitatı dırnaq arasında vermək", "Məlumat bazasından istifadə"], "a": 1}]}
      ]},
-    {"key": "edtech", "title": "Fənniniz üçün texnoloji həllər", "icon": "cpu", "color": "#0891b2", "level": "Başlanğıc", "audience": "Bütün müəllimlər",
+    {"key": "edtech", "title": "Fənniniz üçün texnoloji həllər", "icon": "cpu", "color": "#0891b2", "level": "Başlanğıc səviyyə", "audience": "Bütün müəllimlər",
      "summary": "Virtual laboratoriyalar, kodun avtomatik yoxlanması, interaktiv vizuallaşdırma və CAD alətləri — fənninizə uyğun seçim.",
      "outcomes": ["Fənnə uyğun simulyasiya alətini seçmək", "Avtomatik yoxlanan tapşırıq hazırlamaq", "Rəqəmsal aləti dərs ssenarisinə inteqrasiya etmək"],
      "modules": [

@@ -50,7 +50,7 @@ def exam_input(body, zone: tzinfo | None) -> tuple[dict, dict | None]:
     duration = body.get("duration_min")
     window = (datetime.combine(day, time.fromisoformat(end)) - datetime.combine(day, time.fromisoformat(start))).seconds // 60
     if not isinstance(duration, int) or isinstance(duration, bool) or not 5 <= duration <= window:
-        return {}, E("Müddət 5 dəqiqə ilə pəncərənin uzunluğu ({n} dəq.) arasında olmalıdır", n=window)
+        return {}, E("Müddət 5 dəqiqə ilə imtahanın keçirilmə vaxtının uzunluğu ({n} dəq.) arasında olmalıdır", n=window)
     plan, problem = plan_input(body.get("plan"))
     if problem:
         return {}, problem

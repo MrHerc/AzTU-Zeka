@@ -5,7 +5,7 @@
  "İmtahanın adı 3–200 simvol olmalıdır": "An exam's title must be 3–200 characters",
  "İmtahanın növü əsas, təkrar və ya fərdi vaxt olmalıdır": "The exam type must be main, retake or individual time",
  "Keçirilmə vaxtının başlanğıcı və sonu SS:DD formatında olmalı, son vaxt başlanğıcdan sonra olmalıdır": "The time window's start and end must be HH:MM, and the end must be after the start",
- "Müddət 5 dəqiqə ilə pəncərənin uzunluğu ({n} dəq.) arasında olmalıdır": "The duration must be between 5 minutes and the window's length ({n} min)",
+ "Müddət 5 dəqiqə ilə imtahanın keçirilmə vaxtının uzunluğu ({n} dəq.) arasında olmalıdır": "The duration must be between 5 minutes and the window's length ({n} min)",
  "Qoruma rejimi açıq və ya SEB olmalıdır": "The protection mode must be open or SEB",
  "Şəbəkə siyahısında ən çox 50 ünvan bloku ola bilər": "The network list can have at most 50 address blocks",
  "İmtahan planında 1 ilə 20 arasında bənd olmalıdır": "An exam plan must have between 1 and 20 items",
@@ -17,7 +17,7 @@
  "İstisnanın səbəbini yazın": "Write the reason for the exception",
  "Davamiyyət həddi keçildiyi üçün imtahana buraxılmırsınız. Dekanlığa müraciət edin.": "You are not admitted to the exam because you are over the attendance limit. Contact the dean's office.",
  "Siz bu imtahanın siyahısında deyilsiniz. Dekanlığa müraciət edin.": "You are not on this exam's roster. Contact the dean's office.",
- "İmtahan pəncərəsi açıq deyil": "The exam window is not open",
+ "İmtahanın keçirilmə vaxtı deyil": "This is not the exam's scheduled time",
  "İmtahanın vaxtı bitib: cavab qəbul olunmur": "The exam's time is over: the answer is not accepted",
  "Cavabın formatı düzgün deyil": "The answer format is not valid",
  "Yalnız açıq imtahan bağlanır": "Only an open exam can be closed"

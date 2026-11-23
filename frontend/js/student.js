@@ -269,7 +269,7 @@ route("/student/quiz/:id", async (el, p) => {
     const missing = d.questions.length - Object.keys(answers).length;
     const doIt = async () => { done = true; clearInterval(timer); mount(el, loading(t("Cavablar yoxlanılır…"))); try { const r = await api.post(`/api/attempts/${d.attempt_id}/submit`, { answers }); go(`/student/attempt/${r.id}`); } catch (err) { toast(err.message, "err"); go("/student/quizzes"); } };
     if (auto) { toast(t("Vaxt bitdi — cavablar avtomatik göndərildi")); return doIt(); }
-    modal({ title: t("Testi bitirmək?"), size: "sm", body: html`<p>${missing ? t("{n} sual cavabsız qalıb. Cavabları göndərmək istəyirsiniz?", { n: missing }) : t("Bütün suallar cavablandırılıb. Cavabları göndərmək istəyirsiniz?")}</p>`,
+    modal({ title: t("Test bitirilsin?"), size: "sm", body: html`<p>${missing ? t("{n} sual cavabsız qalıb. Cavabları göndərmək istəyirsiniz?", { n: missing }) : t("Bütün suallar cavablandırılıb. Cavabları göndərmək istəyirsiniz?")}</p>`,
       actions: [{ label: t("Davam et") }, { label: t("Göndər"), cls: "btn-primary", onClick: doIt }] });
   };
   on(el, "click", "[data-opt]", (e, b) => { answers[d.questions[cur].id] = +b.dataset.opt; draw(); });
@@ -342,7 +342,7 @@ route("/student/attendance", async (el) => {
     <div class="grid g-3" data-tour="att-courses">${a.courses.map((c) => html`<div class="card pad slide-up"><div class="row"><span class="course-ic sm2" style="background:${c.color}">${c.code.split("-")[0]}</span>
       <b class="small grow">${c.name}</b><b style="color:${c.rate < 80 ? "var(--red)" : "var(--green)"}">${num(c.rate)}%</b></div>
       <div class="row wrap mt small"><span class="badge b-green">${t("{n} iştirak", { n: c.present })}</span><span class="badge b-red">${t("{n} qayıb", { n: c.absent })}</span><span class="badge b-blue">${t("{n} üzrlü", { n: c.excused })}</span><span class="badge b-amber">${t("{n} gecikmə", { n: c.late })}</span></div>
-      <div class="row between tiny muted mt">${t("Buraxılmış: {a} / {b} saat ({p}%)", { a: c.missed_hours, b: c.planned_hours || "—", p: c.percent })}${standing(c)}</div>
+      <div class="row between tiny muted mt">${t("Buraxılmış: {a} / {b} saat ({p}%)", { a: num(c.missed_hours), b: c.planned_hours ? num(c.planned_hours) : "—", p: num(c.percent) })}${standing(c)}</div>
       ${progress(c.allowed_hours ? Math.min(100, (100 * c.missed_hours) / c.allowed_hours) : 0, "coral")}
       <div class="tiny muted mt">${t("Hədd: {p}% ({n} saat)", { p: c.limit_percent, n: c.allowed_hours })}${c.as_of ? " · " + t("{d} tarixinədək köhnə sistemdən", { d: c.as_of }) : ""}</div></div>`)}</div>
     <div class="card mt" data-tour="att-log"><div class="card-h"><h3>${ic("list", 17)} ${t("Qayıblar və gecikmələr")}</h3></div>

@@ -60,7 +60,6 @@
  "Digər müəllim dərsi olmayan sətirdə yazılıb: {x}": "Другой преподаватель указан в строке без занятия: {x}",
  "Ştat sətrindəki iş növü arayış cədvəlindəkindən fərqlidir; arayış cədvəli əsas götürüldü: {x}": "Вид занятости в строке ставки отличается от сводной таблицы; за основу взята сводная таблица: {x}",
  "Elmi dərəcə və ya vəzifə arayış cədvəlindəkindən fərqlidir: {x}": "Учёная степень или должность отличается от сводной таблицы: {x}",
- "Arayış cədvəlinin yanında əlavə siyahı var: {x} xana": "Рядом со сводной таблицей есть дополнительный список: ячеек — {x}",
  "Arayış cədvəlinin sətri heç bir blokla əlaqələndirilmədi": "Строку сводной таблицы не удалось связать ни с одним блоком",
  "Vərəqin ümumi cəm sətri blokların cəminə bərabər deyil: {x}": "Общая итоговая строка листа не равна сумме блоков: {x}",
  "«Cəmi» sətrinin düsturları bölmənin sətirlərini düzgün əhatə etmir ({x} xana); cəm sətirlərdən hesablanıb": "Формулы строки «Cəmi» неверно охватывают строки раздела (ячеек: {x}); итог рассчитан по строкам",

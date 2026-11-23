@@ -48,7 +48,7 @@ TITLES = {   # readiness lines, publish gate and slot reasons: one catalogue key
     "teacher_unavailable": S_("Müəllim bu vaxtı məşğul kimi qeyd edib"), "room_unavailable": S_("Otaq bu vaxtda bağlıdır"),
     "shift": S_("Vaxt qrupun növbəsindən kənardır"), "fixed_slot": S_("Bu vaxt universitet üzrə tədbirə ayrılıb"),
     "block": S_("Bu həftələrdə qrup, müəllim və ya otaq dərsdən azaddır (təcrübə, məzuniyyət və s.)"), "travel": S_("Binalar arasında keçməyə vaxt çatmır"),
-    "day_limit_group": S_("Qrupun günlük cüt həddi aşılır"), "day_limit_teacher": S_("Müəllimin günlük cüt həddi aşılır"),
+    "day_limit_group": S_("Qrupun gündəlik cüt həddi aşılır"), "day_limit_teacher": S_("Müəllimin gündəlik cüt həddi aşılır"),
     "week_hours": S_("Qrupun həftəlik auditoriya saatı həddi aşılır"), "week_pairs_teacher": S_("Müəllimin həftəlik cüt həddi aşılır"),
     "day": S_("Həftənin bu günü dərs günü deyil"), "duration": S_("Cütlər zəng cədvəlindən kənara çıxır"),
     "pattern_weeks": S_("Həftələr vahidin bölgüsünə uyğun deyil"), "past": S_("Keçmiş həftələr dəyişdirilə bilməz"),
@@ -57,7 +57,7 @@ TITLES = {   # readiness lines, publish gate and slot reasons: one catalogue key
     # why the solver left a meeting unplaced (solver.explain), counted over the slots of the week
     "slot_rules": S_("Növbə, universitet tədbiri və ya müəllimin məşğul vaxtı imkan vermir"),
     "blocked_weeks": S_("Bütün həftələr təcrübə və ya başqa səbəblə dərsdən azaddır"),
-    "teacher_busy": S_("Müəllim başqa dərsdədir"), "group_busy": S_("Qrup başqa dərsdədir"), "day_limit": S_("Günlük cüt həddi aşılır"),
+    "teacher_busy": S_("Müəllim başqa dərsdədir"), "group_busy": S_("Qrup başqa dərsdədir"), "day_limit": S_("Gündəlik cüt həddi aşılır"),
     "locked_infeasible": S_("Kilidli yerləşdirmə qaydalara uyğun deyil"), "free": S_("Boş vaxt var, lakin axtarış onu tapmadı"),
     # what a precheck finds before any search (solver.precheck) and the units a run leaves out
     "no_groups": S_("Vahidin qrupu yoxdur: hesablamaya daxil edilmir"), "no_hours": S_("Vahidin saatı yoxdur: hesablamaya daxil edilmir"),
@@ -300,7 +300,8 @@ def _labelled(c, lines: list[dict]) -> list[dict]:
             want[SAMPLE_KIND[x["code"]]].update(v for v in x["samples"] if type(v) is int)
     names = {"group": {g: v["name"] for g, v in repo.groups_info(c, sorted(want["group"])).items()},
              "teacher": repo.user_names(c, sorted(want["teacher"])),
-             "unit": {u["id"]: f"{u['course']} · {domain.KIND_LABEL.get(u['kind'], u['kind'])}" for u in repo.units_by_id(c, sorted(want["unit"]))}}
+             "unit": {u["id"]: {lg: f"{S(u['course'], lg)} · {S(domain.KIND_LABEL.get(u['kind'], u['kind']), lg)}" for lg in LANGS}
+                      for u in repo.units_by_id(c, sorted(want["unit"]))}}
     return [{**x, "labels": [names[SAMPLE_KIND[x["code"]]].get(v, f"#{v}") for v in x["samples"]]} if x["code"] in SAMPLE_KIND else x
             for x in lines]
 

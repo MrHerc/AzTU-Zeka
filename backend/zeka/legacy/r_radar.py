@@ -6,7 +6,7 @@ from datetime import datetime
 
 from . import radar
 from .common import R
-from ..core.i18n import E, T3
+from ..core.i18n import E, T3, date3
 from .store import J, audit, iso, notify, now, row, rows
 from ..core.web import HTTPError
 
@@ -261,5 +261,5 @@ def leader_insight(c):
                 "link": "/radar", "at": None}
     text = E("Zəka Radar, {at} tarixinə: {high} tələbə yüksək risk qrupunda, {watch} tələbə diqqət siyahısındadır. "
              "Dəstək planı alan {m} tələbədən {k} nəfərin riski azalıb.",
-             at=datetime.fromisoformat(s["at"]).strftime("%d.%m.%Y %H:%M"), high=s["high"], watch=s["watch"], m=s["measured"], k=s["improved"])
+             at=date3(datetime.fromisoformat(s["at"]), time=True), high=s["high"], watch=s["watch"], m=s["measured"], k=s["improved"])
     return {"level": "warn" if s["high"] else "good", "text": text, "link": "/radar", "at": s["at"]}

@@ -103,7 +103,7 @@ export async function teacherExams(tgt, c) {
         ${m.roster.map((r) => html`<tr><td>${r.full_name} <span class="tiny muted">${r.student_no || ""}</span></td><td>${badge(ROSTER, r.status)}${r.reason ? html`<div class="tiny muted">${r.reason}</div>` : ""}</td>
           <td class="small">${att[r.student_id] ? att[r.student_id].status : "—"}${att[r.student_id] && att[r.student_id].auto ? html` <span class="badge b-amber">${t("avtomatik")}</span>` : ""}</td>
           <td>${att[r.student_id] && att[r.student_id].score != null ? `${att[r.student_id].score} / ${att[r.student_id].max_score}` : "—"}</td></tr>`)}</tbody></table></div>`
-        : html`<p class="small muted" style="margin:0">${t("Siyahı imtahan açılanda jurnal əsasında tərtib edilir.")}</p>`}</div>` });
+        : html`<p class="small muted" style="margin:0">${t("Siyahı imtahan açıldıqda jurnal əsasında tərtib edilir.")}</p>`}</div>` });
     const box = w.el;
     const board = box.querySelector("#ex-board");
     if (board) board.onclick = () => { w.close(); go(`/proctor/${m.exam.id}`); };
@@ -168,7 +168,7 @@ route("/office/exams", async (el) => {
       <th>${t("Bağlanmış cədvəl")}</th><th></th></tr></thead><tbody>${list.map((e) => html`<tr><td><b class="small">${e.title}</b></td>
       <td class="small">${e.course_code} · ${e.course_name}</td><td>${e.closed} / ${e.groups}</td>
       <td><button class="btn btn-sm" data-groups="${e.id}">${t("Qruplar")}</button></td></tr>`)}</tbody></table></div>`
-      : html`<div class="card-b">${empty("qr", t("Nəticəsi açıqlanmış imtahan yoxdur"), t("Müəllim nəticəni açıqlayanda imtahan burada görünür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("qr", t("Nəticəsi açıqlanmış imtahan yoxdur"), t("Müəllim nəticəni açıqladıqda imtahan burada görünür."))}</div>`}</div>`);
   const groups = async (eid) => {
     let st, res;
     try { [st, res] = await Promise.all([api.get(`/api/exams/${eid}/statements`), api.get(`/api/exams/${eid}/results`)]); } catch (err) { toast(err.message, "err"); return; }

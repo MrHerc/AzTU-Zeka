@@ -15,7 +15,7 @@
  "qrup məşğuldur": "группа занята",
  "Cədvəldə toqquşma var": "Конфликт в расписании",
  "Sətir saxlanmadı. Bu dərslərlə eyni vaxtdadır:": "Строка не сохранена. Она совпадает по времени с этими занятиями:",
- "Tədris vahidlərinin həftəlik cədvəli. Saxlananda otaq, müəllim və qrup toqquşması yoxlanır.": "Еженедельное расписание учебных единиц. При сохранении проверяются конфликты помещений, преподавателей и групп.",
+ "Tədris vahidlərinin həftəlik cədvəli. Saxlanıldıqda otaq, müəllim və qrup toqquşması yoxlanılır.": "Еженедельное расписание учебных единиц. При сохранении проверяются конфликты помещений, преподавателей и групп.",
  "Günün dərsləri": "Занятия дня",
  "Bütün qruplar": "Все группы",
  "Yeni sətir": "Новая строка",

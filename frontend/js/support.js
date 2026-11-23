@@ -217,7 +217,7 @@ route("/staff/support", async (el, p, q) => {
       <div class="stat"><span class="stat-ic ic-amber">${ic("clock", 19)}</span><div><div class="v">${sum.avg_first_response_h == null ? "—" : cnt(sum.avg_first_response_h, { dec: 1, suffix: " " + t("saat") })}</div><div class="l">${t("Orta ilk cavab müddəti")}</div></div></div>
     </div>
     <div class="card mt"><div class="card-h wrap">
-      <div class="seg" role="tablist">${[["open", t("Açıq")], ["done", t("Bağlı")], ["all", t("Hamısı")]].map(([k, l]) => html`<button class="${status === k ? "active" : ""}" data-go="${qs({ status: k })}">${l}</button>`)}</div>
+      <div class="seg" role="tablist">${[["open", t("Açıq olanlar")], ["done", t("Bağlı")], ["all", t("Hamısı")]].map(([k, l]) => html`<button class="${status === k ? "active" : ""}" data-go="${qs({ status: k })}">${l}</button>`)}</div>
       <div class="row wrap"><select class="input input-sm" id="f-cat" aria-label="${t("Kateqoriya")}"><option value="">${t("Bütün kateqoriyalar")}</option>${m.categories.map((c) => html`<option value="${c.key}" ${q.category === c.key ? "selected" : ""}>${c.name}</option>`)}</select>
         <label class="check small"><input type="checkbox" id="f-mine" ${q.mine ? "checked" : ""}> ${t("Mənə təyin olunanlar")}</label>
         <input class="input input-sm" id="f-q" placeholder="${t("Axtarış: mövzu, ad, №")}" value="${q.q || ""}" aria-label="${t("Axtarış")}"></div></div>

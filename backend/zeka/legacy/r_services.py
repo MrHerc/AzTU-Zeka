@@ -105,7 +105,7 @@ def set_offered(req):
     if not t:
         raise HTTPError(404, "Müraciət növü tapılmadı")
     if on and not registered(t["effect"]):
-        raise HTTPError(400, E("Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz", effect=t["effect"]))
+        raise HTTPError(400, E("Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq mümkün deyil", effect=t["effect"]))
     c.execute("UPDATE request_types SET enabled=? WHERE code=?", (int(on), t["code"]))
     audit(c, req.user["id"], "request_type_open" if on else "request_type_close", "request_type", t["code"])
     return admin_request_types(req)
@@ -530,7 +530,7 @@ def request_action(req):
         if rt["code"] == "transcript" and not journal.transcript_ready(c, r["student_id"]):   # readiness can change after the request
             raise HTTPError(400, "Transkript hələ verilmir: əvvəlki semestrlərin qiymətləri dekanlıqda yoxlanır. Dekanlığa müraciət edin.")
         if not registered(rt["effect"]):
-            raise HTTPError(400, E("Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz", effect=rt["effect"]))
+            raise HTTPError(400, E("Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq mümkün deyil", effect=rt["effect"]))
         doc = EFFECTS[rt["effect"]](c, u, r, rt, data, b) if rt["effect"] != "none" else None
         if doc:
             c.execute("UPDATE requests SET status='ready', document_id=?, updated_at=? WHERE id=?", (doc["id"], t, r["id"]))

@@ -1,6 +1,6 @@
 {
  "Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka platformasında başqa heç bir qeyd dəyişdirilməyib.": "Ваша заявка зарегистрирована. Рассмотрело подразделение: {unit}. Решение: удовлетворена. Других изменений в записях Zəka нет.",
- "Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz": "Действие этой услуги ({effect}) не зарегистрировано в коде: её нельзя открыть",
+ "Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq mümkün deyil": "Действие этой услуги ({effect}) не зарегистрировано в коде: её нельзя открыть",
  "Bu mərhələni {unit} icra edir": "Этот этап выполняет: {unit}",
  "Müraciət hələ son mərhələdə deyil: əvvəlcə mərhələləri təsdiqləyin": "Заявка ещё не на последнем этапе: сначала утвердите этапы",
  "Açılan xidmət tələbələrə təklif olunur; bağlı xidmət kataloqda, axtarışda və köməkçidə görünmür.": "Открытая услуга предлагается студентам; закрытая не отображается в каталоге, поиске и помощнике.",

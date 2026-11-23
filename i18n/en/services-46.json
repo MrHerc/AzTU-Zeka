@@ -1,6 +1,6 @@
 {
  "Müraciətiniz qeydə alınıb. Baxan bölmə: {unit}. Qərar: təmin edilib. Zəka platformasında başqa heç bir qeyd dəyişdirilməyib.": "Your request has been registered. Reviewed by: {unit}. Decision: granted. No other record in Zəka has changed.",
- "Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq olmaz": "This service's effect ({effect}) is not registered in the code: it cannot be opened",
+ "Bu xidmətin təsiri ({effect}) kodda qeydiyyatda deyil: onu açmaq mümkün deyil": "This service's effect ({effect}) is not registered in the code: it cannot be opened",
  "Bu mərhələni {unit} icra edir": "This stage is handled by: {unit}",
  "Müraciət hələ son mərhələdə deyil: əvvəlcə mərhələləri təsdiqləyin": "The request is not at its last stage yet: approve the stages first",
  "Açılan xidmət tələbələrə təklif olunur; bağlı xidmət kataloqda, axtarışda və köməkçidə görünmür.": "An open service is offered to students; a closed one does not appear in the catalogue, in search or in the assistant.",

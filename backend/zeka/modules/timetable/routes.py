@@ -101,7 +101,7 @@ def cancel_lesson(req):
     if status == "missing":
         raise HTTPError(404, "Dərs tapılmadı")
     if status == "recorded":
-        raise HTTPError(409, "Bu dərsin davamiyyəti yazılıb: onu ləğv etmək olmaz")
+        raise HTTPError(409, "Bu dərsin davamiyyəti yazılıb: onu ləğv etmək mümkün deyil")
     if status == "cancelled":
         raise HTTPError(409, "Dərs artıq ləğv edilib")
     if status == "invalid":
@@ -117,7 +117,7 @@ def move_lesson(req):
     if status == "missing":
         raise HTTPError(404, "Dərs tapılmadı")
     if status == "recorded":
-        raise HTTPError(409, "Bu dərsin davamiyyəti yazılıb: onu köçürmək olmaz")
+        raise HTTPError(409, "Bu dərsin davamiyyəti yazılıb: onu köçürmək mümkün deyil")
     if status == "invalid":
         raise HTTPError(400, value)
     return repo.lesson(req.db, req.params["id"])

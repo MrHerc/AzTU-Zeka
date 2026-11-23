@@ -17,7 +17,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from ...core.i18n import E, S_, T3
+from ...core.i18n import E, S_, T3, Lit
 from ...legacy.store import audit, iso, now, setting
 from ...core import tenant
 from ..directory import domain as directory_rules
@@ -209,8 +209,16 @@ def _plan_rows(kind: str, ctx: Context, cells: list[tuple[int, dict]], errors: l
     return items
 
 
+MISSING = {"Qrup": S_("Qrup tapılmadı: {value}"), "Kafedra": S_("Kafedra tapılmadı: {value}"), "Fakültə": S_("Fakültə tapılmadı: {value}"),
+           "Fənn": S_("Fənn tapılmadı: {value}"), "Semestr": S_("Semestr tapılmadı: {value}"), "Müəllim": S_("Müəllim tapılmadı: {value}"),
+           "Tədris vahidi": S_("Tədris vahidi tapılmadı: {value}"), "İstifadəçi": S_("İstifadəçi tapılmadı: {value}"),
+           "Korpus": S_("Korpus tapılmadı: {value}"), "Tələbə": S_("Tələbə tapılmadı: {value}")}
+
+
 def _missing(what: str, value) -> dict:
-    return E("{what} tapılmadı: {value}", what=what, value=value)
+    """What the registry lacks, in a sentence of its own per kind (each language agrees with its noun, L9), and the
+    value exactly as the file has it, never looked up in the catalogue (L2)."""
+    return E(MISSING[what], value=Lit(str(value)))
 
 
 def _resolve(kind: str, ctx: Context, n: int, sid: str, v: dict) -> tuple[Item | None, dict | None]:

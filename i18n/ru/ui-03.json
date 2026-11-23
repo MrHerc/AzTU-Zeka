@@ -86,7 +86,7 @@
  "Testi bitir": "Завершить тест",
  "Cavablar yoxlanılır…": "Ответы проверяются…",
  "Vaxt bitdi — cavablar avtomatik göndərildi": "Время вышло — ответы отправлены автоматически",
- "Testi bitirmək?": "Завершить тест?",
+ "Test bitirilsin?": "Завершить тест?",
  "{n} sual cavabsız qalıb. Cavabları göndərmək istəyirsiniz?": {"one": "{n} вопрос остался без ответа. Отправить ответы?", "few": "{n} вопроса остались без ответа. Отправить ответы?", "many": "{n} вопросов остались без ответа. Отправить ответы?"},
  "Bütün suallar cavablandırılıb. Cavabları göndərmək istəyirsiniz?": "На все вопросы даны ответы. Отправить ответы?",
  "Əla nəticə.": "Отличный результат.",
