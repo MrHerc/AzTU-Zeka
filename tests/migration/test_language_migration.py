@@ -89,14 +89,18 @@ def test_0465_brings_an_older_databases_rows_to_the_fresh_seed_and_leaves_what_p
                                     "'Doğrudurmu: “Tezlik artdıqca induktiv müqavimət azalır.” (redaktə)', '', 'draft', 'manual')").lastrowid,
             "messages": db.execute("INSERT INTO messages(user_id, course_id, channel, role, content, synthetic) VALUES(1, 1, 'tutor', 'user', "
                                    "'“consists of” necə işlədilir?', 0)").lastrowid}
+    # MUT-l03: the tutor's real answer to a person, from a version that wrote “ ”, is that person's history and stays
+    real = db.execute("INSERT INTO messages(user_id, course_id, channel, role, content, synthetic) VALUES(1, 1, 'tutor', 'assistant', "
+                      "'Materialda deyilir: “Om qanunu”. [1]', 0)").lastrowid
     written = {t: db.execute(f"SELECT * FROM {t} WHERE id=?", (i,)).fetchone() for t, i in mine.items()}  # nosec B608
     assert _snapshot(db) != fresh
     db.executescript(SQL65.read_text(encoding="utf-8"))
     after = _snapshot(db)
     for t in TABLES65:
-        assert [r for r in after[t] if r[0] != mine.get(t)] == fresh[t], t
+        assert [r for r in after[t] if r[0] != mine.get(t) and (t, r[0]) != ("messages", real)] == fresh[t], t
     for t, i in mine.items():
         assert db.execute(f"SELECT * FROM {t} WHERE id=?", (i,)).fetchone() == written[t], t  # nosec B608
+    assert db.execute("SELECT content FROM messages WHERE id=?", (real,)).fetchone()[0] == "Materialda deyilir: “Om qanunu”. [1]"
 
 
 def _az(v):
