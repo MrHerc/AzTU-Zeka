@@ -824,7 +824,7 @@ Club events use the existing news and registration flow.
  "details": [
   {"qid": 39, "text": "Choose the correct sentence (Düzgün cümləni seçin):", "qtype": "mcq", "options": ["…"],
    "given": "B", "correct": true, "answer": "B) A resistor is used to limit current.",
-   "explanation": "“is used to” quruluşundan sonra felin əsas forması gəlir: is used to limit.",
+   "explanation": "«is used to» quruluşundan sonra felin əsas forması gəlir: is used to limit.",
    "topic": "Describing function (Funksiyanı təsvir etmək)",
    "source": {"n": 1, "id": 85, "kind": "chunk", "material": "Unit 1. Describing components and functions",
               "heading": "Describing function (Funksiyanı təsvir etmək)", "snippet": "…"}},
