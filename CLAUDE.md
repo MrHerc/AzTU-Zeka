@@ -26,14 +26,16 @@ python tools/etl/run.py --mapping content/mappings/SRC.json --dir EXPORT --wave 
 python backend/manage.py reconcile --wave 0 --source SRC --dir data/migration/SRC-wave0 [--out report.json]   # Task 38
 python backend/manage.py activation-codes --faculty CODE --out codes.csv   # one-time student codes for a dean's office
 python backend/manage.py export --kind grades|attendance|oneroster|registry|status-changes [--since ISO] [--out F]   # Task 37
+python backend/manage.py export --kind timetable [--term T] [--version V] [--out F]   # a term's rows in force or a builder version's placements (Task 48)
 python backend/manage.py jobs status | run          # periodic jobs (Task 36): each job's last run; run what is due now
 python backend/manage.py exam-verify ID [--root HEX]  # an exam's hash chain, frozen answers and scores (Task 30)
 python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv   # a building's route graph (Task 31)
 python backend/manage.py forma3-check FILE.xlsx [--json]   # a department's Forma №3 before upload: controls, counts, conflicts by cell (Task 47)
+python backend/manage.py import-framework --file content/frameworks/nice-components-2.2.0.json   # NICE as NIST published it; prints file/database counts per kind; a re-run changes nothing (Task 24)
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 2016 tests, about 12 min; uses a temp database, never touches data/
+python -m pytest -q                               # 2056 tests, about 13 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -173,6 +175,13 @@ rather than share it between, say, a load type and a tip label.
   from a sheet's name or a row's position. The import applies only posts that pass T1–T3 with no blocking conflict;
   every non-empty cell must end somewhere (`Form.unclassified == 0`). The departments' real files hold staff names and
   never enter the repository: tests use `tests/fixtures/make_fixtures.py`, places are named by cell ref only.
+- **Frameworks (Task 24).** A framework file in `content/frameworks/` is the publisher's file byte for byte: never
+  edited, reformatted or re-saved (`-text` in `.gitattributes`); its source and SHA-256 are in that folder's README.
+  `syllabus/frameworks.KNOWN` holds the hash of each known version: a changed copy of it is refused; a version not in
+  `KNOWN` imports as unverified (no source address, never the default). A new version is a new file and a new row;
+  the old version, its items and the outcome maps stay readable. A submitted syllabus version keeps its own tags
+  (`syllabus_versions.tags`): the printed and published syllabus and the coverage report read those, never the
+  working map. Bloom and EQF are built in (`BUILTIN`), written at every start, prod too.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - **Measured indicators (Task 39).** The leadership tiles and the accreditation evidence page (`/leader/evidence`) are
@@ -208,13 +217,15 @@ rather than share it between, say, a load type and a tip label.
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test
   never reads the real date.
 
-## Branch state (2026-11-22)
+## Branch state (2026-11-23)
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
-and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`) and Faza 4 (Tasks 23 and 25–30, with Task 36's job runner and e-mail outbox; Checkpoint D: `docs/review/checkpoint-d-2026-11-19.md`; Task 24 is blocked: the NICE file's host is refused by this environment's proxy) and Faza 5 (Tasks 31–35, 37 and 46; Checkpoint E: `docs/review/checkpoint-e-2026-11-19.md`) and Faza 6 so far (Tasks
+and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`) and Faza 4 (Tasks 23 and 25–30, with Task 36's job runner and e-mail outbox; Checkpoint D: `docs/review/checkpoint-d-2026-11-19.md`; Task 24 came later, see below) and Faza 5 (Tasks 31–35, 37 and 46; Checkpoint E: `docs/review/checkpoint-e-2026-11-19.md`) and Faza 6 so far (Tasks
 38–43, the owner's decisions of 2026-11-21, Task 47's Forma №3 reader, Task 48's timetable builder and the language
-change; Checkpoint F: `docs/review/checkpoint-f-2026-11-22.md`, every confirmed finding fixed). Task 44 (release) waits
+change; Checkpoint F: `docs/review/checkpoint-f-2026-11-22.md`, every confirmed finding fixed), then Task 24 (the framework
+map and the NICE import, from NIST's own file), Task 48's hours report and timetable export and Checkpoint F's open
+checks (addendum: `docs/review/checkpoint-f-addendum-2026-11-23.md`; 28 confirmed findings fixed, OK-1 low open). Task 44 (release) waits
 for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's gate is not passed. `main` is unchanged and the five PRs are still open against it; they are
 superseded by this branch.
 

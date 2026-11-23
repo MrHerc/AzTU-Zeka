@@ -18,7 +18,8 @@ same at every checkpoint:
 | C | Faza 3, Tasks 18–22, 45 · `..19e3ff8` | 57 | `docs/review/checkpoint-c-2026-11-19.md`; `tests/integration/test_checkpoint_c.py` | Run with the review |
 | D | Faza 4, Tasks 23, 25–30, 36 · `78534df..823bc4d` | 118: 91 confirmed, 24 partial, 3 refuted | `docs/review/checkpoint-d-2026-11-19.md`; `test_checkpoint_d.py`, `test_exam_gaps.py`, `test_checkpoint_d_regressions.py` | SR-1 (medium, a department head managed another department's exam): fixed, tested |
 | E | Faza 5, Tasks 31–35, 37 · `afbfeae..777682f`; Task 46 · `4c63b4a` | 83: 66 confirmed, 13 partial, 4 refuted; Task 46: 11 confirmed, 1 partial, 2 refuted | `docs/review/checkpoint-e-2026-11-19.md` (per area, with the test of each fix) | No new finding ≥ 0.8; an older leak (OLD-1, an anonymous asker's id) fixed |
-| F | Faza 6, Tasks 38–44 | — | `docs/review/checkpoint-f-*.md` (written at the checkpoint) | At the checkpoint |
+| F | Faza 6, Tasks 38–43, 47, 48, the owner's decisions, the language change · `1bc85c8..3ea4371` | Round 2: 38 confirmed, 0 refuted (F1, SEC-TT-1..3, CORR-F1/F2, TE-F1..F11, M1, L1–L20); round 1 and the reviews held while the work was built: per report | `docs/review/checkpoint-f-2026-11-22.md` (round 2 table, with the commit and test of each fix) | Security lens of round 2: SEC-TT-1..3, all fixed, tested |
+| F addendum | Task 24, Task 48's hours report and export, Checkpoint F's open checks · `e02f1d6..1161c6b` | 28 confirmed, 0 refuted; one side claim (OK-1, low) left open | `docs/review/checkpoint-f-addendum-2026-11-23.md` | Security lens: SEC-FW-1..4, all fixed, tested |
 
 ## High and medium security findings since the sprint began
 
@@ -32,6 +33,11 @@ same at every checkpoint:
 | SEC-E6 | Webhooks (E) | Private and metadata addresses accepted as webhook targets | Confirmed, low-medium (admin only) | Public addresses only in prod, checked at send time; no redirects · `test_webhooks.py` |
 | SR46-1 | E-services (E) | A student with a staff grant approved their own request | Confirmed, medium | 403 on one's own request · `test_service_honesty.py` |
 | TE46-1/2 | E-services (E) | Two acts at once skipped a step or issued two documents | Confirmed, required | Status and step read under the write lock · `test_service_honesty.py::test_two_acts_at_once_run_one_after_the_other` |
+| SEC-TT-1 | Timetable builder (F) | A faculty-scoped academic office changed the university-wide timetable settings and the term's plan | Confirmed, medium | 403 unless the caller's scope is university-wide (`4f573f9`) · `test_tt_builder.py` |
+| SEC-TT-2 | Timetable builder (F) | A scoped office queued a check run on a university-wide version, which it could then neither read nor cancel, and blocked the other office with 409 | Confirmed, medium | A run or its base version must cover the version's stored scope, `_covers_scope` (`4f573f9`) · `test_tt_builder.py` |
+| SEC-FW-1 | Syllabus framework map (F addendum) | A teacher of any section changed the framework tags of an approved, published syllabus, and the student's page showed it with no approval | Confirmed, important | A submitted version keeps its own tags, `syllabus_versions.tags` (`0241`, `1b8d7a3`) · `test_frameworks.py` |
+
+Low security findings of Checkpoint F and its addendum, all fixed: SEC-TT-3 (a scoped office read every draft and its problem list), SEC-FW-2 (the coverage report showed another department's draft outcome texts), SEC-FW-3 (a relabelled NICE file skipped the SHA-256 check and became the default; now imported as unverified) and SEC-FW-4 (nit: a deeply nested file crashed the import). Each report lists its fix and test.
 
 Refuted claims are kept with their refutation in each report, for example:
 - **CR-E9:** `/api/v1` responses do have `Cache-Control: no-store`.

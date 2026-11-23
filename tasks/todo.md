@@ -616,14 +616,18 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Description:** `frameworks(key, version, title, source_url)` və `framework_items(framework_id, code, kind, parent, title)`. `manage.py import-framework --file`: NIST-in dərc etdiyi NICE Framework Components v2.2.0 JSON faylını oxuyur. Test nümunəsi real fayldan kəsilir. Fayl əlçatan deyilsə tapşırıq bloklanmış qalır; nümunə və ya fayl əl ilə yazılmır. Bloom və EQF daxili gəlir. Nəticə ↔ bənd xəritəsi üçün axtarışlı seçim. Əhatə hesabatı: iş rolu üzrə hansı bilik, bacarıq və tapşırıq bəyanatı hansı fənnin nəticəsi ilə örtülür; CSV ixracı.
 
 **Acceptance criteria:**
-- [ ] NICE idxalı idempotentdir və versiyanı saxlayır; yeni versiya idxal olunanda köhnə xəritələr oxunaqlı qalır
-- [ ] İdxal NIST-in dərc etdiyi dəyişdirilməmiş fayldan aparılır; idxaldan sonra hər növ üzrə (iş rolu, bilik, bacarıq, tapşırıq bəyanatı) sətir sayı fayldakı element sayına bərabərdir
-- [ ] Bir nəticə bir neçə çərçivənin bəndləri ilə işarələnə bilir
-- [ ] Proqram üzrə əhatə hesabatı örtülməyən bəyanatları sadalayır
+- [x] NICE idxalı idempotentdir və versiyanı saxlayır; yeni versiya idxal olunanda köhnə xəritələr oxunaqlı qalır (ikinci işə salınma «already imported, nothing changed» deyir; yeni versiya ayrıca sətirdir)
+- [x] İdxal NIST-in dərc etdiyi dəyişdirilməmiş fayldan aparılır; idxaldan sonra hər növ üzrə (iş rolu, bilik, bacarıq, tapşırıq bəyanatı) sətir sayı fayldakı element sayına bərabərdir: iş rolu 42, bilik 693, bacarıq 556, tapşırıq 962; digər növlər (kateqoriya 5, səriştə sahəsi 11, OPM 40, sıra 47) və 5 950 əlaqə də bərabərdir
+- [x] Bir nəticə bir neçə çərçivənin bəndləri ilə işarələnə bilir
+- [x] Proqram üzrə əhatə hesabatı örtülməyən bəyanatları sadalayır (CSV ixracı ilə)
+
+**Fayl:** `content/frameworks/nice-components-2.2.0.json`, NIST-in öz ünvanından bayt-bayt (`https://csrc.nist.gov/csrc/media/Projects/cprt/documents/nice/v2-2-0_nf_components.json`; `Last-Modified: 18 May 2026`; 2026-11-23-də endirilib; 2 674 252 bayt); SHA-256 `3ad1d9d7e0d6b32895cb569f86c3bc05af2937a68e96eab4d1c9b3d9fa6e575e`. Mənşəyi `content/frameworks/README.md`-də. Fayl tapıldığı üçün sahibin NICE addımı lazım olmadı.
+
+**Rəy (Checkpoint F əlavəsi, `docs/review/checkpoint-f-addendum-2026-11-23.md`):** təqdim olunan versiya öz bəndlərini saxlayır, dərc olunmuş sillabus təsdiqsiz dəyişmir (SEC-FW-1, BR-F1, `0241`); `KNOWN`-da heşi olmayan versiya «yoxlanmamış» idxal olunur və heç vaxt susmaya görə çərçivə olmur (SEC-FW-3, BR-F3); təsdiqlənən hər tapıntı testlə düzəldilib (`1b8d7a3`, `c5437f4`).
 
 **Verification:**
-- [ ] `python -m pytest tests/integration/test_frameworks.py -q`
-- [ ] `python backend/manage.py import-framework --file content/frameworks/nice-components-2.2.0.json`
+- [x] `python -m pytest tests/integration/test_frameworks.py -q` (2026-11-23: 29 passed)
+- [x] `python backend/manage.py import-framework --file content/frameworks/nice-components-2.2.0.json` (2026-11-23, boş bazada: hər növ üzrə fayl = baza, çıxış kodu 0; ikinci işə salınma heç nəyi dəyişmir)
 
 **Dependencies:** Task 23; sahibin NICE addımı (`tasks/plan.md`, Sahibin addımları)
 **Files likely touched:** `backend/zeka/modules/syllabus/frameworks.py`, `backend/migrations/0240_frameworks.sql`, `content/frameworks/`, `frontend/js/academy.js`
@@ -1125,6 +1129,8 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 
 Qeyd (2026-11-22): rəy və təkzib iki mərhələdə keçib, təsdiqlənən hər tapıntı reqressiya testi ilə düzəldilib (`docs/review/checkpoint-f-2026-11-22.md`). Portalın dili (sessiyanın 20-ci işi; commit-lərdə «Task 20», bu sənədin Task 20-si deyil): `tools/i18n.py rename`, 912 qeyd, `i18n/STYLE.md`, `0463`, `0464`; `stats` 100 %, `lint` 72. Qalan üç bənd hədəf serveri, T0-ı və sahibin qərarını gözləyir (Task 44-ün girişləri).
 
+Qeyd (2026-11-23): əlavə rəy (`docs/review/checkpoint-f-addendum-2026-11-23.md`) Task 24-ü, saat hesabatını və ixracı, CORR-F1-in yenidən ölçülməsini, axe yoxlamasını və dil yoxlamasını əhatə edir; 28 təsdiqlənən tapıntının hamısı testlə düzəldilib, yüksək təhlükəsizlik tapıntısı yoxdur; OK-1 (aşağı) açıqdır.
+
 ## Task 48: Semestr cədvəli qurucusu
 
 **Description:** Bu gün dərs cədvəlinin sətirləri yalnız əl ilə yazılır (Task 19); Forma №3-dən gələn tədris vahidləri (Task 47) özü cədvələ düşmür. Qurucu semestrin bütün girişlərini bir yerə yığır, toqquşmasız cədvəl layihəsini hesablayır, dekanlıq və kafedralar layihəyə baxır, tədris şöbəsi onu effektiv tarixdən dərc edir. Dizayn: Task 48-in son dizaynı (`f3work/tt-design.md`, repozitoriyadan kənarda; §13-də üç dilim).
@@ -1176,7 +1182,7 @@ Dilim 2: repo, servis, marşrutlar, `timetable.work` və `timetable.health` işl
 
 **Acceptance criteria (Task 47 ilə birlikdə qəbul, real fayllar üzrə, 2026-11-22; ölçmə repozitoriyadan kənarda, adlar oxunmur və yazılmır):**
 - [x] İki budaq birləşdirilib; brauzer testi Task 47-nin yeni sintetik Forma №3 faylına uyğunlaşdırılıb, müəllim siyahısı yeniləndikdən sonra oxunur
-- [x] RT və MR idxalın önizləmə və tətbiq marşrutu ilə: 1 530 vahid yazılıb (RT 335, MR 1 195); oxucunun bloklaması ilə yazılmayan 70 vahid (ştat: tədris ili 22, fənnin adı yox 31, qrup yox 5; gizli vərəq 12), reyestrə görə rədd olunan 0
+- [x] RT və MR idxalın önizləmə və tətbiq marşrutu ilə. Oxucu 1 600 vahid oxuyur (RT 355, MR 1 245); 1 530 vahid yazılıb (RT 335, MR 1 195); 70 vahid saxlanılıb (RT 20, MR 50): tədris ili ziddiyyəti 22, fənnin adı yox 31, qrup yox 5, gizli vərəq 12; reyestrə görə rədd olunan 0. Qəbul çıxışındakı 63 (13 + 38 + 12) idxal hesabatının `count` sahəsidir: o, RT-də kafedranın cəmindən kənar vərəqdəki ştatın (xana `#1!A4`) 7 vahidini saymır (2026-11-23-də uzlaşdırılıb)
 - [x] Eyni fənni eyni semestrdə iki kafedra keçirəndə dərslər faylın kafedrasının kursuna yazılır, hər iki faylda «Fənn tapılmadı» olmur (əvvəl 15 vahid; `test_forma3_a_subject_two_departments_teach_goes_to_the_files_department`)
 - [x] Payız (860 vahid, 924 iclas) və yaz (670 vahid, 701 iclas): hamısı yerləşdirilib, 0 sərt pozuntu (həm qurucunun yoxlaması, həm ayrıca SQL yoxlaması sətirlər və 7 280 dərs üzrə), hər biri 50 000 iterasiya, təqribən 4,2 s; yaz versiyası dərc olunub
 - [x] Saat hesabatı dərc olunmuş versiyada da bayramı səbəb kimi adlandırır, həftə bölgüsünün yuvarlaqlaşdırması kimi yox (`test_the_hours_report_names_the_reason_of_every_difference`)
@@ -1186,9 +1192,16 @@ Dilim 2: repo, servis, marşrutlar, `timetable.work` və `timetable.health` işl
 - [x] S10 yerləşdirmənin real verdiyi saatı sayır (`domain.lost_weeks`): həlledici, skor kartı və `hours_report` bir tərifi işlədir; skor kartı Forma №3 saatından kənar vahidlərin sayını verir (CORR-F1, `0c4bd6b`)
 - [x] `stale_parent`, kafedra müdirinin öz cədvəlini təsdiqi, fakültədən aşağı dekanlıq əhatəsi, qrantsız kafedra müdiri və səyahət vaxtına bərabər fasilə testlidir (TE-F1, F2, F3, F7, F9)
 
-**Acceptance criteria (dilim 3-dən sonraya qalanlar):** rəy və qeydlər səhifəsi, fakültənin QR sənədi və onun çapı, bloklar (təcrübə həftələri), kafedranın təsdiqi, otaqların «cədvələ açıq» və «ayrılmış» qutuları, idxalda kafedra seçimi, hesabat «Saat hesabatı», bələdçi səhifəsinin mətni.
+**Acceptance criteria (Checkpoint F əlavəsi, 2026-11-23, `docs/review/checkpoint-f-addendum-2026-11-23.md`):**
+- [x] «Saat hesabatı» səhifəsi (`/timetable/hours/:id`, `GET /api/timetable/versions/{id}/hours`): hər vahid üçün Forma №3 saatı, yerləşdirmələrin real verdiyi saat (`domain.lost_weeks`), fərq və səbəb; həddən kənar və kafedra filtri, cəmlər, səhifədə 200 sətir, BOM-lu CSV; əhatə qurucudakı kimidir (`ab25a49`, `4dd8f6a`)
+- [x] `manage.py export --kind timetable [--term T] [--version V]` və eyni ixrac ekranda; hər qrupa bir sətir, həftələr `week_text` ilə (`ab25a49`, `4dd8f6a`)
+- [x] Skor kartının saatları saat hesabatı kimi problemin bütün vahidlərini sayır (BR-T1, `4dd8f6a`)
+- [x] CORR-F1 real fayllarda yenidən ölçülüb: yazda həddən kənar vahid 183 → 12, fərq −1 062 → −534 saat; payızda 4 → 2; 0 sərt pozuntu (ölçmə repozitoriyadan kənarda)
+- [ ] Dərc olunmuş versiyanın saat hesabatı ləğv olunmuş dərsləri saymır: `builder.hours` dərsləri `domain.hours_report`-a ötürmür (OK-1, açıq, aşağı)
 
-**Acceptance criteria (dilim 2-dən sonraya qalanlar):** rəy və qeydlər, fakültə üzrə rəsmi QR sənədi, çap vərəqləri, CSV və `manage.py export --kind timetable`, `timetable-replay`, `timetable.health` və təmir hesablaması, mövcud sətirlərin 0-cı versiya kimi qəbulu, bloklar və otaq məşğulluğu marşrutları, laboratoriyanın bölünməsi, kafedranın təsdiqi, əhatə, müqayisə və fərq marşrutları, Forma №3 idxalının nəticəsinin yazılması; dilim 3: səhifələr və brauzer testləri.
+**Acceptance criteria (dilim 3-dən sonraya qalanlar):** rəy və qeydlər səhifəsi, fakültənin QR sənədi və onun çapı, bloklar (təcrübə həftələri), kafedranın təsdiqi, otaqların «cədvələ açıq» və «ayrılmış» qutuları, idxalda kafedra seçimi, bələdçi səhifəsinin mətni. Görülüb (2026-11-23): hesabat «Saat hesabatı» (`ab25a49`).
+
+**Acceptance criteria (dilim 2-dən sonraya qalanlar):** rəy və qeydlər, fakültə üzrə rəsmi QR sənədi, çap vərəqləri, `timetable-replay`, `timetable.health` və təmir hesablaması, mövcud sətirlərin 0-cı versiya kimi qəbulu, bloklar və otaq məşğulluğu marşrutları, laboratoriyanın bölünməsi, kafedranın təsdiqi, əhatə, müqayisə və fərq marşrutları, Forma №3 idxalının nəticəsinin yazılması; dilim 3: səhifələr və brauzer testləri. Görülüb (2026-11-23): CSV və `manage.py export --kind timetable` (`ab25a49`).
 
 **Verification:**
 - [x] `python -m pytest tests/unit/test_tt_rules.py tests/unit/test_tt_props.py tests/unit/test_timetable_conflicts.py tests/unit/test_layers.py -q`
