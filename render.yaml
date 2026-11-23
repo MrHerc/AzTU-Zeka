@@ -11,7 +11,9 @@ services:
     # Əlavə asılılıq yoxdur; pip-i yeniləmək kifayətdir.
     buildCommand: "python -m pip install --upgrade pip"
     # Render $PORT verir; serveri 0.0.0.0-da dinlədirik ki, xaricdən əlçatan olsun.
-    startCommand: "python backend/run.py --host 0.0.0.0 --port $PORT"
+    # The free plan has no disk, so every start builds a fresh demo database: load NIST's NICE file first (about 1 s;
+    # Bloom and EQF are built in), then start. The demo seed itself skips NICE to keep the test suite fast.
+    startCommand: "python backend/manage.py import-framework --file content/frameworks/nice-components-2.2.0.json && python backend/run.py --host 0.0.0.0 --port $PORT"
     healthCheckPath: /
     envVars:
       # Yalnız major.minor: Render hər deploy-da ən son patch buraxılışını götürür və CPython təhlükəsizlik düzəlişləri avtomatik gəlir.
