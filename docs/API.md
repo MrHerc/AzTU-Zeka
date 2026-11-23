@@ -1287,7 +1287,8 @@ relationships). NICE Framework Components come from the unchanged NIST file (`co
 knowledge, skill, competency_area, category, opm_code, sort) and every relationship a link; a work role's `parent` is its
 category. The command prints the rows per kind beside the file's element counts and exits `1` when they differ. A second
 run changes nothing; a version is never re-imported from a different file; a known version (2.2.0) whose SHA-256 differs
-from the file NIST published is refused; a newer version is a new row, and the older one with its items and maps stays
+from the file NIST published is refused; a version not in `KNOWN` imports unverified (`verified: false`, no
+`source_url`, listed after the verified versions of its key and never the default); a newer version is a new row, and the older one with its items and maps stays
 readable. Bloom (revised, 2001: six levels) and EQF (2017: eight levels with their knowledge, skill and responsibility
 descriptors) are built in and written at every start, prod included; their Azerbaijani and Russian texts are working
 translations (`note`).

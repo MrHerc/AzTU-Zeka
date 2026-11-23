@@ -155,6 +155,8 @@ def test_the_full_file_imports_with_a_row_per_element_and_a_second_import_change
     assert (f["sha256"], f["size"], f["source_url"]) == (frameworks.KNOWN[("nice", "2.2.0")][0], 2674252, frameworks.KNOWN[("nice", "2.2.0")][1])
     role = q("SELECT parent, title FROM framework_items WHERE framework_id=? AND code='DD-WRL-002'", (fid,))[0]
     assert role == {"parent": "DD", "title": "Enterprise Architecture"}, "a work role's parent is its category"
+    assert not q("SELECT 1 FROM framework_items WHERE framework_id=? AND kind<>'work_role' AND parent IS NOT NULL", (fid,)), \
+        "only a work role has a parent (MUT-n10)"
     before = snapshot()
     assert manage.main(["import-framework", "--file", str(REAL)]) == 0
     assert "already imported, nothing changed" in capsys.readouterr().out
@@ -191,10 +193,60 @@ def test_an_edited_copy_of_a_known_version_and_a_changed_file_of_an_imported_ver
     (json.dumps({"documents": [{"doc_identifier": "X", "version": "1", "name": "n"}], "elements": [
         {"element_identifier": "A", "element_type": "Task!", "title": "", "text": "t", "doc_identifier": "X"}],
         "relationships": []}).encode(), "a bad type"),
+    (json.dumps({"documents": [{"doc_identifier": "X", "version": "1", "name": "n"}, {"doc_identifier": "Y", "version": "1", "name": "n"}],
+                 "elements": [], "relationships": []}).encode(), "two documents"),
+    (json.dumps({"documents": [{"doc_identifier": "X", "version": "1", "name": "n"}], "elements": [
+        {"element_identifier": "A", "element_type": "task", "title": "", "text": "t", "doc_identifier": "Y"}],
+        "relationships": []}).encode(), "an element of another document"),
+    (json.dumps({"documents": [{"doc_identifier": "X", "version": "1" * 41, "name": "n"}], "elements": [],
+                 "relationships": []}).encode(), "a version longer than 40"),
+    (b"[" * 200000 + b"]" * 200000, "nested too deep (SEC-FW-4)"),
 ])
 def test_a_file_that_is_not_a_framework_file_is_refused(raw, why):
     with pytest.raises(frameworks.FrameworkError):
         frameworks.parse_cprt(raw)
+
+
+def test_a_file_over_the_limit_is_refused_before_it_is_read(app_db, tmp_path, monkeypatch, capsys):
+    """MUT-parse n06 and SEC-FW-4: the limit holds in the import and in the command, which checks the size before it
+    reads the file; a file nested too deep ends as a refusal, not a traceback."""
+    monkeypatch.setattr(frameworks, "MAX_FILE", 100)
+    with pytest.raises(frameworks.FrameworkError) as refused:
+        frameworks.import_file(None, json.dumps({"documents": [], "pad": "x" * 100}).encode())
+    assert refused.value.args[0]["en"] == "The file is too large"
+    big = tmp_path / "big.json"
+    big.write_bytes(b" " * 101)
+    monkeypatch.setattr(Path, "read_bytes", lambda self: pytest.fail("the file was read"))
+    assert manage.main(["import-framework", "--file", str(big)]) == 1 and "larger than" in capsys.readouterr().err
+    monkeypatch.undo()
+    deep = tmp_path / "deep.json"
+    deep.write_bytes(b"[" * 200000 + b"]" * 200000)
+    assert manage.main(["import-framework", "--file", str(deep)]) == 1 and "not JSON" in capsys.readouterr().err
+
+
+def test_versions_sort_by_their_numbers():
+    """MUT-c08: 10.0.0 is newer than 9.0.0."""
+    assert sorted(["10.0.0", "9.0.0", "2.2.0", "0.0.0-sample", "2.10.0"], key=frameworks._vkey) == \
+        ["0.0.0-sample", "2.2.0", "2.10.0", "9.0.0", "10.0.0"]
+
+
+def test_a_version_nist_did_not_publish_imports_unverified_and_is_never_the_default(app_db, sample, course, tmp_path, capsys):
+    """SEC-FW-3, BR-F3: an edited copy under a version KNOWN does not hold imports without a source, is marked
+    unverified, is listed after the verified versions and is not the report's default."""
+    if not q("SELECT 1 FROM frameworks WHERE key='nice' AND version='2.2.0'"):
+        assert manage.main(["import-framework", "--file", str(REAL)]) == 0
+    doc = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    doc["documents"][0]["version"] = "9.9.9"
+    doc["elements"][-1]["text"] = "TAMPERED statement"
+    f = tmp_path / "tampered.json"
+    f.write_text(json.dumps(doc), encoding="utf-8")
+    capsys.readouterr()
+    assert manage.main(["import-framework", "--file", str(f)]) == 0 and "not verified" in capsys.readouterr().out
+    assert q("SELECT source_url FROM frameworks WHERE key='nice' AND version='9.9.9'")[0]["source_url"] is None
+    nice = [(x["version"], x["verified"]) for x in app_db.client("teacher").get("/api/frameworks").json if x["key"] == "nice"]
+    assert nice == [("2.2.0", True), ("9.9.9", False), ("0.0.0-sample", False)]
+    rep = app_db.client("admin").get(f"/api/frameworks/coverage?programme={programme()}").json
+    assert rep["framework"]["version"] == "2.2.0" and rep["framework"]["verified"]
 
 
 # ---------------------------------------------------------------- built-in frameworks and the picker
@@ -216,6 +268,15 @@ def test_bloom_and_eqf_are_built_in_with_working_translations(app_db):
         c.close()
     assert {f["key"]: f["id"] for f in app_db.client("teacher").get("/api/frameworks").json}["eqf"] == fws["eqf"]["id"]
     assert q("SELECT text FROM framework_items WHERE code='1-K'")[0]["text"] == "Əsas ümumi bilik"
+    keep = q("SELECT title, source_url, counts FROM frameworks WHERE key='eqf'")[0]
+    run("UPDATE frameworks SET title='köhnə', source_url=NULL, counts='{}' WHERE key='eqf'")   # MUT-n11: the row is written back too
+    c = store.connect()
+    try:
+        frameworks.ensure_builtin(c)
+        c.commit()
+    finally:
+        c.close()
+    assert q("SELECT title, source_url, counts FROM frameworks WHERE key='eqf'")[0] == keep
 
 
 def test_the_picker_searches_on_the_server_paged_and_scoped_to_a_work_role(app_db, sample):
@@ -232,7 +293,12 @@ def test_the_picker_searches_on_the_server_paged_and_scoped_to_a_work_role(app_d
     scoped = t.get(f"/api/frameworks/{sample}/items?role={ROLE}&kind=task&size=100").json["items"]
     assert scoped and {x["code"] for x in scoped} <= linked and all(x["kind"] == "task" for x in scoped)
     assert len(scoped) == sum(1 for e in doc["elements"] if e["element_identifier"] in linked and e["element_type"] == "task")
-    assert t.get(f"/api/frameworks/{sample}/items?role=K0018").status == 404, "not a work role"
+    assert t.get(f"/api/frameworks/{sample}/items?role=K0018").status == 404, "no such item"
+    assert t.get(f"/api/frameworks/{sample}/items?role=OG").status == 404, "a category is not a work role (MUT-p02)"
+    bloom = fw_id("bloom", "2001")                                   # six levels: a last page that is full has no next one (MUT-p04)
+    assert t.get(f"/api/frameworks/{bloom}/items?size=3").json["more"] is True
+    assert t.get(f"/api/frameworks/{bloom}/items?size=3&page=2").json["more"] is False
+    assert t.get(f"/api/frameworks/{bloom}/items?size=6").json["more"] is False
     assert t.get("/api/frameworks/999999/items").status == 404
     assert app_db.client("student").get(f"/api/frameworks/{sample}/items").status == 403
 
@@ -280,6 +346,8 @@ def test_only_a_teacher_of_the_course_maps_a_saved_outcome_with_statements(app_d
     assert t.put(f"/api/syllabi/{course}/outcomes/N2/items", {"items": "K0018"}).status == 400
     assert t.put(f"/api/syllabi/{course}/outcomes/N2/items", {"items": ["abc"]}).status == 400
     assert stranger.get(f"/api/syllabi/{course}/frameworks").status == 404
+    assert t.get(f"/api/syllabi/{course}/frameworks").json["can_map"] is True
+    assert app_db.client("admin").get(f"/api/syllabi/{course}/frameworks").json["can_map"] is False, "a reader only (MUT-m07)"
     assert t.put(f"/api/syllabi/{course}/outcomes/N2/items", {"items": ok}).status == 200
 
 
@@ -368,7 +436,7 @@ def test_a_newer_version_leaves_the_older_version_and_its_maps_readable(app_db, 
     assert t.put(f"/api/syllabi/{course}/outcomes/N1/items", {"items": task}).status == 200
     assert manage.main(["import-framework", "--file", str(REAL)]) == 0
     versions = [f["version"] for f in t.get("/api/frameworks").json if f["key"] == "nice"]
-    assert versions == ["2.2.0", "0.0.0-sample"], "the newest first, the older one kept"
+    assert versions.index("2.2.0") < versions.index("0.0.0-sample"), "the newest first, the older one kept"
     assert task[0] in {x["id"] for x in t.get(f"/api/syllabi/{course}/frameworks").json["outcomes"]["N1"]}
     old = app_db.client("admin").get(f"/api/frameworks/coverage?programme={sid}&framework={sample}").json
     assert next(r for r in old["roles"] if r["code"] == ROLE)["kinds"]["task"]["covered"] == 1

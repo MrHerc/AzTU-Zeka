@@ -227,6 +227,9 @@ def import_framework(path: Path) -> int:
     the counts differ; 2: the file cannot be read."""
     from zeka.modules.syllabus import frameworks
     try:
+        if path.stat().st_size > frameworks.MAX_FILE:     # refused before it is read into memory (SEC-FW-4)
+            print(f"error: the file is larger than {frameworks.MAX_FILE // 2 ** 20} MB", file=sys.stderr)
+            return 1
         raw = path.read_bytes()
     except OSError as ex:
         print(f"error: {ex}", file=sys.stderr)
@@ -245,6 +248,9 @@ def import_framework(path: Path) -> int:
     f = r["framework"]
     print(f"{f['key']} {f['version']}: {'imported' if r['status'] == 'imported' else 'already imported, nothing changed'} "
           f"(sha256 {f['sha256']})")
+    if (f["key"], f["version"]) not in frameworks.KNOWN:
+        print("  not verified: no SHA-256 of a file NIST published is known for this version; it has no source and is "
+              "never the default framework")
     for kind in sorted(r["file"].keys() | r["stored"].keys()):
         print(f"  {kind:<16} file {r['file'].get(kind, 0):>6}   database {r['stored'].get(kind, 0):>6}")
     print(f"  {'links':<16} file {r['links']['file']:>6}   database {r['links']['stored']:>6}")

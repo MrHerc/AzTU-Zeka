@@ -119,7 +119,7 @@ def parse_cprt(raw: bytes) -> dict:
     (the category → work role relationship). Raises FrameworkError."""
     try:
         d = json.loads(raw.decode("utf-8"))
-    except ValueError:                                   # UnicodeDecodeError is one
+    except (ValueError, RecursionError):                 # UnicodeDecodeError is one; RecursionError: nesting too deep (SEC-FW-4)
         raise FrameworkError(E("Fayl JSON deyil")) from None
     docs, els, rels = (d.get("documents"), d.get("elements"), d.get("relationships")) if isinstance(d, dict) else (None, None, None)
     if not (isinstance(docs, list) and len(docs) == 1 and isinstance(docs[0], dict) and isinstance(els, list) and isinstance(rels, list)):
@@ -178,8 +178,8 @@ def import_file(c, raw: bytes) -> dict:
                                "fayldır", version=Lit(f["version"])))
     if old:
         fid, status = old["id"], "unchanged"
-    else:
-        fid, status = repo.add_framework(c, f["key"], f["version"], f["title"], known[1] if known else f["website"], digest, len(raw),
+    else:                                                # an unverified version names no source: its file's own claim is not one (SEC-FW-3)
+        fid, status = repo.add_framework(c, f["key"], f["version"], f["title"], known[1] if known else None, digest, len(raw),
                                          json.dumps(counts), len(f["links"]), iso(now())), "imported"
         ids = repo.add_items(c, fid, f["items"])
         repo.add_links(c, [(ids[s], ids[t]) for s, t in f["links"]])
@@ -198,17 +198,22 @@ def ensure_builtin(c) -> None:
 
 
 # ---------------------------------------------------------------- reading and the picker
+def verified(f: dict) -> bool:
+    """Built in, or the file NIST published for a known version (its SHA-256 in ``KNOWN``)."""
+    return bool(f["builtin"]) or KNOWN.get((f["key"], f["version"]), ("",))[0] == f["sha256"]
+
+
 def _fw(f: dict) -> dict:
     counts = J(f["counts"], {})
     return {k: f[k] for k in ("id", "key", "version", "title", "source_url", "sha256", "imported_at", "links")} | {
-        "builtin": bool(f["builtin"]), "note": NOTES.get(f["key"]) if f["builtin"] else None, "counts": counts,
+        "builtin": bool(f["builtin"]), "verified": verified(f), "note": NOTES.get(f["key"]) if f["builtin"] else None, "counts": counts,
         "kinds": [{"kind": k, "label": KIND_LABEL.get(k, k), "count": n, "mappable": k in MAPPABLE} for k, n in counts.items()]}
 
 
 def listing(c) -> list[dict]:
-    """Every framework version, the built-in ones first, a key's newest version first."""
+    """Every framework version, the built-in ones first; within a key the verified versions first, each newest first."""
     out = sorted(repo.frameworks(c), key=lambda f: _vkey(f["version"]), reverse=True)
-    return [_fw(f) for f in sorted(out, key=lambda f: (-f["builtin"], f["key"]))]
+    return [_fw(f) for f in sorted(out, key=lambda f: (-f["builtin"], f["key"], not verified(f)))]
 
 
 def _item(r: dict) -> dict:
@@ -313,7 +318,7 @@ def _report(c, user, sid: int, fid: int | None):
         fw = repo.framework(c, fid)
     else:
         nice = [f for f in repo.frameworks(c) if f["key"] == "nice"]
-        fw = max(nice, key=lambda f: _vkey(f["version"])) if nice else None
+        fw = max(nice, key=lambda f: (verified(f), _vkey(f["version"]))) if nice else None   # an unverified file is never the default
     if not fw:
         return None
     courses = repo.programme_courses(c, sid)

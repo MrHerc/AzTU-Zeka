@@ -39,6 +39,8 @@ function readOnly(d) {
 // Framework items of one outcome (Task 24): the server searches, a page at a time, within a framework, a kind and, for NICE,
 // one work role's statements. One outcome may carry items of several frameworks; the key is the course and the outcome.
 let FWS = null;
+// A version imported from a file NIST did not publish under that version is marked as such (SEC-FW-3).
+const fwName = (f) => `${f.title} · ${f.version}${f.verified ? "" : ` · ${t("yoxlanmamış nüsxə")}`}`;
 const tagText = (x) => `${x.key ? `${x.key.toUpperCase()} ${x.version} · ` : ""}${x.code}`;
 const tagChips = (list) => (list.length ? html`<div class="chips">${list.map((x) => html`<span class="badge b-navy" title="${x.title ? `${x.title}: ${x.text}` : x.text}">${tagText(x)}</span>`)}</div>` : "");
 
@@ -47,7 +49,7 @@ async function pickTags(cid, oid, current, done) {
   const chosen = new Map(current.map((x) => [x.id, x]));
   let fw = FWS.find((f) => !f.builtin) || FWS[0], kind = "", role = "", q = "", page = 1, items = [], timer = null;
   modal({ title: t("{id} nəticəsinin çərçivə bəndləri", { id: oid }), size: "lg", body: html`<div class="stack sm">
-      <div class="row wrap"><select class="select" id="fw-f" style="width:auto" aria-label="${t("Çərçivə")}">${FWS.map((f) => html`<option value="${f.id}" ${f.id === fw.id ? "selected" : ""}>${f.title} · ${f.version}</option>`)}</select>
+      <div class="row wrap"><select class="select" id="fw-f" style="width:auto" aria-label="${t("Çərçivə")}">${FWS.map((f) => html`<option value="${f.id}" ${f.id === fw.id ? "selected" : ""}>${fwName(f)}</option>`)}</select>
         <select class="select" id="fw-k" style="width:auto" aria-label="${t("Növ")}"></select>
         <select class="select" id="fw-r" style="width:auto;max-width:260px" aria-label="${t("İş rolu")}"></select>
         <input class="input grow" id="fw-q" type="search" maxlength="100" placeholder="${t("Kod və ya mətn üzrə axtarış")}" aria-label="${t("Axtar")}"></div>
@@ -310,7 +312,7 @@ route("/frameworks/coverage", async (el, p, qs) => {
   const role = rep.role;
   const bad = role ? role.statements.filter((x) => !x.covered_by.length) : [];
   mount(el, html`${head(html`<select class="select" id="cv-p" style="width:auto" aria-label="${t("İxtisas")}">${progs.map((x) => html`<option value="${x.id}" ${x.id === sid ? "selected" : ""}>${x.code} · ${x.name}</option>`)}</select>
-      <select class="select" id="cv-f" style="width:auto" aria-label="${t("Çərçivə")}">${nice.map((f) => html`<option value="${f.id}" ${f.id === fid ? "selected" : ""}>${f.title} · ${f.version}</option>`)}</select>
+      <select class="select" id="cv-f" style="width:auto" aria-label="${t("Çərçivə")}">${nice.map((f) => html`<option value="${f.id}" ${f.id === fid ? "selected" : ""}>${fwName(f)}</option>`)}</select>
       <a class="btn" href="/api/frameworks/coverage?programme=${sid}&framework=${fid}&format=csv&lang=${LANG}" download>${ic("download", 15)} CSV</a>`)}
     <p class="small muted">${t("Fənlər: {c}. Təlim nəticələri: {o}. Dərc olunmuş sillabus, yoxdursa son versiya oxunur.", { c: rep.courses, o: rep.outcomes })}</p>
     ${role ? html`<div class="card mb"><div class="card-h"><h3>${role.code} · ${role.title}</h3><button class="btn btn-sm" id="cv-close">${t("Bağla")}</button></div>

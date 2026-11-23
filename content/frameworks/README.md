@@ -32,7 +32,9 @@ bağlı deyil.
 - Fayl **heç vaxt redaktə olunmur**: nə formatlaşdırma, nə sətir sonu, nə tərcümə. `.gitattributes` onu
   `-text` kimi saxlayır ki, git də baytlarına toxunmasın.
 - İdxalçı bu versiyanın SHA-256 dəyərini bilir (`backend/zeka/modules/syllabus/frameworks.py`, `KNOWN`) və
-  dəyəri fərqlənən nüsxəni rədd edir. Naməlum versiya öz hesablanmış heşi ilə idxal olunur və `frameworks.sha256`-da qalır.
+  dəyəri fərqlənən nüsxəni rədd edir. Naməlum versiya öz hesablanmış heşi ilə idxal olunur və `frameworks.sha256`-da qalır,
+  amma **yoxlanmamış** sayılır: mənbə ünvanı yazılmır (faylın öz `website` sahəsi mənbə sayılmır), siyahıda yoxlanmış
+  versiyalardan sonra gəlir, `verified: false` ilə qaytarılır və heç vaxt susmaya görə çərçivə olmur.
 - Yeni versiya **yeni fayldır** (`nice-components-<versiya>.json`): köhnə versiya, onun bəndləri və nəticə
   xəritələri bazada qalır və oxunur. Yeni versiyanın heşi və mənbə ünvanı `KNOWN`-a əlavə olunur.
 - Testlər üçün kiçik nümunə bu fayldan `tests/fixtures/make_nice_sample.py` ilə kəsilir; əl ilə yazılmır.
