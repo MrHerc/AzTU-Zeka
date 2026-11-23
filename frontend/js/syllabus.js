@@ -110,7 +110,8 @@ async function pickTags(cid, oid, current, done) {
 
 const opts = (list, cur) => list.map(([k, l]) => html`<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`);
 const clone = (x) => JSON.parse(JSON.stringify(x));
-const nextId = (outs) => `N${Math.max(0, ...outs.map((o) => +o.id.slice(1) || 0)) + 1}`;
+// A code that still has framework items is never reused (BR-F2): a new outcome must not inherit another one's items.
+const nextId = (outs, tags = {}) => `N${Math.max(0, ...[...outs.map((o) => o.id), ...Object.keys(tags)].map((id) => +id.slice(1) || 0)) + 1}`;
 
 route("/teacher/syllabus", async (el, p, q) => {
   mount(el, loading());
@@ -230,7 +231,7 @@ route("/teacher/syllabus", async (el, p, q) => {
     dirty = true;
   });
   const edit = (fn) => { fn(); dirty = true; draw(); };
-  on(el, "click", "#add-o", () => edit(() => s.outcomes.push({ id: nextId(s.outcomes), text: "", bloom: "apply" })));
+  on(el, "click", "#add-o", () => edit(() => s.outcomes.push({ id: nextId(s.outcomes, tags), text: "", bloom: "apply" })));
   on(el, "click", "[data-o-del]", (e, b) => edit(() => {
     const [gone] = s.outcomes.splice(+b.dataset.oDel, 1);
     s.plan.forEach((w) => { w.outcomes = w.outcomes.filter((x) => x !== gone.id); });

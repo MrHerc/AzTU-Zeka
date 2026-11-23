@@ -188,6 +188,29 @@ def unmap_item(c, cid: int, oid: str, iid: int):
     c.execute("DELETE FROM outcome_items WHERE course_id=? AND outcome=? AND item_id=?", (cid, oid, iid))
 
 
+def unmap_gone(c, cid: int, keep: list[str]) -> int:
+    """The tags of the outcomes a saved version no longer has (BR-F2): a later outcome given that code starts empty."""
+    return c.execute(f"DELETE FROM outcome_items WHERE course_id=? AND outcome NOT IN ({','.join('?' * len(keep))})",  # nosec B608
+                     (cid, *keep)).rowcount
+
+
+def freeze_tags(c, vid: int, cid: int):
+    """A submitted version keeps the course's outcome map as it is now (SEC-FW-1): {outcome: [item id …]}."""
+    c.execute("UPDATE syllabus_versions SET tags=COALESCE((SELECT json_group_object(outcome, json(ids)) FROM ("
+              "SELECT outcome, json_group_array(item_id) ids FROM (SELECT outcome, item_id FROM outcome_items WHERE course_id=? "
+              "ORDER BY outcome, item_id) GROUP BY outcome)), '{}') WHERE id=?", (cid, vid))
+
+
+def items_full(c, ids: list[int]) -> list[dict]:
+    """Items with their framework, for a version's own map."""
+    out: list[dict] = []
+    for k in range(0, len(ids), 500):
+        part = ids[k:k + 500]
+        out += rows(c, f"SELECT {ITEM}, f.id framework_id, f.key, f.version, f.builtin FROM framework_items i "  # nosec B608 (placeholders)
+                       f"JOIN frameworks f ON f.id=i.framework_id WHERE i.id IN ({','.join('?' * len(part))})", tuple(part))
+    return out
+
+
 def course_items(c, cid: int) -> list[dict]:
     return rows(c, f"SELECT o.outcome, o.mapped_at, {ITEM}, f.id framework_id, f.key, f.version, f.builtin FROM outcome_items o "  # nosec B608
                    "JOIN framework_items i ON i.id=o.item_id JOIN frameworks f ON f.id=i.framework_id "

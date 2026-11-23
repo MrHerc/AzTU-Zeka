@@ -1299,15 +1299,20 @@ items that role links to, `size` is 1–100 (default 20); the answer is `{framew
 framework or role is `404`.
 
 The outcome map's key is the course and the outcome's code (`N1` …), which every new version of the syllabus keeps; each
-row records who mapped it and when (`outcome_items`). `PUT /api/syllabi/{id}/outcomes/{oid}/items` takes up to 50
+row records who mapped it and when (`outcome_items`). A saved version without an outcome drops that outcome's items, so
+a later outcome given the same code starts empty (the editor also never reuses a code that still has items). Submitting
+a version copies the map into it (`syllabus_versions.tags`): the department head approves, the academic office publishes
+and the printed page and the coverage report show that copy, and a later change of the map reaches only the next
+submitted version. `PUT /api/syllabi/{id}/outcomes/{oid}/items` takes up to 50
 different items of any frameworks, of a mappable kind (task, knowledge, skill, level, responsibility; `400` otherwise),
 for an outcome of the latest saved version (`404` otherwise). Only the course's head teacher and the teachers of its
 active units map; anyone else gets `404`. The printable syllabus lists each outcome's items read-only; a student sees
 them on the published version.
 
 `GET /api/frameworks/coverage`: a programme is a specialty; its courses are those with an active teaching unit for one
-of its groups; an outcome counts in the published syllabus, else the latest version. `framework` defaults to the newest
-NICE version. The answer: `programme`, `framework`, `courses`, `outcomes`, `labels`, `roles` (per work role: `code`,
+of its groups; an outcome counts in the published syllabus with the map it was submitted with, else, for a caller who
+may read the course's syllabus, in the latest version with the current map. `framework` defaults to the newest
+verified NICE version (an unverified one only when no verified one exists). The answer: `programme`, `framework`, `courses`, `outcomes`, `labels`, `roles` (per work role: `code`,
 `title`, `category`, `kinds` with `total` and `covered` for task, knowledge and skill, `total`, `covered`) and, with
 `role=<code>`, `role.statements` (`code`, `kind`, `text`, `covered_by`: the course and outcome of each covering
 outcome; an empty list is an uncovered statement). `&format=csv`: one row per work role and statement (UTF-8 with a BOM),

@@ -283,7 +283,7 @@ def syllabus_page(req):
     work = (f"{total:g} saat: mühazirə {_num(w.get('lecture'))}, məşğələ {_num(w.get('seminar'))}, "
             f"laboratoriya {_num(w.get('lab'))}, sərbəst {_num(w.get('independent'))}")
     from ..modules.syllabus import frameworks          # the outcomes' framework items, read-only (Task 24)
-    tags = frameworks.outcome_items(c, co["id"], [o["id"] for o in d.get("outcomes", [])])
+    tags = frameworks.outcome_items(c, co["id"], [o["id"] for o in d.get("outcomes", [])], v["tags"] if v else None)
 
     def tag(x):
         return f"{x['key'].upper()} {x['version']} · {x['code']} — {x['title'] or x['text']}"

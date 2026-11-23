@@ -6,6 +6,8 @@ import csv
 import hashlib
 import io
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -67,22 +69,29 @@ def sample(app_db):
     return fw_id("nice", "0.0.0-sample")
 
 
-@pytest.fixture(scope="module")
-def course(app_db, sample):
-    """A course of the demo teacher, taught to a group of the demo programme, with a saved syllabus of two outcomes."""
+def make_course(app_db, code="FW-101", n1="Kibertəhlükəsizlik risklərini təhlil edir", department=None):
+    """A course of the demo teacher, taught to a group of the demo programme, with a saved syllabus of two outcomes.
+    A test that publishes the syllabus or removes an outcome makes its own course (ORD-1): the shared one stays a draft."""
     admin, teacher = app_db.client("admin"), app_db.client("teacher")
     term = q("SELECT * FROM academic_terms WHERE active=1")[0]
-    cid = admin.post("/api/directory/courses", {"code": "FW-101", "name": "Çərçivə sınağı", "credits": 5, "term_id": term["id"],
+    cid = admin.post("/api/directory/courses", {"code": code, "name": "Çərçivə sınağı", "credits": 5, "term_id": term["id"],
                                                 "teacher_id": teacher.user["id"]}).json["id"]
+    if department:
+        run("UPDATE courses SET department_id=? WHERE id=?", (department, cid))
     unit = admin.post("/api/directory/units", {"course_id": cid, "kind": "lecture", "teacher_id": teacher.user["id"]}).json["id"]
     gid = q("SELECT id FROM study_groups WHERE specialty_id IS NOT NULL ORDER BY id LIMIT 1")[0]["id"]
     assert admin.put(f"/api/directory/units/{unit}/groups", {"group_ids": [gid]}).status == 200
     d = teacher.post(f"/api/syllabi/{cid}/draft").json["data"]
-    d["outcomes"] = [{"id": "N1", "text": "Kibertəhlükəsizlik risklərini təhlil edir", "bloom": "analyze"},
+    d["outcomes"] = [{"id": "N1", "text": n1, "bloom": "analyze"},
                      {"id": "N2", "text": "Təhlükəsizlik siyasətinin layihəsini hazırlayır", "bloom": "create"}]
     d["plan"] = [{"week": 1, "topic": "Risklərin təhlili", "outcomes": ["N1", "N2"], "activity": ""}]
     assert teacher.put(f"/api/syllabi/{cid}", {"data": d}).status == 200
     return cid
+
+
+@pytest.fixture(scope="module")
+def course(app_db, sample):
+    return make_course(app_db)
 
 
 def programme():
@@ -301,22 +310,35 @@ def test_the_coverage_report_lists_covered_and_uncovered_statements_per_work_rol
     assert en.startswith("Work role,")
 
 
-def test_an_outcome_the_syllabus_no_longer_has_covers_nothing(app_db, sample, course):
+def test_an_outcome_the_syllabus_no_longer_has_covers_nothing_and_its_code_starts_empty(app_db, sample):
+    """ORD-1: its own course, which nothing publishes; BR-F2: a later outcome given a removed outcome's code inherits nothing."""
     t, admin, sid = app_db.client("teacher"), app_db.client("admin"), programme()
-    skill = statements(sample, "skill", 1)
-    assert t.put(f"/api/syllabi/{course}/outcomes/N2/items", {"items": skill}).status == 200
+    cid = make_course(app_db, "FW-102")
+    assert t.put(f"/api/syllabi/{cid}/outcomes/N2/items", {"items": statements(sample, "skill", 1)}).status == 200
 
     def covered():
         rep = admin.get(f"/api/frameworks/coverage?programme={sid}&framework={sample}&role={ROLE}").json
-        return any(s["covered_by"] for s in rep["role"]["statements"] if s["kind"] == "skill")
-    assert covered()
-    d = t.get(f"/api/syllabi/{course}").json["latest"]["data"]
+        return [b["outcome"] for s in rep["role"]["statements"] for b in s["covered_by"] if b["course_id"] == cid]
+    assert covered() == ["N2"]
+    d = t.get(f"/api/syllabi/{cid}").json["latest"]["data"]
     without = {**d, "outcomes": d["outcomes"][:1], "plan": [{**w, "outcomes": ["N1"]} for w in d["plan"]]}
-    assert t.put(f"/api/syllabi/{course}", {"data": without}).status == 200
-    assert not covered(), "N2 is not in the version the report reads"
-    assert t.put(f"/api/syllabi/{course}", {"data": d}).status == 200
-    assert covered(), "the map came back with the outcome: its key is the course and the outcome"
-    assert t.put(f"/api/syllabi/{course}/outcomes/N2/items", {"items": []}).status == 200
+    assert t.put(f"/api/syllabi/{cid}", {"data": without}).status == 200
+    assert covered() == [], "N2 is not in the version the report reads"
+    assert "N2" not in t.get(f"/api/syllabi/{cid}/frameworks").json["outcomes"], "a saved version without N2 drops its items"
+    other = {**d, "outcomes": [d["outcomes"][0], {"id": "N2", "text": "Ofis sənədlərini formatlaşdırır və çap edir", "bloom": "apply"}]}
+    assert t.put(f"/api/syllabi/{cid}", {"data": other}).status == 200
+    assert covered() == [] and "N2" not in t.get(f"/api/syllabi/{cid}/frameworks").json["outcomes"], "the new N2 starts empty"
+
+
+def test_the_editor_never_reuses_a_code_that_still_has_items():
+    """BR-F2 in the editor: deleting N3 and adding an outcome before saving must not give the new one N3's items."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    line = next(x for x in (ROOT / "frontend" / "js" / "syllabus.js").read_text(encoding="utf-8").splitlines() if x.startswith("const nextId"))
+    out = subprocess.run([node, "-e", line + "\nconsole.log(nextId([{id: 'N1'}, {id: 'N2'}], {N3: [{}]}), nextId([{id: 'N1'}]), "
+                          "nextId([], {}))"], capture_output=True, text=True, timeout=30, check=True)
+    assert out.stdout.split() == ["N4", "N2", "N1"]
 
 
 def test_the_coverage_report_answers_within_the_caller_s_scope(app_db, sample, course):
@@ -354,20 +376,100 @@ def test_a_newer_version_leaves_the_older_version_and_its_maps_readable(app_db, 
     assert new["framework"]["version"] == "2.2.0" and len(new["roles"]) == 42, "the default is the newest NICE version"
 
 
-def test_the_printed_and_the_published_syllabus_show_the_tags_read_only(app_db, sample, course):
-    t = app_db.client("teacher")
-    assert t.put(f"/api/syllabi/{course}/outcomes/N2/items", {"items": [item_id("bloom", "2001", "create")]}).status == 200
-    page = t.get(f"/syllabus/{course}")
+def test_the_printed_and_the_published_syllabus_show_the_tags_it_was_submitted_with(app_db, sample):
+    """SEC-FW-1, BR-F1: a change of the outcome map after submission, by the head teacher or by a teacher of one of the
+    course's units who cannot edit the syllabus, reaches neither the published page nor the coverage report; it reaches
+    the next version once that is submitted, approved and published. MUT-c05: the report reads the published version,
+    not a later draft."""
+    t, admin, sid = app_db.client("teacher"), app_db.client("admin"), programme()
+    cid = make_course(app_db, "FW-103")
+    skill, create, remember = statements(sample, "skill", 1), item_id("bloom", "2001", "create"), item_id("bloom", "2001", "remember")
+    assert t.put(f"/api/syllabi/{cid}/outcomes/N2/items", {"items": [create, *skill]}).status == 200
+    page = t.get(f"/syllabus/{cid}")
     assert page.status == 200 and "Çərçivə bəndləri" in page.text and "BLOOM 2001 · create — Yaratmaq" in page.text
     student = app_db.client("student")
-    app_db.client("admin").post(f"/api/directory/courses/{course}/enrollments", {"user_id": student.user["id"]})
-    assert student.get(f"/syllabus/{course}").status == 404, "nothing published yet"
-    vid = t.get(f"/api/syllabi/{course}").json["latest"]["id"]
-    head = signed_in(app_db, "t04", "dept_head", ("course", course))
-    for client, action in ((t, "submit"), (head, "approve"), (office(app_db), "publish")):
-        assert client.post(f"/api/syllabi/{course}/versions/{vid}/{action}", {}).status == 200, action
-    page = student.get(f"/syllabus/{course}")
-    assert page.status == 200 and "BLOOM 2001 · create — Yaratmaq" in page.text
+    admin.post(f"/api/directory/courses/{cid}/enrollments", {"user_id": student.user["id"]})
+    assert student.get(f"/syllabus/{cid}").status == 404, "nothing published yet"
+    head = signed_in(app_db, "t04", "dept_head", ("course", cid))
+
+    def publish():
+        vid = t.get(f"/api/syllabi/{cid}").json["latest"]["id"]
+        for client, action in ((t, "submit"), (head, "approve"), (office(app_db), "publish")):
+            assert client.post(f"/api/syllabi/{cid}/versions/{vid}/{action}", {}).status == 200, action
+        return vid
+
+    def covered():
+        rep = admin.get(f"/api/frameworks/coverage?programme={sid}&framework={sample}&role={ROLE}").json
+        return [b["outcome"] for s in rep["role"]["statements"] for b in s["covered_by"] if b["course_id"] == cid]
+    vid = publish()
+    assert "BLOOM 2001 · create — Yaratmaq" in student.get(f"/syllabus/{cid}").text and covered() == ["N2"]
+    lab = signed_in(app_db, "t05")
+    assert admin.post("/api/directory/units", {"course_id": cid, "kind": "lab", "teacher_id": lab.user["id"]}).status == 200
+    assert lab.get(f"/api/syllabi/{cid}").json["can_edit"] is False
+    assert lab.put(f"/api/syllabi/{cid}/outcomes/N2/items", {"items": [remember]}).status == 200, "a unit teacher tags the working map"
+    for page in (student.get(f"/syllabus/{cid}").text, head.get(f"/syllabus/{cid}?v={vid}").text):
+        assert "BLOOM 2001 · create — Yaratmaq" in page and "Xatırlamaq" not in page, "the published version keeps its map"
+    assert covered() == ["N2"], "the report reads the published version's map"
+    d = t.get(f"/api/syllabi/{cid}").json["latest"]["data"]
+    without = {**d, "outcomes": d["outcomes"][:1], "plan": [{**w, "outcomes": ["N1"]} for w in d["plan"]]}
+    assert t.put(f"/api/syllabi/{cid}", {"data": without}).status == 200
+    assert covered() == ["N2"], "a draft without N2 does not change what the published syllabus covers"
+    assert t.put(f"/api/syllabi/{cid}", {"data": d}).status == 200
+    assert t.put(f"/api/syllabi/{cid}/outcomes/N2/items", {"items": [remember]}).status == 200
+    assert "Yaratmaq" in student.get(f"/syllabus/{cid}").text
+    publish()
+    page = student.get(f"/syllabus/{cid}").text
+    assert "BLOOM 2001 · remember — Xatırlamaq" in page and "Yaratmaq" not in page and covered() == []
+
+
+def test_a_department_head_reads_the_department_s_programmes_and_no_other_department_s_draft(app_db, sample):
+    """MUT-c02: a department grant covers that department's programme. SEC-FW-2: the outcome texts of a course the head
+    may not read come only from its published version; a draft of another department's course stays out. MUT-c15: a
+    course whose unit is inactive is not the programme's."""
+    t, admin, sid = app_db.client("teacher"), app_db.client("admin"), programme()
+    spec = q("SELECT faculty_id, department_id FROM specialties WHERE id=?", (sid,))[0]
+    mine = run("INSERT INTO departments(faculty_id,code,name,created_at,updated_at) VALUES(?,'FW-DA','Kafedra A','2026-01-01','2026-01-01')",
+               (spec["faculty_id"],))
+    theirs = run("INSERT INTO departments(faculty_id,code,name,created_at,updated_at) VALUES(?,'FW-DB','Kafedra B','2026-01-01','2026-01-01')",
+                 (spec["faculty_id"],))
+    run("UPDATE specialties SET department_id=? WHERE id=?", (mine, sid))
+    try:
+        draft = "Qaralama mətni: hələ təqdim olunmayıb"
+        cid = make_course(app_db, "FW-104", n1=draft, department=theirs)
+        assert t.put(f"/api/syllabi/{cid}/outcomes/N1/items", {"items": statements(sample, "task", 1)}).status == 200
+        head = signed_in(app_db, "t06", "dept_head", ("department", mine))
+        assert sid in [p["id"] for p in head.get("/api/frameworks/programmes").json], "the department's programme"
+        url = f"/api/frameworks/coverage?programme={sid}&framework={sample}&role={ROLE}"
+        assert head.get(f"/api/syllabi/{cid}").status == 404
+        rep = head.get(url)
+        assert rep.status == 200 and draft not in rep.text and draft not in head.get(url + "&format=csv").text
+        assert draft in admin.get(url).text, "a reader of the course sees its latest version"
+        before = admin.get(url).json["courses"]
+        run("UPDATE teaching_units SET active=0 WHERE course_id=?", (cid,))
+        rep = admin.get(url)
+        assert rep.json["courses"] == before - 1 and draft not in rep.text, "an inactive unit does not make the course the programme's"
+    finally:
+        run("UPDATE specialties SET department_id=? WHERE id=?", (spec["department_id"], sid))
+
+
+def test_a_cell_of_the_coverage_csv_never_starts_a_formula(app_db, course, tmp_path):
+    """MUT-csv (c10): a framework's codes and texts, and a course's outcome text, come from outside; a cell that a
+    spreadsheet would run starts with a quote."""
+    doc = {"documents": [{"doc_identifier": "CSV_TEST", "version": "1", "name": "CSV test"}], "elements": [
+        {"element_identifier": "=R1", "element_type": "work_role", "title": '=HYPERLINK("http://evil.example")', "text": "-r",
+         "doc_identifier": "CSV_TEST"},
+        {"element_identifier": "@T1", "element_type": "task", "title": "", "text": "+SUM(1)", "doc_identifier": "CSV_TEST"}],
+        "relationships": [{"source_element_identifier": "=R1", "dest_element_identifier": "@T1"}]}
+    f = tmp_path / "csv.json"
+    f.write_text(json.dumps(doc), encoding="utf-8")
+    assert manage.main(["import-framework", "--file", str(f)]) == 0
+    fid, t = fw_id("csv_test", "1"), app_db.client("teacher")
+    before = [x["id"] for x in t.get(f"/api/syllabi/{course}/frameworks").json["outcomes"].get("N1", [])]
+    assert t.put(f"/api/syllabi/{course}/outcomes/N1/items", {"items": [*before, item_id("csv_test", "1", "@T1")]}).status == 200
+    body = app_db.client("admin").get(f"/api/frameworks/coverage?programme={programme()}&framework={fid}&format=csv").body.decode("utf-8-sig")
+    row = next(x for x in csv.reader(io.StringIO(body)) if x[0] != "İş rolu")
+    assert row[:2] == ["'=R1", '\'=HYPERLINK("http://evil.example")'] and row[4:6] == ["'@T1", "'+SUM(1)"] and row[6] == "Bəli"
+    assert t.put(f"/api/syllabi/{course}/outcomes/N1/items", {"items": before}).status == 200
 
 
 # ---------------------------------------------------------------- query plans

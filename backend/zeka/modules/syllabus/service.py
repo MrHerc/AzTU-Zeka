@@ -75,6 +75,7 @@ def save(c, user, cid: int, body) -> tuple[str, object]:
     if len(blob) > 200_000:
         return "invalid", E("Sillabus çox böyükdür")
     repo.add_version(c, cid, blob, user["id"], iso(now()))
+    repo.unmap_gone(c, cid, [o["id"] for o in clean["outcomes"]])
     audit(c, user["id"], "syllabus_saved", "course", f"{co['code']} · v{(latest['version'] if latest else 0) + 1}")
     return "ok", state(c, user, cid)
 
@@ -87,13 +88,13 @@ def version(c, user, cid: int, vid: int) -> dict | None:
 
 def printable(c, user, cid: int, vid: int | None) -> tuple[dict, dict, dict | None] | None:
     """(course, syllabus data, version or None) for the printable page: the asked version, else the latest one, else an
-    unsaved first draft (marked as such on the page)."""
+    unsaved first draft (marked as such on the page). A version's ``tags`` is its own outcome map once submitted."""
     co = repo.course(c, cid)
     if not co:
         return None
     v = repo.version(c, cid, vid) if vid else repo.latest(c, cid)
     if v:
-        return co, J(v["data"], {}), _version(v)
+        return co, J(v["data"], {}), {**(_version(v) or {}), "tags": v["tags"]}
     old = repo.legacy(c, cid)
     gen = J(old["data"], None) if old else None
     if not isinstance(gen, dict):
@@ -153,6 +154,8 @@ def act(c, user, cid: int, vid: int, action: str, body) -> tuple[str, object]:
         journal.refresh_finals(c, cid, repo.students(c, cid))      # the course's components and limit changed
         if graded:
             audit(c, user["id"], "syllabus_publish_override", "course", f"{co['code']} · v{v['version']} · {note}")
+    if action == "submit":
+        repo.freeze_tags(c, vid, cid)                    # what is approved and published is this map, not a later one
     repo.set_status(c, vid, new, note, user["id"], at)
     repo.add_step(c, vid, action, user["id"], note, at)
     audit(c, user["id"], f"syllabus_{action}", "course", f"{co['code']} · v{v['version']}" + (f" · {note}" if note else ""))

@@ -8,7 +8,9 @@ and a newer version is a new row beside the older one, whose items and maps stay
 (``BUILTIN``) and written at every start, in prod too.
 
 A course's teacher tags each learning outcome with items of any framework. The key of a tag is the course and the
-outcome's code (N1 …), which every new version of the syllabus keeps. The coverage report of a programme (a specialty:
+outcome's code (N1 …), which every new version of the syllabus keeps; a saved version without an outcome drops its tags.
+A submitted version keeps the map it was submitted with (``syllabus_versions.tags``): what is approved, published,
+printed and reported is that map, and a later change reaches only the next version. The coverage report of a programme (a specialty:
 its groups' teaching units give its courses) lists, per NICE work role, the task, knowledge and skill statements that
 an outcome of the programme's courses covers, by which outcome, and the ones nothing covers.
 """
@@ -233,10 +235,18 @@ def search(c, fid: int, q, kind, role, page: int, size: int) -> dict | None:
     return {"framework": _fw(fw), "items": [_item(r) for r in found[:size]], "page": page, "more": len(found) > size}
 
 
-def outcome_items(c, cid: int, outcomes: list[str] | None = None) -> dict[str, list[dict]]:
-    """{outcome code: its tags}; ``outcomes``: only these codes (the outcomes of the version shown)."""
+def outcome_items(c, cid: int, outcomes: list[str] | None = None, frozen: str | None = None) -> dict[str, list[dict]]:
+    """{outcome code: its tags}; ``outcomes``: only these codes (the outcomes of the version shown); ``frozen``: a
+    submitted version's own map (``syllabus_versions.tags``), read instead of the course's current one (SEC-FW-1)."""
+    if frozen is None:
+        found = repo.course_items(c, cid)
+    else:
+        m = J(frozen, {})
+        by = {r["id"]: r for r in repo.items_full(c, sorted({i for ids in m.values() for i in ids}))}
+        found = sorted(({**by[i], "outcome": o, "mapped_at": None} for o, ids in m.items() for i in ids if i in by),
+                       key=lambda r: (r["outcome"], r["key"], r["version"], r["kind"], r["code"]))
     out: dict[str, list[dict]] = {}
-    for r in repo.course_items(c, cid):
+    for r in found:
         if outcomes is None or r["outcome"] in outcomes:
             out.setdefault(r["outcome"], []).append(_item(r) | {"framework_id": r["framework_id"], "key": r["key"], "version": r["version"],
                                                                  "builtin": bool(r["builtin"]), "mapped_at": r["mapped_at"]})
@@ -307,18 +317,28 @@ def _report(c, user, sid: int, fid: int | None):
     if not fw:
         return None
     courses = repo.programme_courses(c, sid)
-    texts: dict[tuple[int, str], str] = {}               # (course, outcome) -> its text in the published, else the latest version
+    # (course, outcome) -> its text: the published version with the map it was submitted with; without one, the latest
+    # version with the live map, for a caller who may read the course's syllabus (SEC-FW-2: a draft is its readers' only)
+    texts: dict[tuple[int, str], str] = {}
+    maps: list[tuple[int, str, int]] = []
+    live: list[int] = []
     for co in courses:
-        v = repo.published(c, co["id"]) or repo.latest(c, co["id"])
+        v = repo.published(c, co["id"])
+        if v:
+            maps += [(co["id"], o, i) for o, ids in J(v["tags"], {}).items() for i in ids]
+        elif service.may_read(c, user, co["id"]):
+            v = repo.latest(c, co["id"])
+            live.append(co["id"])
         for o in J(v["data"], {}).get("outcomes", []) if v else []:
             texts[(co["id"], o["id"])] = o["text"]
+    maps += [(m["course_id"], m["outcome"], m["item_id"]) for m in repo.maps_for_courses(c, live, fw["id"])]
     name = {co["id"]: co for co in courses}
     covered: dict[int, list[dict]] = {}
-    for m in repo.maps_for_courses(c, list(name), fw["id"]):
-        if (m["course_id"], m["outcome"]) in texts:
-            co = name[m["course_id"]]
-            covered.setdefault(m["item_id"], []).append({"course_id": co["id"], "course": co["code"], "name": co["name"],
-                                                         "outcome": m["outcome"], "text": texts[(co["id"], m["outcome"])]})
+    for cid, oid, iid in maps:
+        if (cid, oid) in texts:
+            co = name[cid]
+            covered.setdefault(iid, []).append({"course_id": cid, "course": co["code"], "name": co["name"], "outcome": oid,
+                                                "text": texts[(cid, oid)]})
     per: dict[int, list[dict]] = {}
     for s in repo.role_statements(c, fw["id"], STATEMENTS):
         per.setdefault(s["role_id"], []).append(s)
