@@ -428,6 +428,38 @@ def test_forma3_a_corrected_file_updates_each_anchor_s_unit_and_never_adds_a_sec
     assert post3() == vacant, "and back again"
 
 
+def test_forma3_units_a_corrected_file_no_longer_applies_leave_the_builder(app_db, load_world):
+    """Checkpoint F, CORR-F2: a post blocked after an earlier import, or units the new file no longer has, stayed live and
+    unreported, so the builder kept scheduling a load the department had disowned. They are listed in the preview and the
+    report, leave the builder (active 0) when the file is applied, and come back with a file that has them again."""
+    admin = app_db.client("admin")
+    original = (FIX / "forma3_blocks.xlsx").read_bytes()
+    load(admin, "forma3_blocks.xlsx", "f3-pb")
+    first = units("f3-pb")
+    post = sorted(a for a, u in first.items() if u["post_ref"] == "#0!A7")
+    assert len(first) == 9 and len(post) == 5 and all(u["active"] for u in first.values())
+    broken = _edited(original, "xl/worksheets/sheet1.xml", ('<c r="C14" t="inlineStr"><is><t>Verilənlər bazaları</t></is></c>', '<c r="C14"/>'))
+    pre = imp(admin, "teaching-load", "f.xlsx", broken, source="f3-pb", dry_run=True).json
+    assert {p_["ref"]: p_["status"] for p_ in pre["forma3"]["posts"]}["#0!A7"] == "blocked"
+    assert sorted(x["anchor"] for x in pre["stale"]) == post and all(x["retire"] and x["post_ref"] == "#0!A7" for x in pre["stale"])
+    assert pre["stale"][0]["reason"].startswith("Ştat və ya bölmə bloklanıb")
+    assert all(u["active"] for u in units("f3-pb").values()), "the preview writes nothing"
+    r = imp(admin, "teaching-load", "f.xlsx", broken, source="f3-pb").json
+    assert r["written"] and sorted(x["anchor"] for x in r["stale"]) == post
+    assert {a for a, u in units("f3-pb").items() if not u["active"]} == set(post)
+    again = imp(admin, "teaching-load", "f.xlsx", broken, source="f3-pb").json
+    assert again["stale"] == [] and again["conflicts"] == r["conflicts"], "an already retired unit is not listed twice"
+    back = load(admin, "forma3_blocks.xlsx", "f3-pb")
+    assert (back["inserted"], back["updated"], back["unchanged"], back["stale"]) == (0, 5, 4, [])
+    assert all(u["active"] for u in units("f3-pb").values()), "a file that has them again brings them back"
+    other = load(admin, "forma3_sheets.xlsx", "f3-pb")                 # the department's next file has none of these cells
+    gone = {x["id"] for x in other["stale"]}
+    assert gone and all(x["retire"] and x["reason"].startswith("Bu faylda yoxdur") for x in other["stale"])
+    now = {u["id"]: u["active"] for u in q("SELECT DISTINCT u.id, u.active FROM teaching_units u JOIN import_links l ON l.row_id=u.id "
+                                           "AND l.kind='teaching_load' WHERE l.source_system='f3-pb'")}
+    assert {i for i, a in now.items() if not a} == gone and sum(now.values()) == other["inserted"] + other["updated"] + other["unchanged"]
+
+
 def test_forma3_a_subject_two_departments_teach_goes_to_the_files_department(app_db, load_world):
     """Acceptance on the departments' real files (Tasks 47-48): one subject was taught by two departments in the same term,
     so its name matched two courses and every unit of it was refused in both files as «Fənn tapılmadı». The file's

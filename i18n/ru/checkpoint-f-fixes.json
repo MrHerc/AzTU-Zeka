@@ -1,3 +1,8 @@
 {
- "Semestrin planını və cədvəl qaydalarını yalnız bütün universitet üzrə səlahiyyəti olan tədris hissəsi dəyişir": "План семестра и правила расписания изменяет только учебная часть с полномочиями по всему университету"
+ "Semestrin planını və cədvəl qaydalarını yalnız bütün universitet üzrə səlahiyyəti olan tədris hissəsi dəyişir": "План семестра и правила расписания изменяет только учебная часть с полномочиями по всему университету",
+ "Ştat və ya bölmə bloklanıb: dərs cədvəl qurucusundan çıxarılır": "Ставка или раздел заблокированы: занятие исключается из конструктора расписания",
+ "Bu faylda yoxdur: dərs cədvəl qurucusundan çıxarılır": "Нет в этом файле: занятие исключается из конструктора расписания",
+ "Reyestrdə tapılmadı: əvvəlki idxalın dərsi saxlanılır": "Не найдено в реестре: занятие из прежнего импорта сохраняется",
+ "Əvvəlki idxalın bu dərsləri bu fayla görə tətbiq olunmur: {n}": {"one": "{n} занятие из прежнего импорта не применяется по этому файлу", "few": "{n} занятия из прежнего импорта не применяются по этому файлу", "many": "{n} занятий из прежнего импорта не применяются по этому файлу"},
+ "Ştat və ya bölmə": "Ставка или раздел"
 }

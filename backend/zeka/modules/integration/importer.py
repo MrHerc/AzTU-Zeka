@@ -17,7 +17,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from ...core.i18n import E
+from ...core.i18n import E, S_, T3
 from ...legacy.store import audit, iso, now, setting
 from ...core import tenant
 from ..directory import domain as directory_rules
@@ -44,7 +44,7 @@ TARGETS: dict[str, tuple[str, tuple[str, ...], str]] = {
     "enrollments": ("enrollments", ("user_id", "course_id", "group_id", "subgroup", "begin_date", "end_date"), "rowid"),
     "timetable": ("timetable", ("course_id", "weekday", "start", "end", "kind", "room"), "id"),
     "teaching_load": ("teaching_units", ("course_id", "kind", "subgroup", "teacher_id", "hours", "students", "pay", "vacancy", "post_ref",
-                                         "anchor"), "id"),
+                                         "anchor", "active"), "id"),
     "rooms": ("rooms", ("code", "number", "name", "building_id", "floor", "kind", "capacity", "accessible"), "id"),
     "attendance_opening": ("attendance_opening", ("student_id", "course_id", "term_id", "held_hours", "unexcused_hours",
                                                   "excused_hours", "as_of"), "id"),
@@ -421,10 +421,10 @@ def _course_for(c, cache: dict, subject: str, semester: str, department: int | N
     return same[0]["id"] if len(same) == 1 else None
 
 
-def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Item], dict]:
-    """The form's units as import items, and the reader's report (docs/forms/forma-3.md). A unit is planned only when its
-    post passed the arithmetic controls and holds no blocking conflict; a hidden sheet is listed, never planned; a vacancy
-    unit has no teacher (``teacher_id`` NULL, ``vacancy`` 1)."""
+def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Item], dict, set[str], set[str]]:
+    """The form's units as import items, the reader's report (docs/forms/forma-3.md), the blocked posts and the refused
+    anchors. A unit is planned only when its post passed the arithmetic controls and holds no blocking conflict; a hidden
+    sheet is listed, never planned; a vacancy unit has no teacher (``teacher_id`` NULL, ``vacancy`` 1)."""
     if not (filename or "").lower().endswith(".xlsx"):
         raise tables.TableError("Forma №3 XLSX faylı olmalıdır")
     try:
@@ -464,10 +464,44 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
         items.append(Item(0, "teaching_load", _key("f3", u.anchor), {
             "course_id": course, "kind": u.kind, "subgroup": None, "teacher_id": teacher, "hours": u.hours,
             "students": u.students_total or None, "pay": "hourly" if u.hourly else "staff", "vacancy": int(u.vacancy),
-            "post_ref": u.post, "anchor": u.anchor}, groups=sorted({groups[forma3.norm(x["code"])] for x in u.groups}),
+            "post_ref": u.post, "anchor": u.anchor, "active": 1}, groups=sorted({groups[forma3.norm(x["code"])] for x in u.groups}),
             extra={"where": u.anchor, "aliases": [content]}))
     report = forma3.report(form, known_codes={k for k in groups}, refused=refused)
-    return items, report
+    return items, report, blocked, refused
+
+
+STALE_WHY = {"blocked": S_("Ştat və ya bölmə bloklanıb: dərs cədvəl qurucusundan çıxarılır"),
+             "absent": S_("Bu faylda yoxdur: dərs cədvəl qurucusundan çıxarılır"),
+             "refused": S_("Reyestrdə tapılmadı: əvvəlki idxalın dərsi saxlanılır")}
+
+
+def _stale_units(ctx: Context, items: list[Item], blocked: set[str], refused: set[str]) -> list[dict]:
+    """Checkpoint F, CORR-F2: the source's active units an earlier import wrote that no unit of this file found. One whose
+    post the file blocks, or that the file no longer has, leaves the timetable builder when the file is applied
+    (``active`` 0; a later file that has it again brings it back); one the registry could not place this time is kept."""
+    found = {it.row_id for it in items if it.row_id is not None}
+    rows_, out = ctx.rows["teaching_load"], {}
+    for link in ctx.links["teaching_load"].values():
+        r = rows_.get(link["row_id"])
+        if r is None or r["_k"] in found or r["_k"] in out or not r["active"]:
+            continue
+        why = "blocked" if r["post_ref"] in blocked else "refused" if r["anchor"] in refused else "absent"
+        out[r["_k"]] = {"id": r["_k"], "anchor": r["anchor"], "post_ref": r["post_ref"], "retire": why != "refused", "reason": T3(STALE_WHY[why])}
+    return sorted(out.values(), key=lambda x: x["id"])
+
+
+def _retire(c, ctx: Context, stale: list[dict]) -> None:
+    """The stale units leave the builder; their links take the row's new state, so a file that has the unit again updates it."""
+    t = iso(now())
+    table, cols, key = TARGETS["teaching_load"]
+    for x in stale:
+        if not x["retire"]:
+            continue
+        repo.update(c, table, x["id"], {"active": 0, "updated_at": t}, key)
+        state = domain.row_hash({**repo.one(c, table, cols, x["id"], key), "groups": repo.groups_of(c, x["id"])})
+        for sid, link in ctx.links["teaching_load"].items():
+            if link["row_id"] == x["id"]:
+                repo.link(c, "teaching_load", ctx.source, sid, x["id"], state)
 
 
 # ---------------------------------------------------------------- comparing
@@ -660,8 +694,10 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     errors: list = []
     conflicts: list = []
     more: dict = {}                                     # teaching-load: the reader's report for the screen and the CLI
+    blocked: set[str] = set()
+    refused: set[str] = set()
     if kind == "teaching-load":
-        items, form_report = _plan_load(c, filename, data, conflicts)
+        items, form_report, blocked, refused = _plan_load(c, filename, data, conflicts)
         more = {"forma3": form_report}
         ctx = Context(c, source, ("teaching_load",))
         total = len(items) + len(conflicts)
@@ -687,6 +723,8 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
         items = _plan_rows(kind, ctx, cells, errors)
         total = len(cells)
     _classify(ctx, items, prefer_source, conflicts, errors)
+    if kind == "teaching-load":
+        more["stale"] = _stale_units(ctx, items, blocked, refused)
     _uniques(kind, ctx, items, errors)
     warnings = _held_check(c, items) if kind == "attendance-opening" else []
     if errors or dry_run:
@@ -706,6 +744,7 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
         if going and not force:
             raise tables.TableError("İmtahan gedir: məlumat yazan idxal imtahan bağlandıqdan sonra başlaya bilər")
         _write(c, ctx, items, user_id, conflicts)
+        _retire(c, ctx, more.get("stale") or [])
         for finish in loaders.FINISH:                  # the effects of the newest status order per student (AR-F1)
             finish(c, items)
         if kind in ("grades", "attendance-opening", "attendance"):    # the final grades follow the imported scores and hours

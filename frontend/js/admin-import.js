@@ -84,6 +84,9 @@ function report(r) {
       ${(r.warnings || []).length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bu sətirlər yazılır, amma yoxlanmalıdır.")}</div></div>
         <div class="table-wrap"><table class="table"><thead><tr><th>${t("Sətir")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.warnings.slice(0, 500).map((x) => html`<tr><td>${x.row}</td><td>${x.reason}</td></tr>`)}</tbody></table></div>` : ""}
+      ${(r.stale || []).length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Əvvəlki idxalın bu dərsləri bu fayla görə tətbiq olunmur: {n}", { n: r.stale.length })}</div></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Ştat və ya bölmə")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
+          ${r.stale.slice(0, 500).map((x) => html`<tr><td>${x.anchor}</td><td>${x.post_ref}</td><td>${x.reason}</td></tr>`)}</tbody></table></div>` : ""}
     </div></div>${r.forma3 ? forma3(r.forma3) : ""}`;
 }
 

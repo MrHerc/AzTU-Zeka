@@ -1,3 +1,8 @@
 {
- "Semestrin planını və cədvəl qaydalarını yalnız bütün universitet üzrə səlahiyyəti olan tədris hissəsi dəyişir": "Only an academic office with university-wide authority changes the term plan and the timetable rules"
+ "Semestrin planını və cədvəl qaydalarını yalnız bütün universitet üzrə səlahiyyəti olan tədris hissəsi dəyişir": "Only an academic office with university-wide authority changes the term plan and the timetable rules",
+ "Ştat və ya bölmə bloklanıb: dərs cədvəl qurucusundan çıxarılır": "The post or section is blocked: the class leaves the timetable builder",
+ "Bu faylda yoxdur: dərs cədvəl qurucusundan çıxarılır": "Not in this file: the class leaves the timetable builder",
+ "Reyestrdə tapılmadı: əvvəlki idxalın dərsi saxlanılır": "Not found in the registry: the class from the earlier import is kept",
+ "Əvvəlki idxalın bu dərsləri bu fayla görə tətbiq olunmur: {n}": {"one": "{n} class from an earlier import does not apply with this file", "other": "{n} classes from an earlier import do not apply with this file"},
+ "Ştat və ya bölmə": "Post or section"
 }
