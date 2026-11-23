@@ -50,6 +50,7 @@ def test_each_sense_has_its_own_key():
 def test_russian_statuses_are_neutral_and_the_news_button_is_a_verb():
     """L10, L20: style.md §6."""
     assert (UI["ru"]["Aktiv"], UI["ru"]["Etibarlıdır"], UI["ru"]["Yeni xəbər"]) == ("Активно", "Действует", "Создать новость")
+    assert UI["en"]["Yeni xəbər"] == "Create a news item"         # not "New news item" (the browser pass after Checkpoint F)
 
 
 def test_levels_and_grade_components_have_their_own_translations():
