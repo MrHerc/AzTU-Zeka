@@ -916,6 +916,9 @@ def init(reset: bool = False):
     try:
         migrate.apply(c, backup_dir=DATA / "backups")
         security.attach_database(DB_PATH)          # rate limits count across worker processes from now on
+        from ..modules.syllabus import frameworks  # Bloom and EQF are built in, in prod too (Task 24)
+        frameworks.ensure_builtin(c)
+        c.commit()
         if config.prod():
             if not row(c, "SELECT 1 FROM settings WHERE key='university'"):
                 seed_catalog(c)        # product content only: accounts come from manage.py create-admin and imports

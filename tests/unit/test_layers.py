@@ -42,10 +42,11 @@ def test_domain_files_have_no_io():
 
 
 def test_sql_lives_only_in_repo_files():
-    """SPEC.md: a module's SQL is in its repo.py (Checkpoint C, R10); the timetable builder's service too (Task 48)."""
+    """SPEC.md: a module's SQL is in its repo.py (Checkpoint C, R10); the timetable builder's service too (Task 48), and the
+    syllabus's frameworks service (Task 24)."""
     sql = ("SELECT ", "INSERT ", "UPDATE ", "DELETE ")
     bad = [str(f.relative_to(ZEKA)) for f in ZEKA.glob("modules/*/*.py")
-           if f.name in ("service.py", "routes.py", "domain.py", "builder.py") and any(k in f.read_text(encoding="utf-8") for k in sql)]
+           if f.name in ("service.py", "routes.py", "domain.py", "builder.py", "frameworks.py") and any(k in f.read_text(encoding="utf-8") for k in sql)]
     assert bad == []
 
 

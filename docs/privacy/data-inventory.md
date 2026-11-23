@@ -207,6 +207,7 @@ Ayarsız qısa müddətlər: `doc_keys` (5 dəqiqə), `rate_hits` və `login_blo
 | `office_bookings.cancelled_by` | Yazılışı ləğv edən | yox: icraçı | saxla | yazılış qədər | İ |
 | `office_hours.teacher_id` | Müəllimin qəbul saatları | bəli | saxla | hesab qədər | T |
 | `outbox.user_id` | Göndərilən e-poçt məktubları | bəli | sil | `logs_days` | T |
+| `outcome_items.mapped_by` | Təlim nəticəsinə çərçivə bəndini əlavə edən | yox: iş məhsulu | saxla | fənn qədər | İ |
 | `privacy_requests.user_id` | Silmə sorğusu | bəli | saxla (sübut) | Q-müddət | S |
 | `privacy_requests.decided_by` | Qərarı verən | yox: icraçı | saxla | Q-müddət | İ |
 | `qa_replies.author_id` | Forumda öz cavabları | bəli | sil | fənn qədər | T |

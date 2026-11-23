@@ -1,5 +1,5 @@
 """Administration commands:  python backend/manage.py status | migrate | create-admin | backup | restore | import |
-reconcile | activation-codes | export | jobs | exam-verify | import-routes | forma3-check  (--help for each)"""
+reconcile | activation-codes | export | jobs | exam-verify | import-routes | forma3-check | import-framework  (--help for each)"""
 import argparse
 import os
 import re
@@ -75,7 +75,12 @@ def main(argv=None) -> int:
                                              "conflicts by cell; reads only the file, no database (Task 47)")
     f3.add_argument("file", help="the department's XLSX file")
     f3.add_argument("--json", action="store_true", help="the whole report as JSON (it holds the names written in the file)")
+    fw = sub.add_parser("import-framework", help="import a framework file as NIST published it, unchanged (NICE Framework "
+                                                 "Components JSON); a second run changes nothing (Task 24)")
+    fw.add_argument("--file", required=True, help="e.g. content/frameworks/nice-components-2.2.0.json")
     args = ap.parse_args(argv)
+    if args.cmd == "import-framework":
+        return import_framework(Path(args.file))
     if args.cmd == "forma3-check":
         return forma3_check(Path(args.file), args.json)
     if args.cmd == "import-routes":
@@ -212,6 +217,38 @@ def exam_verify(eid: int, root: str | None) -> int:
             print(f"  ROOT not in the chain (the head is {p['head']})")
     print("FAILED" if r["problems"] else "OK" + (" (root matches)" if root else ""))
     return 1 if r["problems"] else 0
+
+
+def import_framework(path: Path) -> int:
+    """0: imported, or already imported (nothing changed), and every kind's rows equal the file's elements; 1: refused or
+    the counts differ; 2: the file cannot be read."""
+    from zeka.modules.syllabus import frameworks
+    try:
+        raw = path.read_bytes()
+    except OSError as ex:
+        print(f"error: {ex}", file=sys.stderr)
+        return 2
+    store.init()
+    c = store.connect()
+    try:
+        try:
+            r = frameworks.import_file(c, raw)
+        except frameworks.FrameworkError as ex:
+            print(f"error: {ex.args[0]['en']}", file=sys.stderr)
+            return 1
+        c.commit()
+    finally:
+        c.close()
+    f = r["framework"]
+    print(f"{f['key']} {f['version']}: {'imported' if r['status'] == 'imported' else 'already imported, nothing changed'} "
+          f"(sha256 {f['sha256']})")
+    for kind in sorted(r["file"].keys() | r["stored"].keys()):
+        print(f"  {kind:<16} file {r['file'].get(kind, 0):>6}   database {r['stored'].get(kind, 0):>6}")
+    print(f"  {'links':<16} file {r['links']['file']:>6}   database {r['links']['stored']:>6}")
+    same = r["file"] == r["stored"] and r["links"]["file"] == r["links"]["stored"]
+    if not same:
+        print("error: the database does not hold what the file holds", file=sys.stderr)
+    return 0 if same else 1
 
 
 def import_routes(building: str, nodes: Path, edges: Path) -> int:

@@ -287,6 +287,7 @@ INVENTORY: dict[tuple[str, str], tuple[str | None, str]] = {
     ("office_bookings", "cancelled_by"): (None, K),
     ("office_hours", "teacher_id"): ("teacher_id = :uid", K),
     ("outbox", "user_id"): ("user_id = :uid", D),
+    ("outcome_items", "mapped_by"): (None, K),
     ("privacy_requests", "user_id"): ("user_id = :uid", K),
     ("privacy_requests", "decided_by"): (None, K),
     ("qa_replies", "author_id"): ("author_id = :uid", D),
