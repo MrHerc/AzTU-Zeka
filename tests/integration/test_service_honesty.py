@@ -201,7 +201,8 @@ def test_a_step_s_notice_goes_only_to_that_role_within_its_scope(app_db, actors,
         assert told(mark) == {nigar, leyla}                      # step 1: the faculty's dean's offices
         mark = q("SELECT MAX(id) n FROM notifications")[0]["n"]
         assert actors["office"].post(f"/api/requests/{rid}/action", {"action": "approve"}).status == 200
-        assert told(mark) == {nigar}, "step 2 is the academic office's: not the dean's office, not another faculty's office"
+        # the demo's academic office (seeded with that primary role) serves the whole university
+        assert told(mark) == {nigar, uid("tedris")}, "step 2 is the academic office's: not the dean's office, not another faculty's office"
     finally:
         admin.delete(f"/api/admin/users/{leyla}/roles/{g1}")
         admin.delete(f"/api/admin/users/{elcin}/roles/{g2}")
@@ -453,7 +454,7 @@ def test_every_notice_of_a_request_goes_to_its_step_s_role(app_db, registrar, pd
     leyla, elcin, nigar = uid("leyla"), uid("elcin"), uid("nigar")
     g1 = admin.post(f"/api/admin/users/{leyla}/roles", {"role": "office", "scope_type": "faculty", "scope_id": faculty}).json["id"]
     g2 = admin.post(f"/api/admin/users/{elcin}/roles", {"role": "academic_office"}).json["id"]
-    academic, office = {nigar, elcin}, {nigar, leyla}
+    academic, office = {nigar, elcin, uid("tedris")}, {nigar, leyla}         # tedris: the demo's university-wide academic office
     try:
         student = demo_student(app_db, 16)
         mark = last_note()
