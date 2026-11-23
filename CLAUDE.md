@@ -33,7 +33,7 @@ python backend/manage.py forma3-check FILE.xlsx [--json]   # a department's Form
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 1975 tests, about 10 min; uses a temp database, never touches data/
+python -m pytest -q                               # 2016 tests, about 12 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -42,11 +42,13 @@ python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset fac
 python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes and the timetable builder's (must be none)
 python tools/eval_assistant.py tests/eval/assistant_az.jsonl   # campus assistant: 50 questions, at least 45 right (Task 32)
 python tools/ttbench.py --units 1250 [--groups 300 --teachers 90 --rooms 60 --iters 50000]   # timetable solver timings (Task 48, docs/perf/timetable.md)
+python backend/manage.py jobs run                  # also one chunk of the oldest queued timetable builder run (job timetable.work, every 30 s; pages /admin/timetable/build, /dept/timetable, /office/timetable, /teacher/availability)
 
 python tools/i18n.py lint                 # user-visible strings not wrapped for translation (72 known: official documents are Azerbaijani)
 python tools/i18n.py extract              # refresh i18n/source/*, write untranslated keys to i18n/todo/*.json
 python tools/i18n.py build                # i18n/{en,ru}/*.json -> frontend/locales/*.json + backend/zeka/core/locales/*.json
 python tools/i18n.py stats                # coverage per language (must stay 100%)
+python tools/i18n.py rename MAP.json [--apply]   # rewrite Azerbaijani keys {old: new} in code, content, tests and en/ru (dry run by default)
 
 docker compose -f infra/compose.demo.yml up --build            # demo container (loopback only, resets data on every start)
 docker compose -f infra/compose.yml up -d --build              # prod: Caddy (TLS) + app, infra/.env, docs/runbooks/deploy.md
@@ -55,7 +57,8 @@ infra/backup.sh && infra/restore.sh backups/latest.enc /tmp/restore-test   # enc
 
 Tests: `tests/unit/` (pure logic), `tests/integration/` (real HTTP server on a temp database; `test_security_review.py`
 and `test_radar.py` hold the checks ported from the old self-test), `tests/migration/`, `tests/load/` (query plans on the
-university dataset). The suite sets `ZEKA_TX_GUARD=1`: a request that holds the write lock longer than 200 ms fails its test. CI: `.github/workflows/ci.yml` (lint, types, JS syntax,
+university dataset). The suite sets `ZEKA_TX_GUARD=1`: a request that holds the write lock for more than 200 ms of its handler thread's CPU
+time, or 1 s of wall time, fails its test (`TX_GUARD_EXEMPT` in `legacy/common.py` lists the few exempt routes). CI: `.github/workflows/ci.yml` (lint, types, JS syntax,
 i18n catalogue, pytest on Python 3.10–3.13 and Windows) and `security.yml` (gitleaks, pip-audit, bandit).
 
 Settings come from the environment: `ZEKA_MODE` (`demo` default, `prod`; `backend/zeka/core/config.py`), `ZEKA_TZ`
@@ -108,11 +111,16 @@ for trusted markup), `api.get/post/put/del`, modal/toast helpers and the Markdow
 navigation (`NAV`, `BOTTOM`, `QUICK`) — a new page needs a `route()` plus a `NAV` entry. CSS: `app.css` design tokens +
 one `m-*.css` per module, linked in `index.html`.
 
-**i18n is structural, not cosmetic.** The Azerbaijani source string is the key everywhere. JS: `t("… {x} …", { x })`.
+**i18n is structural, not cosmetic.** The Azerbaijani source string is the key everywhere; new source text follows
+`i18n/STYLE.md` and the glossary in `i18n/BRIEF.md`. JS: `t("… {x} …", { x })`.
 Python: `S(text, lang)` for one language, `T3(text, **p)` / `E(...)` for an all-languages dict that `localize()` resolves in
 the response, `S_()` as an extraction marker. Any new user-visible string must be wrapped, then `extract` → translate into
 `i18n/en|ru/*.json` (rules in `i18n/BRIEF.md`) → `build`. Generated catalogs (`frontend/locales`, `backend/zeka/core/locales`) are committed.
-Editing an existing Azerbaijani string changes its key and silently drops its translations.
+Editing an existing Azerbaijani string changes its key and silently drops its translations: use `tools/i18n.py rename`,
+which moves them, and give a seeded text already in databases a migration (`0463`, `0464`: a column changes only while it
+holds the old seeded text). A parameter taken from a file or typed by a person is `i18n.Lit(...)` (shown as written, never
+translated); a date in a message is `i18n.date3(d)` (each language's format). One key means one sense: split a key
+rather than share it between, say, a load type and a tip label.
 
 ## Things that will bite you
 
@@ -159,7 +167,8 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   service. A writing import refuses while an exam is open (`--force`, audited) and a file over 199 999 rows
   (`tools/etl/run.py` splits). `manage.py reconcile` re-reads the wave's logged files (`migration_files`) as a dry run.
 - **Forma №3 (Task 47).** `integration/forma3.py` is pure: `read(sheets) -> Form` (posts, units, load lines, links, notes,
-  conflicts, controls T1–T6); the rules and their ids are `docs/forms/forma-3.md`. A semester is the columns between the
+  conflicts, controls T1–T6); the rules and their ids are `docs/forms/forma-3.md`. A re-import lists the earlier units
+  this file no longer applies (`stale`) and, on apply, sets those of a blocked or vanished post inactive (Checkpoint F). A semester is the columns between the
   `Cəmi` columns, a unit is a valued top-left contact cell and its groups are the rows its merge covers; nothing is read
   from a sheet's name or a row's position. The import applies only posts that pass T1–T3 with no blocking conflict;
   every non-empty cell must end somewhere (`Form.unclassified == 0`). The departments' real files hold staff names and
@@ -181,7 +190,10 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   solver's running cost. Week sets are bit masks (`domain.week_mask`/`week_text`: `all | odd | even | N[-M],...`).
 - **Timetable builder (Task 48, slice 2).** `modules/timetable/builder.py` is the builder's service (no SQL: its SQL is
   in `repo.py`, `test_layers.py`), routes under `/api/timetable/build/{term}` and `/api/timetable/versions/{id}`.
-  `scope_of()` gives what a role covers; every id outside it is 404. No request computes a term: runs (`precheck`,
+  `scope_of()` gives what a role covers; every id outside it is 404. Settings and a term's plan need a university-wide
+  scope (403 otherwise); a run or a base version must cover the version's stored scope (`_covers_scope`); a draft
+  limited to named departments is visible only to a caller covering each, and a scorecard lists only the caller's
+  units' problems. S10 counts the weeks a placement really holds (`domain.lost_weeks`: holidays, term edges). No request computes a term: runs (`precheck`,
   `solve`, `check`, `publish`) are `tt_runs` rows worked by the job `timetable.work` (30 s), one per term at a time.
   A move is checked live against its neighbourhood, then `bump_rev` (optimistic lock) inside one short write. A
   publication runs check → rows → drop → lessons → notify → done, each batch with its cursor in one transaction;
@@ -196,11 +208,14 @@ Editing an existing Azerbaijani string changes its key and silently drops its tr
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test
   never reads the real date.
 
-## Branch state (2026-11-19)
+## Branch state (2026-11-22)
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
-and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`) and Faza 4 (Tasks 23 and 25–30, with Task 36's job runner and e-mail outbox; Checkpoint D: `docs/review/checkpoint-d-2026-11-19.md`; Task 24 is blocked: the NICE file's host is refused by this environment's proxy) and Faza 5 (Tasks 31–35, 37 and 46; Checkpoint E: `docs/review/checkpoint-e-2026-11-19.md`). `main` is unchanged and the five PRs are still open against it; they are
+and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Checkpoint B: `docs/review/checkpoint-b-2026-11-18.md`) and Faza 3 (Tasks 18–22 and 45, Checkpoint C: `docs/review/checkpoint-c-2026-11-19.md`) and Faza 4 (Tasks 23 and 25–30, with Task 36's job runner and e-mail outbox; Checkpoint D: `docs/review/checkpoint-d-2026-11-19.md`; Task 24 is blocked: the NICE file's host is refused by this environment's proxy) and Faza 5 (Tasks 31–35, 37 and 46; Checkpoint E: `docs/review/checkpoint-e-2026-11-19.md`) and Faza 6 so far (Tasks
+38–43, the owner's decisions of 2026-11-21, Task 47's Forma №3 reader, Task 48's timetable builder and the language
+change; Checkpoint F: `docs/review/checkpoint-f-2026-11-22.md`, every confirmed finding fixed). Task 44 (release) waits
+for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's gate is not passed. `main` is unchanged and the five PRs are still open against it; they are
 superseded by this branch.
 
 ## Product direction
@@ -208,7 +223,7 @@ superseded by this branch.
 AzTU is **replacing all of its existing systems** with this product (not an overlay). Read these before adding features:
 
 - `SPEC.md` — objective, replacement matrix, capability map (stable module ids), target layout, code style, boundaries, success criteria.
-- `tasks/plan.md` and `tasks/todo.md` — 6 phases, 47 tasks with acceptance criteria and verification commands, migration waves,
+- `tasks/plan.md` and `tasks/todo.md` — 6 phases, 48 tasks with acceptance criteria and verification commands, migration waves,
   record owner per entity. `docs/review/plan-review-2026-11-16.md` — the 24 review findings and the fixes applied.
 - `docs/CODEMAP.md` — what the current code really does, with file:line evidence and a capability inventory.
 - `docs/research/` — market, law, SEB and NIST research, verbatim; `docs/report/zeka-vahid-hesabat.html` — the unified report.

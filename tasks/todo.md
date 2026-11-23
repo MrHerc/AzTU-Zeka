@@ -1102,6 +1102,11 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 - [x] Arayış cədvəlinin saat hesabı bölməsi blokun dərslərinin ödənişini də təyin edir; iki ad yalnız soyad və daha bir söz uyğun gələndə bir şəxsdir; vərəqin adı `E4` ilə söz-söz müqayisə olunur; dəyəri olan hər gizli sətir göstərilir
 - [x] Məlumat sətrindəki xəta dəyəri konfliktdir; qrupu olub dərsi olmayan vərəq `no_units` alır; qrupu yazılmayan dərs sətrin tələbə sayını saxlayır; ilkin baxışın «tətbiq oluna bilən» sayı yazılanla eynidir; gizli vərəqin idxal olunmadığını test sübut edir; T3-ün oxuyucunun özünü yoxladığı yazılıb və testi var
 
+**Checkpoint F-dən sonra (2026-11-22, `docs/review/checkpoint-f-2026-11-22.md`):**
+- [x] Düzəldilmiş faylın təkrar idxalı bu faylın artıq tətbiq etmədiyi əvvəlki vahidləri `stale` siyahısında göstərir; bloklanmış və ya itmiş ştatın vahidləri tətbiqdə passiv olur, onları yenidən verən fayl qaytarır (CORR-F2, `4aebb25`)
+- [x] Fayldan oxunan dəyər tərcümə olunmur (`i18n.Lit`); «tapılmadı» mesajı hər növ üçün ayrıdır (L2, L9, `8a14f54`)
+- [x] T1/T2 dözüm sərhədinin testi var (TE-F8, `e83d0ae`)
+
 **Verification:**
 - [x] `python -m pytest tests/unit/test_forma3.py tests/integration/test_import.py tests/integration/test_checkpoint_b.py -q`
 - [x] `python backend/manage.py forma3-check tests/fixtures/forma3_blocks.xlsx`
@@ -1115,8 +1120,10 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 
 - [ ] SPEC-dəki bütün Success Criteria təsdiqlənib və ya istisna yazılı qeyd olunub
 - [ ] Hədəf serverdə bərpa sınağı və `university` yük testi keçib; ilk fakültənin T0 ixracına qarşı uzlaşdırma fərqi 0 və ya izahlı; T0 release runbook-da yazılıb
-- [ ] Açıq yüksək səviyyəli təhlükəsizlik tapıntısı yoxdur
+- [x] Açıq yüksək səviyyəli təhlükəsizlik tapıntısı yoxdur (`docs/review/checkpoint-f-2026-11-22.md`: təsdiqlənən hər tapıntı düzəldilib)
 - [ ] Sahibin yazılı buraxılış qərarı
+
+Qeyd (2026-11-22): rəy və təkzib iki mərhələdə keçib, təsdiqlənən hər tapıntı reqressiya testi ilə düzəldilib (`docs/review/checkpoint-f-2026-11-22.md`). Portalın dili (sessiyanın 20-ci işi; commit-lərdə «Task 20», bu sənədin Task 20-si deyil): `tools/i18n.py rename`, 912 qeyd, `i18n/STYLE.md`, `0463`, `0464`; `stats` 100 %, `lint` 72. Qalan üç bənd hədəf serveri, T0-ı və sahibin qərarını gözləyir (Task 44-ün girişləri).
 
 ## Task 48: Semestr cədvəli qurucusu
 
@@ -1173,6 +1180,11 @@ Dilim 2: repo, servis, marşrutlar, `timetable.work` və `timetable.health` işl
 - [x] Eyni fənni eyni semestrdə iki kafedra keçirəndə dərslər faylın kafedrasının kursuna yazılır, hər iki faylda «Fənn tapılmadı» olmur (əvvəl 15 vahid; `test_forma3_a_subject_two_departments_teach_goes_to_the_files_department`)
 - [x] Payız (860 vahid, 924 iclas) və yaz (670 vahid, 701 iclas): hamısı yerləşdirilib, 0 sərt pozuntu (həm qurucunun yoxlaması, həm ayrıca SQL yoxlaması sətirlər və 7 280 dərs üzrə), hər biri 50 000 iterasiya, təqribən 4,2 s; yaz versiyası dərc olunub
 - [x] Saat hesabatı dərc olunmuş versiyada da bayramı səbəb kimi adlandırır, həftə bölgüsünün yuvarlaqlaşdırması kimi yox (`test_the_hours_report_names_the_reason_of_every_difference`)
+
+**Acceptance criteria (Checkpoint F, 2026-11-22, `docs/review/checkpoint-f-2026-11-22.md`):**
+- [x] Fakültə ilə məhdud tədris şöbəsi ayarları və semestrin planını dəyişə bilmir (403); yoxlama hesablaması və baza versiyası versiyanın saxlanmış əhatəsini örtməlidir; adlı kafedralarla məhdud layihə yalnız onların hamısını örtənə görünür, universitet üzrə layihənin skor kartı yalnız çağıranın vahidlərinin problemlərini verir (SEC-TT-1..3, `4f573f9`, `7c24210`)
+- [x] S10 yerləşdirmənin real verdiyi saatı sayır (`domain.lost_weeks`): həlledici, skor kartı və `hours_report` bir tərifi işlədir; skor kartı Forma №3 saatından kənar vahidlərin sayını verir (CORR-F1, `0c4bd6b`)
+- [x] `stale_parent`, kafedra müdirinin öz cədvəlini təsdiqi, fakültədən aşağı dekanlıq əhatəsi, qrantsız kafedra müdiri və səyahət vaxtına bərabər fasilə testlidir (TE-F1, F2, F3, F7, F9)
 
 **Acceptance criteria (dilim 3-dən sonraya qalanlar):** rəy və qeydlər səhifəsi, fakültənin QR sənədi və onun çapı, bloklar (təcrübə həftələri), kafedranın təsdiqi, otaqların «cədvələ açıq» və «ayrılmış» qutuları, idxalda kafedra seçimi, hesabat «Saat hesabatı», bələdçi səhifəsinin mətni.
 

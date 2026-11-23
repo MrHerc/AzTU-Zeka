@@ -1,6 +1,6 @@
 # Zəka portalının üslub bələdçisi (rəsmi-işgüzar üslub)
 
-Task 20-də kataloqun 912 mətni bu qərarlara görə düzəldilib (`python tools/i18n.py rename`). Yeni mətn yazanda da bunlara əməl edin; terminlər `BRIEF.md`-nin lüğətindədir.
+Checkpoint F-in dil baxışında kataloqun 912 mətni bu qərarlara görə düzəldilib (`python tools/i18n.py rename`). Yeni mətn yazanda da bunlara əməl edin; terminlər `BRIEF.md`-nin lüğətindədir.
 
 ## 1. Durğu işarələri
 - Azərbaycan və rus mətnində dırnaq «», ingilis mətnində “ ” işlənir. İngiliscə sitat Azərbaycan və rus mətnində də «» içində verilir: «Kind regards,».

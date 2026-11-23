@@ -57,7 +57,7 @@ akademik məzuniyyət → academic leave → академический отпу
 təcili / yüksək / normal / aşağı (prioritet) → urgent / high / normal / low → срочный / высокий / обычный / низкий
 Universitet hesabı (SSO) → university account (SSO) → учётная запись университета (SSO) · pilot mərhələsi → pilot phase → пилотный этап
 
-Terms decided in Task 20 (style rules for the Azerbaijani source: `i18n/STYLE.md`):
+Terms decided in the language review of Checkpoint F (style rules for the Azerbaijani source: `i18n/STYLE.md`):
 - Əsas (menu group, breadcrumbs, exam kind, main literature; one shared key) → Main → Основное
 - e-poçt → email → эл. почта · istifadəçi adı → username → имя пользователя
 - FİN → FIN code → ФИН
