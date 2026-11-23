@@ -575,7 +575,8 @@ def _problem(c, t: dict, units_: list[dict], ug: dict, obstacles: list[dict], re
     rooms = repo.rooms(c)
     avail = [a for a in repo.subjects_availability(c, t["id"], "teacher", teachers) + repo.subjects_availability(c, t["id"], "room", [r["id"] for r in rooms])
              if a["level"] in ("unavailable", "undesired")]
-    return {"weeks": domain.term_weeks(t), "lesson_times": times, "settings": st,
+    n = domain.term_weeks(t)
+    return {"weeks": n, "lesson_times": times, "settings": st, "off": domain.lost_weeks(t, tenant.load(c)["calendar"]["holidays"], n),
             "rooms": [{k: r[k] for k in ("id", "kind", "capacity", "building_id", "schedulable", "dedicated")} for r in rooms],
             "groups": [{"id": g, "shift": (gt.get(g) or {}).get("shift"), "home_building_id": (gt.get(g) or {}).get("home_building_id"),
                         "size": sizes.get(g, 0)} for g in gids],

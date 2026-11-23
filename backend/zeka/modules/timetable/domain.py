@@ -380,8 +380,32 @@ def _gaps(bits: int) -> int:
     return bits.bit_length() - (bits & -bits).bit_length() + 1 - bits.bit_count() if bits else 0
 
 
+def lost_weeks(term: dict, holidays: Iterable[str], n: int) -> list[int]:
+    """Per weekday (index 1..7; 0 unused) the bit mask of the term's weeks whose day of that weekday holds no lesson: a
+    holiday, or a day before teaching_start or after teaching_end. The hours a placement yields are its week set without
+    these (Checkpoint F, CORR-F1): the solver, the scorecard and the hours report share this definition."""
+    first, last = date.fromisoformat(term["teaching_start"]), date.fromisoformat(term["teaching_end"])
+    monday = first - timedelta(days=first.isoweekday() - 1)
+    off = set(holidays)
+    out = [0] * 8
+    for wd in range(1, 8):
+        for wk in range(n):
+            day = monday + timedelta(days=7 * wk + wd - 1)
+            if not first <= day <= last or day.isoformat() in off:
+                out[wd] |= 1 << wk
+    return out
+
+
+def off_of(problem: dict, weekday: int) -> int:
+    """The lost weeks of a weekday in a problem (none when the problem carries no ``off``, as in the unit tests)."""
+    off = problem.get("off") or []
+    return off[weekday] if 0 <= weekday < len(off) else 0
+
+
 def _hours_cost(planned: int, form, settings: dict) -> int:
-    """S10: academic hours by which a unit's planned hours (before holidays) miss its form hours beyond the tolerance."""
+    """S10: academic hours by which a unit's planned hours miss its form hours beyond the tolerance. Planned: the weeks
+    each placement actually holds (its week set without the lost weeks of its weekday, ``lost_weeks``) x pair hours x
+    duration."""
     miss = abs(planned - float(form or 0)) - settings["hours_tolerance"]
     return math.ceil(miss - 1e-9) if miss > 1e-9 else 0
 
@@ -597,7 +621,8 @@ def scorecard(problem: dict, placements: list[dict]) -> dict:
         if m is None:
             continue
         weeks = it["mask"].bit_count()
-        planned[m["unit_id"]] = planned.get(m["unit_id"], 0) + weeks * st["pair_hours"] * it["duration"]
+        held = (it["mask"] & ~off_of(problem, it["weekday"])).bit_count()
+        planned[m["unit_id"]] = planned.get(m["unit_id"], 0) + held * st["pair_hours"] * it["duration"]
         if it["weekday"] == 6:
             val["saturday"] += weeks * it["duration"]
         if any(_shift_periods(problem, groups.get(g)) is None for g in m["groups"]):
@@ -620,13 +645,17 @@ def scorecard(problem: dict, placements: list[dict]) -> dict:
             val["stability_room"] += reroom
             val["move_repair"] += repair and (moved or reweek or reroom)
     units = {u["id"]: u for u in problem["units"]}
+    flagged = 0
     for uid in sorted({m["unit_id"] for m in meetings}):
         val["hours_miss"] += _hours_cost(planned.get(uid, 0), units[uid].get("hours"), st)
+        flagged += abs(planned.get(uid, 0) - float(units[uid].get("hours") or 0)) > st["hours_tolerance"]
     comps = {k: {"value": x, "cost": x * w[k]} for k, x in val.items()}
     placed = len({p["key"] for p in placements} & {m["key"] for m in meetings})
     return {"components": comps, "soft": sum(c["cost"] for c in comps.values()), "placed": placed,
             "unplaced": len(meetings) - placed, "excluded": len(excluded),
-            "coverage": placed * 1000 // len(meetings) if meetings else 1000}
+            "coverage": placed * 1000 // len(meetings) if meetings else 1000,
+            "hours": {"flagged": flagged, "form_h": sum(float(units[u].get("hours") or 0) for u in {m["unit_id"] for m in meetings}),
+                      "planned_h": sum(planned.values())}}
 
 
 def hours_report(problem: dict, placements: list[dict], term: dict, holidays: Iterable[str], lessons: list[dict] | None = None) -> dict:
@@ -637,9 +666,7 @@ def hours_report(problem: dict, placements: list[dict], term: dict, holidays: It
     meetings, excluded = meetings_of(problem)
     needs = {x["unit_id"]: x for x in problem.get("needs") or []}
     by_key = {p["key"]: p for p in placements}
-    first, last = date.fromisoformat(term["teaching_start"]), date.fromisoformat(term["teaching_end"])
-    monday = first - timedelta(days=first.isoweekday() - 1)
-    off = set(holidays)
+    lost_of = lost_weeks(term, holidays, n)
     real: dict[int, list[dict]] = {}
     for x in lessons or []:
         real.setdefault(x["unit_id"], []).append(x)
@@ -655,14 +682,9 @@ def hours_report(problem: dict, placements: list[dict], term: dict, holidays: It
                 if "unplaced" not in reasons:
                     reasons.append("unplaced")
                 continue
-            mask = week_mask(p["weeks"], n)
-            for wk in range(n):
-                day = monday + timedelta(days=7 * wk + p["weekday"] - 1)
-                if mask >> wk & 1:
-                    if first <= day <= last and day.isoformat() not in off:
-                        planned += st["pair_hours"] * m["duration"]
-                    else:
-                        lost = True
+            mask, gone = week_mask(p["weeks"], n), lost_of[p["weekday"]] if 1 <= p["weekday"] <= 7 else 0
+            planned += (mask & ~gone).bit_count() * st["pair_hours"] * m["duration"]
+            lost = lost or bool(mask & gone)
         if u["id"] in real:                             # published: the lessons themselves; the placements still say why
             done = [x for x in real[u["id"]] if x["status"] != "cancelled"]
             planned = float(sum(x.get("academic_hours") or 0 for x in done))

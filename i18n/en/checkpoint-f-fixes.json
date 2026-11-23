@@ -4,5 +4,7 @@
  "Bu faylda yoxdur: dərs cədvəl qurucusundan çıxarılır": "Not in this file: the class leaves the timetable builder",
  "Reyestrdə tapılmadı: əvvəlki idxalın dərsi saxlanılır": "Not found in the registry: the class from the earlier import is kept",
  "Əvvəlki idxalın bu dərsləri bu fayla görə tətbiq olunmur: {n}": {"one": "{n} class from an earlier import does not apply with this file", "other": "{n} classes from an earlier import do not apply with this file"},
- "Ştat və ya bölmə": "Post or section"
+ "Ştat və ya bölmə": "Post or section",
+ "Saatı Forma №3-dən həddən artıq fərqlənən dərslər": "Classes whose hours differ from Form No. 3 beyond the tolerance",
+ "{p} / {f} saat": "{p} / {f} hours"
 }

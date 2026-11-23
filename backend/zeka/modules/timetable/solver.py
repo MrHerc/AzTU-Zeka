@@ -79,7 +79,9 @@ class Model:
         self.unit = [unit_pos[m["unit_id"]] for m in M]
         forms = {u["id"]: u.get("hours") for u in problem["units"]}
         self.form = [forms[u] for u in self.units]
-        self.hours = [[v.bit_count() * st["pair_hours"] * m["duration"] for v in m["variants"]] for m in M]
+        # S10 per variant and day: the weeks the placement holds (its week set without the day's lost weeks, CORR-F1)
+        lost = [domain.off_of(problem, wd) for wd in self.days]
+        self.hours = [[[(v & ~lw).bit_count() * st["pair_hours"] * m["duration"] for lw in lost] for v in m["variants"]] for m in M]
         self.pairs = [max((v.bit_count() for v in m["variants"]), default=0) * m["duration"] for m in M]
         self.homes = [[(groups.get(g) or {}).get("home_building_id") for g in m["groups"]] for m in M]
         self.room_bits = [sum(1 << k for k, r in enumerate(self.rooms) if domain.room_fits(m, r)) for m in M]
@@ -318,10 +320,10 @@ class Search:
         classes[:] = self._merge([c for wm, v in classes for c in
                                   (([[wm & ~mask, v]] if wm & ~mask else []) + [[wm & mask, v + d]] if wm & mask else [[wm, v]])])
 
-    def _hours_delta(self, i: int, vi: int, sign: int) -> int:
+    def _hours_delta(self, i: int, vi: int, day: int, sign: int) -> int:
         u, st = self.m.unit[i], self.m.settings
         before = self.unit_sum[u]
-        return self.m.w["hours_miss"] * (domain._hours_cost(before + sign * self.m.hours[i][vi], self.m.form[u], st)
+        return self.m.w["hours_miss"] * (domain._hours_cost(before + sign * self.m.hours[i][vi][day], self.m.form[u], st)
                                          - domain._hours_cost(before, self.m.form[u], st))
 
     def _resources(self, i: int) -> list[int]:
@@ -431,7 +433,7 @@ class Search:
             cost += gw * self._win_delta(self.prof[r * mo.D + day], mask, bits)
             if course is not None:
                 cost += sdc * sum((mask & x).bit_count() for x in self.course_day.get((r, day, course), ()))
-        return cost + self._hours_delta(i, vi, 1)
+        return cost + self._hours_delta(i, vi, day, 1)
 
     def best_value(self, i: int):
         """The cheapest feasible value of meeting i as (value index, room, cost), or None."""
@@ -479,7 +481,7 @@ class Search:
                 self.rholders.setdefault(x, []).append(i)
                 if self.rocc[x] == mo.full:
                     self.rfull[s + q] |= 1 << k
-        self.unit_sum[mo.unit[i]] += mo.hours[i][vi]
+        self.unit_sum[mo.unit[i]] += mo.hours[i][vi][day]
         self.assign[i] = (j, k)
         del self.open[bisect.bisect_left(self.open, i)]
         self.mask_of[i] = mask
@@ -498,7 +500,7 @@ class Search:
         bits = ((1 << d) - 1) << p
         self.assign[i] = None
         bisect.insort(self.open, i)
-        self.unit_sum[mo.unit[i]] -= mo.hours[i][vi]
+        self.unit_sum[mo.unit[i]] -= mo.hours[i][vi][day]
         for r in self._resources(i):
             for q in range(d):
                 self.occ[r * mo.S + s + q] ^= mask

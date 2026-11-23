@@ -3,7 +3,7 @@
 // editor: grids by group, teacher or room; a meeting moved by drag or by keyboard (Enter, arrows, Enter) with the live
 // clash check of every slot (a blocked slot says why, in text); locks; unplaced meetings with reasons; the check run;
 // and the publication (shown only to an unscoped academic office: the server refuses everyone else anyway).
-import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, t, S, isoDay, fmtDate, fmtDateTime, progress, $, $$ } from "./core.js";
+import { api, html, mount, on, ic, toast, modal, route, pageHead, loading, failed, empty, t, S, isoDay, fmtDate, fmtDateTime, progress, num, $, $$ } from "./core.js";
 import { HOME } from "./shell.js";
 import { DAYS, KIND, PAIR, SHIFT, CONFIRM, pickTerm, termSelect, tabs, readinessTable, weeksLabel } from "./timetable-prep.js";
 
@@ -81,6 +81,8 @@ const scoreTable = (cards) => html`<div class="table-wrap"><table class="table t
   <tr><th scope="row">${t("Qaydaların pozuntusu")}</th>${cards.map((c) => html`<td>${c.score.hard ?? "—"}</td>`)}</tr>
   <tr><th scope="row">${t("Yerləşdirilən / yerləşdirilməyən")}</th>${cards.map((c) => html`<td>${c.score.placed ?? "—"} / ${c.score.unplaced ?? "—"}</td>`)}</tr>
   <tr><th scope="row">${t("Əhatə (‰)")}</th>${cards.map((c) => html`<td>${c.score.coverage ?? "—"}</td>`)}</tr>
+  <tr><th scope="row">${t("Saatı Forma №3-dən həddən artıq fərqlənən dərslər")}</th>${cards.map((c) => html`<td>${c.score.hours
+    ? html`${c.score.hours.flagged} <span class="tiny muted">(${t("{p} / {f} saat", { p: num(c.score.hours.planned_h), f: num(c.score.hours.form_h) })})</span>` : "—"}</td>`)}</tr>
   <tr><th scope="row">${t("Yumşaq qaydaların cəmi (nə qədər az olsa, o qədər yaxşıdır)")}</th>${cards.map((c) => html`<td><b>${c.score.soft ?? "—"}</b></td>`)}</tr>
   ${Object.keys(COMP()).filter((k) => cards.some((c) => c.score.components && c.score.components[k] && c.score.components[k].value)).map((k) => html`<tr><th scope="row">${COMP()[k]}</th>
     ${cards.map((c) => { const x = (c.score.components || {})[k] || { value: 0, cost: 0 }; return html`<td>${x.value} <span class="tiny muted">(${t("çəki ilə")} ${x.cost})</span></td>`; })}</tr>`)}

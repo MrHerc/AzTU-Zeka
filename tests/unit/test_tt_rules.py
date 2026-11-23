@@ -7,7 +7,7 @@ import random
 import pytest
 
 from zeka.core import tenant
-from zeka.modules.timetable import domain
+from zeka.modules.timetable import domain, solver
 
 ODD, EVEN = "odd", "even"
 
@@ -234,3 +234,24 @@ def test_the_timetable_settings_are_checked():
     assert bad(fixed_slots=[{"weekday": 1, "period": 1, "groups": [[2]]}]) and bad(shifts=[1]) and bad(approver=[])
     assert not bad(max_week_hours_group=24, confirmed=["pattern"], max_week_pairs_teacher=20,
                    fixed_slots=[{"weekday": 3, "period": 4, "groups": [5, 6]}])
+
+
+def test_s10_counts_the_weeks_a_placement_holds_and_the_solver_avoids_a_holiday_weekday():
+    """CORR-F1: hours_miss counted planned hours before holidays, so Monday (two holidays) and Thursday scored the same,
+    the solver kept Monday and the version showed hours_miss 0 while the hours report flagged the unit."""
+    term, holidays = {"teaching_start": "2027-02-15", "teaching_end": "2027-05-29"}, ["2027-03-08", "2027-05-10"]   # two Mondays
+    p = base()
+    p["weeks"] = domain.term_weeks(term)
+    p["units"] = [{"id": 1, "course_id": 1, "kind": "seminar", "teacher_id": 200, "groups": [10], "hours": 30, "students": 20}]
+    p["off"] = domain.lost_weeks(term, holidays, p["weeks"])
+    assert p["weeks"] == 15 and p["off"][1] == (1 << 3) | (1 << 12) and p["off"][4] == 0
+    card = {wd: domain.scorecard(p, [pl("1:0", weekday=wd)]) for wd in (1, 4)}
+    assert card[1]["components"]["hours_miss"]["value"] == 2 and card[1]["hours"]["flagged"] == 1 and card[1]["hours"]["planned_h"] == 26
+    assert card[4]["components"]["hours_miss"]["value"] == 0 and card[4]["hours"]["flagged"] == 0
+    rep = domain.hours_report(p, [pl("1:0", weekday=1)], term, holidays)
+    assert rep["units"][0]["planned_h"] == 26 and rep["flagged"] == 1 and "holidays" in rep["units"][0]["reasons"]
+    model = solver.prepare(p)
+    out = solver.result(model, solver.run(model, seed=0, budget=2000))
+    (chosen,) = out["placements"]
+    assert chosen["weekday"] != 1 and domain.scorecard(p, out["placements"])["components"]["hours_miss"]["value"] == 0
+    assert domain.scorecard(p, out["placements"])["soft"] == out["score"]["soft"], "the solver's running cost is the scorecard's"
