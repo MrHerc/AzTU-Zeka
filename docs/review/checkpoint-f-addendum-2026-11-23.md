@@ -152,3 +152,45 @@ Refuted: none. Narrowed by the refuters:
 - The audit detail "demo rol: student" shows in Azerbaijani in en and ru; the audit is append-only.
 - Checkpoint F's release recommendation is unchanged: not ready for production; ready for the owner's review and a
   pilot on a test server with synthetic data.
+
+## Syllabus acceptance, 2026-11-23
+
+**The walk.** The approval was walked in a browser on the demo as the owner would: the teacher drafts and tags
+ELM-2105, the demo department head (Vüsal Məmmədzadə) returns it, approves the resubmission, the demo academic office
+(Səadət Hacıyeva) publishes it with the audited permission; at 1280×720, 1280×900 and 390×844, in az and en
+(`012847d`, `647633d`, `54e0906`; browser check `tests/e2e/syllabus.js` through `tests/integration/test_syllabus_pages.py`).
+A review of that work (two lenses, every finding refuted separately) confirmed 10 defects and 8 test gaps; all are
+fixed in `ad11fe2`, each with a test seen failing first (the gaps: seen failing against the mutant they name).
+
+| Id | Severity | Defect | Fix |
+|---|---|---|---|
+| F1 | Medium | The user menu (7 demo roles plus the own-role switcher) was 785 px: «Çıxış» at y=818 of 720 could not be clicked; the tour hint covered the menu | The menu scrolls within the screen; the tour hint hides while a menu is open |
+| F2 | Medium | The reviewer's window was 431 px at 390: close, comment and «Təsdiqlə» cut off | A modal's grid track is `minmax(0, 1fr)`; wide tables scroll in their `.table-wrap` |
+| F3 | Medium | After a publication a new submission was compared with an older return and showed its note | `repo.returned_before` stops at the last approved or published version |
+| F4 | Low | The editor's fields (rows=2) cut their text at 390; the e2e check skipped every textarea | The fields grow with their text; the check covers them |
+| F5 | Low | A one-item «Rolu dəyiş» for the head; in the demo the office saw two switchers with the same names | Distinct roles are counted; in the demo the section is «Bu istifadəçinin rolları» |
+| F6 | Low | The demo head's coverage report was empty: the specialty had no department | The seed binds the demo specialty to the head's department |
+| F7 | Low | Every fresh draft warned that no outcome was taught or assessed | The draft spreads its outcomes over the weeks in order; the exam assesses them all |
+| F8 | Low | The printed and published syllabus did not show what a component assesses | A «Nəticələr» column |
+| F9 | Low | The academic office's phone bar was the dean's office's | Its own bar: Müraciətlər, Sillabus, Cədvəl, Davamiyyət |
+| F10 | Low | The 18 synthetic teachers had no `department_id` | The departments are bound after they are inserted |
+| SYL-T1, T4 | Test gap | The editor's untaught and Bloom warnings (mutants M13, M14, M15) | Asserted line by line; N1 also carries a same-level Bloom tag and a NICE item |
+| SYL-T2 | Test gap | The latest of two returns (M22) | `test_after_two_returns_a_resubmission_answers_the_later_one` |
+| SYL-T3 | Test gap | The demo's own-role switcher (M19) | The menu check reads `[data-role-to]` |
+| SYL-T5, T6, T7 | Test gap | Slot-counted hours (M20), the permission's edge cases (M23, M24), a component's non-list outcomes (M06) | One test each |
+| SYL-T8 | Test hygiene | Three review tests failed alone or reversed | Each test builds its own versions; all 12 pass alone and reversed |
+
+**Owner-dependent gaps.**
+- The demo binds «Kompüter mühəndisliyi» to the Elektronika department so that the demo head sees a programme. A real
+  specialty's department comes from the registry; a department head covers only programmes bound to their department.
+- The first draft's outcome links are a guess (in order over the weeks, all on the exam). Whether a draft should be
+  prefilled this way, or start unlinked with the warnings, is the owner's call; the teacher sees and changes the links.
+- F6 and F10 change the seed only: a demo database seeded before them needs `--reset` (Render resets on every start).
+- The non-list `outcomes` of a component is refused with the general component message, which does not name the field.
+- Release (Task 44) still waits for the owner's inputs; this section ticks nothing in `tasks/todo.md`.
+
+**Gate** (on `ad11fe2`): ruff clean, mypy clean (138 files), `node --check` on `frontend/js/*.js` clean, i18n stats 100% in en and
+ru, lint 72. Full suite: `2070 passed, 16 skipped, 4 warnings in 751.22s (0:12:31)` (the 14 axe checks skip without axe-core).
+
+**Not verified.** Not re-walked by hand after the fixes (only the browser script); not tried on a real phone or in
+Safari or Firefox; the menu's scrolling not checked with a keyboard or a screen reader; the axe run did not run.
