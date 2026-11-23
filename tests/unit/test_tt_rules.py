@@ -142,6 +142,17 @@ def test_each_hard_rule_is_found(change, want):
     assert want in codes(p, x), codes(p, x)
 
 
+def test_travel_allows_a_break_exactly_as_long_as_the_walk():
+    """TE-F9: pair 1 in building 1, pair 2 in building 2, a 10-minute break: a 10-minute walk fits, an 11-minute one does not."""
+    p, x = base(), copy.deepcopy(OK)
+    p["units"][1].update(teacher_id=200)
+    assert domain.breaks(domain.lesson_times(p))[0] == 10
+    p["settings"]["travel_default_min"] = 10
+    assert "travel" not in codes(p, x)
+    p["settings"]["travel_default_min"] = 11
+    assert "travel" in codes(p, x)
+
+
 def test_online_needs_no_room_and_manual_rows_are_obstacles():
     p = base()
     p["needs"] = [{"unit_id": 4, "mode": "online"}]

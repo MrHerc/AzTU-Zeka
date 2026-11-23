@@ -459,6 +459,18 @@ def test_only_the_newest_status_order_acts_and_an_old_one_may_name_a_closed_grou
         sql("UPDATE study_groups SET active=1 WHERE id=?", (closed,))
 
 
+def test_the_newest_order_into_a_closed_group_moves_nobody(world):
+    """TE-F5: the newest order names a group closed since: it is recorded, and the student stays in their group."""
+    s4 = uid("ETL-S4")
+    group = q("SELECT group_id FROM users WHERE id=?", (s4,))[0]["group_id"]
+    closed = sql("INSERT INTO study_groups(name,year,active) VALUES('ETL-2019',2019,0)")
+    r = run_import("status-events", "userSourcedId,kind,orderNo,orderDate,effectiveDate,group\n"
+                                    "ETL-S4,group_change,G-26,2026-11-01,2026-11-02,ETL-2019\n", as_of=None, dry_run=False, user_id=admin_id())
+    assert r["written"] and not r["error_count"], r["errors"]
+    assert q("SELECT to_group_id FROM student_status_events WHERE student_id=? AND order_no='G-26'", (s4,)) == [{"to_group_id": closed}]
+    assert q("SELECT group_id FROM users WHERE id=?", (s4,))[0]["group_id"] == group
+
+
 def test_a_real_open_exam_stops_a_writing_import(world):
     """TE-F5: the guard reads the exams table, not a stub; and again under the write lock (PY-F1)."""
     eid = sql("INSERT INTO exams(course_id,title,opens_at,closes_at,duration_min,plan,secret,created_at,opened_at,status) "

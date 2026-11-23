@@ -715,6 +715,23 @@ def test_t1_a_column_total_that_differs_from_the_rows_blocks_the_post(sheets_b):
     assert not post(form, "#0!B19").blocked, "the sheet's other sections are judged on their own"
 
 
+def test_t1_t2_tolerances_at_their_boundaries(sheets_a, sheets_b):
+    """TE-F8: T1 allows 0.011 h between a column total and its rows, T2 0.02 h on a semester total; just over blocks."""
+    s, r, c = at("#0!G17")
+    total = float(sheets_b[s].rows[r][c])
+    near = post(forma3.read(changed(sheets_b, **{"#0!G17": repr(total + 0.01)})), "#0!B10")
+    assert near.controls["T1"] and not near.blocked
+    form = forma3.read(changed(sheets_b, **{"#0!G17": repr(total + 0.012)}))
+    far = post(form, "#0!B10")
+    assert far.controls["T1"] is False and far.blocked and [x.cell for x in codes(form.conflicts, code="t1")] == ["#0!G17"]
+    s, r, c = at("#0!R17")
+    total = float(sheets_a[s].rows[r][c])
+    assert post(forma3.read(changed(sheets_a, **{"#0!R17": repr(total + 0.015)})), "#0!A7").controls["T2"]
+    form = forma3.read(changed(sheets_a, **{"#0!R17": repr(total + 0.03)}))
+    assert post(form, "#0!A7").controls["T2"] is False
+    assert [x.cell for x in codes(form.conflicts, code="t2")] == ["#0!R17", "#0!AH17"], "the semester and then the year"
+
+
 def test_t1_a_blank_total_cell_counts_as_zero(form_b, sheets_b):
     s, r, c = at("#0!M17")
     assert sheets_b[s].rows[r][c] == "" and post(form_b, "#0!B10").controls["T1"]

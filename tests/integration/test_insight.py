@@ -226,6 +226,14 @@ def test_a_sign_in_and_a_change_leave_an_event_and_a_read_does_not(app_db):
     assert events.module_of("zeka.modules.exam.routes") == "exam" and events.module_of("zeka.legacy.r_services") == "services"
 
 
+def q_seen(uid):
+    c = store.connect()
+    try:
+        return c.execute("SELECT last_seen FROM sessions WHERE id=(SELECT MAX(id) FROM sessions WHERE user_id=?)", (uid,)).fetchone()[0]
+    finally:
+        c.close()
+
+
 def test_a_session_s_first_request_of_a_day_is_a_visit(app_db, monkeypatch):
     s = app_db.client("student")
     uid = s.user["id"]
@@ -236,6 +244,14 @@ def test_a_session_s_first_request_of_a_day_is_a_visit(app_db, monkeypatch):
     monkeypatch.setattr(clock, "now", lambda: datetime(2026, 11, 19, 20, 30, tzinfo=timezone.utc))     # 00:30 in Baku, the next day
     assert s.get("/api/student/home").status == 200
     assert [(e["action"], e["created_at"]) for e in _events("user_id=?", (uid,))][-1] == ("visit", "2026-11-20T00:30:00")
+    visits = len(_events("user_id=? AND action='visit'", (uid,)))
+    c = store.connect()                 # TE-F6: later the same day, past SEEN_EVERY: last_seen moves, no second visit
+    c.execute("UPDATE sessions SET last_seen='2026-11-20T00:20:00' WHERE id=(SELECT MAX(id) FROM sessions WHERE user_id=?)", (uid,))
+    c.commit()
+    c.close()
+    assert s.get("/api/student/home").status == 200
+    assert len(_events("user_id=? AND action='visit'", (uid,))) == visits
+    assert q_seen(uid) == "2026-11-20T00:30:00"
 
 
 def test_the_retention_purge_drops_events_older_than_a_year(copy):

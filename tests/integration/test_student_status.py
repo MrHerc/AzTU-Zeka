@@ -136,6 +136,23 @@ def test_a_group_change_moves_the_student_and_records_where_from(app_db, registr
     assert q("SELECT group_id FROM users WHERE id=?", (st["id"],))[0]["group_id"] == gid
 
 
+def test_a_back_dated_order_is_history_and_changes_nothing(app_db, registrar):
+    """TE-F4: only the newest order (by effective date) acts; an expulsion dated before a transfer ends no enrolment."""
+    admin = app_db.client("admin")
+    fid = admin.get("/api/directory/faculties").json["items"][0]["id"]
+    gid = admin.post("/api/directory/groups", {"name": "S-26-8", "year": 2026, "faculty_id": fid}).json["id"]
+    st = q("SELECT u.id FROM users u WHERE u.role='student' AND u.username<>'aysel' AND EXISTS(SELECT 1 FROM enrollments e "
+           "WHERE e.user_id=u.id AND e.end_date IS NULL) AND NOT EXISTS(SELECT 1 FROM student_status_events s WHERE s.student_id=u.id) "
+           "ORDER BY u.id DESC LIMIT 1 OFFSET 2")[0]["id"]
+    opened = q("SELECT COUNT(*) n FROM enrollments WHERE user_id=? AND end_date IS NULL", (st,))[0]["n"]
+    r = registrar.post(f"/api/directory/students/{st}/status", order("group_change", order_no="8-Q", effective_date=day(5), to_group_id=gid))
+    assert r.status == 200 and q("SELECT group_id FROM users WHERE id=?", (st,))[0]["group_id"] == gid
+    r = registrar.post(f"/api/directory/students/{st}/status", order("expulsion", order_no="9-X", effective_date=day(1)))
+    assert r.status == 200 and [e["order_no"] for e in r.json["events"]][-1] == "8-Q"
+    assert q("SELECT COUNT(*) n FROM enrollments WHERE user_id=? AND end_date IS NULL", (st,))[0]["n"] == opened
+    assert q("SELECT group_id FROM users WHERE id=?", (st,))[0]["group_id"] == gid
+
+
 def test_a_dean_s_office_reads_only_its_faculty_and_the_read_is_audited(app_db, aysel):
     office = app_db.client("office")
     office.post("/api/me/role", {"role": "office"})
