@@ -8,6 +8,7 @@ publication to timetable rows, lessons from the effective date and one notificat
 publication that is interrupted after every batch and still writes everything exactly once."""
 import copy
 import csv
+import inspect
 import io
 import json
 import os
@@ -19,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from zeka.core import jobs, tenant
+from zeka.core import i18n, jobs, tenant
 from zeka.legacy import periodic, store             # periodic registers timetable.work
 from zeka.modules.timetable import builder, domain
 from zeka.modules.timetable import service as rows_service
@@ -38,6 +39,16 @@ def q(sql, args=()):
     c = store.connect()
     try:
         return store.rows(c, sql, args)
+    finally:
+        c.close()
+
+
+def _write(sql, args=()):
+    c = store.connect()
+    try:
+        cur = c.execute(sql, args)
+        c.commit()
+        return cur.lastrowid
     finally:
         c.close()
 
@@ -753,6 +764,27 @@ def test_the_weekly_schedule_shows_a_publication_only_from_its_effective_date(ap
 
 
 # ---------------------------------------------------------------- the hours report and the timetable export (Task 48, deferred parts)
+@pytest.fixture
+def chain(app_db, office_ao, head, world):
+    """ORD-2: the hours and export tests read the draft and the publication the tests above leave. Run alone (``-k``),
+    the tests above run here first, in file order. shortcut: assumes none of them ran in this session already; a
+    selection of some of them with these runs them twice, so select all or none of them."""
+    if "draft" in world:
+        return world
+    mp = pytest.MonkeyPatch()
+    given = {"app_db": app_db, "office_ao": office_ao, "head": head, "world": world, "monkeypatch": mp}
+    first = test_the_hours_report_counts_the_weeks_each_placement_holds.__code__.co_firstlineno
+    steps = sorted((f for n, f in globals().items() if n.startswith("test_") and f.__code__.co_firstlineno < first),
+                   key=lambda f: f.__code__.co_firstlineno)
+    try:
+        for f in steps:
+            f(*(given[a] for a in inspect.signature(f).parameters))
+            mp.undo()
+    finally:
+        mp.undo()
+    return world
+
+
 def _published_version():
     return q("SELECT id FROM tt_versions WHERE term_id=? AND status='published' ORDER BY id DESC LIMIT 1", (TERM,))[0]["id"]
 
@@ -769,7 +801,7 @@ def _tenant_with(monkeypatch, holidays=(), **timetable):
     monkeypatch.setattr(tenant, "load", load)
 
 
-def test_the_hours_report_counts_the_weeks_each_placement_holds(office_ao, world, monkeypatch):
+def test_the_hours_report_counts_the_weeks_each_placement_holds(office_ao, world, chain, monkeypatch):
     """The hours page: per unit the Forma №3 hours and the hours the placements yield in the term, counted here week by
     week over the term's teaching days without holidays; a new holiday takes its pair off and says why."""
     vid, url = world["draft"], f"/api/timetable/versions/{world['draft']}/hours?department_id={world['dep']}"
@@ -812,7 +844,7 @@ def test_the_hours_report_counts_the_weeks_each_placement_holds(office_ao, world
     assert "holidays" in [m["code"] for m in after[p["unit_id"]]["reasons"]]
 
 
-def test_the_hours_report_filters_totals_and_downloads_as_csv(office_ao, world, monkeypatch):
+def test_the_hours_report_filters_totals_and_downloads_as_csv(office_ao, world, chain, monkeypatch):
     """Outside the tolerance only, totals of what is listed, and the CSV (a BOM, the headings in the reader's language)."""
     _tenant_with(monkeypatch, hours_tolerance=0)
     base = f"/api/timetable/versions/{world['draft']}/hours"
@@ -829,7 +861,7 @@ def test_the_hours_report_filters_totals_and_downloads_as_csv(office_ao, world, 
     assert {x[8] for x in lines[1:]} == {"No"}                                     # within the tolerance: no, on every line
 
 
-def test_the_hours_report_keeps_to_the_callers_scope(app_db, office_ao, head, world):
+def test_the_hours_report_keeps_to_the_callers_scope(app_db, office_ao, head, world, chain):
     """As the builder: a draft only to the builders, an id out of scope 404, a scoped office reads only its own units."""
     draft, pub = world["draft"], _published_version()
     assert app_db.client("student").get(f"/api/timetable/versions/{pub}/hours").status == 403
@@ -854,7 +886,7 @@ def test_the_hours_report_keeps_to_the_callers_scope(app_db, office_ao, head, wo
     assert office_ao.get(f"/api/timetable/versions/{named}/hours").status == 200
 
 
-def test_the_timetable_export_writes_a_version_or_the_terms_rows(office_ao, world):
+def test_the_timetable_export_writes_a_version_or_the_terms_rows(office_ao, world, chain):
     """manage.py export --kind timetable: a version's placements (--version) or the term's rows in force (--term), one line
     per group, weeks in the canonical text, the effective date of the publishing version."""
     pub = _published_version()
@@ -886,3 +918,96 @@ def test_the_timetable_export_writes_a_version_or_the_terms_rows(office_ao, worl
     bad = subprocess.run([*man, "--version", "999999"], capture_output=True, env=env, timeout=120)
     assert bad.returncode == 2 and b"tap" in bad.stderr
     assert office_ao.get(f"/api/integration/export/timetable?version={pub}").status == 403          # integration.manage only
+
+
+def test_the_scorecard_counts_the_hours_as_the_hours_report_does(office_ao, world, chain):
+    """BR-T1: the versions' comparison and the hours page give one number for one version: a unit the run leaves out
+    (no groups) counts in both, with nothing planned."""
+    for vid in (world["draft"], _published_version()):
+        card = office_ao.get(f"/api/timetable/versions/{vid}/scorecard").json["score"]["hours"]
+        rep = office_ao.get(f"/api/timetable/versions/{vid}/hours").json
+        assert card == {"flagged": rep["flagged"], "form_h": rep["totals"]["form_h"], "planned_h": rep["totals"]["planned_h"]}, vid
+        assert world["lonely"] in {x["unit_id"] for x in rep["items"]}
+
+
+def test_the_hours_report_pages_keep_their_totals_and_the_department_list(office_ao, world, chain, monkeypatch):
+    """MUT-hours-page (h04 h05 h06): ``offset`` pages the lines by HOURS_PAGE, the totals and the count stay those of
+    every line; MUT-h03: a department filter keeps every department in the list; MUT-h09-h10: the tolerance is the
+    university's and a reason has its title in the reader's language."""
+    _tenant_with(monkeypatch, hours_tolerance=7)
+    monkeypatch.setattr(builder, "HOURS_PAGE", 3)
+    base = f"/api/timetable/versions/{world['draft']}/hours"
+    first, second = office_ao.get(f"{base}?offset=0").json, office_ao.get(f"{base}?offset=3").json
+    lines = list(csv.reader(io.StringIO(office_ao.get(f"{base}?format=csv").text.lstrip("\ufeff"))))[1:]
+    assert first["total"] == second["total"] == len(lines) > 6 and (first["offset"], second["offset"]) == (0, 3)
+    assert len(first["items"]) == len(second["items"]) == 3
+    pages = [x["unit_id"] for p in range(0, first["total"], 3) for x in office_ao.get(f"{base}?offset={p}").json["items"]]
+    assert len(pages) == len(set(pages)) == first["total"], "every line once, a page at a time"
+    assert first["totals"] == second["totals"] == {"form_h": sum(float(x[5]) for x in lines), "planned_h": sum(float(x[6]) for x in lines),
+                                                   "delta": round(sum(float(x[6]) - float(x[5]) for x in lines), 2)}
+    assert first["tolerance"] == 7
+    other = _write("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(1,'TTC','İkinci sınaq kafedrası',1,"
+                   "'2026-01-01','2026-01-01')")
+    _write("UPDATE courses SET department_id=? WHERE id=?", (other, world["courses"][1]))
+    try:
+        every = office_ao.get(base).json["departments"]
+        assert len(every) == 2 and office_ao.get(f"{base}?department_id={world['dep']}").json["departments"] == every
+    finally:
+        _write("UPDATE courses SET department_id=? WHERE id=?", (world["dep"], world["courses"][1]))
+        _write("DELETE FROM departments WHERE id=?", (other,))
+    lonely = next(x for p in range(0, first["total"], 3) for x in office_ao.get(f"{base}?offset={p}").json["items"]
+                  if x["unit_id"] == world["lonely"])
+    en = next(x for p in range(0, first["total"], 3) for x in office_ao.get(f"{base}?offset={p}", lang="en").json["items"]
+              if x["unit_id"] == world["lonely"])
+    assert lonely["reasons"][0]["code"] == "no_groups" and lonely["reasons"][0]["title"] == i18n.S(builder.HOURS_REASONS["no_groups"], "az")
+    assert en["reasons"][0]["title"] == i18n.S(builder.HOURS_REASONS["no_groups"], "en") != lonely["reasons"][0]["title"]
+
+
+def test_a_cell_of_the_hours_csv_never_starts_a_formula(office_ao, world, chain):
+    """MUT-csv (h08): a course name or a department name typed by a person is a cell that starts with a quote."""
+    course = world["courses"][0]
+    old = q("SELECT name FROM courses WHERE id=?", (course,))[0]["name"]
+    dep = q("SELECT name FROM departments WHERE id=?", (world["dep"],))[0]["name"]
+    _write("UPDATE courses SET name='=HYPERLINK(\"http://evil.example\")' WHERE id=?", (course,))
+    _write("UPDATE departments SET name='@SUM(1)' WHERE id=?", (world["dep"],))
+    try:
+        text = office_ao.get(f"/api/timetable/versions/{world['draft']}/hours?format=csv&department_id={world['dep']}").text
+        lines = list(csv.reader(io.StringIO(text.lstrip("\ufeff"))))[1:]
+        assert lines and {x[0] for x in lines} == {"'@SUM(1)"}
+        assert any(x[1].startswith("'=HYPERLINK") for x in lines) and not any(x[1].startswith("=") for x in lines)
+    finally:
+        _write("UPDATE courses SET name=? WHERE id=?", (old, course))
+        _write("UPDATE departments SET name=? WHERE id=?", (dep, world["dep"]))
+
+
+def test_the_http_export_takes_the_version_and_its_own_term_and_writes_canonical_weeks(app_db, world, chain):
+    """MUT-x06: ``?version=`` and ``?term=`` reach the export over HTTP; MUT-x10: a version's weeks are read with its own
+    term's week count; MUT-x02: stored weeks come out in the canonical text; MUT-x08: the audit names the version."""
+    admin, pub = app_db.client("admin"), _published_version()
+    term = q("SELECT * FROM academic_terms WHERE id=?", (TERM,))[0]
+    n = domain.term_weeks(term)
+    end = (date.fromisoformat(term["teaching_start"]) + timedelta(days=7 * (n - 3) - 1)).isoformat()   # three weeks shorter
+    other = _write("INSERT INTO academic_terms(code,name,teaching_start,teaching_end,exam_start,exam_end,active,created_at,updated_at) "
+                   "VALUES('TTX','Qısa semestr',?,?,?,?,0,'2026-01-01','2026-01-01')",
+                   (term["teaching_start"], end, term["exam_start"], term["exam_end"]))
+    n2 = domain.term_weeks(q("SELECT * FROM academic_terms WHERE id=?", (other,))[0])
+    assert 3 < n2 < n
+    copy_ = _write("INSERT INTO tt_versions(term_id,status,scope,rev,created_by,created_at,effective_from) SELECT ?,'superseded',scope,0,"
+                   "created_by,created_at,effective_from FROM tt_versions WHERE id=?", (other, pub))
+    two = q("SELECT * FROM tt_placements WHERE version_id=? ORDER BY id LIMIT 2", (pub,))
+    for p, weeks in zip(two, (f"1-{n2}", "1,2,3"), strict=True):
+        _write("INSERT INTO tt_placements(version_id,meeting_key,unit_id,part,weekday,period,duration,weeks,room_id,locked,origin) "
+               "VALUES(?,?,?,?,?,?,?,?,?,0,'manual')", (copy_, p["meeting_key"], p["unit_id"], p["part"], p["weekday"], p["period"],
+                                                     p["duration"], weeks, p["room_id"]))
+    r = admin.get(f"/api/integration/export/timetable?version={copy_}")
+    assert r.status == 200, r.text
+    got = list(csv.DictReader(io.StringIO(r.text.lstrip("\ufeff"))))
+    groups = {p["unit_id"]: max(1, q("SELECT COUNT(*) n FROM teaching_unit_groups WHERE unit_id=?", (p["unit_id"],))[0]["n"]) for p in two}
+    want = sorted((p["weekday"], p["period"], w) for p, w in zip(two, ("all", "1-3"), strict=True) for _ in range(groups[p["unit_id"]]))
+    assert got and sorted((int(x["day"]), int(x["pair"]), x["weeks"]) for x in got) == want
+    detail = q("SELECT detail FROM audit WHERE action='export' AND entity='timetable' ORDER BY id DESC LIMIT 1")[0]["detail"]
+    assert f"version {copy_}" in detail
+    by_term = admin.get(f"/api/integration/export/timetable?term={other}")
+    assert by_term.status == 200 and list(csv.DictReader(io.StringIO(by_term.text.lstrip("\ufeff")))) == [], "the short term has no rows"
+    assert f"term {other}" in q("SELECT detail FROM audit WHERE action='export' AND entity='timetable' ORDER BY id DESC LIMIT 1")[0]["detail"]
+

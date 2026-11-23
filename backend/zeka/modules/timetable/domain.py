@@ -645,17 +645,16 @@ def scorecard(problem: dict, placements: list[dict]) -> dict:
             val["stability_room"] += reroom
             val["move_repair"] += repair and (moved or reweek or reroom)
     units = {u["id"]: u for u in problem["units"]}
-    flagged = 0
     for uid in sorted({m["unit_id"] for m in meetings}):
         val["hours_miss"] += _hours_cost(planned.get(uid, 0), units[uid].get("hours"), st)
-        flagged += abs(planned.get(uid, 0) - float(units[uid].get("hours") or 0)) > st["hours_tolerance"]
+    # the hours over every unit of the problem, as hours_report counts them (BR-T1): an excluded unit plans nothing
+    flagged = sum(abs(planned.get(uid, 0) - float(u.get("hours") or 0)) > st["hours_tolerance"] for uid, u in units.items())
     comps = {k: {"value": x, "cost": x * w[k]} for k, x in val.items()}
     placed = len({p["key"] for p in placements} & {m["key"] for m in meetings})
     return {"components": comps, "soft": sum(c["cost"] for c in comps.values()), "placed": placed,
             "unplaced": len(meetings) - placed, "excluded": len(excluded),
             "coverage": placed * 1000 // len(meetings) if meetings else 1000,
-            "hours": {"flagged": flagged, "form_h": sum(float(units[u].get("hours") or 0) for u in {m["unit_id"] for m in meetings}),
-                      "planned_h": sum(planned.values())}}
+            "hours": {"flagged": flagged, "form_h": sum(float(u.get("hours") or 0) for u in units.values()), "planned_h": sum(planned.values())}}
 
 
 def hours_report(problem: dict, placements: list[dict], term: dict, holidays: Iterable[str], lessons: list[dict] | None = None) -> dict:
