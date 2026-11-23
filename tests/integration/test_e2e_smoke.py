@@ -30,7 +30,10 @@ def seen(app_db):
     for grant in ({"role": "dept_head", "scope_type": "faculty", "scope_id": faculty}, {"role": "proctor"}):
         r = admin.post(f"/api/admin/users/{teacher.user['id']}/roles", grant)
         assert r.status == 200, r.text
+    n0 = len(app_db.errors)
     run = subprocess.run([shutil.which("node"), str(SCRIPT), app_db.url], capture_output=True, text=True, timeout=900)
+    # TE-F11: a 500 during the node run happens before any test's own server-error guard: report it here, with its cause
+    assert not app_db.errors[n0:], "the server logged an exception during the browser run:\n" + "\n".join(app_db.errors[n0:])
     assert run.stdout.strip(), run.stderr
     out = json.loads(run.stdout.strip().splitlines()[-1])
     assert "fatal" not in out, out["fatal"]
