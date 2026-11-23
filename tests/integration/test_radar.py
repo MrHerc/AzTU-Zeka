@@ -249,12 +249,12 @@ def test_the_leadership_dashboard_and_the_staff_badge_read_the_summary_never_the
     def analysed(*_a, **_k):
         raise AssertionError("the campus-wide analysis ran in a request")
     monkeypatch.setattr(radar, "analysis", analysed)
-    when = datetime.fromisoformat(s["at"]).strftime("%d.%m.%Y %H:%M")
-    for lang in ("az", "en"):
+    at = datetime.fromisoformat(s["at"])
+    for lang, fmt in (("az", "%d.%m.%Y %H:%M"), ("en", "%d/%m/%Y %H:%M")):       # the reader's date format (Checkpoint F, L15)
         r = leader.get("/api/analytics", lang=lang)
         assert r.status == 200, r.text
         line = next(i for i in r.json["insights"] if i.get("link") == "/radar")
-        assert line["at"] == s["at"] and when in line["text"] and f"{s['high']} " in line["text"], line
+        assert line["at"] == s["at"] and at.strftime(fmt) in line["text"] and f"{s['high']} " in line["text"], line
     assert leader.get("/api/badges").json["radar"] == s["high"] and office.get("/api/badges").json["radar"] == s["high"]
 
     _db(lambda c: c.execute("DELETE FROM settings WHERE key='radar_summary'"))     # before the job's first run
