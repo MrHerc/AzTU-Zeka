@@ -9,12 +9,13 @@ const pick = (table, r) => table[r] || table[NAV_ROLE[r]] || [];
 export const ROLES = [
   ["student", t("Tələbə"), t("Aysel Məmmədova · İT-25-1"), "cap", "ic-blue"],
   ["teacher", t("Müəllim"), t("Dos. Rauf Əliyev · Elektronika"), "book", "ic-navy"],
+  ["dept_head", t("Kafedra müdiri"), t("Prof. Vüsal Məmmədzadə · Elektronika"), "check", "ic-teal"],
   ["office", t("Dekanlıq"), t("Nigar Rzayeva · müraciətlər"), "inbox", "ic-green"],
+  ["academic_office", t("Tədris hissəsi"), t("Səadət Hacıyeva · sillabusların dərci"), "layers", "ic-violet"],
   ["leader", t("Rəhbərlik"), t("Rektorluq · pilot paneli"), "chart", "ic-amber"],
   ["admin", t("Administrator"), t("İT mərkəzi · platforma"), "sliders", "ic-coral"],
 ];
-export const ROLE_LABEL = { ...Object.fromEntries(ROLES.map((r) => [r[0], r[1]])),
-  dept_head: t("Kafedra müdiri"), academic_office: t("Tədris hissəsi"), proctor: t("İmtahan nəzarətçisi") };
+export const ROLE_LABEL = { ...Object.fromEntries(ROLES.map((r) => [r[0], r[1]])), proctor: t("İmtahan nəzarətçisi") };
 
 const UNI = [t("Universitet"), [["news", t("Xəbərlər və tədbirlər"), "/news", "news"], ["trophy", t("Nailiyyətlər"), "/achievements"], ["phone", t("Əlaqə"), "/contact"]]];
 const UNI_STAFF = [t("Universitet"), [["trophy", t("Nailiyyətlər"), "/achievements"], ["phone", t("Əlaqə"), "/contact"]]];
@@ -225,20 +226,19 @@ function userMenu(host) {
   on(dd, "click", "[data-switch]", (e, b) => { closeDropdowns(); if (b.dataset.switch !== S.user.role) switchRole(b.dataset.switch); });
   on(dd, "click", "#um-theme", () => { closeDropdowns(); toggleTheme(); });
   on(dd, "click", "#um-password", () => { closeDropdowns(); passwordModal(false); });
-  if (S.app.mode === "prod") {                       // more than one role (Task 13): choose the one to act in
-    api.get("/api/me/roles").then((r) => {
-      if (r.roles.length < 2) return;
-      const box = document.createElement("div");
-      mount(box, html`<div class="menu-sep"></div><div class="menu-label">${t("Rolu dəyiş")}</div>${[...new Set(r.roles.map((x) => x.role))].map((k) =>
-        html`<button class="menu-item" data-role-to="${k}">${ROLE_LABEL[k] || k}${k === r.active ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}`);
-      dd.querySelector("#logout")?.before(...box.childNodes);
-    }).catch(() => {});
-    on(dd, "click", "[data-role-to]", async (e, b) => {
-      closeDropdowns();
-      try { const r = await api.post("/api/me/role", { role: b.dataset.roleTo }); S.user.role = r.role; document.getElementById("root").dataset.shell = ""; go(r.home); }
-      catch (err) { toast(err.message, "err"); }
-    });
-  }
+  // more than one role (Task 13): choose the one to act in; in the demo too (a demo user may hold a granted role)
+  api.get("/api/me/roles").then((r) => {
+    if (r.roles.length < 2) return;
+    const box = document.createElement("div");
+    mount(box, html`<div class="menu-sep"></div><div class="menu-label">${t("Rolu dəyiş")}</div>${[...new Set(r.roles.map((x) => x.role))].map((k) =>
+      html`<button class="menu-item" data-role-to="${k}">${ROLE_LABEL[k] || k}${k === r.active ? raw(` <span class="badge b-green" style="margin-left:auto">${esc(t("Aktiv"))}</span>`) : ""}</button>`)}`);
+    dd.querySelector("#logout")?.before(...box.childNodes);
+  }).catch(() => {});
+  on(dd, "click", "[data-role-to]", async (e, b) => {
+    closeDropdowns();
+    try { const r = await api.post("/api/me/role", { role: b.dataset.roleTo }); S.user.role = r.role; document.getElementById("root").dataset.shell = ""; go(r.home); }
+    catch (err) { toast(err.message, "err"); }
+  });
   on(dd, "click", "#logout", async () => { closeDropdowns(); await api.post("/api/auth/logout"); S.user = null; go("/login"); });
 }
 

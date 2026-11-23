@@ -38,7 +38,9 @@ def state(c, user, cid: int) -> dict | None:
     if not co or not may_read(c, user, cid):
         return None
     latest, forma3 = _version(repo.latest(c, cid)), imported(c, cid)
-    return {"course": {k: co[k] for k in ("id", "code", "name", "credits")}, "versions": repo.versions(c, cid), "latest": latest,
+    from . import frameworks                     # here: frameworks imports this module
+    return {"checks": domain.checks(latest["data"], frameworks.outcome_items(c, cid)) if latest else None,
+            "course": {k: co[k] for k in ("id", "code", "name", "credits")}, "versions": repo.versions(c, cid), "latest": latest,
             "published": _version(repo.published(c, cid)), "imported": forma3,
             "diff": domain.workload_diff(latest["data"].get("workload", {}), forma3) if latest else [],
             "can_edit": may_write(user, co), "limit_percent": tenant.load(c)["attendance"]["limit_percent"],
@@ -81,9 +83,15 @@ def save(c, user, cid: int, body) -> tuple[str, object]:
 
 
 def version(c, user, cid: int, vid: int) -> dict | None:
-    if not may_read(c, user, cid):
+    """A version with its outcome map (a submitted one's own, frozen at submission; a draft's the course's current one)
+    and the approver's warnings (``domain.checks``)."""
+    v = repo.version(c, cid, vid) if may_read(c, user, cid) else None
+    if not v:
         return None
-    return _version(repo.version(c, cid, vid))
+    from . import frameworks
+    out = _version(v) or {}
+    tags = frameworks.outcome_items(c, cid, [o["id"] for o in out["data"].get("outcomes", [])], v["tags"])
+    return out | {"tags": tags, "checks": domain.checks(out["data"], tags)}
 
 
 def printable(c, user, cid: int, vid: int | None) -> tuple[dict, dict, dict | None] | None:
@@ -144,7 +152,9 @@ def act(c, user, cid: int, vid: int, action: str, body) -> tuple[str, object]:
     at = iso(now())
     if action == "publish":
         graded = repo.has_grades(c, cid)
-        if graded and not (body.get("override") is True and len(note) >= 3):
+        if graded and body.get("override") is True and len(note) < 3:      # the box is ticked: only the reason is missing (D7)
+            return "blocked", E("Xüsusi icazənin səbəbini şərhdə yazın")
+        if graded and body.get("override") is not True:
             return "blocked", E("Bu fəndə artıq bal yazılıb: dərc etmək üçün tədris hissəsinin xüsusi icazəsi və səbəbin göstərilməsi lazımdır")
         data, rules = J(v["data"], {}), tenant.load(c)
         modes, locked = domain.tutor_modes(data["rules"]["ai_policy"])
@@ -176,11 +186,15 @@ def queue(c, user) -> list[dict]:
             if user["role"] == "dept_head" and not _covers(c, user, {"id": v["course_id"], "department_id": v["department_id"]}):
                 continue
             data, pub = J(v["data"], {}), repo.published(c, v["course_id"])
+            back = repo.returned_before(c, v["course_id"], v["version"])    # a resubmission: what changed since the return (D5)
             co = repo.course(c, v["course_id"])
             out.append({k: v[k] for k in ("id", "course_id", "version", "status", "created_at", "code", "name", "author")} |
                        {"actions": actions(c, user, co, v), "published_id": pub["id"] if pub else None} |
                        {"forma3": domain.workload_diff(data.get("workload", {}), imported(c, v["course_id"])),
-                        "changes": len(domain.diff(J(pub["data"], {}), data)) if pub else None})
+                        "changes": len(domain.diff(J(pub["data"], {}), data)) if pub else None,
+                        "returned_id": back["id"] if back else None, "returned_version": back["version"] if back else None,
+                        "returned_note": back["note"] if back else None,
+                        "changes_returned": len(domain.diff(J(back["data"], {}), data)) if back else None})
     return out
 
 

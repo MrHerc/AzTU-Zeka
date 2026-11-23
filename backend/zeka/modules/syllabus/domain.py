@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 import re
 
-from ...core.i18n import E
+from ...core.i18n import E, Lit
 
 BLOOM = ("remember", "understand", "apply", "analyze", "evaluate", "create")
 KINDS = ("attendance", "component", "exam")
@@ -96,9 +96,12 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
         name = _text(a.get("name"), 2, 100) if isinstance(a, dict) else None
         kind = a.get("kind") if isinstance(a, dict) else None
         weight = _number(a.get("weight"), 0.5, 100) if isinstance(a, dict) else None
-        if name is None or kind not in KINDS or weight is None:
+        assesses = a.get("outcomes", []) if isinstance(a, dict) else None
+        if name is None or kind not in KINDS or weight is None or not isinstance(assesses, list):
             return {}, E("Hər komponentin adı, növü və 0,5–100 arasında çəkisi olmalıdır")
-        out["assessment"].append({"name": name, "kind": kind, "weight": round(weight, 2)})
+        if any(x not in ids for x in assesses):
+            return {}, E("«{name}» komponenti sillabusda olmayan nəticəyə istinad edir", name=Lit(name))
+        out["assessment"].append({"name": name, "kind": kind, "weight": round(weight, 2), "outcomes": list(dict.fromkeys(assesses))})
     names = [a["name"] for a in out["assessment"]]
     if len(set(names)) != len(names):
         return {}, E("Komponent adları təkrarlanmamalıdır")
@@ -141,6 +144,9 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
         if title is None or x.get("kind") not in LITERATURE:
             return {}, E("Hər mənbənin 3–500 simvolluq adı və növü (əsas və ya əlavə) olmalıdır")
         out["literature"].append({"title": title, "kind": x["kind"]})
+    titles = [x["title"] for x in out["literature"]]
+    if len(set(titles)) != len(titles):                  # the diff keys sources by title (audit SYL-D2)
+        return {}, E("Ədəbiyyat siyahısında eyni adlı iki mənbə ola bilməz")
 
     raw = data.get("workload")
     w: dict = raw if isinstance(raw, dict) else {}
@@ -248,4 +254,16 @@ def diff(a: dict, b: dict) -> list[dict]:
         if a.get(section) != b.get(section):
             out.append({"section": section, "change": "changed", "key": section, "before": a.get(section), "after": b.get(section)})
     order = {s: i for i, s in enumerate(("description", "outcomes", "plan", "assessment", "rules", "prerequisites", "literature", "workload"))}
-    return sorted(out, key=lambda x: (order[x["section"]], (0, int(x["key"]), "") if str(x["key"]).isdigit() else (1, 0, str(x["key"]))))  # week 2 before 10
+    # week 2 before 10; isdecimal, not isdigit: int() refuses superscript digits such as «²³⁴» (audit SYL-D1)
+    return sorted(out, key=lambda x: (order[x["section"]], (0, int(x["key"]), "") if str(x["key"]).isdecimal() else (1, 0, str(x["key"]))))
+
+
+def checks(data: dict, tags: dict[str, list[dict]]) -> dict:
+    """Warnings for the approver, never a refusal: the outcomes no week of the plan teaches, those no component assesses,
+    and the outcomes whose Bloom level differs from a Bloom tag on them. ``tags``: {outcome: [{key, code}, ...]}."""
+    ids = [o["id"] for o in data.get("outcomes", [])]
+    taught = {x for p in data.get("plan", []) for x in p.get("outcomes", [])}
+    assessed = {x for a in data.get("assessment", []) for x in a.get("outcomes", [])}
+    bloom = [{"outcome": o["id"], "level": o["bloom"], "tags": codes} for o in data.get("outcomes", [])
+             if (codes := [t["code"] for t in tags.get(o["id"], []) if t.get("key") == "bloom" and t.get("code") != o["bloom"]])]
+    return {"untaught": [i for i in ids if i not in taught], "unassessed": [i for i in ids if i not in assessed], "bloom": bloom}

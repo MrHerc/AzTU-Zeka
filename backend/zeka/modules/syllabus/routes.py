@@ -43,7 +43,7 @@ def version(req):
     out = service.version(req.db, req.user, req.params["id"], req.params["vid"])
     if out is None:
         raise HTTPError(404, "Versiya tapılmadı")
-    return out
+    return out | {"tags": localize(out["tags"], req.lang)}        # the built-in frameworks' items are translated, the text is not
 
 
 # ---------------------------------------------------------------- approval and publication (Task 25)

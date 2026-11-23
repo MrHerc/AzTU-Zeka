@@ -1,0 +1,16 @@
+{
+ "Prof. Vüsal Məmmədzadə · Elektronika": "Prof. Vüsal Məmmədzadə · Electronics",
+ "Səadət Hacıyeva · sillabusların dərci": "Səadət Hacıyeva · syllabus publication",
+ "Həftəlik planda tədris olunmayan nəticələr: {list}": "Outcomes not taught in the weekly plan: {list}",
+ "Heç bir komponentdə qiymətləndirilməyən nəticələr: {list}": "Outcomes not assessed by any component: {list}",
+ "{id}: Bloom səviyyəsi «{level}», Bloom bəndi isə «{tag}»": "{id}: the Bloom level is “{level}”, but the Bloom tag is “{tag}”",
+ "Bu, xəbərdarlıqdır: saxlamağa və təsdiqə mane olmur.": "This is a warning: it does not prevent saving or approval.",
+ "Qiymətləndirdiyi nəticələr": "Outcomes it assesses",
+ "Geri qaytarılmış versiyadan fərq: {c}": "Changes since the returned version: {c}",
+ "Sillabus təsdiqləndi": "Syllabus approved",
+ "Sillabus geri qaytarıldı": "Syllabus returned",
+ "Sillabus dərc olundu": "Syllabus published",
+ "Geri qaytarılmış versiyadan fərq (versiya {n})": "Changes since the returned version (version {n})",
+ "Geri qaytarma şərhi": "Reason for return",
+ "Çap görünüşü": "Print view"
+}

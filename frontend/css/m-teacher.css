@@ -32,3 +32,11 @@
   .qstat { grid-template-columns: 1fr; row-gap: 4px; }
   .qstat .right { text-align: left; }
 }
+
+/* The syllabus editor (acceptance walk D3): an outcome's text and a week's topic and activity take the card's full width */
+.syl-rows { display: grid; gap: 12px; }
+.syl-row { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.syl-row-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.syl-row-h .select { width: auto; }
+.syl-text { min-height: 0; }
+.syl-pre { white-space: pre-line; }

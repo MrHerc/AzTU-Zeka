@@ -72,6 +72,12 @@ def pending(c, status: str) -> list[dict]:
                    "WHERE v.status=? ORDER BY v.created_at", (status,))
 
 
+def returned_before(c, cid: int, version: int):
+    """The latest returned version before ``version``: what a resubmission answers."""
+    return row(c, "SELECT id, version, note, data FROM syllabus_versions WHERE course_id=? AND status='returned' AND version<? "
+                  "ORDER BY version DESC LIMIT 1", (cid, version))
+
+
 def enrolled(c, cid: int, uid: int) -> bool:
     return row(c, "SELECT 1 FROM enrollments WHERE course_id=? AND user_id=?", (cid, uid)) is not None
 
@@ -140,8 +146,10 @@ def item(c, fid: int, code: str):
     return row(c, "SELECT id, kind FROM framework_items WHERE framework_id=? AND code=?", (fid, code))
 
 
-def search_items(c, fid: int, kind: str | None, like: str | None, role_id: int | None, limit: int, offset: int) -> list[dict]:
-    """A page of a framework's items in (kind, code) order; ``role_id``: the items that work role links to."""
+def search_items(c, fid: int, kind: str | None, like: str | None, role_id: int | None, limit: int, offset: int,
+                 written: bool = False) -> list[dict]:
+    """A page of a framework's items in (kind, code) order, or with ``written`` in the order they were written (a built-in
+    framework: Bloom's levels low to high, D6); ``role_id``: the items that work role links to."""
     sql = f"SELECT {ITEM} FROM framework_items i"                      # nosec B608 (constant fragments)
     args: list[object] = []
     if role_id:
@@ -155,7 +163,7 @@ def search_items(c, fid: int, kind: str | None, like: str | None, role_id: int |
     if like:
         sql += " AND (i.code LIKE ? ESCAPE '\\' OR i.title LIKE ? ESCAPE '\\' OR i.text LIKE ? ESCAPE '\\')"
         args += [like, like, like]
-    return rows(c, sql + " ORDER BY i.kind, i.code LIMIT ? OFFSET ?", (*args, limit, offset))
+    return rows(c, sql + (" ORDER BY i.kind, i.id" if written else " ORDER BY i.kind, i.code") + " LIMIT ? OFFSET ?", (*args, limit, offset))
 
 
 def items_by_ids(c, ids: list[int]) -> list[dict]:

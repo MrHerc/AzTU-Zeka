@@ -236,7 +236,7 @@ def search(c, fid: int, q, kind, role, page: int, size: int) -> dict | None:
     text = " ".join(str(q or "").split())[:100]
     like = "%" + re.sub(r"([\\%_])", r"\\\1", text) + "%" if text else None
     kind = kind if isinstance(kind, str) and KIND.fullmatch(kind) else None
-    found = repo.search_items(c, fid, kind, like, role_id, size + 1, (page - 1) * size)
+    found = repo.search_items(c, fid, kind, like, role_id, size + 1, (page - 1) * size, written=bool(fw["builtin"]))
     return {"framework": _fw(fw), "items": [_item(r) for r in found[:size]], "page": page, "more": len(found) > size}
 
 

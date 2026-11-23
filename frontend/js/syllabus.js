@@ -26,13 +26,39 @@ function diffList(changes) {
     ${x.key !== x.section ? html` <span class="tiny muted">${x.key}</span>` : ""}</div><span class="badge ${CHANGE()[x.change][1]}">${CHANGE()[x.change][0]}</span></div>`)}</div>`;
 }
 
-// A version as the reviewers read it.
-function readOnly(d) {
+// Warnings for the author and the approver, never a refusal (as domain.checks on the server): the outcomes no week of the
+// plan teaches, those no component assesses, and an outcome whose Bloom level differs from a Bloom tag on it.
+function checksOf(d, tags) {
+  const taught = new Set(d.plan.flatMap((p) => p.outcomes)), assessed = new Set(d.assessment.flatMap((a) => a.outcomes || []));
+  return { untaught: d.outcomes.filter((o) => !taught.has(o.id)).map((o) => o.id), unassessed: d.outcomes.filter((o) => !assessed.has(o.id)).map((o) => o.id),
+    bloom: d.outcomes.map((o) => ({ outcome: o.id, level: o.bloom, tags: (tags[o.id] || []).filter((x) => x.key === "bloom" && x.code !== o.bloom).map((x) => x.code) }))
+      .filter((x) => x.tags.length) };
+}
+function checksNotice(c) {
+  if (!c.untaught.length && !c.unassessed.length && !c.bloom.length) return "";
+  return html`<div class="notice warn" data-checks>${ic("alert", 16)}<div class="stack sm">
+    ${c.untaught.length ? html`<div>${t("Həftəlik planda tədris olunmayan nəticələr: {list}", { list: c.untaught.join(", ") })}</div>` : ""}
+    ${c.unassessed.length ? html`<div>${t("Heç bir komponentdə qiymətləndirilməyən nəticələr: {list}", { list: c.unassessed.join(", ") })}</div>` : ""}
+    ${c.bloom.map((b) => html`<div>${t("{id}: Bloom səviyyəsi «{level}», Bloom bəndi isə «{tag}»", { id: b.outcome, level: label(BLOOM, b.level), tag: b.tags.map((x) => label(BLOOM, x)).join(", ") })}</div>`)}
+    <div class="tiny muted">${t("Bu, xəbərdarlıqdır: saxlamağa və təsdiqə mane olmur.")}</div></div></div>`;
+}
+
+// A version as the reviewers read it: everything the approver approves, with the outcomes' tags frozen at submission.
+function readOnly(d, tags = {}) {
+  const rules = d.rules || {};
   return html`<div class="stack">
-    <div><b class="small">${t("Təlim nəticələri")}</b><div class="table-wrap"><table class="table"><tbody>${d.outcomes.map((o) => html`<tr><td><b>${o.id}</b></td><td>${o.text}</td><td class="nowrap">${label(BLOOM, o.bloom)}</td></tr>`)}</tbody></table></div></div>
-    <div><b class="small">${t("Həftəlik plan")}</b><div class="table-wrap"><table class="table"><tbody>${d.plan.map((p) => html`<tr><td>${p.week}</td><td>${p.topic}</td><td class="nowrap">${p.outcomes.join(", ")}</td></tr>`)}</tbody></table></div></div>
-    <div><b class="small">${t("Qiymətləndirmə")}</b><div class="table-wrap"><table class="table"><tbody>${d.assessment.map((a) => html`<tr><td>${a.name}</td><td>${label(KIND, a.kind)}</td><td>${a.weight}</td></tr>`)}</tbody></table></div></div>
-    <div class="small">${t("Buraxılmış dərslərin həddi, %")}: <b>${d.rules.attendance_limit}</b> · ${t("Süni intellektdən istifadə")}: <b>${label(AI, d.rules.ai_policy)}</b></div>
+    ${d.description ? html`<div><b class="small">${t("Fənnin təsviri")}</b><p class="small syl-pre" style="margin:4px 0 0">${d.description}</p></div>` : ""}
+    <div><b class="small">${t("Təlim nəticələri")}</b><div class="table-wrap"><table class="table"><tbody>${d.outcomes.map((o) => html`<tr><td><b>${o.id}</b></td>
+      <td>${o.text}${tagChips(tags[o.id] || [])}</td><td class="nowrap">${label(BLOOM, o.bloom)}</td></tr>`)}</tbody></table></div></div>
+    <div><b class="small">${t("Həftəlik plan")}</b><div class="table-wrap"><table class="table"><thead><tr><th>${t("Həftə")}</th><th>${t("Mövzu")}</th><th>${t("Nəticələr")}</th><th>${t("Fəaliyyət")}</th></tr></thead>
+      <tbody>${d.plan.map((p) => html`<tr><td>${p.week}</td><td>${p.topic}</td><td class="nowrap">${p.outcomes.join(", ")}</td><td>${p.activity}</td></tr>`)}</tbody></table></div></div>
+    <div><b class="small">${t("Qiymətləndirmə")}</b><div class="table-wrap"><table class="table"><thead><tr><th>${t("Komponent")}</th><th>${t("Növ")}</th><th>${t("Çəki")}</th><th>${t("Nəticələr")}</th></tr></thead>
+      <tbody>${d.assessment.map((a) => html`<tr><td>${a.name}</td><td>${label(KIND, a.kind)}</td><td>${a.weight}</td><td>${(a.outcomes || []).join(", ") || "—"}</td></tr>`)}</tbody></table></div></div>
+    <div class="small">${t("Buraxılmış dərslərin həddi, %")}: <b>${rules.attendance_limit}</b> · ${t("Süni intellektdən istifadə")}: <b>${label(AI, rules.ai_policy)}</b></div>
+    ${rules.ai_note ? html`<div class="small"><b>${t("AI siyasətinin izahı")}</b>: <span class="syl-pre">${rules.ai_note}</span></div>` : ""}
+    ${rules.late_policy ? html`<div class="small"><b>${t("Gecikmiş işlər")}</b>: <span class="syl-pre">${rules.late_policy}</span></div>` : ""}
+    <div class="small"><b>${t("Prerekvizitlər")}</b>: ${(d.prerequisites || []).join(", ") || "—"}</div>
+    <div><b class="small">${t("Ədəbiyyat")}</b>${(d.literature || []).length ? html`<ul class="small" style="margin:4px 0 0">${d.literature.map((x) => html`<li>${x.title} <span class="badge b-gray">${label(LIT, x.kind)}</span></li>`)}</ul>` : html` <span class="small">—</span>`}</div>
     <div class="small">${t("İş yükü, saat")}: ${WORK().map(([k, l]) => html`${l} <b>${d.workload[k]}</b> `)}</div></div>`;
 }
 
@@ -84,6 +110,9 @@ async function pickTags(cid, oid, current, done) {
         kind = (fw.kinds.find((k) => k.mappable) || {}).kind || "";
         role = "";
         page = 1;
+        q = "";                                           // a word searched in one framework finds nothing in another (D6)
+        clearTimeout(timer);
+        $("#fw-q").value = "";
         mount($("#fw-k"), html`${fw.kinds.filter((k) => k.mappable).map((k) => html`<option value="${k.kind}" ${k.kind === kind ? "selected" : ""}>${k.label}</option>`)}`);
         let roles = [];
         try { roles = fw.counts.work_role ? (await api.get(`/api/frameworks/${fw.id}/items?kind=work_role&size=100`)).items : []; } catch (err) { toast(err.message, "err"); }
@@ -130,6 +159,8 @@ route("/teacher/syllabus", async (el, p, q) => {
   } catch (err) { return mount(el, failed(err.message)); }
   const sum = () => (s ? s.assessment.reduce((a, x) => a + (+x.weight || 0), 0) : 0);
 
+  // the warnings follow the editor as it changes, without redrawing it
+  const drawChecks = () => { const box = el.querySelector("#syl-checks"); if (box && s) mount(box, checksNotice(checksOf(s, tags))); };
   const draw = () => {
     const total = Math.round(sum() * 100) / 100, imported = st.imported || {};
     mount(el, html`${pageHead(t("Sillabus"), t("Strukturlaşdırılmış sillabus: hər saxlama yeni versiyadır, dərc olunmuş versiya dəyişmir."),
@@ -148,26 +179,28 @@ route("/teacher/syllabus", async (el, p, q) => {
       <div class="grid g-12"><div class="stack">
         <div class="card"><div class="card-h"><h3>${ic("book", 17)} ${t("Fənnin təsviri")}</h3></div><div class="card-b"><textarea class="textarea" data-f="description" maxlength="4000" aria-label="${t("Fənnin təsviri")}">${s.description}</textarea></div></div>
         <div class="card" data-tour="outcomes"><div class="card-h"><h3>${ic("target", 17)} ${t("Təlim nəticələri")}</h3><button class="btn btn-sm" id="add-o">${ic("plus", 13)} ${t("Əlavə et")}</button></div>
-          <div class="table-wrap"><table class="table"><thead><tr><th>${t("Kod")}</th><th>${t("Nəticə")}</th><th>${t("Bloom səviyyəsi")}</th><th>${t("Çərçivə bəndləri")}</th><th></th></tr></thead><tbody>
-          ${s.outcomes.map((o, i) => html`<tr><td><b>${o.id}</b></td><td><input class="input" data-o-text="${i}" value="${o.text}" aria-label="${t("Nəticə")}"></td>
-            <td><select class="select" data-o-bloom="${i}" aria-label="${t("Bloom səviyyəsi")}">${opts(BLOOM(), o.bloom)}</select></td>
-            <td>${tagChips(tags[o.id] || [])}${st.latest && st.latest.data.outcomes.some((x) => x.id === o.id)
+          <div class="card-b syl-rows">${s.outcomes.map((o, i) => html`<div class="syl-row">
+            <div class="syl-row-h"><b>${o.id}</b><select class="select" data-o-bloom="${i}" aria-label="${t("Bloom səviyyəsi")}: ${o.id}">${opts(BLOOM(), o.bloom)}</select>
+              <span class="grow"></span><button class="btn btn-ghost btn-icon" data-o-del="${i}" aria-label="${t("Sil")}: ${o.id}">${ic("x", 14)}</button></div>
+            <textarea class="textarea syl-text" rows="2" data-o-text="${i}" aria-label="${t("Nəticə")}: ${o.id}">${o.text}</textarea>
+            <div class="row wrap">${tagChips(tags[o.id] || [])}${st.latest && st.latest.data.outcomes.some((x) => x.id === o.id)
               ? html`<button class="btn btn-ghost btn-sm" data-o-tags="${o.id}">${ic("plus", 13)} ${t("Bəndlər")}</button>`
-              : html`<span class="tiny muted">${t("Saxladıqdan sonra")}</span>`}</td>
-            <td><button class="btn btn-ghost btn-icon" data-o-del="${i}" aria-label="${t("Sil")}">${ic("x", 14)}</button></td></tr>`)}</tbody></table></div>
-          <div class="card-b tiny muted">${t("Ölçülə bilən fellərdən istifadə edin: «izah edir», «hesablayır», «layihələndirir».")}</div></div>
+              : html`<span class="tiny muted">${t("Saxladıqdan sonra")}</span>`}</div></div>`)}
+            <div id="syl-checks"></div>
+            <div class="tiny muted">${t("Ölçülə bilən fellərdən istifadə edin: «izah edir», «hesablayır», «layihələndirir».")}</div></div></div>
         <div class="card"><div class="card-h"><h3>${ic("calendar", 17)} ${t("Həftəlik plan")}</h3><button class="btn btn-sm" id="add-w">${ic("plus", 13)} ${t("Həftə əlavə et")}</button></div>
-          <div class="table-wrap"><table class="table"><thead><tr><th>${t("Həftə")}</th><th>${t("Mövzu")}</th><th>${t("Nəticələr")}</th><th>${t("Fəaliyyət")}</th><th></th></tr></thead><tbody>
-          ${s.plan.map((w, i) => html`<tr><td><input class="input" type="number" min="1" max="30" style="width:70px" data-p-week="${i}" value="${w.week}" aria-label="${t("Həftə")}"></td>
-            <td><input class="input" data-p-topic="${i}" value="${w.topic}" aria-label="${t("Mövzu")}"></td>
-            <td class="nowrap">${s.outcomes.map((o) => html`<label class="small" style="margin-right:6px"><input type="checkbox" data-p-out="${i}" value="${o.id}" ${w.outcomes.includes(o.id) ? "checked" : ""}> ${o.id}</label>`)}</td>
-            <td><input class="input" data-p-act="${i}" value="${w.activity}" aria-label="${t("Fəaliyyət")}"></td>
-            <td><button class="btn btn-ghost btn-icon" data-p-del="${i}" aria-label="${t("Sil")}">${ic("x", 14)}</button></td></tr>`)}</tbody></table></div></div>
+          <div class="card-b syl-rows">${s.plan.map((w, i) => html`<div class="syl-row">
+            <div class="syl-row-h"><label class="small" for="pw-${i}">${t("Həftə")}</label><input class="input" id="pw-${i}" type="number" min="1" max="30" style="width:70px" data-p-week="${i}" value="${w.week}">
+              <span class="row wrap grow" role="group" aria-label="${t("Nəticələr")}">${s.outcomes.map((o) => html`<label class="small nowrap"><input type="checkbox" data-p-out="${i}" value="${o.id}" ${w.outcomes.includes(o.id) ? "checked" : ""}> ${o.id}</label>`)}</span>
+              <button class="btn btn-ghost btn-icon" data-p-del="${i}" aria-label="${t("Sil")}: ${t("Həftə")} ${w.week}">${ic("x", 14)}</button></div>
+            <textarea class="textarea syl-text" rows="2" data-p-topic="${i}" aria-label="${t("Mövzu")}: ${t("Həftə")} ${w.week}" placeholder="${t("Mövzu")}">${w.topic}</textarea>
+            <textarea class="textarea syl-text" rows="2" data-p-act="${i}" aria-label="${t("Fəaliyyət")}: ${t("Həftə")} ${w.week}" placeholder="${t("Fəaliyyət")}">${w.activity}</textarea></div>`)}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("chart", 17)} ${t("Qiymətləndirmə")}</h3><span class="badge ${total === 100 ? "b-green" : "b-red"}" id="asum">${t("Cəmi: {n}", { n: total })}</span></div>
-          <div class="table-wrap"><table class="table"><thead><tr><th>${t("Komponent")}</th><th>${t("Növ")}</th><th>${t("Çəki")}</th><th></th></tr></thead><tbody>
+          <div class="table-wrap"><table class="table"><thead><tr><th>${t("Komponent")}</th><th>${t("Növ")}</th><th>${t("Çəki")}</th><th>${t("Nəticələr")}</th><th></th></tr></thead><tbody>
           ${s.assessment.map((a, i) => html`<tr><td><input class="input" data-a-name="${i}" value="${a.name}" aria-label="${t("Komponent")}"></td>
             <td><select class="select" data-a-kind="${i}" aria-label="${t("Növ")}">${opts(KIND(), a.kind)}</select></td>
             <td><input class="input" type="number" min="0.5" max="100" step="0.5" style="width:76px" data-a-weight="${i}" value="${a.weight}" aria-label="${t("Çəki")}"></td>
+            <td><span class="row wrap" role="group" aria-label="${t("Qiymətləndirdiyi nəticələr")}">${s.outcomes.map((o) => html`<label class="small nowrap"><input type="checkbox" data-a-out="${i}" value="${o.id}" ${(a.outcomes || []).includes(o.id) ? "checked" : ""}> ${o.id}</label>`)}</span></td>
             <td><button class="btn btn-ghost btn-icon" data-a-del="${i}" aria-label="${t("Sil")}">${ic("x", 14)}</button></td></tr>`)}</tbody></table></div>
           <div class="card-b stack sm"><button class="btn btn-sm" id="add-a">${ic("plus", 13)} ${t("Komponent əlavə et")}</button>
             <div class="tiny muted">${t("Çəkilərin cəmi 100 olmalıdır; imtahanın çəkisini universitet təyin edir.")}</div></div></div>
@@ -196,6 +229,7 @@ route("/teacher/syllabus", async (el, p, q) => {
             ${st.versions.find((x) => x.version === v.version - 1) ? html`<button class="btn btn-ghost btn-sm" data-diff="${v.id}" data-prev="${st.versions.find((x) => x.version === v.version - 1).id}">${t("Fərq")}</button>` : ""}
             ${st.can_edit ? html`<button class="btn btn-sm" data-from="${v.id}">${t("Bundan davam et")}</button>` : ""}</div>`) : html`<span class="small muted">${t("Hələ versiya yoxdur")}</span>`}</div></div>
       </div></div>`}`);
+    drawChecks();
   };
   draw();
 
@@ -229,19 +263,24 @@ route("/teacher/syllabus", async (el, p, q) => {
     else if (d.pOut !== undefined) {
       const w = s.plan[+d.pOut];
       w.outcomes = e.target.checked ? [...new Set([...w.outcomes, v])] : w.outcomes.filter((x) => x !== v);
+    } else if (d.aOut !== undefined) {
+      const a = s.assessment[+d.aOut], cur = a.outcomes || [];
+      a.outcomes = e.target.checked ? [...new Set([...cur, v])] : cur.filter((x) => x !== v);
     } else return;
     dirty = true;
+    drawChecks();
   });
   const edit = (fn) => { fn(); dirty = true; draw(); };
   on(el, "click", "#add-o", () => edit(() => s.outcomes.push({ id: nextId(s.outcomes, tags), text: "", bloom: "apply" })));
   on(el, "click", "[data-o-del]", (e, b) => edit(() => {
     const [gone] = s.outcomes.splice(+b.dataset.oDel, 1);
     s.plan.forEach((w) => { w.outcomes = w.outcomes.filter((x) => x !== gone.id); });
+    s.assessment.forEach((a) => { a.outcomes = (a.outcomes || []).filter((x) => x !== gone.id); });
   }));
   on(el, "click", "[data-o-tags]", (e, b) => pickTags(co.id, b.dataset.oTags, tags[b.dataset.oTags] || [], (r) => { tags = r.outcomes; draw(); }));
   on(el, "click", "#add-w", () => edit(() => s.plan.push({ week: Math.max(0, ...s.plan.map((w) => w.week)) + 1, topic: "", outcomes: [], activity: "" })));
   on(el, "click", "[data-p-del]", (e, b) => edit(() => s.plan.splice(+b.dataset.pDel, 1)));
-  on(el, "click", "#add-a", () => edit(() => s.assessment.splice(Math.max(0, s.assessment.length - 1), 0, { name: "", kind: "component", weight: 5 })));
+  on(el, "click", "#add-a", () => edit(() => s.assessment.splice(Math.max(0, s.assessment.length - 1), 0, { name: "", kind: "component", weight: 5, outcomes: [] })));
   on(el, "click", "[data-a-del]", (e, b) => edit(() => s.assessment.splice(+b.dataset.aDel, 1)));
   on(el, "click", "#add-l", () => edit(() => s.literature.push({ title: "", kind: "main" })));
   on(el, "click", "[data-l-del]", (e, b) => edit(() => s.literature.splice(+b.dataset.lDel, 1)));
@@ -346,20 +385,23 @@ route("/syllabi", async (el) => {
       <th>${t("Status")}</th><th>${t("Forma №3")}</th><th>${t("Dəyişiklik")}</th><th></th></tr></thead><tbody>
       ${list.map((x) => html`<tr><td><b class="small">${x.code}</b> · ${x.name}</td><td>${x.version}</td><td>${x.author || "—"}</td><td>${badge(x.status)}</td>
         <td>${x.forma3.length ? html`<span class="badge b-amber">${t("{n} fərq", { n: x.forma3.length })}</span>` : html`<span class="tiny muted">—</span>`}</td>
-        <td>${x.changes == null ? html`<span class="tiny muted">${t("ilk dərc")}</span>` : x.changes}</td>
+        <td>${x.changes == null ? html`<span class="tiny muted">${t("ilk dərc")}</span>` : x.changes}
+          ${x.returned_id ? html`<div class="tiny muted">${t("Geri qaytarılmış versiyadan fərq: {c}", { c: x.changes_returned })}</div>` : ""}</td>
         <td><button class="btn btn-sm" data-open="${x.id}">${t("Bax")}</button></td></tr>`)}</tbody></table></div>`
       : html`<div class="card-b">${empty("check", t("Təsdiq gözləyən sillabus yoxdur"), t("Müəllim versiyanı təqdim etdikdə burada görünür."))}</div>`}</div>`);
   on(el, "click", "[data-open]", async (e, b) => {
     const x = list.find((y) => y.id === Number(b.dataset.open));
-    let v, diff = [];
+    let v, diff = [], back = [];
     try {
-      [v, diff] = await Promise.all([api.get(`/api/syllabi/${x.course_id}/versions/${x.id}`),
-        x.published_id ? api.get(`/api/syllabi/${x.course_id}/diff?a=${x.published_id}&b=${x.id}`) : []]);
+      [v, diff, back] = await Promise.all([api.get(`/api/syllabi/${x.course_id}/versions/${x.id}`),
+        x.published_id ? api.get(`/api/syllabi/${x.course_id}/diff?a=${x.published_id}&b=${x.id}`) : [],
+        x.returned_id ? api.get(`/api/syllabi/${x.course_id}/diff?a=${x.returned_id}&b=${x.id}`) : []]);
     } catch (err) { toast(err.message, "err"); return; }
+    const DONE = { approve: t("Sillabus təsdiqləndi"), return: t("Sillabus geri qaytarıldı"), publish: t("Sillabus dərc olundu") };
     const act = async (action, w, extra = {}) => {
       try {
         await api.post(`/api/syllabi/${x.course_id}/versions/${x.id}/${action}`, { note: w.querySelector("#sv-note").value, ...extra });
-        toast(t("Saxlanıldı"), "ok"); go("/syllabi"); return true;
+        toast(DONE[action], "ok"); go("/syllabi"); return true;
       } catch (err) {
         if (err.status === 409 && action === "publish") {
           w.querySelector("#sv-override").hidden = false;
@@ -370,8 +412,12 @@ route("/syllabi", async (el) => {
     };
     modal({ title: `${x.code} · ${t("Versiya {n}", { n: x.version })}`, size: "lg", body: html`<div class="stack">
         ${x.forma3.length ? html`<div class="notice warn">${ic("alert", 16)}<div><b>${t("Forma №3-dən fərq")}</b>: ${x.forma3.map((f) => html`${label(WORK, f.kind)} ${f.imported} → ${f.syllabus}; `)}</div></div>` : ""}
+        ${x.returned_id ? html`<div><b class="small">${t("Geri qaytarılmış versiyadan fərq (versiya {n})", { n: x.returned_version })}</b>
+          ${x.returned_note ? html`<div class="tiny muted">${t("Geri qaytarma şərhi")}: ${x.returned_note}</div>` : ""}${diffList(back)}</div>` : ""}
         ${x.published_id ? html`<div><b class="small">${t("Dərc olunmuş versiyadan fərq")}</b>${diffList(diff)}</div>` : ""}
-        ${readOnly(v.data)}
+        ${checksNotice(v.checks)}
+        <a class="btn btn-sm" href="/syllabus/${x.course_id}?v=${x.id}&lang=${LANG}" target="_blank" rel="noopener" style="align-self:flex-start">${ic("printer", 15)} ${t("Çap görünüşü")}</a>
+        ${readOnly(v.data, v.tags)}
         <div class="field"><label class="label" for="sv-note">${t("Şərh")}</label><textarea class="textarea" id="sv-note" style="min-height:60px"></textarea></div>
         <div id="sv-override" hidden><label class="row small"><input type="checkbox" id="sv-ok"> ${t("Bu fənn üzrə artıq bal qoyulub: dərcə icazə verirəm (səbəb şərhdə göstərilir və audit jurnalında qeydə alınır)")}</label></div></div>`,
       actions: [

@@ -99,3 +99,35 @@ def test_the_diff_orders_plan_weeks_as_numbers_and_tutor_modes_are_constants():
     assert [x["key"] for x in domain.diff(domain.validate(a, RULES)[0], domain.validate(b, RULES)[0]) if x["section"] == "plan"] == ["2", "10"]
     modes, locked = domain.tutor_modes("forbidden")
     assert modes == ("socratic",) and locked == 1 and isinstance(modes, tuple)
+
+
+def test_the_diff_survives_keys_of_superscript_digits():
+    # audit SYL-D1: '²³⁴'.isdigit() is True but int('²³⁴') raises, so one title broke the whole approval queue
+    a = changed(["literature"], [{"title": "²³⁴", "kind": "main"}, {"title": "125", "kind": "main"}])
+    b = changed(["literature"], [{"title": "²³⁴", "kind": "extra"}, {"title": "125", "kind": "extra"}, {"title": "300", "kind": "main"}])
+    keys = [x["key"] for x in domain.diff(domain.validate(a, RULES)[0], domain.validate(b, RULES)[0]) if x["section"] == "literature"]
+    assert keys == ["125", "300", "²³⁴"]
+
+
+def test_a_title_twice_in_the_literature_is_refused():
+    # audit SYL-D2: the diff keys sources by title, so a second «Kitab» showed as a change of the first, not as added
+    lit = [{"title": "Kitab", "kind": "main"}, {"title": "Kitab ", "kind": "extra"}]
+    assert domain.validate(changed(["literature"], lit), RULES)[1]["az"] == "Ədəbiyyat siyahısında eyni adlı iki mənbə ola bilməz"
+
+
+def test_a_component_keeps_the_outcomes_it_assesses():
+    d = changed(["assessment", 1, "outcomes"], ["N2", "N1", "N2"])
+    clean, problem = domain.validate(d, RULES)
+    assert problem is None and clean["assessment"][1]["outcomes"] == ["N2", "N1"] and clean["assessment"][0]["outcomes"] == []
+    assert domain.validate(changed(["assessment", 1, "outcomes"], ["N9"]), RULES)[1] is not None
+    assert domain.validate(changed(["assessment", 1, "outcomes"], "N1"), RULES)[1] is not None
+
+
+def test_the_checks_name_outcomes_never_taught_or_assessed_and_a_bloom_tag_of_another_level():
+    d = changed(["assessment", 1, "outcomes"], ["N1"])
+    d["plan"][0]["outcomes"] = []                                        # week 2 served N2; now nothing teaches it
+    d["outcomes"].append({"id": "N3", "text": "Dövrəni layihələndirir və yoxlayır", "bloom": "create"})
+    clean = domain.validate(d, RULES)[0]
+    tags = {"N1": [{"key": "bloom", "code": "evaluate"}, {"key": "nice", "code": "K0001"}], "N3": [{"key": "bloom", "code": "create"}]}
+    assert domain.checks(clean, tags) == {"untaught": ["N2", "N3"], "unassessed": ["N2", "N3"],
+                                          "bloom": [{"outcome": "N1", "level": "apply", "tags": ["evaluate"]}]}

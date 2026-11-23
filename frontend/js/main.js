@@ -132,12 +132,15 @@ async function loginPage(root) {
         <input class="input" id="access-code" type="password" autocomplete="off" spellcheck="false" placeholder="${t("Təşkilatçının verdiyi kodu daxil edin")}"></div>` : ""}
       ${demoButton()}
       <div class="or">${t("və ya rol seçin")}</div>
-      <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === 4 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
+      <div class="role-grid">${ROLES.map(([k, l, s, i, c], idx) => html`<button class="role-card ${idx === ROLES.length - 1 && ROLES.length % 2 ? "wide" : ""}" data-role="${k}"><span class="ri ${c}">${ic(i, 20)}</span><div><b>${l}</b><span>${s.split(" · ").map((part, j) => html`${j ? " · " : ""}<span class="nw">${part}</span>`)}</span></div>${ic("arrow", 16)}</button>`)}</div>
       <p class="small muted mt">${ic("shield", 13)} ${S.app.access_required ? t("Demo yalnız giriş kodu ilə açılır.") : t("Server yalnız bu kompüterdə (127.0.0.1) işləyir.")}</p>`}
     </div></div></main>`);
   ssoNotice();
-  on(root, "click", "#activate-open", activateModal);
-  on(root, "submit", "#login-form", async (e, f) => {
+  // The page's own element, not #root: #root outlives the login, and a [data-role] button of a later page (the coverage
+  // report's "Bax") must not sign in again (acceptance walk D2).
+  const page = root.firstElementChild;
+  on(page, "click", "#activate-open", activateModal);
+  on(page, "submit", "#login-form", async (e, f) => {
     e.preventDefault();
     const btn = $("button[type=submit]", f);
     btn.classList.add("loading");
@@ -147,10 +150,10 @@ async function loginPage(root) {
       go(r.home);
     } catch (err) { btn.classList.remove("loading"); toast(err.message, "err"); $("#login-pass", f).select(); }
   });
-  on(root, "click", "[data-role]", async (e, b) => {
+  on(page, "click", "[data-role]", async (e, b) => {
     b.classList.add("loading");
     try {
-      const code = $("#access-code", root);
+      const code = $("#access-code", page);
       const r = await api.post("/api/auth/demo", { role: b.dataset.role, code: code ? code.value : "" });
       S.user = r.user;
       go(r.home);
