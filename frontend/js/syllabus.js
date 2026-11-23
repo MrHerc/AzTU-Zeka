@@ -55,8 +55,8 @@ function readOnly(d, tags = {}) {
     <div><b class="small">${t("Qiymətləndirmə")}</b><div class="table-wrap"><table class="table"><thead><tr><th>${t("Komponent")}</th><th>${t("Növ")}</th><th>${t("Çəki")}</th><th>${t("Nəticələr")}</th></tr></thead>
       <tbody>${d.assessment.map((a) => html`<tr><td>${a.name}</td><td>${label(KIND, a.kind)}</td><td>${a.weight}</td><td>${(a.outcomes || []).join(", ") || "—"}</td></tr>`)}</tbody></table></div></div>
     <div class="small">${t("Buraxılmış dərslərin həddi, %")}: <b>${rules.attendance_limit}</b> · ${t("Süni intellektdən istifadə")}: <b>${label(AI, rules.ai_policy)}</b></div>
-    ${rules.ai_note ? html`<div class="small"><b>${t("AI siyasətinin izahı")}</b>: <span class="syl-pre">${rules.ai_note}</span></div>` : ""}
-    ${rules.late_policy ? html`<div class="small"><b>${t("Gecikmiş işlər")}</b>: <span class="syl-pre">${rules.late_policy}</span></div>` : ""}
+    <div class="small"><b>${t("AI siyasətinin izahı")}</b>: <span class="syl-pre">${rules.ai_note || "—"}</span></div>
+    <div class="small"><b>${t("Gecikmiş işlər")}</b>: <span class="syl-pre">${rules.late_policy || "—"}</span></div>
     <div class="small"><b>${t("Prerekvizitlər")}</b>: ${(d.prerequisites || []).join(", ") || "—"}</div>
     <div><b class="small">${t("Ədəbiyyat")}</b>${(d.literature || []).length ? html`<ul class="small" style="margin:4px 0 0">${d.literature.map((x) => html`<li>${x.title} <span class="badge b-gray">${label(LIT, x.kind)}</span></li>`)}</ul>` : html` <span class="small">—</span>`}</div>
     <div class="small">${t("İş yükü, saat")}: ${WORK().map(([k, l]) => html`${l} <b>${d.workload[k]}</b> `)}</div></div>`;
