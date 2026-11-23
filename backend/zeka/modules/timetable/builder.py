@@ -173,6 +173,13 @@ def _covers_department(c, s: dict, dep_id: int) -> bool:
     return bool(d) and (s["all"] or dep_id in s["departments"] or d["faculty_id"] in s["faculties"])
 
 
+def _covers_scope(c, s: dict, sc: dict) -> bool:
+    """A stored run or version scope the caller covers: a university-wide one only an unscoped holder, a list of
+    departments one that covers each of them."""
+    deps = [] if sc.get("all") else sc.get("departments") or []
+    return s["all"] or (bool(deps) and all(_covers_department(c, s, d) for d in deps))
+
+
 def _scope_from_run(scope: dict) -> dict:
     return {"all": bool(scope.get("all")), "faculties": set(), "departments": set(scope.get("departments") or []), "courses": set()}
 
@@ -221,10 +228,15 @@ def group_for(c, user, t: dict, gid: int, write: bool) -> dict:
     return g
 
 
+def _visible(c, user, v: dict, s: dict | None = None) -> bool:
+    """One in review, published or superseded: to every holder (a scoped one reads its own units of it). A draft: to a
+    timetable.manage holder whose scope covers the draft's (Checkpoint F, SEC-TT-3)."""
+    return v["status"] in VISIBLE_PREPARE or (manages(user) and _covers_scope(c, s or scope_of(c, user), J(v["scope"], {"all": True}) or {}))
+
+
 def version_for(c, user, vid: int) -> dict:
-    """A version: any to a timetable.manage holder; to a prepare-only holder only one in review, published or superseded."""
     v = repo.version(c, vid)
-    if not v or (not manages(user) and v["status"] not in VISIBLE_PREPARE):
+    if not v or not _visible(c, user, v):
         raise HTTPError(404, "Cədvəl versiyası tapılmadı")
     return v
 
@@ -295,7 +307,8 @@ def start_page(c, user, tid: int) -> dict:
     t = term(c, tid)
     r = readiness(c, user, tid)
     pub = repo.published_version(c, tid)
-    vs = [v for v in repo.versions(c, tid) if manages(user) or v["status"] in VISIBLE_PREPARE]
+    s = scope_of(c, user)
+    vs = [v for v in repo.versions(c, tid) if _visible(c, user, v, s)]
     run = repo.active_run(c, tid) if manages(user) else None
     return {"term": {k: t[k] for k in ("id", "code", "name", "teaching_start", "teaching_end")}, "weeks": domain.term_weeks(t),
             "manages": manages(user), "can_publish": perms.has(user["role"], "timetable.publish") and scope_of(c, user)["all"],
@@ -318,8 +331,15 @@ def _bad_date(field: str):
     raise HTTPError(400, E("«{field}» sahəsində tarix İİİİ-AA-GG formatında olmalıdır", field=field))
 
 
+def _university_wide(c, user) -> None:
+    """The term's plan and the timetable rules hold for every faculty: only an unscoped holder changes them (SEC-TT-1)."""
+    if not scope_of(c, user)["all"]:
+        raise HTTPError(403, "Semestrin planını və cədvəl qaydalarını yalnız bütün universitet üzrə səlahiyyəti olan tədris hissəsi dəyişir")
+
+
 def save_plan(c, user, tid: int, body) -> dict:
     """The term's deadlines (empty: the default offset) and its own confirmations (practice, reserved weeks, fixed slots, online)."""
+    _university_wide(c, user)
     t = term(c, tid)
     v: dict = {k: _date(body.get(k), k) for k in ("needs_due", "groups_due", "availability_due", "review_due", "publish_target")}
     conf = body.array("confirmed")
@@ -339,6 +359,7 @@ def get_settings(c) -> dict:
 
 def put_settings(c, user, value) -> dict:
     from ..tenant import service as tenant_settings          # here: the tenant module imports the identity layer
+    _university_wide(c, user)
     problem = tenant_settings.problem("timetable", value)
     if problem:
         raise HTTPError(400, problem)
@@ -611,12 +632,14 @@ def start_run(c, user, tid: int, body) -> dict:
     vid = base = None
     if kind == "check":
         v = version_for(c, user, body.integer("version_id", 0))
+        if not _covers_scope(c, s, J(v["scope"], {"all": True}) or {}):      # the run takes the version's scope (SEC-TT-2)
+            raise HTTPError(404, "Cədvəl versiyası tapılmadı")
         if v["term_id"] != t["id"] or v["status"] not in EDITABLE:
             raise HTTPError(409, "Yalnız bu semestrin layihəsi və ya rəydəki versiyası yoxlanılır")
         vid, scope = v["id"], J(v["scope"], {"all": True})
     elif body.get("base_version_id") is not None:
         b = version_for(c, user, body.integer("base_version_id", 0))
-        if b["term_id"] != t["id"]:
+        if b["term_id"] != t["id"] or not _covers_scope(c, s, J(b["scope"], {"all": True}) or {}):
             raise HTTPError(404, "Cədvəl versiyası tapılmadı")
         base = b["id"]
     if kind != "check":
@@ -643,9 +666,7 @@ def _run_for(c, user, rid: int, blobs: bool = False) -> dict:
     covers each of them (an id outside the scope answers 404, design §7.1)."""
     r = repo.run(c, rid, blobs=blobs)
     s = scope_of(c, user)
-    sc = (J(r["scope"], {}) or {}) if r else {}
-    deps = [] if sc.get("all") else sc.get("departments") or []
-    if not r or not (s["all"] or (deps and all(_covers_department(c, s, d) for d in deps))):
+    if not r or not _covers_scope(c, s, J(r["scope"], {}) or {}):
         raise HTTPError(404, "Hesablama tapılmadı")
     return r
 
@@ -852,7 +873,8 @@ def _check_run(c, r: dict, busy: bool, sol: dict) -> str:
 # ---------------------------------------------------------------- versions, grid and the editor (design §7.4)
 def versions(c, user, tid: int) -> list[dict]:
     term(c, tid)
-    return [{**v, "scope": J(v["scope"], {})} for v in repo.versions(c, tid) if manages(user) or v["status"] in VISIBLE_PREPARE]
+    s = scope_of(c, user)
+    return [{**v, "scope": J(v["scope"], {})} for v in repo.versions(c, tid) if _visible(c, user, v, s)]
 
 
 def _version_out(v: dict) -> dict:

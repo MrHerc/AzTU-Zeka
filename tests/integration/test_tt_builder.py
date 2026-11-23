@@ -158,7 +158,7 @@ def test_the_deans_office_sets_shifts_and_a_head_may_not(app_db, head, world):
     assert seen[world["groups"][0]] == "morning" and seen[world["groups"][5]] == "afternoon"
 
 
-def test_a_grid_above_the_cap_waits_for_a_decision(app_db, office_ao, world):
+def test_a_grid_above_the_cap_waits_for_a_decision(app_db, office_ao, head, world):
     teacher = app_db.client("teacher")
     me = world["rauf"]
     path = f"{B}/teachers/{me}/availability"
@@ -174,6 +174,9 @@ def test_a_grid_above_the_cap_waits_for_a_decision(app_db, office_ao, world):
     assert board[me]["pending"] and board[me]["cells"] == 1 and board[me]["full_name"] and set(world["teachers"]) <= set(board)
     assert teacher.get(f"{B}/teachers").status == 403                                         # the board is for the builders
     assert teacher.post(f"{path}/decide", {"approve": True}).status == 403                   # route: teachers do not decide
+    mine = head.post(f"{path}/decide", {"approve": True})                                    # TE-F2: a head never approves their own
+    assert mine.status == 403 and "Öz məşğulluq" in mine.json["error"], mine.text
+    assert q("SELECT pending FROM tt_availability_status WHERE teacher_id=?", (me,))[0]["pending"]
     assert office_ao.post(f"{path}/decide", {"approve": "yes"}).status == 400
     ok = office_ao.post(f"{path}/decide", {"approve": True})
     assert ok.status == 200 and ok.json["over_cap_cells"] == 2
@@ -210,6 +213,50 @@ def test_a_head_of_another_department_sees_nothing_of_this_one(app_db, world):
     assert stranger.get(f"{B}/teachers?department_id={world['dep']}").status == 404
     assert not stranger.get(B).json["can_publish"] and not stranger.get(B).json["manages"]
     assert stranger.post(f"{B}/teachers/{world['rauf']}/availability/decide", {"approve": False}).status == 404
+
+
+def test_a_deans_office_grant_counts_only_at_faculty_scope(app_db, world):
+    """TE-F3: a department- or course-scoped grant to the dean's office widens nothing."""
+    c = store.connect()
+    now = store.iso(store.now())
+    f3 = c.execute("INSERT INTO faculties(code,name,active,created_at,updated_at) VALUES('F3X','Üçüncü fakültə',1,?,?)", (now, now)).lastrowid
+    d3 = c.execute("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(?,'D3X','Üçüncü kafedra',1,?,?)",
+                   (f3, now, now)).lastrowid
+    c.commit()
+    c.close()
+    office = app_db.client("office")
+    admin = app_db.client("admin")
+    for scope_type, scope_id in (("department", d3), ("course", world["courses"][0])):
+        assert admin.post(f"/api/admin/users/{office.user['id']}/roles", {"role": "office", "scope_type": scope_type, "scope_id": scope_id}).status == 200
+    office = app_db.client("office")
+    assert office.get(f"{B}/readiness?department_id={d3}").status == 404
+    assert office.get(f"{B}/units?department_id={d3}").status == 404
+    c = store.connect()
+    try:
+        s = builder.scope_of(c, {"id": office.user["id"], "role": "office"})
+        assert not s["all"] and not s["departments"] and not s["courses"]
+    finally:
+        c.close()
+
+
+def test_a_head_without_a_grant_covers_their_own_department(world):
+    """TE-F7: a person whose primary role is dept_head, with a department and no grant, builds for that department only."""
+    c = store.connect()
+    try:
+        uid = c.execute("INSERT INTO users(username,full_name,role,title,color,department_id,consent_at) VALUES('tb.head','Müdir TB','dept_head','',"
+                        "'#333',?,?)", (world["dep"], store.iso(store.now()))).lastrowid
+        other = c.execute("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(1,'TTH','Başqa kafedra',1,?,?)",
+                          (store.iso(store.now()), store.iso(store.now()))).lastrowid
+        c.commit()
+        me = {"id": uid, "role": "dept_head"}
+        assert builder.scope_of(c, me)["departments"] == {world["dep"]}
+        assert builder.units(c, me, TERM, world["dep"], 0)["total"] == len(world["units"])
+        assert builder.unit_for(c, me, world["units"][0])["id"] == world["units"][0]
+        with pytest.raises(builder.HTTPError) as e:
+            builder.units(c, me, TERM, other, 0)
+        assert e.value.status == 404
+    finally:
+        c.close()
 
 
 def test_a_run_can_be_cancelled_and_an_open_exam_shortens_the_chunks(office_ao, monkeypatch):
@@ -318,7 +365,7 @@ def test_publishing_needs_a_check_the_confirmations_and_the_right_numbers(office
     assert scoped.post(f"/api/admin/users/{world['rauf']}/roles", {"role": "academic_office", "scope_type": "faculty", "scope_id": 1}).status == 200
     faculty_ao = app_db.client("teacher")
     assert faculty_ao.post("/api/me/role", {"role": "academic_office"}).status == 200
-    assert faculty_ao.post(f"/api/timetable/versions/{vid}/publish", body).status == 403
+    assert faculty_ao.post(f"/api/timetable/versions/{vid}/publish", body).status == 404      # a university-wide draft is not its own
     queued = office_ao.post(f"/api/timetable/versions/{vid}/publish", body)
     assert queued.status == 200 and queued.json["kind"] == "publish", queued.text
     manual = office_ao.post("/api/timetable", {"unit_id": world["units"][0], "weekday": 6, "start": "15:05", "end": "16:25", "room": "X",
@@ -526,11 +573,35 @@ def test_a_publication_failing_after_its_check_retries_and_keeps_the_term_locked
     assert (moved["weekday"], moved["period"]) == (to["weekday"], to["period"]) and stale == 0
 
 
+def test_a_version_built_on_an_older_publication_is_not_published(office_ao, world):
+    """TE-F1: the gate's stale_parent rule, at the request and again in the publication's own check."""
+    a, b = _solve(office_ao, 23)["version_id"], _solve(office_ao, 29)["version_id"]       # both on the current publication
+    rid = _publish(office_ao, a, "2026-12-21")
+    run_jobs()
+    assert q("SELECT status FROM tt_runs WHERE id=?", (rid,))[0]["status"] == "done"
+    v = q("SELECT * FROM tt_versions WHERE id=?", (b,))[0]
+    r = office_ao.post(f"/api/timetable/versions/{b}/publish", {"effective_from": "2026-12-28", "accept_unplaced": v["unplaced"],
+                                                                "override_reason": "Sınaq üçün dərc edilir"})
+    assert r.status == 409 and [x["code"] for x in r.json["gate"]] == ["stale_parent"], r.text
+    fresh = _solve(office_ao, 31)["version_id"]
+    rid = _publish(office_ao, fresh, "2026-12-28")
+    c = store.connect()                              # its base replaced after the request: as if another publication came first
+    c.execute("UPDATE tt_versions SET parent_id=? WHERE id=?", (v["parent_id"], fresh))
+    c.commit()
+    c.close()
+    run_jobs()
+    r = office_ao.get(f"/api/timetable/runs/{rid}").json
+    assert r["status"] == "failed" and "stale_parent" in [x["code"] for x in r["progress"]["problems"]], r
+    assert q("SELECT status FROM tt_versions WHERE id=?", (a,))[0]["status"] == "published"
+
+
 def test_a_faculty_scoped_office_reaches_no_draft_or_run_of_another_faculty(app_db, office_ao, world):
     """TT-SEC-3: an academic office of another faculty edits, reads and cancels nothing of this one."""
     c = store.connect()
     now = store.iso(store.now())
     f2 = c.execute("INSERT INTO faculties(code,name,active,created_at,updated_at) VALUES('F2X','İkinci fakültə',1,?,?)", (now, now)).lastrowid
+    d2 = c.execute("INSERT INTO departments(faculty_id,code,name,active,created_at,updated_at) VALUES(?,'D2X','İkinci kafedra',1,?,?)",
+                   (f2, now, now)).lastrowid
     c.commit()
     c.close()
     admin, uid = app_db.client("admin"), app_db.client("leader").user["id"]
@@ -547,9 +618,23 @@ def test_a_faculty_scoped_office_reaches_no_draft_or_run_of_another_faculty(app_
     assert ao2.get(f"{base}/placements/{p['id']}/options").status == 404
     assert ao2.post(f"{base}/placements/{p['id']}/move", {"weekday": 1, "period": 1, "room_id": p["room_id"], "rev": rev}).status == 404
     assert ao2.post(f"{base}/lock", {"ids": [p["id"]], "locked": True, "rev": rev}).status == 404
-    assert ao2.get(f"{base}/grid?room_id={p['room_id']}").json["items"] == []
-    assert ao2.get(f"{base}/unplaced").json == []
+    # SEC-TT-3: a university-wide draft is outside a faculty's scope: not listed, no grid, no scorecard
+    for path in (f"{base}/grid?room_id={p['room_id']}", f"{base}/unplaced", f"{base}/scorecard"):
+        assert ao2.get(path).status == 404, path
+    assert vid not in [v["id"] for v in ao2.get(f"{B}/versions").json]
+    assert vid in [v["id"] for v in office_ao.get(f"{B}/versions").json]
     assert q("SELECT rev FROM tt_versions WHERE id=?", (vid,))[0]["rev"] == rev
+    # SEC-TT-2: a check of that draft with the office's own department is refused before a run takes the term's slot
+    assert ao2.post(f"{B}/runs", {"kind": "check", "version_id": vid, "departments": [d2]}).status == 404
+    assert ao2.post(f"{B}/runs", {"kind": "precheck", "departments": [d2], "base_version_id": vid}).status == 404
+    assert not q("SELECT 1 FROM tt_runs WHERE requested_by=?", (ao2.user["id"],))
+    # SEC-TT-1: the university's timetable rules and the term's plan are not a faculty's to change
+    before = office_ao.get("/api/timetable/settings").json["timetable"]
+    plan = q("SELECT * FROM tt_terms WHERE term_id=?", (TERM,))
+    assert ao2.put("/api/timetable/settings", {"value": {**before, "notice_days": 0, "review_required": False}}).status == 403
+    assert ao2.put(f"{B}/plan", {"publish_target": "2026-12-01", "confirmed": []}).status == 403
+    assert office_ao.get("/api/timetable/settings").json["timetable"] == before
+    assert q("SELECT * FROM tt_terms WHERE term_id=?", (TERM,)) == plan
     s2 = office_ao.post(f"{B}/runs", {"kind": "precheck"})
     assert ao2.post(f"/api/timetable/runs/{s2.json['id']}/cancel", {}).status == 404
     run_jobs()
