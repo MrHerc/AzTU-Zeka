@@ -1,7 +1,7 @@
 // Bulk import (Task 16): a CSV or XLSX file of one kind from one source system is checked first (dry run), then
 // imported all or nothing. Conflicts (rows changed in Zəka since the last import) are listed, not overwritten.
 // Activation codes for a faculty's students are made here once and handed to the dean's office as CSV.
-import { api, html, mount, on, ic, toast, route, pageHead, loading, failed, num, $, t, S } from "./core.js";
+import { api, html, mount, on, ic, toast, route, pageHead, loading, failed, num, $, $$, t, S } from "./core.js";
 // hours of the form: the file keeps floats such as 44.3333; shown with at most two decimals in the interface language (L15)
 const hrs = (x) => (x == null || x === "" ? "—" : num(Math.round(Number(x) * 100) / 100));
 import { HOME } from "./shell.js";
@@ -26,6 +26,10 @@ const LOAD = () => ({ consultation: t("Məsləhətlər"), credit: t("Məqbul"), 
   graduation: t("Buraxılış işi"), class_visits: t("Müəllimlərin dərslərdə iştirakı"), other_load: t("Digər dərs yükü"),
   other_department: t("Digər kafedranın dərs yükü") });
 
+// a post whose subject courses of two departments teach: the office chooses whose course its lessons go to (Task 48)
+const depPick = (p) => p.departments ? html`<select class="input input-sm" data-post-dep="${p.ref}" aria-label="${t("Kafedra")}: ${p.ref}">
+  ${p.department_id == null ? html`<option value="">—</option>` : ""}${p.departments.map((d) => html`<option value="${d.id}" ${d.id === p.department_id ? "selected" : ""}>${d.name}</option>`)}</select>` : "—";
+
 function forma3(f) {
   const tile = (n, label, tone = "") => html`<div class="stat"><b class="${tone}">${n}</b><span class="small muted">${label}</span></div>`;
   const blocked = f.posts.filter((p) => p.status === "blocked");
@@ -47,10 +51,11 @@ function forma3(f) {
       ${blocked.length ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("Bloklanmış ştatın və ya bölmənin dərsləri tətbiq olunmur. Fayldakı xananı düzəldib yenidən yoxlayın.")}</div></div>` : ""}
       ${f.unclassified ? html`<div class="notice warn">${ic("alert", 16)}<div>${t("{n} xana heç bir qaydaya uyğun gəlmədi; onlar qeydlərdə göstərilib.", { n: f.unclassified })}</div></div>` : ""}
       <div class="table-wrap"><table class="table"><thead><tr><th>${t("Xana")}</th><th>${t("Müəllim")}</th><th>${t("Ödəniş")}</th><th>${t("Vəziyyət")}</th>
-        <th>${t("Yoxlamalar")}</th><th>${t("Dərs")}</th><th>${t("Auditoriya saatı")}</th><th>${t("İllik cəm")}</th></tr></thead><tbody>
+        <th>${t("Yoxlamalar")}</th><th>${t("Dərs")}</th><th>${t("Auditoriya saatı")}</th><th>${t("İllik cəm")}</th><th>${t("Kafedra")}</th></tr></thead><tbody>
         ${f.posts.map((p) => html`<tr><td>${p.ref}</td><td>${who(p)}</td><td>${p.pay === "hourly" ? t("Saat hesabı") : t("Ştat")}${p.fraction ? ` · ${p.fraction}` : ""}</td>
           <td>${status(p)}${p.year_conflict ? html` <span class="badge b-amber">${t("Tədris ili fərqlidir")}</span>` : ""}</td><td>${checks(p)}</td>
-          <td>${p.units}</td><td>${hrs(p.hours)}</td><td>${hrs(p.year_total)}</td></tr>`)}</tbody></table></div>
+          <td>${p.units}</td><td>${hrs(p.hours)}</td><td>${hrs(p.year_total)}</td><td>${depPick(p)}</td></tr>`)}</tbody></table></div>
+      ${f.posts.some((p) => p.departments) ? html`<p class="small muted" style="margin:0">${t("Ştatın fənnini bir neçə kafedra keçir: dərslərin hansı kafedranın fənninə yazılacağını seçin və faylı yenidən yoxlayın.")}</p>` : ""}
       ${f.controls.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Yoxlama qaydası")}</th><th>${t("Xana")}</th><th>${t("Gözlənilən")}</th><th>${t("Tapılan")}</th><th></th></tr></thead><tbody>
         ${f.controls.map((c) => html`<tr><td>${c.check}</td><td>${c.ref || t("Fayl")}</td><td>${hrs(c.expected)}</td><td>${hrs(c.found)}</td>
           <td><span class="badge ${c.ok ? "b-green" : "b-red"}">${c.ok ? "✓" : "✗"}</span></td></tr>`)}</tbody></table></div>` : ""}
@@ -123,13 +128,18 @@ route("/admin/import", async (el) => {
     const f = $("#imp-file", el).files[0];
     if (!f) throw new Error(t("Faylı seçin"));
     return { kind: $("#imp-kind", el).value, source: $("#imp-source", el).value.trim(), filename: f.name, content_b64: await readFile(f),
-      dry_run: dry, prefer_source: $("#imp-prefer", el).checked };
+      dry_run: dry, prefer_source: $("#imp-prefer", el).checked,
+      departments: Object.fromEntries($$("[data-post-dep]", box).filter((x) => x.value).map((x) => [x.dataset.postDep, Number(x.value)])) };
   };
   const reset = () => { checked = null; $("#imp-run", el).disabled = true; };
-  on(el, "change", "#imp-kind, #imp-source, #imp-file, #imp-prefer", reset);
+  on(el, "change", "#imp-kind, #imp-source, #imp-file, #imp-prefer, [data-post-dep]", reset);
   on(el, "click", "#imp-check", async (e, b) => {
-    b.classList.add("loading"); mount(box, loading());
-    try { const r = await api.post("/api/admin/import", await body(true)); mount(box, report(r)); checked = r; $("#imp-run", el).disabled = !!r.error_count; }
+    b.classList.add("loading");
+    try {
+      const req = await body(true);                    // the report's department choices are read before it is replaced
+      mount(box, loading());
+      const r = await api.post("/api/admin/import", req); mount(box, report(r)); checked = r; $("#imp-run", el).disabled = !!r.error_count;
+    }
     catch (err) { mount(box, ""); toast(err.message, "err"); reset(); }
     finally { b.classList.remove("loading"); }
   });

@@ -1,5 +1,6 @@
 """Administration commands:  python backend/manage.py status | migrate | create-admin | backup | restore | import |
-reconcile | activation-codes | export | jobs | exam-verify | import-routes | forma3-check | import-framework  (--help for each)"""
+reconcile | activation-codes | export | jobs | exam-verify | import-routes | forma3-check | import-framework |
+timetable-replay  (--help for each)"""
 import argparse
 import os
 import re
@@ -81,7 +82,12 @@ def main(argv=None) -> int:
     fw = sub.add_parser("import-framework", help="import a framework file as NIST published it, unchanged (NICE Framework "
                                                  "Components JSON); a second run changes nothing (Task 24)")
     fw.add_argument("--file", required=True, help="e.g. content/frameworks/nice-components-2.2.0.json")
+    tr = sub.add_parser("timetable-replay", help="solve a timetable version again from its run's stored input and seed and "
+                                                 "confirm the same placements (audit; Task 48)")
+    tr.add_argument("--version", type=int, required=True, help="the builder version's id")
     args = ap.parse_args(argv)
+    if args.cmd == "timetable-replay":
+        return timetable_replay(args.version)
     if args.cmd == "import-framework":
         return import_framework(Path(args.file))
     if args.cmd == "forma3-check":
@@ -220,6 +226,27 @@ def exam_verify(eid: int, root: str | None) -> int:
             print(f"  ROOT not in the chain (the head is {p['head']})")
     print("FAILED" if r["problems"] else "OK" + (" (root matches)" if root else ""))
     return 1 if r["problems"] else 0
+
+
+def timetable_replay(vid: int) -> int:
+    """0 when the run's stored input and seed give the version's placements again; 1 with each meeting that differs; 2
+    when there is no such version. Names meetings by key only (unit:part), never a person."""
+    from zeka.modules.timetable import builder
+    c = store.connect()
+    try:
+        r = builder.replay(c, vid)
+    finally:
+        c.close()
+    if r is None:
+        print(f"version {vid}: not found", file=sys.stderr)
+        return 2
+    print(f"version {vid} (run {r['run_id']}): {r['placements']} placements, {r['manual']} moved by hand (not compared)")
+    for p in r["problems"]:
+        print(f"  {p}")
+    for k in r["differ"]:
+        print(f"  DIFFERS {k}")
+    print("OK" if r["same"] else "FAILED")
+    return 0 if r["same"] else 1
 
 
 def import_framework(path: Path) -> int:

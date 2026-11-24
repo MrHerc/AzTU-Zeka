@@ -43,7 +43,8 @@ const ENT = () => ({
     cols: [["code", t("Kod")], ["building_id", t("Korpus"), "buildings"], ["number", t("Nömrə")], ["name", t("Ad")], ["kind", t("Növ"), "room_kind"], ["capacity", t("Tutum")]],
     fields: [["building_id", t("Korpus"), "ref:buildings"], ["code", t("Kod (QR ünvanı)"), "text"], ["number", t("Nömrə (qapıda)"), "text"],
       ["name", t("Ad"), "text?"], ["floor", t("Mərtəbə"), "number"], ["kind", t("Növ"), "room_kind"], ["capacity", t("Tutum"), "number"],
-      ["accessible", t("Əlil arabası ilə əlçatan"), "flag"]] },
+      ["accessible", t("Əlil arabası ilə əlçatan"), "flag"], ["schedulable", t("Cədvəl qurucusu üçün açıqdır"), "flag1"],
+      ["dedicated", t("Ayrılmış otaq: yalnız tələblərində bu otaq göstərilən dərslər üçün"), "flag"]] },
 });
 // shortcut: a reference list holds its first page (50 rows); a search picker replaces it once Task 16 imports real data
 const REF_URL = { teachers: "/api/directory/users?active=1&role=teacher" };
@@ -118,7 +119,7 @@ route("/admin/directory", async (el, p, q) => {
     if (kind === "degree") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(DEGREES(), v || "bachelor")}</select>`);
     if (kind === "unit_kind") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(UNIT_KINDS(), v || "lecture")}</select>`);
     if (kind === "room_kind") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(ROOM_KINDS(), v || "classroom")}</select>`);
-    if (kind === "flag") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(FLAG(), String(v || 0))}</select>`);
+    if (kind === "flag" || kind === "flag1") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(FLAG(), String(v === "" ? Number(kind === "flag1") : v || 0))}</select>`);
     if (kind === "role") return wrap(html`<select class="input" id="f-${k}" name="${k}">${optionsOf(Object.entries(ROLE_LABEL), v || "student")}</select>`);
     const type = kind === "number" ? "number" : kind === "date" ? "date" : "text";
     return wrap(html`<input class="input" id="f-${k}" name="${k}" type="${type}" value="${v}">`);
@@ -130,7 +131,7 @@ route("/admin/directory", async (el, p, q) => {
         const body = {};
         for (const [k, , kind] of e.fields) {
           const v = w.querySelector(`[name="${k}"]`).value;
-          body[k] = kind.startsWith("ref") || kind === "number" || kind === "flag" ? (v === "" ? null : Number(v)) : kind === "text?" && v === "" ? null : v;
+          body[k] = kind.startsWith("ref") || kind === "number" || kind.startsWith("flag") ? (v === "" ? null : Number(v)) : kind === "text?" && v === "" ? null : v;
         }
         try {
           if (x) await api.put(`/api/directory/${tab}/${x.id}`, body); else await api.post(`/api/directory/${tab}`, body);

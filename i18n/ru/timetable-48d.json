@@ -1,0 +1,15 @@
+{
+ "Ştat üçün seçilən kafedra bu ştatın fənnini keçən kafedralardan biri olmalıdır": "Кафедра, выбранная для ставки, должна быть одной из кафедр, которые ведут её дисциплину",
+ "Semestrin dərc olunmuş cədvəli yoxdur: bərpa yalnız dərc olunmuş cədvəl üçün hesablanır": "У семестра нет опубликованного расписания: исправление рассчитывается только для опубликованного расписания",
+ "Semestrin dəyişdirilə bilən həftəsi qalmayıb": "В семестре не осталось недель, которые можно изменить",
+ "Dərc olunmuş cədvəldə yeni problem var: {n}": "Новые проблемы в опубликованном расписании: {n}",
+ "Cədvəl qurucusu üçün açıqdır": "Доступна конструктору расписания",
+ "Ayrılmış otaq: yalnız tələblərində bu otaq göstərilən dərslər üçün": "Закреплённая аудитория: только для занятий, в требованиях которых она указана",
+ "Ştatın fənnini bir neçə kafedra keçir: dərslərin hansı kafedranın fənninə yazılacağını seçin və faylı yenidən yoxlayın.": "Дисциплину этой ставки ведут несколько кафедр: выберите, к дисциплине какой кафедры отнести занятия, и проверьте файл ещё раз.",
+ "Bərpa layihəsi": "Черновик исправления",
+ "Dərc olunmuş cədvəlin gündəlik yoxlanışı": "Ежедневная проверка опубликованного расписания",
+ "Problem: {n}": "Проблем: {n}",
+ "Problem yoxdur": "Проблем нет",
+ "Bərpa layihəsi hazırla": "Подготовить черновик исправления",
+ "Son yoxlama: {at}. Bərpa dərc olunmuş cədvəli dəyişmir: problemləri aradan qaldıran ən az köçürmə ilə layihə hazırlayır, keçmiş həftələrə toxunmur.": "Последняя проверка: {at}. Исправление не меняет опубликованное расписание: оно готовит черновик с наименьшим числом переносов, устраняющих проблемы, и не затрагивает прошедшие недели."
+}

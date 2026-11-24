@@ -4,7 +4,7 @@ Field kinds: ``code`` (2-30 letters, digits, ``.``, ``_``, ``-``), ``code?`` (op
 ``date`` (YYYY-MM-DD), ``year`` (1990-2100), ``int:lo:hi`` / ``int?:lo:hi``, ``ref:<entity>`` (a required id of another
 entity), ``ref?:<entity>`` (optional), ``degree``, ``login`` (a user name), ``role``, ``email?``, ``unit_kind``;
 for rooms (Task 18): ``ucode`` (a code kept in upper case: it is a URL and is printed on a QR sheet), ``short`` (1-30
-characters, a door number), ``room_kind`` and ``flag`` (yes or no, stored as 1 or 0).
+characters, a door number), ``room_kind`` and ``flag`` (yes or no, stored as 1 or 0; ``flag1``: yes when not given).
 """
 from __future__ import annotations
 
@@ -58,7 +58,10 @@ ENTITIES: dict[str, dict] = {
                   "fields": {"code": "ucode", "name": "text", "address": "text?"}},
     "rooms": {"table": "rooms", "order": "code", "search": ("code", "number", "name"), "unique": ("code",), "filters": ("building_id",),
               "fields": {"building_id": "ref:buildings", "code": "ucode", "number": "short", "name": "text?", "floor": "int?:-5:200",
-                         "kind": "room_kind", "capacity": "int?:0:5000", "accessible": "flag"}},
+                         "kind": "room_kind", "capacity": "int?:0:5000", "accessible": "flag",
+                         # Task 48: open for the timetable builder (an office or a closed room is not), and reserved for
+                         # the units that list it in their needs (0481_rooms_schedulable.sql)
+                         "schedulable": "flag1", "dedicated": "flag"}},
 }
 
 
@@ -95,8 +98,10 @@ def _value(kind: str, field: str, v):
     if kind.startswith("int"):
         _, lo, hi = kind.split(":")
         return _int(field, v, int(lo), int(hi), kind.startswith("int?"))
-    if kind == "flag":
-        if v in (None, "", False, 0, "0"):
+    if kind in ("flag", "flag1"):
+        if v in (None, ""):
+            return int(kind == "flag1"), None
+        if v in (False, 0, "0"):
             return 0, None
         if v in (True, 1, "1"):
             return 1, None
