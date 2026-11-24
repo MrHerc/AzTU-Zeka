@@ -58,7 +58,6 @@ Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_ho
 | `ZEKA_SMTP_FROM` | `zeka@aztu.edu.az` | Göndərənin ünvanı |
 | `ZEKA_SECURITY_CONTACT` | `mailto:security@aztu.edu.az` | Zəifliyi bildirmə ünvanı, `/.well-known/security.txt`-də göstərilir (Task 41). `mailto:` və ya `https:` ilə başlayır. Boş olarsa fayl yoxdur |
 | `ZEKA_SECURITY_EXPIRES` | `2027-05-01` | Ünvanın yenidən yoxlanacağı tarix (İİİİ-AA-GG, ən çox bir il sonra): faylın `Expires` sahəsi. Boş, keçmiş və ya bir ildən uzaq olarsa fayl yoxdur. Tarixdən əvvəl ünvanı yoxlayın və tarixi yeniləyin |
-
 | `ZEKA_ALERT_BACKUP_HOURS` | `26` | Ən yeni backup bu qədər saatdan köhnədirsə, administratorlara xəbərdarlıq göndərilir. Saatlıq backup ilə `2` (`docs/runbooks/backup.md`, «Xəbərdarlıqlar») |
 | `ZEKA_ALERT_DISK_PCT` | `20` | Məlumat və ya backup diskində boş yer bu faizdən azdırsa, xəbərdarlıq göndərilir |
 | `ZEKA_ALERT_JOB_FAILS` | `3` | Dövri iş ardıcıl bu qədər dəfə uğursuz olarsa, xəbərdarlıq göndərilir |
