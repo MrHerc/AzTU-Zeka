@@ -12,7 +12,8 @@ const ROOT = "/admin/timetable/build";
 const STATUS = () => ({ draft: [t("Layihə"), "b-blue"], review: [t("Rəydə"), "b-violet"], published: [t("Dərc olunub"), "b-green"],
   superseded: [t("Əvəz olunub"), "b-gray"], discarded: [t("İmtina edilib"), "b-gray"] });
 const RUN_STATUS = () => ({ queued: t("Növbədədir"), running: t("Hesablanır"), done: t("Tamamlandı"), failed: t("Uğursuz oldu"), cancelled: t("Dayandırıldı") });
-const RUN_KIND = () => ({ precheck: t("İlkin yoxlama"), solve: t("Cədvəlin qurulması"), check: t("Tam yoxlama"), publish: t("Dərc") });
+const RUN_KIND = () => ({ precheck: t("İlkin yoxlama"), solve: t("Cədvəlin qurulması"), check: t("Tam yoxlama"), publish: t("Dərc"),
+  repair: t("Bərpa layihəsi") });
 const PHASE = () => ({ snapshot: t("məlumat oxunur"), construct: t("ilk yerləşdirmə"), improve: t("yaxşılaşdırma"), done: t("tamamlandı"),
   check: t("yoxlama"), rows: t("cədvəl sətirləri"), drop: t("köhnə dərslərin silinməsi"), lessons: t("dərslərin yaradılması"), notify: t("bildirişlər"), failed: t("uğursuz oldu") });
 const COMP = () => ({ group_window: t("Qrupların boş cütləri"), teacher_window: t("Müəllimlərin boş cütləri"), same_day_course: t("Bir gündə eyni fənn"),
@@ -122,7 +123,7 @@ route(ROOT, async (el, p, q) => {
         settingsForm(body, s);
       } else {
         const vs = await api.get(`${B}/versions`);
-        mount(body, html`${start.manages ? html`<div class="card"><div class="card-h"><h3>${ic("wand", 17)} ${t("Yeni hesablama")}</h3></div><div class="card-b row wrap tt-runform">
+        mount(body, html`${healthCard()}${start.manages ? html`<div class="card"><div class="card-h"><h3>${ic("wand", 17)} ${t("Yeni hesablama")}</h3></div><div class="card-b row wrap tt-runform">
             <div class="field"><label class="label" for="rn-kind">${t("Növ")}</label><select class="input" id="rn-kind"><option value="solve">${RUN_KIND().solve}</option><option value="precheck">${RUN_KIND().precheck}</option></select></div>
             <div class="field grow"><label class="label" for="rn-name">${t("Layihənin adı")}</label><input class="input" id="rn-name" maxlength="100" placeholder="${t("məs.: ilk variant")}"></div>
             <div class="field"><label class="label" for="rn-budget">${t("Addım sayı")}</label><input class="input" id="rn-budget" type="number" min="1" value="20000"></div>
@@ -133,6 +134,16 @@ route(ROOT, async (el, p, q) => {
         if (start.run) watchRun($("#tb-run", el), start.run.id, ended);
       }
     } catch (err) { mount(body, failed(err.message)); }
+  };
+  // the daily check of the published version (job timetable.health) and the repair run that proposes the fixing moves
+  const healthCard = () => {
+    const h = start.health;
+    if (!h) return "";
+    return html`<div class="card mb tt-health" data-problems="${h.count}"><div class="card-h wrap"><h3>${ic("activity", 17)} ${t("Dərc olunmuş cədvəlin gündəlik yoxlanışı")}</h3>
+      <span class="badge ${h.count ? "b-red" : "b-green"}">${h.count ? t("Problem: {n}", { n: h.count }) : t("Problem yoxdur")}</span>
+      ${start.manages && h.count ? html`<button class="btn btn-sm btn-primary" id="tb-repair">${ic("wand", 15)} ${t("Bərpa layihəsi hazırla")}</button>` : ""}</div>
+      <div class="card-b stack"><p class="small muted" style="margin:0">${t("Son yoxlama: {at}. Bərpa dərc olunmuş cədvəli dəyişmir: problemləri aradan qaldıran ən az köçürmə ilə layihə hazırlayır, keçmiş həftələrə toxunmur.",
+        { at: fmtDateTime(h.at) })}</p>${h.problems.length ? listOf(h.problems) : ""}</div></div>`;
   };
   const versionsCard = (vs) => html`<div class="card mt"><div class="card-h wrap"><h3>${ic("layers", 17)} ${t("Layihələr")}</h3><button class="btn btn-sm" id="tb-compare" disabled>${t("Seçilən ikisini müqayisə et")}</button></div>
           ${vs.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th><span class="sr-only">${t("Seç")}</span></th><th>#</th><th>${t("Ad")}</th><th>${t("Vəziyyət")}</th><th>${t("Yaradılıb")}</th>
@@ -211,6 +222,14 @@ route(ROOT, async (el, p, q) => {
       modal({ title: t("Layihələrin müqayisəsi"), size: "lg", body: html`${cards.some((c) => c.stale) ? html`<p class="small"><span class="badge b-amber">${t("Yoxlanılmayıb")}</span>
         ${t("Əl ilə dəyişiklikdən sonra göstəricilər «Tam yoxla» ilə yenilənir.")}</p>` : ""}${scoreTable(cards.map((c) => ({ label: `#${c.version.id} ${c.version.name || ""}`, score: c.score || {} })))}` });
     } catch (err) { toast(err.message, "err"); }
+  });
+  on(el, "click", "#tb-repair", async (e, b) => {
+    b.disabled = true;
+    try {
+      const r = await api.post(`${B}/runs`, { kind: "repair" });
+      toast(t("Hesablama növbəyə qoyuldu"), "ok");
+      watchRun($("#tb-run", el), r.id, ended);
+    } catch (err) { if (err.status === 409) refusal(err, t("Hesablama başlamadı")); else toast(err.message, "err"); b.disabled = false; }
   });
   on(el, "click", "#rn-start", async (e, b) => {
     b.disabled = true;

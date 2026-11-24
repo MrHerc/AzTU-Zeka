@@ -12,6 +12,8 @@
   and the staff's badge read (Task 42, PERF-F1), with the time they were computed.
 - ``timetable.work``, every 30 seconds: one chunk of the timetable builder's oldest active run (snapshot, solve, check,
   or a step of a publication; Task 48).
+- ``timetable.health``, daily: the published version of each open term checked against the term as it is now; the
+  timetable office is told once of each new problem (Task 48).
 
 Task 26 adds ``exam.autosubmit`` from the exam module.
 """
@@ -120,6 +122,11 @@ def timetable_work(c) -> str:
     return builder.work(c)
 
 
+def timetable_health(c) -> str:
+    from ..modules.timetable import builder                  # here: that module imports the legacy layer
+    return builder.health(c)
+
+
 def radar_snapshot(c) -> str:
     return f"week {radar.snapshot_week(c)}"
 
@@ -135,5 +142,6 @@ jobs.periodic("lessons.generate", DAY, lessons_generate)
 jobs.periodic("radar.snapshot", timedelta(days=7), radar_snapshot)
 jobs.periodic("radar.summary", timedelta(minutes=15), radar_summary)
 jobs.periodic("timetable.work", timedelta(seconds=30), timetable_work)
+jobs.periodic("timetable.health", DAY, timetable_health)
 from ..modules.integration import webhooks as _webhooks  # noqa: E402,F401  (Task 37: webhooks.send, attendance.barred)
 from ..modules.exam import service as _exam  # noqa: E402,F401  registers exam.autosubmit (Task 26)

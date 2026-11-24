@@ -452,6 +452,20 @@ def published_version(c, term_id: int):
     return row(c, "SELECT * FROM tt_versions WHERE term_id=? AND status='published' ORDER BY id DESC LIMIT 1", (term_id,))
 
 
+def open_published(c, today: str) -> list[dict]:
+    """The published version of every term whose teaching period holds ``today`` (timetable.health)."""
+    return rows(c, "SELECT v.* FROM academic_terms t JOIN tt_versions v ON v.term_id=t.id AND v.status='published' "
+                   "WHERE t.teaching_start<=? AND t.teaching_end>=? ORDER BY v.id", (today, today))
+
+
+def timetable_office(c) -> list[int]:
+    """The active academic office with a university-wide scope (its primary role, or a grant without a scope): who
+    publishes, and who hears of a published version's new problems."""
+    return [r["id"] for r in rows(c, "SELECT id FROM users WHERE role='academic_office' AND status='active' UNION SELECT u.id FROM "
+                                     "role_grants g JOIN users u ON u.id=g.user_id WHERE g.role='academic_office' AND g.scope_type IS NULL "
+                                     "AND u.status='active' ORDER BY 1")]
+
+
 def update_version(c, vid: int, **v):
     c.execute(f"UPDATE tt_versions SET {', '.join(k + '=?' for k in v)} WHERE id=?", (*v.values(), vid))  # nosec B608 (constant columns)
 

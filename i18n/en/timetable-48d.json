@@ -1,0 +1,15 @@
+{
+ "Ştat üçün seçilən kafedra bu ştatın fənnini keçən kafedralardan biri olmalıdır": "The department chosen for a post must be one of the departments that teach its subject",
+ "Semestrin dərc olunmuş cədvəli yoxdur: bərpa yalnız dərc olunmuş cədvəl üçün hesablanır": "The term has no published timetable: a repair is computed only for a published timetable",
+ "Semestrin dəyişdirilə bilən həftəsi qalmayıb": "No week of the term can still be changed",
+ "Dərc olunmuş cədvəldə yeni problem var: {n}": "New problems in the published timetable: {n}",
+ "Cədvəl qurucusu üçün açıqdır": "Open to the timetable builder",
+ "Ayrılmış otaq: yalnız tələblərində bu otaq göstərilən dərslər üçün": "Reserved room: only for classes whose requirements name this room",
+ "Ştatın fənnini bir neçə kafedra keçir: dərslərin hansı kafedranın fənninə yazılacağını seçin və faylı yenidən yoxlayın.": "More than one department teaches a subject of this post: choose which department's course its classes go to and check the file again.",
+ "Bərpa layihəsi": "Repair draft",
+ "Dərc olunmuş cədvəlin gündəlik yoxlanışı": "Daily check of the published timetable",
+ "Problem: {n}": "Problems: {n}",
+ "Problem yoxdur": "No problems",
+ "Bərpa layihəsi hazırla": "Prepare a repair draft",
+ "Son yoxlama: {at}. Bərpa dərc olunmuş cədvəli dəyişmir: problemləri aradan qaldıran ən az köçürmə ilə layihə hazırlayır, keçmiş həftələrə toxunmur.": "Last check: {at}. A repair does not change the published timetable: it prepares a draft with the fewest moves that remove the problems and leaves past weeks as they are."
+}

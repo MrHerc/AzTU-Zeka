@@ -26,7 +26,7 @@ from ..integration.domain import csv_cell
 from . import domain, repo, solver
 from . import service as rows_service
 
-RUN_KINDS = ("precheck", "solve", "check")
+RUN_KINDS = ("precheck", "solve", "check", "repair")
 EDITABLE = ("draft", "review")
 VISIBLE_PREPARE = ("review", "published", "superseded")      # what a timetable.prepare-only holder sees (design C12)
 ROWS_BATCH, DROP_BATCH, LESSON_BATCH, NOTIFY_BATCH = 2000, 500, 200, 2000
@@ -321,7 +321,7 @@ def start_page(c, user, tid: int) -> dict:
             "notice_days": settings(c)["notice_days"], "term_confirmed": J((repo.tt_term(c, tid) or {}).get("confirmed"), []) or [],
             "dues": r["dues"], "run_blocked": r["run_blocked"], "publish_blocked": r["publish_blocked"],
             "warnings": sum(1 for x in r["lines"] if x["level"] == "warn"), "versions": len(vs), "published_id": pub["id"] if pub else None,
-            "run": run_out(run) if run else None}
+            "run": run_out(run) if run else None, "health": _health_out(c, user, pub)}
 
 
 def _date(v, field: str) -> str | None:
@@ -607,7 +607,10 @@ def snapshot(c, t: dict, scope: dict, base_version_id: int | None = None) -> tup
                  for r in trows if r["unit_id"] in ids and r["meeting_key"] and r["period"]]
     locked = [{"key": p["meeting_key"], "weekday": p["weekday"], "period": p["period"], "weeks": p["weeks"], "room_id": p["room_id"]}
               for p in repo.placements(c, base_version_id) if p["locked"]] if base_version_id else []
-    return _problem(c, t, mine, ug, obstacles, reference, locked), kept
+    problem = _problem(c, t, mine, ug, obstacles, reference, locked)
+    if scope.get("repair"):          # a repair keeps the past weeks and pays for every move (solver.Model.repair); its checks too
+        problem.update(repair=True, from_week=scope["from_week"])
+    return problem, kept
 
 
 def _as_meeting(p: dict) -> dict:
@@ -644,6 +647,18 @@ def start_run(c, user, tid: int, body) -> dict:
         if v["term_id"] != t["id"] or v["status"] not in EDITABLE:
             raise HTTPError(409, "Yalnız bu semestrin layihəsi və ya rəydəki versiyası yoxlanılır")
         vid, scope = v["id"], J(v["scope"], {"all": True})
+    elif kind == "repair":                                 # the smallest moves that fix the published version (timetable.health)
+        pub = repo.published_version(c, t["id"])
+        if not pub:
+            raise HTTPError(409, "Semestrin dərc olunmuş cədvəli yoxdur: bərpa yalnız dərc olunmuş cədvəl üçün hesablanır")
+        sc = J(pub["scope"], {"all": True}) or {"all": True}
+        if not _covers_scope(c, s, sc):
+            raise HTTPError(404, "Cədvəl versiyası tapılmadı")
+        week = domain.week_no(now().date() + timedelta(days=settings(c)["notice_days"]), date.fromisoformat(t["teaching_start"]))
+        if week > domain.term_weeks(t):
+            raise HTTPError(409, "Semestrin dəyişdirilə bilən həftəsi qalmayıb")
+        # the weeks before the first day a publication may take effect stay as they are
+        scope, base = {**sc, "repair": True, "from_week": max(1, week)}, pub["id"]
     elif body.get("base_version_id") is not None:
         b = version_for(c, user, body.integer("base_version_id", 0))
         if b["term_id"] != t["id"] or not _covers_scope(c, s, J(b["scope"], {"all": True}) or {}):
@@ -848,6 +863,41 @@ def _write_version(c, r: dict, t: dict, model: solver.Model, state: dict, cpu: i
     return f"run {r['id']}: version {vid}"
 
 
+def replay(c, vid: int) -> dict | None:
+    """``manage.py timetable-replay`` (an audit's determinism check): the version's run solved again from its stored
+    input and seed, for the iterations it ran, compared with the placements the run wrote. A placement moved by hand
+    (origin manual) is counted, never compared. None: no such version. Reads, then one audit row.
+    shortcut: a run its time budget stopped before the first placement finished is not replayable (the cut is not
+    stored) and is reported as differing; store the construction step count if such runs appear."""
+    v = repo.version(c, vid)
+    if not v:
+        return None
+    r = repo.run(c, v["run_id"], blobs=True) if v["run_id"] else None
+    out: dict = {"version_id": vid, "run_id": v["run_id"], "problems": [], "differ": [], "manual": 0, "placements": 0}
+    if not r or r["input"] is None:
+        out["problems"].append("the version has no stored run input")
+    else:
+        if hashlib.sha256(r["input"]).hexdigest() != r["input_sha256"]:
+            out["problems"].append("the stored input does not match its SHA-256")
+        model = solver.prepare(_unz(r["input"]) or {})
+        state = solver.run(model, None, seed=r["seed"], budget=r["iter_budget"], until_iter=r["iterations"] if r["stopped"] else None)
+        res = solver.result(model, state)
+
+        def value(p: dict) -> tuple:
+            return p["weekday"], p["period"], p["duration"], domain.week_mask(p["weeks"], model.n), p["room_id"]
+        want = {p["key"]: value(p) for p in res["placements"]}
+        stored = repo.placements(c, vid)
+        out["placements"], out["manual"] = len(stored), sum(p["origin"] == "manual" for p in stored)
+        out["differ"] = sorted({p["meeting_key"] for p in stored if p["origin"] != "manual" and want.get(p["meeting_key"]) != value(p)}
+                               | (set(want) ^ {p["meeting_key"] for p in stored}))
+        if {x["key"] for x in res["unplaced"]} != {x["meeting_key"] for x in repo.unplaced(c, vid)}:
+            out["problems"].append("the unplaced meetings differ")
+    out["same"] = not out["problems"] and not out["differ"]
+    audit(c, None, "tt_replay", "tt_version", f"{vid} · run {v['run_id']} · {'same' if out['same'] else 'differs'} · {len(out['differ'])}")
+    c.commit()
+    return out
+
+
 def _score(v: dict, card: dict, hard: list[dict]) -> str:
     """A version's stored scorecard after a check: the violations themselves too (the grid marks their placements)."""
     return json.dumps({**card, "hard": len(hard), "problems": hard[:200], "kept_manual": (J(v["score"], {}) or {}).get("kept_manual", 0)})
@@ -942,13 +992,66 @@ def unplaced(c, user, vid: int) -> list[dict]:
             for x in items if x["unit_id"] in us]
 
 
+def _own_problems(c, user, problems: list[dict]) -> list[dict]:
+    """A scoped holder reads the problems of its own units (SEC-TT-3)."""
+    if not problems or scope_of(c, user)["all"]:
+        return problems
+    ok = {x["unit_id"] for x in _in_scope(c, user, [{"unit_id": _unit_of(k)} for p in problems for k in p.get("keys") or []])}
+    return [p for p in problems if any(_unit_of(k) in ok for k in p.get("keys") or [])]
+
+
 def scorecard(c, user, vid: int) -> dict:
     v = version_for(c, user, vid)
     score = J(v["score"], {}) or {}
-    if score.get("problems") and not scope_of(c, user)["all"]:      # a scoped holder reads the problems of its own units (SEC-TT-3)
-        ok = {x["unit_id"] for x in _in_scope(c, user, [{"unit_id": _unit_of(k)} for p in score["problems"] for k in p.get("keys") or []])}
-        score = {**score, "problems": [p for p in score["problems"] if any(_unit_of(k) in ok for k in p.get("keys") or [])]}
+    if score.get("problems"):
+        score = {**score, "problems": _own_problems(c, user, score["problems"])}
     return {"version": _version_out(v), "score": score, "stale": v["checked_rev"] != v["rev"]}
+
+
+# ---------------------------------------------------------------- the published version's daily check (timetable.health)
+def _sig(x: dict) -> str:
+    return f"{x['code']}|{','.join(x['keys'])}|{','.join(map(str, x['slot'] or []))}"
+
+
+def health(c) -> str:
+    """The job ``timetable.health`` (daily): the published version of each open term checked with ``domain.check``
+    against the term as it is now (rows, rooms, holidays, blocks, availability), the result stored on the version, and
+    the timetable office told once of each problem it was not told of yet. It changes no row: a repair run proposes
+    the moves as a draft."""
+    from ..exam import service as exam                          # here: the exam module imports the legacy layer
+    c.commit()
+    out = []
+    for v in repo.open_published(c, _today()):
+        if exam.open_count(c) and (v["unplaced"] + len(repo.placements(c, v["id"]))) / 1000 > settings(c)["solver"]["atomic_exam_max_s"]:
+            out.append(f"{v['id']}: waiting, an exam is open")
+            continue
+        c.execute("BEGIN")                                     # one read transaction: every read sees one state
+        try:
+            problem, _ = snapshot(c, term(c, v["term_id"]), J(v["scope"], {"all": True}) or {"all": True})
+            pls = [_as_meeting(p) for p in repo.placements(c, v["id"])]
+        finally:
+            c.rollback()
+        hard = domain.check(problem, pls)
+        seen = sorted({_sig(x) for x in hard})
+        new = set(seen) - set((J(v["health"], {}) or {}).get("seen") or [])
+
+        def write(v=v, hard=hard, seen=seen, new=new):
+            repo.update_version(c, v["id"], health=json.dumps({"at": iso(now()), "count": len(hard), "problems": hard[:200], "seen": seen}))
+            if new:
+                notify(c, repo.timetable_office(c), "timetable", T3("Dərc olunmuş cədvəldə yeni problem var: {n}", n=len(new)), "",
+                       "/admin/timetable/build")
+        _tx(c, write)
+        out.append(f"{v['id']}: {len(hard)} problems, {len(new)} new")
+    return " · ".join(out) or "no published version of an open term"
+
+
+def _health_out(c, user, v: dict | None) -> dict | None:
+    h = J(v["health"], None) if v else None
+    if not h or not v:
+        return None
+    mine = _own_problems(c, user, h.get("problems") or [])
+    return {"version_id": v["id"], "at": h["at"], "count": h["count"] if scope_of(c, user)["all"] else len(mine),
+            "problems": named(c, mine[:50], slot=True)}
 
 
 HOURS_REASONS = {   # why a unit's hours differ from Forma №3 (domain.hours_report)

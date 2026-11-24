@@ -416,12 +416,17 @@ def _teacher(idx: dict, name: str) -> int | None:
     return None
 
 
-def _course_for(c, cache: dict, subject: str, semester: str, department: int | None = None) -> int | None:
-    """The course of a subject: the only one of that name, else the one of the file's department, else of the semester."""
+def _same_subject(c, cache: dict, subject: str) -> list[dict]:
     if "courses" not in cache:
         cache["courses"] = [dict(r) for r in repo.active_courses(c)]
     want = forma3.tx.subject_key(subject)
-    same = [x for x in cache["courses"] if forma3.tx.subject_key(x["name"]) == want]
+    return [x for x in cache["courses"] if forma3.tx.subject_key(x["name"]) == want]
+
+
+def _course_for(c, cache: dict, subject: str, semester: str, department: int | None = None) -> int | None:
+    """The course of a subject: the only one of that name, else the one of the department (the post's choice or the
+    file's), else of the semester."""
+    same = _same_subject(c, cache, subject)
     if len(same) > 1 and department:                    # a subject two departments teach: each file means its own course
         same = [x for x in same if x["department_id"] == department] or same
     if len(same) > 1:
@@ -429,10 +434,23 @@ def _course_for(c, cache: dict, subject: str, semester: str, department: int | N
     return same[0]["id"] if len(same) == 1 else None
 
 
-def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Item], dict, set[str], set[str]]:
-    """The form's units as import items, the reader's report (docs/forms/forma-3.md), the blocked posts and the refused
-    anchors. A unit is planned only when its post passed the arithmetic controls and holds no blocking conflict; a hidden
-    sheet is listed, never planned; a vacancy unit has no teacher (``teacher_id`` NULL, ``vacancy`` 1)."""
+def _post_departments(c, cache: dict, units: list) -> dict[str, list[int]]:
+    """{post ref: department ids} of the posts with a subject that courses of more than one department teach."""
+    out: dict[str, set[int]] = {}
+    for u in units:
+        deps = {x["department_id"] for x in _same_subject(c, cache, u.subject_raw) if x["department_id"]}
+        if len(deps) > 1:
+            out.setdefault(u.post, set()).update(deps)
+    return {k: sorted(v) for k, v in out.items()}
+
+
+def _plan_load(c, filename: str, data: bytes, conflicts: list,
+               chosen: dict | None = None) -> tuple[list[Item], dict, set[str], set[str], dict[str, int]]:
+    """The form's units as import items, the reader's report (docs/forms/forma-3.md), the blocked posts, the refused
+    anchors and the departments the office chose. A unit is planned only when its post passed the arithmetic controls
+    and holds no blocking conflict; a hidden sheet is listed, never planned; a vacancy unit has no teacher
+    (``teacher_id`` NULL, ``vacancy`` 1). ``chosen``: {post ref: department id} for a post whose subject two
+    departments teach (Task 48); a post without a choice takes the file's department."""
     if not (filename or "").lower().endswith(".xlsx"):
         raise tables.TableError("Forma №3 XLSX faylı olmalıdır")
     try:
@@ -455,9 +473,15 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
     of = repo.departments_of(c, [t for t in teachers.values() if t])
     deps = Counter(of[t] for t in teachers.values() if t and of.get(t)).most_common(2)
     department = deps[0][0] if deps and (len(deps) == 1 or deps[0][1] > deps[1][1]) else None
+    options = _post_departments(c, cache, placed)
+    choice: dict[str, int] = {}
+    for ref, dep in (chosen or {}).items():
+        if ref not in options or type(dep) is not int or dep not in options[ref]:
+            raise tables.TableError("Ştat üçün seçilən kafedra bu ştatın fənnini keçən kafedralardan biri olmalıdır")
+        choice[ref] = dep
     for u in placed:
         teacher = teachers[u.anchor]
-        course = _course_for(c, cache, u.subject_raw, u.semester, department)
+        course = _course_for(c, cache, u.subject_raw, u.semester, choice.get(u.post, department))
         missing = [x["code_raw"] for x in u.groups if forma3.norm(x["code"]) not in groups]
         reason = (_missing("Müəllim", u.teacher) if not teacher and not u.vacancy else _missing("Fənn", u.subject_raw) if not course
                   else _missing("Qrup", ", ".join(missing)) if missing else None)
@@ -475,7 +499,12 @@ def _plan_load(c, filename: str, data: bytes, conflicts: list) -> tuple[list[Ite
             "post_ref": u.post, "anchor": u.anchor, "active": 1}, groups=sorted({groups[forma3.norm(x["code"])] for x in u.groups}),
             extra={"where": u.anchor, "aliases": [content]}))
     report = forma3.report(form, known_codes={k for k in groups}, refused=refused)
-    return items, report, blocked, refused
+    names = repo.department_names(c, sorted({d for ds in options.values() for d in ds}))
+    for p in report["posts"]:                             # the preview's department choice per post
+        if p["ref"] in options:
+            p["departments"] = [{"id": d, "name": names.get(d, f"#{d}")} for d in options[p["ref"]]]
+            p["department_id"] = choice.get(p["ref"], department if department in options[p["ref"]] else None)
+    return items, report, blocked, refused, choice
 
 
 STALE_WHY = {"blocked": S_("Ştat və ya bölmə bloklanıb: dərs cədvəl qurucusundan çıxarılır"),
@@ -682,11 +711,12 @@ def _write(c, ctx: Context, items: list[Item], user_id: int | None, conflicts: l
 
 def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool = False, prefer_source: bool = False,
         user_id: int | None = None, max_rows: int | None = None, as_of: str | None = None, force: bool = False,
-        detail: bool = False, on_written=None) -> dict:
+        detail: bool = False, on_written=None, departments: dict | None = None) -> dict:
     """Import one file; the report says what was (or, with ``dry_run``, would be) written. ``as_of``: the cut-over date of
     the export for the journal kinds (a row may also carry its own). A writing import does not start while an exam is
     going on, unless ``force`` (audited). ``on_written(c, report)`` runs in the import's own transaction before it commits
-    (the migration's file log, Checkpoint F SF-F5)."""
+    (the migration's file log, Checkpoint F SF-F5). ``departments``: teaching-load only, the office's department per
+    post (``_plan_load``)."""
     if kind not in domain.KINDS:
         raise tables.TableError("Naməlum idxal növü")
     if not domain.SOURCE.fullmatch(source or ""):
@@ -704,8 +734,9 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
     more: dict = {}                                     # teaching-load: the reader's report for the screen and the CLI
     blocked: set[str] = set()
     refused: set[str] = set()
+    choice: dict[str, int] = {}
     if kind == "teaching-load":
-        items, form_report, blocked, refused = _plan_load(c, filename, data, conflicts)
+        items, form_report, blocked, refused, choice = _plan_load(c, filename, data, conflicts, departments)
         more = {"forma3": form_report}
         ctx = Context(c, source, ("teaching_load",))
         total = len(items) + len(conflicts)
@@ -768,6 +799,8 @@ def run(c, kind: str, source: str, filename: str, data: bytes, *, dry_run: bool 
                                           f"={counts['unchanged']} !{len(conflicts)}")
         if going:
             audit(c, user_id, "import_forced", kind, f"{source} · {filename} · exams open: {going}")
+        if choice:
+            audit(c, user_id, "import_department", kind, f"{source} · {filename} · " + ", ".join(f"{k} → {v}" for k, v in sorted(choice.items())))
         report = {**_report(kind, source, total, items, [], conflicts, False, time.monotonic() - lock, started), **more,
                   "warnings": warnings}
         if on_written:

@@ -10,7 +10,7 @@ from zeka.core import clock, jobs
 from zeka.legacy import periodic, store  # noqa: F401  periodic registers the jobs
 
 EXPECTED = ["attendance.barred", "exam.autosubmit", "lessons.generate", "outbox.send", "radar.snapshot", "radar.summary", "reminders.sla",
-            "retention.purge", "timetable.work", "webhooks.send"]
+            "retention.purge", "timetable.health", "timetable.work", "webhooks.send"]
 
 
 @pytest.fixture

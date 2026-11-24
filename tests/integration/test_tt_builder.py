@@ -1037,3 +1037,139 @@ def test_the_hours_report_of_a_published_version_counts_its_lessons(office_ao, w
     finally:
         _write("UPDATE lessons SET status=? WHERE id=?", (one["status"], one["id"]))
 
+
+ROOM_FIELDS = ("building_id", "code", "number", "name", "floor", "kind", "capacity", "accessible")
+
+
+def test_a_room_closed_or_reserved_in_the_room_editor_stays_out_of_moves_and_runs(app_db, office_ao, world, chain):
+    """Deferred (slice 3): the room editor's «open for the timetable» and «reserved» boxes reach rooms.schedulable and
+    rooms.dedicated; the live move check, the editor's options and a run respect both. A room saved without the boxes
+    stays open and shared."""
+    admin = app_db.client("admin")
+    vid = _solve(office_ao, 23)["version_id"]
+    p = _seminar(world, vid)
+    opts = office_ao.get(f"/api/timetable/versions/{vid}/placements/{p['id']}/options").json
+    to = next(o for o in opts["options"] if not o["reasons"] and not o["current"] and o["room_id"])
+    rid, path = to["room_id"], f"/api/timetable/versions/{vid}/placements/{p['id']}/move"
+    room = q("SELECT * FROM rooms WHERE id=?", (rid,))[0]
+    body = {k: room[k] for k in ROOM_FIELDS}
+    try:
+        for flags in ({"schedulable": 0}, {"schedulable": 1, "dedicated": 1}):
+            assert admin.put(f"/api/directory/rooms/{rid}", {**body, **flags}).status == 200
+            assert q("SELECT schedulable, dedicated FROM rooms WHERE id=?", (rid,))[0] == {"schedulable": 0, "dedicated": 0, **flags}
+            moved = office_ao.post(path, {"weekday": to["weekday"], "period": to["period"], "room_id": rid, "rev": opts["rev"]})
+            assert moved.status == 409 and "room_fit" in {x["code"] for x in moved.json["reasons"]}, (flags, moved.text)
+            again = office_ao.get(f"/api/timetable/versions/{vid}/placements/{p['id']}/options").json["options"]
+            assert rid not in {o["room_id"] for o in again}, flags
+            other = _solve(office_ao, 29)["version_id"]
+            assert not q("SELECT 1 FROM tt_placements WHERE version_id=? AND room_id=?", (other, rid)), flags
+        assert admin.put(f"/api/directory/rooms/{rid}", body).status == 200
+        assert q("SELECT schedulable, dedicated FROM rooms WHERE id=?", (rid,))[0] == {"schedulable": 1, "dedicated": 1}, \
+            "a body without the boxes changes neither"
+        new = admin.post("/api/directory/rooms", {**body, "code": "TTB-NEW", "number": "9"})
+        assert new.status == 200, new.text
+        assert q("SELECT schedulable, dedicated FROM rooms WHERE id=?", (new.json["id"],))[0] == {"schedulable": 1, "dedicated": 0}
+        assert admin.put(f"/api/directory/rooms/{rid}", {**body, "schedulable": "x"}).status == 400
+    finally:
+        _write("UPDATE rooms SET schedulable=?, dedicated=? WHERE id=?", (room["schedulable"], room["dedicated"], rid))
+        _write("UPDATE rooms SET active=0 WHERE code='TTB-NEW'")
+
+
+def test_timetable_replay_solves_a_version_again_and_finds_a_changed_placement(office_ao, world, chain):
+    """manage.py timetable-replay --version V (audit): the run's stored input and seed give the same placements again
+    (exit 0); a placement changed behind the builder's back is named (exit 1); a hand move is not a difference; no such
+    version: exit 2. The check itself is audited."""
+    run = _solve(office_ao, 31)
+    vid = run["version_id"]
+    env = {**os.environ, "ZEKA_DATA": str(store.DATA)}
+    man = [sys.executable, str(ROOT / "backend" / "manage.py"), "timetable-replay", "--version"]
+
+    def replay(v):
+        r = subprocess.run([*man, str(v)], capture_output=True, env=env, timeout=300)
+        return r.returncode, r.stdout.decode("utf-8") + r.stderr.decode("utf-8")
+    code, out = replay(vid)
+    assert code == 0 and "OK" in out, out
+    p = _seminar(world, vid)
+    opts = office_ao.get(f"/api/timetable/versions/{vid}/placements/{p['id']}/options").json
+    to = next(o for o in opts["options"] if not o["reasons"] and not o["current"])
+    assert office_ao.post(f"/api/timetable/versions/{vid}/placements/{p['id']}/move",
+                          {"weekday": to["weekday"], "period": to["period"], "room_id": to["room_id"], "rev": opts["rev"]}).status == 200
+    code, out = replay(vid)
+    assert code == 0 and "1 moved by hand" in out, out
+    other = q("SELECT * FROM tt_placements WHERE version_id=? AND origin='solver' ORDER BY id LIMIT 1", (vid,))[0]
+    _write("UPDATE tt_placements SET weeks=? WHERE id=?", ("1", other["id"]))
+    try:
+        code, out = replay(vid)
+        assert code == 1 and other["meeting_key"] in out and "DIFFERS" in out, out
+    finally:
+        _write("UPDATE tt_placements SET weeks=? WHERE id=?", (other["weeks"], other["id"]))
+    assert replay(999999)[0] == 2
+    assert q("SELECT COUNT(*) n FROM audit WHERE action='tt_replay' AND detail LIKE ?", (f"{vid} ·%",))[0]["n"] == 3
+
+
+def health_job(day):
+    """One cycle of the daily timetable.health, ``day`` days into a far year (each call a new day)."""
+    c = store.connect()
+    try:
+        return jobs.run_due(c, "tt-health", now=datetime(2030, 1, 1, tzinfo=timezone.utc) + timedelta(days=day), names=["timetable.health"])
+    finally:
+        c.close()
+
+
+def test_the_daily_health_check_tells_a_new_problem_once_and_a_repair_moves_only_what_it_must(app_db, office_ao, world, chain):
+    """timetable.health: the published version of an open term is checked daily against the term as it is now (rows,
+    rooms, holidays, availability); the result is stored and shown on the builder's page; the timetable office is told
+    of a new problem once. A repair run proposes the smallest moves as a draft (parent: the published version, past
+    weeks untouched) and never changes the published rows; its draft passes the check."""
+    pub = _published_version()
+    p = q("SELECT p.*, u.teacher_id FROM tt_placements p JOIN teaching_units u ON u.id=p.unit_id WHERE p.version_id=? AND p.locked=0 "
+          "AND u.teacher_id=? ORDER BY p.id LIMIT 1", (pub, world["teachers"][2]))[0]
+    office = app_db.client("office").user["id"]
+    rows_before = q("SELECT id, weekday, start, end, weeks, room_id, active FROM timetable WHERE version_id=? ORDER BY id", (pub,))
+
+    def told():
+        return q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND link='/admin/timetable/build' AND title LIKE ?",
+                 (office, "%yeni problem%"))[0]["n"]
+    assert health_job(0) == [("timetable.health", "ok")]
+    clean = json.loads(q("SELECT health FROM tt_versions WHERE id=?", (pub,))[0]["health"])
+    assert clean["count"] == 0 and clean["at"] and told() == 0
+    cell = _write("INSERT INTO tt_availability(term_id,subject_type,subject_id,weekday,period,weeks,level,updated_by,updated_at) "
+                  "VALUES(?,'teacher',?,?,?,'all','unavailable',?,?)", (TERM, p["teacher_id"], p["weekday"], p["period"], office, "2026-11-19"))
+    try:
+        assert health_job(1) == [("timetable.health", "ok")]
+        h = json.loads(q("SELECT health FROM tt_versions WHERE id=?", (pub,))[0]["health"])
+        assert any(x["code"] == "teacher_unavailable" and p["meeting_key"] in x["keys"] for x in h["problems"]), h
+        assert told() == 1
+        health_job(2)
+        assert told() == 1, "a problem already told is not told again"
+        page = office_ao.get(B).json["health"]
+        assert page["version_id"] == pub and page["count"] == h["count"]
+        mine = next(x for x in page["problems"] if x["code"] == "teacher_unavailable")
+        assert mine["title"] and mine["courses"] and mine["slot"] == [p["weekday"], p["period"]]
+        started = office_ao.post(f"{B}/runs", {"kind": "repair", "budget": 500})
+        assert started.status == 200 and started.json["kind"] == "repair", started.text
+        run_jobs()
+        run = office_ao.get(f"/api/timetable/runs/{started.json['id']}").json
+        assert run["status"] == "done" and run["version_id"], run
+        draft = q("SELECT * FROM tt_versions WHERE id=?", (run["version_id"],))[0]
+        scope = json.loads(draft["scope"])
+        assert draft["status"] == "draft" and draft["parent_id"] == pub and draft["violations"] == 0 and scope["repair"], draft
+        n = domain.term_weeks(q("SELECT * FROM academic_terms WHERE id=?", (TERM,))[0])
+        future = ((1 << n) - 1) & ~((1 << (scope["from_week"] - 1)) - 1)
+        was = {x["meeting_key"]: (x["weekday"], x["period"], x["room_id"], domain.week_mask(x["weeks"], n) & future)
+               for x in q("SELECT * FROM tt_placements WHERE version_id=?", (pub,))}
+        now_ = {x["meeting_key"]: (x["weekday"], x["period"], x["room_id"], domain.week_mask(x["weeks"], n))
+                for x in q("SELECT * FROM tt_placements WHERE version_id=?", (draft["id"],))}
+        assert all(m & ~future == 0 for *_, m in now_.values()), "a repair never places a past week"
+        moved = sorted(k for k in now_ if now_[k] != was.get(k))
+        assert p["meeting_key"] in moved and (now_[p["meeting_key"]][0], now_[p["meeting_key"]][1]) != (p["weekday"], p["period"])
+        assert len(moved) <= 3, moved                                       # the smallest moves, not a new timetable
+        assert q("SELECT id, weekday, start, end, weeks, room_id, active FROM timetable WHERE version_id=? ORDER BY id", (pub,)) == rows_before
+        assert office_ao.post(f"{B}/runs", {"kind": "check", "version_id": draft["id"]}).status == 200
+        run_jobs()
+        assert q("SELECT violations FROM tt_versions WHERE id=?", (draft["id"],))[0]["violations"] == 0
+    finally:
+        _write("DELETE FROM tt_availability WHERE id=?", (cell,))
+    health_job(3)
+    assert json.loads(q("SELECT health FROM tt_versions WHERE id=?", (pub,))[0]["health"])["count"] == 0
+

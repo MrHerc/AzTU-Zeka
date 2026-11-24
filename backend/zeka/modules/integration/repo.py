@@ -53,6 +53,11 @@ def departments_of(c, ids) -> dict[int, int | None]:
                                                         tuple(ids))} if ids else {}
 
 
+def department_names(c, ids: list[int]) -> dict[int, str]:
+    return {r["id"]: r["name"] for r in rows(c, f"SELECT id, name FROM departments WHERE id IN ({','.join('?' * len(ids))})",  # nosec B608
+                                             tuple(ids))} if ids else {}
+
+
 def insert(c, name: str, values: dict) -> int:
     return c.execute(f"INSERT INTO {name}({', '.join(values)}) VALUES({', '.join('?' * len(values))})",  # nosec B608 - constants
                      tuple(values.values())).lastrowid

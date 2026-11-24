@@ -480,3 +480,42 @@ def test_forma3_a_subject_two_departments_teach_goes_to_the_files_department(app
     got = units("f3-dep")
     assert not [x for x in rep["conflicts"] if x["row"] in ("#0!E11", "#0!F11", "#0!F13")], rep["conflicts"]
     assert {got[a]["course_id"] for a in ("#0!E11", "#0!F11", "#0!F13")} == {mine} != {other}
+
+
+def test_forma3_the_office_chooses_the_department_of_a_post_two_departments_teach(app_db, load_world):
+    """Deferred (Task 48): when a file's subject is taught by courses of two departments, the preview offers each such
+    post a choice of department (default: the file's department, as before) and the import applies the choice, audited.
+    A choice for a post the file does not have, or a department that teaches none of its subjects, is a 400."""
+    admin = app_db.client("admin")
+    fid = admin.get("/api/directory/faculties").json["items"][0]["id"]
+    deps = [admin.post("/api/directory/departments", {"faculty_id": fid, "code": f"F3C{k}", "name": f"Seçim kafedrası {k}"}).json["id"]
+            for k in (1, 2)]
+    courses = [admin.post("/api/directory/courses", {"code": f"F3-SEC-{k}", "name": "Alqoritmlər", "credits": 5, "department_id": d}).json["id"]
+               for k, d in enumerate(deps)]
+    c = db()
+    try:
+        c.execute("UPDATE users SET department_id=? WHERE id=?", (deps[0], load_world["teachers"]["e.quliyev"]))
+        c.commit()
+    finally:
+        c.close()
+    data = (FIX / "forma3_blocks.xlsx").read_bytes()
+
+    def send(dry_run, departments=None):
+        return admin.post("/api/admin/import", {"kind": "teaching-load", "source": "f3-choice", "filename": "f.xlsx", "content_b64": b64(data),
+                                                "dry_run": dry_run, "departments": departments})
+    pre = send(True).json["forma3"]
+    post = next(p for p in pre["posts"] if p.get("departments"))
+    assert set(deps) <= {d["id"] for d in post["departments"]} and all(d["name"] for d in post["departments"])
+    assert post["department_id"] == deps[0], "the file's department until the office chooses"
+    assert not [p for p in pre["posts"] if p["status"] != "ok" and p.get("departments")], "a blocked post's units are not planned"
+    for wrong in ({post["ref"]: 999999}, {"#9!Z9": deps[1]}, {post["ref"]: "x"}):
+        r = send(True, wrong)
+        assert r.status == 400 and r.json["error"], (wrong, r.text)
+    chosen = send(True, {post["ref"]: deps[1]}).json["forma3"]
+    assert next(p for p in chosen["posts"] if p["ref"] == post["ref"])["department_id"] == deps[1]
+    assert send(False, {post["ref"]: deps[1]}).status == 200
+    got = units("f3-choice")
+    alq = [a for a, u in got.items() if u["post_ref"] == post["ref"] and u["course_id"] in courses]
+    assert alq and {got[a]["course_id"] for a in alq} == {courses[1]}, "the post's units of that subject go to the chosen department"
+    detail = q("SELECT detail FROM audit WHERE action='import_department' ORDER BY id DESC LIMIT 1")[0]["detail"]
+    assert post["ref"] in detail and str(deps[1]) in detail
