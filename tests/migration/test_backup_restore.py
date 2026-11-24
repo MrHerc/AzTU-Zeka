@@ -317,6 +317,9 @@ def test_hourly_backups_keep_one_set_per_hour_of_the_last_day():
     assert len(kept) <= 24 + 7 + 4
     daily = [start + timedelta(days=d) for d in range(30)]
     assert len(backup.keep(daily)) == len(backup.keep(daily, hourly=0)), "a nightly schedule keeps what it kept before"
+    n = datetime(2026, 1, 2, 12, 0)
+    assert backup.keep([n, n - timedelta(hours=24)], daily=0, weekly=0) == {n}, "a set of exactly 24 hours ago is a day old"
+    assert backup.keep([n, n - timedelta(hours=23, minutes=59)], daily=0, weekly=0) == {n, n - timedelta(hours=23, minutes=59)}
 
 
 @POSIX

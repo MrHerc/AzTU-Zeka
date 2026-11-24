@@ -33,7 +33,7 @@ Adlar və telefonlar bu cədvələ hədəf serverdə yazılır (Task 44). **Həl
    curl -s -o /dev/null -w '%{http_code}\n' https://<ad>/healthz
    $C ps && $C logs --tail 300 app
    $C exec app python backend/manage.py jobs status      # işlərin son icrası və xətası
-   $C exec app python backend/manage.py jobs check       # backup yaşı, boş disk, ardıcıl xətalar, icraçı (kod 1: problem var)
+   $C exec app python backend/manage.py jobs check       # backup yaşı, boş disk, ardıcıl xətalar, icraçı (kod 1: problem var, 2: baza yoxdur)
    df -h /var/lib/docker
    ```
 3. **Sərhədlə.**

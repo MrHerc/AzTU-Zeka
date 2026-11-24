@@ -310,6 +310,32 @@ def test_a_corrected_builtin_text_replaces_the_old_row_and_the_outcome_maps_keep
     assert t.put(f"/api/syllabi/{course}/outcomes/N1/items", {"items": []}).status == 200   # the shared course as it was
 
 
+
+def test_a_correction_of_a_builtin_title_alone_is_applied_and_a_programme_over_500_courses_is_read_whole(app_db, tmp_path):
+    import sqlite3
+
+    from zeka.modules.syllabus import repo
+    iid = item_id("bloom", "2001", "understand")
+    run("UPDATE framework_items SET title='köhnə ad' WHERE id=?", (iid,))
+    c = store.connect()
+    try:
+        frameworks.ensure_builtin(c)
+        c.commit()
+    finally:
+        c.close()
+    assert q("SELECT title FROM framework_items WHERE id=?", (iid,))[0]["title"] == "Anlamaq", "the title alone changed"
+    src, c = store.connect(), sqlite3.connect(tmp_path / "copy.db")
+    src.backup(c)
+    src.close()
+    c.row_factory = sqlite3.Row
+    try:
+        cids = [10 ** 6 + k for k in range(501)]
+        c.executemany("INSERT INTO syllabus_versions(course_id,version,status,data,created_at) VALUES(?,1,'published','{}','2026-11-01')",
+                      [(k,) for k in cids])
+        assert sorted(repo.published_of(c, cids)) == cids, "every part of 500, the last one too"
+    finally:
+        c.close()
+
 def test_the_picker_searches_on_the_server_paged_and_scoped_to_a_work_role(app_db, sample):
     t = app_db.client("teacher")
     page = t.get(f"/api/frameworks/{sample}/items?kind=knowledge&size=10").json

@@ -64,19 +64,22 @@ def registry_names(c, codes: list[str]) -> dict[str, str]:
     return out
 
 
-REGISTRY_READ = 200      # rows a lookup reads at most: two typed letters can start hundreds of offerings
+REGISTRY_READ = 200      # rows one arm reads at most: two typed letters can start hundreds of offerings
 
 
 def registry_search(c, prefixes: list[str], other_than: str, limit: int) -> list[dict]:
     """Active registry courses whose code or name starts with one of ``prefixes``, one per code (its latest offering's
-    name) in code order, code and name only. One index range per arm (0231, 0232): ``LIKE '%q%'`` reads the whole
-    registry, and an OR or a GROUP BY lets the planner choose a scan of the code index."""
+    name) in code order, code and name only. One index range per arm (0231, 0232), each read in code order with its own
+    limit, so no arm crowds another out (WF27F-1): ``LIKE '%q%'`` reads the whole registry, and an OR or a GROUP BY lets
+    the planner choose a scan of the code index. A name arm sorts its range (the name index pinned: never that scan).
+    shortcut: a code with more than REGISTRY_READ active offerings in one arm can show an older name; raise it then."""
     if not prefixes:
         return []
     end = "\U0010ffff"                                   # above every character: [p, p + end) is what starts with p
-    arms = " UNION ALL ".join(f"SELECT code, name, id FROM courses WHERE active=1 AND {col}>=? AND {col}<?"
-                              for _ in prefixes for col in ("code", "name"))
-    found = rows(c, f"{arms} LIMIT ?", (*[x for p in prefixes for x in (p, p + end, p, p + end)], REGISTRY_READ))  # nosec B608 (placeholders)
+    arms = " UNION ALL ".join(f"SELECT * FROM (SELECT code, name, id FROM courses{pin} WHERE active=1 AND {col}>=? AND {col}<? "
+                              "ORDER BY code LIMIT ?)"
+                              for _ in prefixes for col, pin in (("code", ""), ("name", " INDEXED BY idx_courses_name")))
+    found = rows(c, arms, tuple(x for p in prefixes for x in (p, p + end, REGISTRY_READ, p, p + end, REGISTRY_READ)))  # nosec B608 (placeholders)
     latest: dict[str, dict] = {}
     for r in found:
         if r["code"] != other_than and (r["code"] not in latest or r["id"] > latest[r["code"]]["id"]):

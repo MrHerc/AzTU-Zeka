@@ -137,8 +137,9 @@ def test_the_admin_status_page_shows_the_checks_without_paths_and_healthz_shows_
     assert set(h) == {"ok", "worker", "server_time", "tz"}, "the public liveness answer names no check"
 
 
-def test_manage_jobs_check_exits_1_on_a_problem(tmp_path):
+def test_manage_jobs_check_exits_1_on_a_problem(app_db, tmp_path):
     data = tmp_path / "data"
+    _db_copy(data / "campus.db")
     env = {**os.environ, "ZEKA_DATA": str(data), "BACKUP_DIR": str(tmp_path / "none"), "PYTHONIOENCODING": "utf-8",
            "ZEKA_ALERT_DISK_PCT": "0.001"}       # this host's own disk must not decide the test
     env.pop("ZEKA_JOBS", None)
@@ -146,3 +147,121 @@ def test_manage_jobs_check_exits_1_on_a_problem(tmp_path):
                        text=True, timeout=600)
     assert r.returncode == 1, r.stdout + r.stderr
     assert "runner  PROBLEM" in r.stdout and "problems 1" in r.stdout, r.stdout
+
+
+def _db_copy(target):
+    """The demo database at ``target`` (manage.py jobs check reads a database that exists, it never makes one)."""
+    target.parent.mkdir(parents=True)
+    src, dst = store.connect(), sqlite3.connect(target)
+    try:
+        src.backup(dst)
+    finally:
+        src.close()
+        dst.close()
+
+
+def test_manage_jobs_check_never_creates_migrates_or_indexes_a_database(tmp_path):
+    """SEC-27F-1: the host's hourly cron ran a whole store.init() (migrations, the search indexes: 20 s of CPU and
+    0.8 GB at university scale) in the app's container for a check that takes no time."""
+    data = tmp_path / "data"
+    env = {**os.environ, "ZEKA_DATA": str(data), "BACKUP_DIR": str(tmp_path / "none"), "PYTHONIOENCODING": "utf-8"}
+    r = subprocess.run([sys.executable, str(ROOT / "backend" / "manage.py"), "jobs", "check"], env=env, capture_output=True,
+                       text=True, timeout=600)
+    assert r.returncode == 2 and "campus.db" in r.stderr, r.stdout + r.stderr
+    assert not (data / "campus.db").exists(), "a missing database is reported, never created and seeded"
+
+
+def test_manage_jobs_check_exits_0_when_nothing_is_wrong_and_reads_no_index(app_db, backups, monkeypatch, capsys):
+    import manage
+    monkeypatch.setenv("ZEKA_JOBS", "0")                    # the runner is off: nothing to check there (ok None)
+    monkeypatch.setattr(store, "init", lambda *a, **k: pytest.fail("jobs check must not run store.init()"))
+    assert _check_all(store.connect()) == {"backup": None, "disk": True, "jobs": True, "runner": None}
+    assert manage.run_jobs("check") == 0, capsys.readouterr().out
+    assert "problems 0 · told 0" in capsys.readouterr().out
+
+
+def _check_all(c):
+    try:
+        return {x["key"]: x["ok"] for x in ops.checks(c, store.DATA)}
+    finally:
+        c.close()
+
+
+def test_a_lasting_problem_is_told_again_the_next_day(copy, backups, monkeypatch):
+    monkeypatch.setattr(config, "MODE", "prod")
+    _set(backups, 40)
+    _lease(copy, -2)
+    assert periodic.ops_check(copy).startswith("problems 1 · told 1")
+    assert periodic.ops_check(copy).startswith("problems 1 · told 0")
+    later = periodic.now() + timedelta(days=1)
+    monkeypatch.setattr(periodic, "now", lambda: later)
+    assert periodic.ops_check(copy).startswith("problems 1 · told 1"), "once a day, not once ever"
+
+
+def _fail(c, name, n):
+    t = clock.now()
+    for i in range(n):
+        c.execute("INSERT INTO job_runs(name, started_at, status, holder) VALUES(?, ?, 'error', 't')",
+                  (name, (t - timedelta(minutes=10 - i)).isoformat(timespec="seconds")))
+    c.commit()
+
+
+def test_a_second_failing_job_the_same_day_is_told_too(copy, backups, monkeypatch):
+    """WF27F-3: the day's mark was the check's key alone, so a job that began to fail after the first one was not told."""
+    _lease(copy, -2)
+    _fail(copy, "radar.snapshot", 3)
+    assert periodic.ops_check(copy) == "problems 1 · told 1 · jobs"
+    assert periodic.ops_check(copy) == "problems 1 · told 0 · jobs"
+    _fail(copy, "outbox.send", 3)
+    assert periodic.ops_check(copy) == "problems 1 · told 1 · jobs", "outbox.send is a new problem"
+    titles = [r[0] for r in copy.execute("SELECT title FROM notifications WHERE kind='ops' ORDER BY id")]
+    assert any("outbox.send (3)" in t for t in titles), titles
+
+
+def test_no_backup_and_an_old_backup_are_two_problems(copy, backups, monkeypatch):
+    monkeypatch.setattr(config, "MODE", "prod")
+    _lease(copy, -2)
+    assert periodic.ops_check(copy) == "problems 1 · told 1 · backup"           # none at all
+    _set(backups, 40)
+    assert periodic.ops_check(copy) == "problems 1 · told 1 · backup", "a set appeared, but it is too old: a new problem"
+
+
+def test_the_backup_disk_counts_too(copy, backups, monkeypatch):
+    """The data disk is 90% free, the backup disk (another device) 5%: the worse one decides."""
+    data_dev = store.DATA.stat().st_dev
+    real_stat = type(backups).stat
+
+    def stat(self, *a, **k):
+        st = real_stat(self, *a, **k)
+        return os.stat_result((*st[:2], data_dev + 1, *st[3:])) if self == backups else st
+    monkeypatch.setattr(type(backups), "stat", stat)
+    monkeypatch.setattr(ops.shutil, "disk_usage", lambda p: Usage(100, 95, 5) if str(p) == str(backups) else Usage(100, 10, 90))
+    x = _check(copy, "disk")
+    assert x["ok"] is False and x["free_pct"] == 5.0, x
+
+
+def test_a_blocked_administrator_is_not_told(copy, backups):
+    uid = periodic.admins(copy)[0]
+    copy.execute("UPDATE users SET status='blocked' WHERE id=?", (uid,))
+    copy.commit()
+    assert uid not in periodic.admins(copy)
+
+
+def test_the_default_backup_folder_is_manage_py_s_and_a_zero_limit_falls_back(monkeypatch):
+    monkeypatch.delenv("BACKUP_DIR", raising=False)
+    assert ops.backup_dir() == store.ROOT / "backups", "manage.py backup --dest without BACKUP_DIR"
+    for bad in ("0", "-5", "x"):
+        monkeypatch.setenv("ZEKA_ALERT_DISK_PCT", bad)
+        assert ops.limit("ZEKA_ALERT_DISK_PCT", 20) == 20, bad
+
+
+def test_a_value_at_its_limit_is_still_fine(copy, backups, monkeypatch):
+    stamp = clock.local().replace(microsecond=0) - timedelta(hours=26)
+    monkeypatch.setattr(clock, "local", lambda: stamp + timedelta(hours=26))
+    for ext in ("enc", "json"):
+        (backups / f"zeka-{stamp:%Y%m%d-%H%M%S}.{ext}").write_text("{}")
+    assert _check(copy, "backup")["age_h"] == 26.0 and _check(copy, "backup")["ok"] is True
+    at = clock.now().replace(microsecond=0)
+    monkeypatch.setattr(clock, "now", lambda: at)
+    _lease(copy, 10)
+    assert _check(copy, "runner")["expired_min"] == 10 and _check(copy, "runner")["ok"] is True

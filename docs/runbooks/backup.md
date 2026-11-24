@@ -91,7 +91,12 @@ gündə bir dəfə portalda və e-poçtla bildiriş göndərilir (`outbox`). Eyn
 | İş icraçısının icarəsi (`job_lease`) çoxdan bitib: icraçı işləmir | 10 dəqiqə | `ZEKA_ALERT_LEASE_MINUTES` |
 
 Backup qovluğu `BACKUP_DIR`-dir (Docker-də `app` konteyneri `zeka-backups` həcmini görür). İcraçı dayananda e-poçt
-növbəsi də dayanır. Buna görə eyni yoxlama hostun cron-undan da işlədilir: problem olarsa, kod 1 qaytarır.
+növbəsi də dayanır. Buna görə eyni yoxlama hostun cron-undan da işlədilir: problem olarsa, kod 1 qaytarır. Bazanı
+olduğu kimi oxuyur: miqrasiya etmir, axtarış indeksini qurmur, baza yoxdursa yaratmır (kod 2). Universitet ölçüsündə
+bir yoxlama bir saniyədən az çəkir (əvvəl `store.init()` ilə 20 s CPU və 0,8 GB idi, SEC-27F-1). Hər problem gündə bir
+dəfə deyilir: hər uğursuz iş ayrıca, «nüsxə yoxdur» və «nüsxə köhnədir» də ayrıca.
+
+`jobs check`-in kodları: 0 problem yoxdur, 1 problem var, 2 yoxlamaq olmur (baza yoxdur və ya sxem bu koddan köhnədir).
 
 ```cron
 47 * * * *  cd /opt/zeka && docker compose -f infra/compose.yml exec -T app python backend/manage.py jobs check >> /var/log/zeka-check.log 2>&1 || echo "zeka check: problem" | mail -s "Zəka xəbərdarlıq" ops@aztu.edu.az

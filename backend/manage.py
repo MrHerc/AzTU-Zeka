@@ -321,18 +321,11 @@ def import_routes(building: str, nodes: Path, edges: Path) -> int:
 def run_jobs(action: str) -> int:
     from zeka.core import jobs
     from zeka.legacy import periodic  # noqa: F401  registers the jobs
+    if action == "check":                        # host cron: still reports when the runner (and so the outbox) is down
+        return _check_jobs(periodic)
     store.init()
     c = store.connect()
     try:
-        if action == "check":                    # host cron: still reports when the runner (and so the outbox) is down
-            from zeka.core import ops
-            bad = ops.problems(c, store.DATA)
-            for x in ops.checks(c, store.DATA):
-                print(f"{x['key']:<7} {'-' if x['ok'] is None else 'ok' if x['ok'] else 'PROBLEM'}  "
-                      + " ".join(f"{k}={v}" for k, v in x.items() if k not in ("key", "ok")))
-            print(periodic.ops_check(c))
-            c.commit()
-            return 1 if bad else 0
         if action == "run":
             for name, result in jobs.run_due(c, f"manage:{os.getpid()}"):
                 print(f"{name}: {result}")
@@ -345,6 +338,30 @@ def run_jobs(action: str) -> int:
     finally:
         c.close()
     return 0
+
+
+def _check_jobs(periodic) -> int:
+    """The warning signs of the database the app serves, read as it is: no store.init() (migrations, the search indexes:
+    20 s of CPU and 0.8 GB at university scale, every hour in the app's container; SEC-27F-1). 1 on a problem, 2 when
+    there is nothing to check."""
+    from zeka.core import ops
+    if not store.DB_PATH.is_file():
+        print(f"error: {store.DB_PATH.name} is not in ZEKA_DATA: nothing to check", file=sys.stderr)
+        return 2
+    c = store.connect()
+    try:
+        bad = ops.problems(c, store.DATA)
+        for x in ops.checks(c, store.DATA):
+            print(f"{x['key']:<7} {'-' if x['ok'] is None else 'ok' if x['ok'] else 'PROBLEM'}  "
+                  + " ".join(f"{k}={v}" for k, v in x.items() if k not in ("key", "ok")))
+        print(periodic.ops_check(c))
+        c.commit()
+    except sqlite3.Error as ex:                  # e.g. an older schema than this code: report it, never migrate from cron
+        print(f"error: {ex}", file=sys.stderr)
+        return 2
+    finally:
+        c.close()
+    return 1 if bad else 0
 
 
 def run_backup(dest: Path, key_file: str, remote: str) -> int:

@@ -317,6 +317,58 @@ def test_the_editor_looks_a_prerequisite_up_by_the_start_of_a_code_or_name_and_r
     assert len(seen) == 1 and bad == {}, bad
 
 
+
+def test_a_code_match_is_never_crowded_out_by_names_and_the_first_ten_are_in_code_order(app_db, tmp_path):
+    """WF27F-1: one LIMIT over every arm let 250 names that start with "Ma" fill it before the code arm "MA" was read."""
+    import sqlite3
+
+    from zeka.modules.syllabus import domain, repo
+    src, c = store.connect(), sqlite3.connect(tmp_path / "copy.db")
+    src.backup(c)
+    src.close()
+    c.row_factory = sqlite3.Row
+    try:
+        c.execute("INSERT INTO courses(code,name,active) VALUES('MA-101','Kimya',1)")
+        c.executemany("INSERT INTO courses(code,name,active) VALUES(?,?,1)", [(f"ZZ-{i:03}", f"Maliyyə {i}") for i in range(250)])
+        found = [x["code"] for x in repo.registry_search(c, domain.prefixes("ma"), "X", 10)]
+        every = sorted({r[0] for r in c.execute("SELECT code FROM courses WHERE active=1 AND (code LIKE 'ma%' OR name LIKE 'ma%')")})
+        assert found == every[:10] and found[0] == "MA-101", found
+    finally:
+        c.close()
+
+
+def test_the_lookup_s_forms_offerings_and_limits(world):
+    """Mutants the review of 2026-11-25 found alive: the English capitals, the Azerbaijani capital İ, spaces, the latest
+    offering's name, a closed course, at most ten."""
+    t, cid, term, dep = world["teacher"], world["course"], world["term"]["id"], world["dep"]["id"]
+
+    def get(typed):
+        r = t.get(f"/api/syllabi/{cid}/prerequisites?q=" + urllib.parse.quote(typed))
+        assert r.status == 200, r.text
+        return r.json["items"]
+    course("INF-777", "Proba fənni", term, None, dep)
+    assert {"code": "INF-777", "name": "Proba fənni"} in get("inf-7"), "a code with i the English way"
+    course("PRB-778", "İnformatikanın əsasları proba", term, None, dep)
+    assert "PRB-778" in [x["code"] for x in get("informatikanın əsas")], "a name that starts with İ"
+    assert "RİY-1101" in [x["code"] for x in get("  ali   riy")], "spaces as typed"
+    course("PRB-779", "Köhnə ad proba", term, None, dep)
+    course("PRB-779", "Yeni ad proba", term, None, dep)
+    assert {"code": "PRB-779", "name": "Yeni ad proba"} in get("prb-779"), "the latest offering's name"
+    closed = course("PRB-780", "Bağlı proba", term, None, dep)
+    run("UPDATE courses SET active=0 WHERE id=?", (closed,))
+    assert "PRB-780" not in [x["code"] for x in get("prb-78")], "a closed course is not offered"
+    for k in range(12):
+        course(f"PRX-{k:02d}", f"Say proba {k}", term, None, dep)
+    assert [x["code"] for x in get("prx-")] == [f"PRX-{k:02d}" for k in range(10)], "ten, in code order"
+
+
+def test_prefixes_are_the_typed_forms_of_a_code_and_a_name():
+    from zeka.modules.syllabus import domain
+    assert domain.prefixes("inf-7") == ["inf-7", "İnf-7", "Inf-7", "İNF-7", "INF-7"]
+    assert domain.prefixes("  ali   riy ") == ["ali riy", "Ali riy", "ALİ RİY", "ALI RIY"]
+    assert domain.prefixes("x") == [] and domain.prefixes("  ") == []
+
+
 # ---------------------------------------------------------------- 4. the overview of a term
 @pytest.fixture(scope="module")
 def overview(world):

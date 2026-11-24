@@ -138,7 +138,11 @@ Nə dəyişdi:
 - Prerekvizit axtarışı kataloqun siyahısını (`/api/directory/courses`) çağırırdı: hər işçiyə fənnin tam sətri,
   `LIKE '%q%'` ilə bütün `courses` cədvəlinin oxunması. İndi redaktorun öz marşrutu var: yalnız fənnin rəhbər müəllimi,
   yalnız kod və ad, ən çox 10 fənn, fənnin özü yox. Kodun və ya adın əvvəli ilə axtarır, indeks aralıqları ilə
-  (`0231` kod, `0232_registry_name_index.sql` ad). Cavab 20 KB → 0,5 KB. Test:
+  (`0231` kod, `0232_registry_name_index.sql` ad). Hər aralıq kod sırası ilə və öz həddi ilə oxunur: adı «Ma» ilə
+  başlayan 250 fənn kodu «MA» ilə başlayanı sıxışdırıb çıxarmır (WF27F-1). Ölçü (2026-11-25, `--repeat 20`, dörd sorğu): p50 2,7–3,6 ms, p95 3,0–7,8 ms;
+  tam oxunma yenə 0. Bu, köhnə axtarışdan dardır (WF27F-2): adın
+  ortasındakı söz («nəzəriyyəsi») və kodun yalnız rəqəmi («2105») artıq heç nə tapmır. Köhnə `LIKE '%q%'` bunları
+  bütün reyestri oxuyaraq tapırdı. Sahə yazısı bunu deyir: «Fənnin kodunun və ya adının əvvəlini yazın». Cavab 20 KB → 0,5 KB. Test:
   `tests/integration/test_syllabus_registry.py`; plan `tests/load/test_query_plans.py`-də.
 - Semestr icmalı, təsdiq növbəsi və köçürmə mənbələri həddən xeyli aşağıdır: dəyişmədi.
 

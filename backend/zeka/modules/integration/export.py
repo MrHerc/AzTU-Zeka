@@ -57,7 +57,7 @@ def _wall(t: datetime) -> str:
     """A moment in the stored form: the university's naive wall clock to the second (a moment without a zone already is).
     Microseconds are dropped, so a row of the same second is included rather than lost."""
     if t.tzinfo:
-        t = (t.astimezone(clock.ZONE) if clock.ZONE else t.astimezone()).replace(tzinfo=None)    # no tz database: OS time, as clock.local
+        t = t.astimezone(clock.zone()).replace(tzinfo=None)          # never the host's own time (WF27F-4)
     return iso(t.replace(microsecond=0))
 
 

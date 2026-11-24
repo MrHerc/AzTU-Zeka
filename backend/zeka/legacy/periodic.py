@@ -156,13 +156,25 @@ def ops_title(x: dict):
             else T3("Dövri işlərin icraçısı {n} dəqiqədir işləmir", n=x["expired_min"]))
 
 
+def ops_marks(x: dict) -> list[str]:
+    """What one check's problem is: each failing job is its own, and no backup is another problem than an old one (WF27F-3)."""
+    if x["key"] == "jobs":
+        return [f"jobs:{j['name']}" for j in x["failing"]]
+    if x["key"] == "backup":
+        return ["backup:none" if x["newest"] is None else "backup:old"]
+    if x["key"] == "runner":
+        return ["runner:never" if x["expired_min"] is None else "runner:stopped"]
+    return [x["key"]]
+
+
 def ops_check(c) -> str:
     bad = ops.problems(c, store.DATA)
     told = 0
     to = admins(c)
     day = now().date().isoformat()
     for x in bad:
-        if to and _once(c, "ops", 0, f"{x['key']}:{day}"):    # once a day per problem: a lasting one is not an hourly flood
+        new = [m for m in ops_marks(x) if _once(c, "ops", 0, f"{m}:{day}")] if to else []   # every mark is recorded
+        if new:                                    # once a day per problem: a lasting one is not an hourly flood
             notify(c, to, "ops", ops_title(x), "", "/admin")
             told += 1
     return f"problems {len(bad)} · told {told}" + "".join(f" · {x['key']}" for x in bad)
