@@ -36,7 +36,7 @@ python backend/manage.py timetable-replay --version V   # a builder run's stored
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 2138 tests, about 10 min; uses a temp database, never touches data/
+python -m pytest -q                               # 2177 tests, about 13 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
@@ -236,8 +236,13 @@ rather than share it between, say, a load type and a tip label.
   `date.today()` fail lint outside `backend/zeka/core/clock.py`. `tests/conftest.py` anchors the suite's today at
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test
   never reads the real date.
+  Without a tz database `clock.BAKU` stands in for Asia/Baku (equal to it from 1993 on) and `clock.zone()` raises for
+  any other zone: never fall back to the host's time.
+- **Ops checks (2026-11-25).** `manage.py jobs check` runs from the host's cron in the app container: it reads the
+  database as it is (no `store.init()`, migration or index build; exit 2 without a database). `ops.check` tells each
+  problem once a day by its mark (`periodic.ops_marks`). Workflow actions are pinned to commit SHAs (`test_workflow_pins.py`).
 
-## Branch state (2026-11-24)
+## Branch state (2026-11-25)
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
@@ -250,7 +255,10 @@ Then the syllabus audit gaps without an owner decision, the timetable health che
 Forma №3 department choice, the room boxes and the accessibility pass, reviewed in
 `docs/review/checkpoint-f-addendum-2026-11-24.md` (25 confirmed findings fixed; OK-1 closed; SEC-8D5-1 decided by the
 owner on 2026-11-24: option (a)). Since 2026-11-24 the owner keeps `main` on GitHub equal to the working branch after each
-green full run (Render deploys `main`); the five PRs are superseded. Task 44 (release) waits for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's
+green full run (Render deploys `main`); the five PRs are superseded. On top of `42f8bcb`, `integrate-wf-27f`
+(pushed 2026-11-25) adds the Windows CI job, the screens measured at university scale, the built-in framework texts checked against their
+sources and the single server's alerts and hourly backups, reviewed in `docs/review/checkpoint-f-addendum-2026-11-25.md`
+(16 confirmed findings fixed). Task 44 (release) waits for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's
 gate is not passed.
 
 ## Product direction

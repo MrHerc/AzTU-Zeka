@@ -1139,6 +1139,8 @@ Qeyd (2026-11-23): əlavə rəy (`docs/review/checkpoint-f-addendum-2026-11-23.m
 
 Qeyd (2026-11-24): ikinci əlavə rəy (`docs/review/checkpoint-f-addendum-2026-11-24.md`) sillabus auditinin sahibsiz boşluqlarını, cədvəlin gündəlik yoxlamasını və bərpasını, `timetable-replay`-i, Forma №3-də kafedra seçimini, otaq qutularını və yeni ekranların əlçatanlığını əhatə edir; 25 təsdiqlənən tapıntının hamısı testlə düzəldilib, yüksək təhlükəsizlik tapıntısı yoxdur; OK-1 bağlanıb (`3e0ff28`). SEC-8D5-1 (aşağı) (a) yolu ilə düzəldilib, sahibin təsdiqini gözləyir. Tam dəst: 2 111 passed, 27 skipped. Qapının qalan üç bəndi dəyişməyib.
 
+Qeyd (2026-11-25): üçüncü əlavə rəy (`docs/review/checkpoint-f-addendum-2026-11-25.md`) Windows CI işini, ekranların universitet ölçüsündə ölçülməsini, daxili çərçivə mətnlərini və tək serverin risklərini (saatlıq backup, `ops.check`, `manage.py jobs check`) əhatə edir. 16 təsdiqlənən tapıntının hamısı testlə düzəldilib (`bec4cf9`), yüksək təhlükəsizlik tapıntısı yoxdur. `jobs check` artıq `store.init()` işlətmir: universitet ölçüsündə 21 s və 790 MB əvəzinə 0,16 s və 39 MB (SEC-27F-1). Qapının qalan üç bəndi dəyişməyib.
+
 ## Task 48: Semestr cədvəli qurucusu
 
 **Description:** Bu gün dərs cədvəlinin sətirləri yalnız əl ilə yazılır (Task 19); Forma №3-dən gələn tədris vahidləri (Task 47) özü cədvələ düşmür. Qurucu semestrin bütün girişlərini bir yerə yığır, toqquşmasız cədvəl layihəsini hesablayır, dekanlıq və kafedralar layihəyə baxır, tədris şöbəsi onu effektiv tarixdən dərc edir. Dizayn: Task 48-in son dizaynı (`f3work/tt-design.md`, repozitoriyadan kənarda; §13-də üç dilim).

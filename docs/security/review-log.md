@@ -50,6 +50,13 @@ scope on the syllabus queue (MUT-S23), the object check of `exam-defaults` (MUT-
 health check (MUT-T05-T06), `_covers_scope` on a repair run (MUT-T09) and the health notice going only to the
 university-wide academic office (MUT-T04).
 
+Security findings of the third addendum (2026-11-25, `docs/review/checkpoint-f-addendum-2026-11-25.md`), both fixed in
+`bec4cf9`: SEC-27F-1 (medium, availability): `manage.py jobs check`, run by the host's cron every hour inside the app
+container, ran a full `store.init()` (migrations and the whole search index: 20 s of CPU and 790 MB at university
+scale); it now reads the database as it is, never creates or migrates one (0.16 s, 39 MB). Tests: `test_ops_alerts.py`,
+red before the fix. SEC-27F-2 (low, supply chain): `ci.yml` used movable `@v7` tags; every action is pinned to a commit
+SHA like `security.yml`, and `tests/unit/test_workflow_pins.py` checks every workflow.
+
 Refuted claims are kept with their refutation in each report, for example:
 - **CR-E9:** `/api/v1` responses do have `Cache-Control: no-store`.
 - **SR46-2:** the student sees who handled the request by design; acceptance criterion 2 asks for it.
