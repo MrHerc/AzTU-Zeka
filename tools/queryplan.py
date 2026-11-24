@@ -1,6 +1,6 @@
 """Query plans of the load-test routes on a large dataset (tasks/todo.md, Tasks 7 and 42).
 
-    python tools/queryplan.py [--dataset university] [--min-rows 1000]
+    python tools/queryplan.py [--dataset university] [--min-rows 1000] [--repeat 20]
 
 Builds the dataset in a throw-away ZEKA_DATA directory with an open exam (tools/loadtest.py exam_setup) and a released one
 that 1 200 students sat (``bulk_exam``: every exam table above --min-rows), serves the API in this process and sends, once
@@ -9,7 +9,9 @@ answer, view, submit) and the proctor board as the course's teacher; as a leader
 request, /api/analytics: its Radar line and card are the periodic job's summary), the accreditation evidence (Task 39) and
 the Radar page (/api/radar, the live campus-wide analysis); and as the academic office, the timetable builder's read
 routes and one move (Task 48) over a term whose builder tables all hold more than --min-rows rows (``bulk_timetable``), then
-the syllabus approval queue and the term overview over large syllabus and course tables (``bulk_syllabus``, AR-11).
+the syllabus approval queue and the term overview over large syllabus and course tables (``bulk_syllabus``, AR-11); then
+the screens of 2026-11-23/24 as each of their callers (``_screens``, scenario ``screens:<role>``, over ``bulk_screens``'s
+programme, NICE map and copy sources), each GET sent --repeat times: their p50/p95 are the report's ``screens``.
 Records each SQL statement the handlers run and prints, as
 JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
 slowest routes. Exit 1 when a read, mixed or exam route scans one; the leader's routes are reported, not failed: the
@@ -26,6 +28,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.parse
 from pathlib import Path
 
 import loadtest
@@ -102,6 +105,29 @@ def _routes(student: str, news: list[int], exam: tuple[int, list[str], str], tt:
         yield "syllabus", "GET", path, ao, None
     back, _ = yield "syllabus", "POST", "/api/auth/demo", "", {"role": "office"}
     yield "syllabus", "GET", f"/api/syllabi/overview?term={term}&q=QP", _sid(back, "syllabus: dean's office"), None
+    yield from _screens(tt)
+
+
+def _screens(tt: dict):
+    """The screens added on 2026-11-23/24 as each of their callers opens them, every filter and spreadsheet: timed
+    --repeat times each (p50/p95), their statements explained like the others'. The scenario names the role."""
+    term, v, sid, cid, dep = tt["term"], f"/api/timetable/versions/{tt['version']}", tt["programme"], tt["course"], tt["department"]
+    ov = f"/api/syllabi/overview?term={term}"
+    cookies = {}
+    for role in ("academic_office", "office", "leader", "dept_head", "admin", "teacher"):
+        back, _ = yield "screens:login", "POST", "/api/auth/demo", "", {"role": role}
+        cookies[role] = _sid(back, f"screens: {role}")
+    steps = [(role, ov + f) for role in ("academic_office", "office", "leader")
+             for f in ("", "&state=published", "&state=none", f"&department={dep}", "&q=QP-1", "&page=2", "&format=csv")]
+    steps += [(role, f"/api/syllabi/queue?page={page}") for role in ("dept_head", "academic_office", "admin") for page in (1, 2)]
+    steps += [("academic_office", f"{v}/hours{f}") for f in ("", "?outside=1", f"?department_id={dep}", "?offset=100", "?format=csv")]
+    steps += [(role, f"/api/frameworks/coverage?programme={sid}") for role in ("academic_office", "dept_head", "leader", "admin")]
+    steps += [("leader", f"/api/frameworks/coverage?programme={sid}&role={tt['work_role']}"),
+              ("leader", f"/api/frameworks/coverage?programme={sid}&format=csv"), ("academic_office", "/api/frameworks/programmes"),
+              ("teacher", f"/api/syllabi/{cid}/sources")]
+    steps += [("teacher", f"/api/syllabi/{cid}/prerequisites?q=" + urllib.parse.quote(q)) for q in ("QS", "köhnə fənn 11", "elm", "yü")]
+    for role, path in steps:
+        yield f"screens:{role}", "GET", path, cookies[role], None
 
 
 BULK = 1200
@@ -203,10 +229,62 @@ def bulk_syllabus(data: Path, n: int = 1200) -> None:
         db.close()
 
 
+def bulk_screens(data: Path, tt: dict) -> dict:
+    """What the screens of 2026-11-23/24 read at university scale: NICE imported as manage.py does; a programme over
+    bulk_timetable's 150 groups (its 300 courses), whose published versions have 6 outcomes of 5 NICE statements each; a
+    submitted version of each of those courses, for the department head, who gets a grant on their department; and 60 of
+    bulk_syllabus's earlier-term courses headed by the demo teacher, 5 of them offerings of the teacher's own course."""
+    from zeka.legacy import store
+    from zeka.modules.syllabus import frameworks
+    c = store.connect()
+    try:
+        frameworks.import_file(c, (ROOT / "content" / "frameworks" / "nice-components-2.2.0.json").read_bytes())
+        c.commit()
+    finally:
+        c.close()
+    db = sqlite3.connect(data / "campus.db")
+    try:
+        t = "2026-09-01T09:00:00"
+        dep = db.execute("SELECT id FROM departments WHERE code='QPT'").fetchone()[0]
+        sid = db.execute("INSERT INTO specialties(faculty_id,department_id,code,name,active,created_at,updated_at) "
+                         "VALUES(1,?,'QP-050000','Yük ixtisası',1,?,?)", (dep, t, t)).lastrowid
+        db.execute("UPDATE study_groups SET specialty_id=? WHERE name LIKE 'QP-%'", (sid,))
+        fid = db.execute("SELECT id FROM frameworks WHERE key='nice'").fetchone()[0]
+        items = [r[0] for r in db.execute("SELECT id FROM framework_items WHERE framework_id=? AND kind IN ('task','knowledge','skill') "
+                                          "ORDER BY id", (fid,))]
+        role = db.execute("SELECT code FROM framework_items WHERE framework_id=? AND kind='work_role' ORDER BY code LIMIT 1", (fid,)).fetchone()[0]
+        qp = [r[0] for r in db.execute("SELECT id FROM courses WHERE code LIKE 'QP-%' ORDER BY id")]
+        for k, cid in enumerate(qp):
+            outs = [{"id": f"N{n}", "text": f"Yük nəticəsi {n}"} for n in range(1, 7)]
+            tags = {o["id"]: [items[(k * 30 + n * 5 + j) % len(items)] for j in range(5)] for n, o in enumerate(outs)}
+            body = json.dumps({"workload": {"lecture": 30}, "outcomes": outs, "plan": [], "assessment": []})
+            db.execute("UPDATE syllabus_versions SET data=?, tags=? WHERE course_id=? AND status='published'", (body, json.dumps(tags), cid))
+            db.execute("INSERT INTO syllabus_versions(course_id,version,status,data,created_at,tags) VALUES(?,4,'submitted',?,?,?)",
+                       (cid, body, t, json.dumps(tags)))
+        db.execute("INSERT INTO role_grants(user_id,role,scope_type,scope_id,granted_at) "
+                   "SELECT id,'dept_head','department',?,? FROM users WHERE username='kafedra'", (dep, t))
+        teacher, code = db.execute("SELECT u.id, co.code FROM users u JOIN courses co ON co.teacher_id=u.id WHERE u.username='rauf' "
+                                   "ORDER BY co.id LIMIT 1").fetchone()
+        cid = db.execute("SELECT id FROM courses WHERE code=? AND teacher_id=? ORDER BY id LIMIT 1", (code, teacher)).fetchone()[0]
+        qs = [r[0] for r in db.execute("SELECT id FROM courses WHERE code LIKE 'QS-%' ORDER BY id LIMIT 60")]
+        db.executemany("UPDATE courses SET teacher_id=? WHERE id=?", [(teacher, x) for x in qs])
+        db.executemany("UPDATE courses SET code=? WHERE id=?", [(code, x) for x in qs[:5]])
+        db.commit()
+        return {**tt, "programme": sid, "department": dep, "work_role": role, "course": cid}
+    finally:
+        db.close()
+
+
+def _pct(ms: list[float], p: float) -> float:
+    s = sorted(ms)
+    return round(s[min(len(s) - 1, int(p * len(s)))], 1)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--dataset", choices=sorted(loadtest.SIZES), default="university")
     ap.add_argument("--min-rows", type=int, default=1000)
+    ap.add_argument("--repeat", type=int, default=1, help="send each GET of the screens scenario this many times: p50/p95 per route")
     args = ap.parse_args(argv)
     os.environ.pop("ZEKA_TX_GUARD", None)              # it installs its own trace callback on every connection
     with tempfile.TemporaryDirectory(prefix="zeka-plan-") as tmp:
@@ -216,11 +294,14 @@ def main(argv=None) -> int:
         bulk_exam(data, exam[0])
         tt = bulk_timetable(data)
         bulk_syllabus(data)
-        from zeka.core import web
+        from zeka.core import security, web
         from zeka.legacy import api, store
+        tt = bulk_screens(data, tt)
+        security.LIMITS["login"] = security.RateLimiter(1000, 60)    # one client signs in as every role here
         seen: list[str] = []
         origin: dict[str, str] = {}                      # statement -> the scenario that first ran it
         timing: list[dict] = []
+        screens: list[dict] = []
         connect = store.connect
 
         def traced():
@@ -248,6 +329,14 @@ def main(argv=None) -> int:
                 if status != 200:
                     raise SystemExit(f"{name}: {method} {path}: HTTP {status}: {raw[:300].decode('utf-8', 'replace')}")
                 answer = back, raw
+                if name.startswith("screens:") and method == "GET":
+                    ms = [timing[-1]["ms"]]
+                    for _ in range(args.repeat - 1):
+                        t = time.perf_counter()
+                        _send(port, method, path, cookie, body)
+                        ms.append((time.perf_counter() - t) * 1000)
+                    screens.append({"role": name.split(":", 1)[1], "route": timing[-1]["route"], "bytes": len(raw),
+                                    "statements": timing[-1]["statements"], "p50": _pct(ms, 0.5), "p95": _pct(ms, 0.95)})
         finally:
             srv.shutdown()
             srv.server_close()
@@ -266,7 +355,8 @@ def main(argv=None) -> int:
     print(json.dumps({"dataset": args.dataset, "statements": len(set(seen)), "scenarios": sorted({r["scenario"] for r in timing}),
                       "exam_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("exam")},
                       "tt_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("tt_")},
-                      "syllabus_rows": {t: sizes[t] for t in ("courses", "syllabus_versions")}, "scans": bad, "slowest": timing[:8]},
+                      "syllabus_rows": {t: sizes[t] for t in ("courses", "syllabus_versions")}, "scans": bad, "slowest": timing[:8],
+                      "screens": screens},
                      ensure_ascii=False, indent=1))
     return 1 if any(k != "leader" for k in bad) else 0
 

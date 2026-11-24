@@ -31,6 +31,17 @@ def published(c, cid: int):
     return row(c, "SELECT * FROM syllabus_versions WHERE course_id=? AND status='published' ORDER BY version DESC LIMIT 1", (cid,))
 
 
+def published_of(c, cids: list[int]) -> dict[int, dict]:
+    """{course id: its latest published version} for these courses, a read per 500 (the coverage report of a programme)."""
+    out: dict[int, dict] = {}
+    for k in range(0, len(cids), 500):
+        part = cids[k:k + 500]
+        for r in rows(c, f"SELECT * FROM syllabus_versions WHERE course_id IN ({_marks(len(part))}) AND status='published' "  # nosec B608
+                         "ORDER BY course_id, version", tuple(part)):
+            out[r["course_id"]] = r                      # the last of a course is its latest
+    return out
+
+
 def add_version(c, cid: int, data: str, author: int, at: str, source: str | None = None) -> int:
     """The next version number in the same statement: two saves at once cannot take one number."""
     return c.execute("INSERT INTO syllabus_versions(course_id,version,status,data,author_id,created_at,source) "
@@ -51,6 +62,26 @@ def registry_names(c, codes: list[str]) -> dict[str, str]:
         out |= {r["code"]: r["name"] for r in rows(c, f"SELECT code, name FROM courses WHERE code IN ({_marks(len(part))}) "  # nosec B608
                                                       "ORDER BY id", tuple(part))}
     return out
+
+
+REGISTRY_READ = 200      # rows a lookup reads at most: two typed letters can start hundreds of offerings
+
+
+def registry_search(c, prefixes: list[str], other_than: str, limit: int) -> list[dict]:
+    """Active registry courses whose code or name starts with one of ``prefixes``, one per code (its latest offering's
+    name) in code order, code and name only. One index range per arm (0231, 0232): ``LIKE '%q%'`` reads the whole
+    registry, and an OR or a GROUP BY lets the planner choose a scan of the code index."""
+    if not prefixes:
+        return []
+    end = "\U0010ffff"                                   # above every character: [p, p + end) is what starts with p
+    arms = " UNION ALL ".join(f"SELECT code, name, id FROM courses WHERE active=1 AND {col}>=? AND {col}<?"
+                              for _ in prefixes for col in ("code", "name"))
+    found = rows(c, f"{arms} LIMIT ?", (*[x for p in prefixes for x in (p, p + end, p, p + end)], REGISTRY_READ))  # nosec B608 (placeholders)
+    latest: dict[str, dict] = {}
+    for r in found:
+        if r["code"] != other_than and (r["code"] not in latest or r["id"] > latest[r["code"]]["id"]):
+            latest[r["code"]] = r
+    return [{"code": k, "name": latest[k]["name"]} for k in sorted(latest)[:limit]]
 
 
 def registry_match(c, texts: list[str]) -> dict[str, str]:

@@ -1243,6 +1243,7 @@ Audience: students see `all` and `students`, teachers see `all` and `teachers`, 
 | `POST` | `/api/syllabi/{id}/versions/{vid}/return` | `dept_head` (submitted), `academic_office` (approved) | → returned, with `{"note"}` (required) |
 | `GET` | `/api/syllabi/queue` | `dept_head`, `academic_office`, `admin` | Versions waiting for this role, with their Forma №3 difference and the count of changes from the published version |
 | `GET` | `/api/syllabi/{id}/diff?a=&b=` | staff who read the course | What changed from version `a` to `b`, by section |
+| `GET` | `/api/syllabi/{id}/prerequisites?q=` | the course's head teacher | The editor's prerequisite lookup: `{"items": [{"code", "name"}]}`, up to 10 active registry courses (one per code, its latest offering's name, never the course itself) whose code or name starts with `q` (2–100 characters; as typed, with a capital first and in capitals, the Azerbaijani and the English way); index ranges, no scan of the registry. Another course is `404` |
 | `GET` | `/api/courses/{id}/syllabus` | the course's students and readers | `{"published": <version or null>}` |
 | `POST` | `/api/syllabus/{cid}/generate` | `teacher` | The syllabus assistant's output (the first draft's source) |
 | `POST` | `/api/syllabus/{cid}/link` | `teacher` | One-time link to the printable syllabus |

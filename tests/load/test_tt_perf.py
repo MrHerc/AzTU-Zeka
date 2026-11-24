@@ -67,3 +67,14 @@ def test_a_draft_is_written_in_one_short_transaction(department, tmp_path):
         assert took <= 0.05, took          # the target is 20 ms; the margin is for a shared CI machine
     finally:
         conn.close()
+
+
+def test_the_hours_report_grows_linearly_with_the_units():
+    """2026-11-24 measurement: the report matched every unit against every meeting (1.2 s for 5 000 units; 0.47 s of the
+    university term's report page). Grouped once, 5 000 units take about 0.1 s (docs/perf/baseline.md)."""
+    p = ttbench.synthetic(units=5000, groups=1250, teachers=350, rooms=60, seed=1)
+    t = time.perf_counter()
+    rep = domain.hours_report(p, [], {"teaching_start": "2026-09-14", "teaching_end": "2026-12-27"}, [])
+    took = time.perf_counter() - t
+    assert len(rep["units"]) == 5000 and all(x["reasons"] for x in rep["units"])
+    assert took <= 0.4, took           # the margin is for a shared CI machine

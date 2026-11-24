@@ -113,6 +113,16 @@ def copy_sources(req):
     return out
 
 
+@R("GET", "/api/syllabi/{id:int}/prerequisites", roles=("teacher",))
+def prerequisites(req):
+    """``?q=``: registry courses whose code or name starts with it, code and name only, for the course's author."""
+    req.raw_i18n = True                                 # course names are as written
+    out = service.prerequisite_search(req.db, req.user, req.params["id"], (req.query.get("q") or "")[:100])
+    if out is None:
+        raise HTTPError(404, "Fənn tapılmadı")
+    return {"items": out}
+
+
 @R("POST", "/api/syllabi/{id:int}/copy", roles=("teacher",))
 def copy(req):
     """``{"from": <course id>}``: a new draft version copied from that course's published syllabus."""
