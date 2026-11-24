@@ -1365,7 +1365,7 @@ Vocabularies:
 | Method | Path | Access | Purpose |
 |---|---|---|---|
 | `GET` | `/api/analytics` | `leader`, `admin` | Leadership dashboard data |
-| `GET` | `/api/admin/status` | `admin` | Engine and LLM configuration (without the key), limits, row counts, data paths |
+| `GET` | `/api/admin/status` | `admin` | Engine and LLM configuration (without the key), limits, row counts, data paths, the server's warning signs (`ops`) |
 | `PUT` | `/api/admin/settings` | `admin` | Update platform limits |
 | `POST` | `/api/admin/test-llm` | `admin` | Send a short prompt to the configured LLM |
 | `GET` | `/api/admin/audit` | `admin`, `leader` | Last 200 audit log entries |
@@ -1376,6 +1376,8 @@ Vocabularies:
 **`GET /api/analytics`** returns `labels` (8 week labels), `wau_students`, `wau_teachers`, `active_by_role` (distinct active users of the last 7 days per role), `tutor_questions`, `request_hours`, `kpis`, `courses` (per course: tutor questions, test average, no-source rate, positive rate, attendance), `insights` (the first one is the Zəka Radar summary, with a `link` to `/radar`), `office` (as `/api/office/summary`), `requests_by_type`, `news` (5 most read), `attendance`, `ai` (`cited_rate` is the `cited` tile, `positive_rate`, `messages`) and `totals`. `kpis` are the measured indicators of the insight module (Task 39), each with `key` (`wau_student`, `wau_teacher`, `journal`, `request_hours`, `request_sla`, `cited`, `exams`, `academy`), `label`, `definition`, `unit` (`pct`, `hours`, `count`), `value` (null when its period has nothing to measure), `series` (8 weekly values, oldest first), `target`, `lower` (a smaller value is better), `ok` and `range` (`from`, `to`; `from` is null for the running total of `academy`).
 
 **`GET /api/insight/evidence`** (leader, admin) returns `range` (the last 30 days) and `indicators`: for each accreditation indicator (3.5.1, 3.5.3, 5.4.2–5.4.8) its `code`, `title`, `note`, `measures` (`key`, `label`, `value`, `range`; `range.from` is null for a count that is not limited to the period) and `links` (pages of the portal, only those the caller's role can open). `?format=csv` returns the same as a spreadsheet, one row per measure, in the language of `?lang=`.
+
+**`GET /api/admin/status`, `ops`.** The checks of `core/ops.py` that the hourly job `ops.check` reports to the administrators (in the portal and by e-mail, once a day per problem) and `manage.py jobs check` runs from the host's cron (exit 1 on a problem). Four items in this order, each with `key`, `ok` (`true`, `false` for a problem, `null` when there is nothing to check here) and `limit` (from `ZEKA_ALERT_BACKUP_HOURS`, `ZEKA_ALERT_DISK_PCT`, `ZEKA_ALERT_JOB_FAILS`, `ZEKA_ALERT_LEASE_MINUTES`): `backup` (`newest`: local time of the newest set in `BACKUP_DIR`, `age_h`; no set is `null` in demo mode and a problem in prod), `disk` (`free_pct`, `free_gb`: the fuller of the data and backup disks), `jobs` (`failing`: `[{name, fails}]`, failures since the job's last success) and `runner` (`expired_min`: minutes since the runner's lease ran out, `null` when it never ran; `ok` is `null` with `ZEKA_JOBS=0`). No path or host name is returned; the public `/healthz` carries none of it.
 
 **`PUT /api/admin/settings`.** Body: any of `daily_messages` (5 to 500), `pii_masking` (boolean), `socratic_default` (boolean), `retention_days` (30 to 3,650). Saving deletes chat messages older than `retention_days`. Returns the stored limits. `socratic_default` is stored but does not affect behaviour in this version.
 

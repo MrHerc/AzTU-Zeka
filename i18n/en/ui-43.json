@@ -1,0 +1,15 @@
+{
+ "Ən yeni ehtiyat nüsxə": "Newest backup",
+ "{h} saat əvvəl (hədd {limit} saat)": "{h} hours ago (threshold {limit} hours)",
+ "Diskdə boş yer": "Free disk space",
+ "{pct}% · {gb} GB (hədd {limit}%)": "{pct}% · {gb} GB (threshold {limit}%)",
+ "Ardıcıl uğursuz olan dövri işlər": "Periodic jobs failing repeatedly",
+ "Yoxdur": "None",
+ "Dövri işlərin icraçısı": "Periodic job runner",
+ "Heç işləməyib": "Has never run",
+ "{n} dəqiqədir işləmir": {"one": "Not running for {n} minute", "other": "Not running for {n} minutes"},
+ "Serverin vəziyyəti": "Server health",
+ "Problem aşkarlanarsa, administratorlara gündə bir dəfə portalda və e-poçtla bildiriş göndərilir. Hədlər mühit dəyişənləri ilə təyin edilir.": "If a problem is found, administrators are notified once a day in the portal and by email. The thresholds are set with environment variables.",
+ "Problem var": "Problem",
+ "Qaydasındadır": "OK"
+}

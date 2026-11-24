@@ -101,6 +101,16 @@ route("/leader/evidence", async (el) => {
   $("#print", el).addEventListener("click", () => window.print());
 });
 
+// The server's warning signs (core/ops.py): the same checks the hourly job ops.check reports to the administrators.
+const OPS = {
+  backup: [t("Ən yeni ehtiyat nüsxə"), (x) => x.age_h == null ? t("Tapılmadı") : t("{h} saat əvvəl (hədd {limit} saat)", { h: num(x.age_h, 1), limit: num(x.limit, 1) })],
+  disk: [t("Diskdə boş yer"), (x) => x.free_pct == null ? "—" : t("{pct}% · {gb} GB (hədd {limit}%)", { pct: num(x.free_pct, 1), gb: num(x.free_gb, 1), limit: num(x.limit, 1) })],
+  jobs: [t("Ardıcıl uğursuz olan dövri işlər"), (x) => x.failing.length ? x.failing.map((j) => `${j.name} (${j.fails})`).join(", ") : t("Yoxdur")],
+  runner: [t("Dövri işlərin icraçısı"), (x) => x.ok === null ? t("Söndürülüb") : x.ok ? t("İşləyir") : x.expired_min == null ? t("Heç işləməyib") : t("{n} dəqiqədir işləmir", { n: x.expired_min })],
+};
+const opsCard = (checks) => html`<div class="card mt"><div class="card-h"><h3>${ic("shield", 17)} ${t("Serverin vəziyyəti")}</h3>${infoTip(t("Problem aşkarlanarsa, administratorlara gündə bir dəfə portalda və e-poçtla bildiriş göndərilir. Hədlər mühit dəyişənləri ilə təyin edilir."))}</div><div class="card-b">
+  <div class="review-grid">${checks.map((x) => html`<div>${OPS[x.key][0]}</div><div class="small">${x.ok === false ? html`<span class="badge b-red">${t("Problem var")}</span> ` : x.ok ? html`<span class="badge b-green">${t("Qaydasındadır")}</span> ` : ""}${OPS[x.key][1](x)}</div>`)}</div></div></div>`;
+
 // ---------------------------------------------------------------- platform settings (admin)
 route("/admin", async (el) => {
   mount(el, loading());
@@ -125,7 +135,8 @@ route("/admin", async (el) => {
       <div class="card"><div class="card-h"><h3>${ic("layers", 17)} ${t("Məlumatlar")}</h3></div><div class="card-b"><div class="grid g-4">${Object.entries(s.counts).map(([k, v]) => html`<div><div class="stat-v" style="font-size:20px">${cnt(v)}</div><div class="stat-l">${NAMES[k] || k}</div></div>`)}</div>
         <div class="tiny muted mt">${t("Verilənlər bazası")}: <code>${s.db_path}</code> · ${t("fayllar")}: <code>${s.uploads}</code></div></div></div>
       ${S.app.mode === "prod" ? "" : html`<div class="card"><div class="card-h"><h3>${ic("refresh", 17)} ${t("Demo məlumatları")}</h3></div><div class="card-b stack"><p class="small muted" style="margin:0">${t("Bütün dəyişikliklər (müraciətlər, fayllar, xəbərlər, testlər, söhbətlər) silinəcək və ilkin demo məlumatları yenidən yaradılacaq. Bu əməliyyat geri qaytarılmır.")}</p>
-        <button class="btn btn-danger" id="reset" style="align-self:flex-start">${ic("refresh", 15)} ${t("Demo məlumatlarını sıfırla")}</button></div></div>`}</div>`);
+        <button class="btn btn-danger" id="reset" style="align-self:flex-start">${ic("refresh", 15)} ${t("Demo məlumatlarını sıfırla")}</button></div></div>`}</div>
+    ${opsCard(s.ops)}`);
   $("#test", el).addEventListener("click", async (e) => {
     const b = e.currentTarget; b.disabled = true;
     try { const r = await api.post("/api/admin/test-llm"); toast(r.message, r.ok ? "ok" : "err"); } catch (err) { toast(err.message, "err"); } finally { b.disabled = false; }

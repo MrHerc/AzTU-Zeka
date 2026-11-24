@@ -14,6 +14,8 @@
   or a step of a publication; Task 48).
 - ``timetable.health``, daily: the published version of each open term checked against the term as it is now; the
   timetable office is told once of each new problem (Task 48).
+- ``ops.check``, hourly: the server's warning signs (``core.ops``: backup age, free disk, a job failing in a row, the
+  runner's lease); the administrators are told of each problem once a day, in the portal and by e-mail.
 
 Task 26 adds ``exam.autosubmit`` from the exam module.
 """
@@ -22,8 +24,8 @@ from __future__ import annotations
 import time
 from datetime import datetime, timedelta
 
-from ..core import clock, jobs
-from ..core.i18n import T3
+from ..core import clock, jobs, ops
+from ..core.i18n import T3, Lit, num3
 from . import radar, store, support
 from .common import step_actors
 from .store import J, iso, notify, now, rows
@@ -136,6 +138,36 @@ def radar_summary(c) -> str:
     return f"high {s['high']} · watch {s['watch']} · students {s['students']}"
 
 
+def admins(c) -> list[int]:
+    """The active administrators: the primary role or a grant without a scope."""
+    return [r["id"] for r in rows(c, "SELECT id FROM users WHERE role='admin' AND status='active' UNION SELECT u.id FROM role_grants g "
+                                     "JOIN users u ON u.id=g.user_id WHERE g.role='admin' AND g.scope_type IS NULL AND u.status='active' ORDER BY 1")]
+
+
+def ops_title(x: dict):
+    if x["key"] == "backup":
+        return (T3("Ehtiyat nüsxə tapılmadı") if x["newest"] is None
+                else T3("Ən yeni ehtiyat nüsxə {age} saat əvvəl alınıb (hədd {limit} saat)", age=num3(x["age_h"]), limit=num3(x["limit"])))
+    if x["key"] == "disk":
+        return T3("Diskdə boş yer {pct}% qalıb (hədd {limit}%)", pct=num3(x["free_pct"]), limit=num3(x["limit"]))
+    if x["key"] == "jobs":
+        return T3("Dövri işlər ardıcıl uğursuz olur: {names}", names=Lit(", ".join(f"{j['name']} ({j['fails']})" for j in x["failing"])))
+    return (T3("Dövri işlərin icraçısı heç işləməyib") if x["expired_min"] is None
+            else T3("Dövri işlərin icraçısı {n} dəqiqədir işləmir", n=x["expired_min"]))
+
+
+def ops_check(c) -> str:
+    bad = ops.problems(c, store.DATA)
+    told = 0
+    to = admins(c)
+    day = now().date().isoformat()
+    for x in bad:
+        if to and _once(c, "ops", 0, f"{x['key']}:{day}"):    # once a day per problem: a lasting one is not an hourly flood
+            notify(c, to, "ops", ops_title(x), "", "/admin")
+            told += 1
+    return f"problems {len(bad)} · told {told}" + "".join(f" · {x['key']}" for x in bad)
+
+
 jobs.periodic("retention.purge", DAY, retention_purge)
 jobs.periodic("reminders.sla", timedelta(minutes=15), reminders_sla)
 jobs.periodic("lessons.generate", DAY, lessons_generate)
@@ -143,5 +175,6 @@ jobs.periodic("radar.snapshot", timedelta(days=7), radar_snapshot)
 jobs.periodic("radar.summary", timedelta(minutes=15), radar_summary)
 jobs.periodic("timetable.work", timedelta(seconds=30), timetable_work)
 jobs.periodic("timetable.health", DAY, timetable_health)
+jobs.periodic("ops.check", timedelta(hours=1), ops_check)
 from ..modules.integration import webhooks as _webhooks  # noqa: E402,F401  (Task 37: webhooks.send, attendance.barred)
 from ..modules.exam import service as _exam  # noqa: E402,F401  registers exam.autosubmit (Task 26)

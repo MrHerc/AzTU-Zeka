@@ -13,7 +13,8 @@ Kod: `backend/zeka/core/backup.py`. Testlər: `tests/migration/test_backup_resto
 | `uploads/index.tsv` | Yükləmənin və şifrəli faylın SHA-256-sı: ikinci hostda yoxlama üçün |
 | `latest.enc` | Ən yeni dəstə keçid |
 
-Saxlama müddəti: son 7 günün hər birinin ən yeni dəsti və son 4 ISO həftənin hər birinin ən yeni dəsti. Heç bir saxlanan
+Saxlama müddəti: ən yeni dəstdən əvvəlki 24 saatın hər saatının ən yeni dəsti, son 7 günün hər birinin ən yeni dəsti
+və son 4 ISO həftənin hər birinin ən yeni dəsti. Gecəlik cədvəldə saat qaydası əlavə dəst saxlamır. Heç bir saxlanan
 dəstin ehtiyac duymadığı yükləmə silinir. İkinci host qovluğun güzgüsüdür: orada da eyni dəstlər qalır.
 
 ## Açar
@@ -55,6 +56,45 @@ Backup ayrıca, qısa ömürlü `backup` konteynerində işləyir (`infra/compos
 
 ```cron
 17 3 * * *  cd /opt/zeka && docker compose -f infra/compose.yml run --rm -T backup >> /var/log/zeka-backup.log 2>&1 || echo "zeka backup failed: $?" | mail -s "Zəka backup" ops@aztu.edu.az
+```
+
+## RPO: nə qədər məlumat itə bilər
+
+| Cədvəl | RPO (ən pis halda itən müddət) | Qiymət (`university` dəsti, ölçülüb) |
+|---|---|---|
+| Hazırkı: gecə bir dəfə (03:17) | 24 saat. İmtahan günü imtahan bağlandıqdan sonra əl ilə əlavə backup alınır (`exam-day.md`) | Gündə 1 dəst |
+| Tövsiyə: hər saat | 1 saat, hər gün, imtahan günləri də | Dəst 9–10 s çəkir, 36 MB; 24 saatlıq dəstlər əlavə ~0,9 GB tutur; ikinci hosta saatda ~36 MB gedir. 300 paralel müştərinin yükü altında xidmətə təsiri ölçmə xətası daxilindədir (`restore-log.md`, 2026-11-24) |
+
+Bir neçə min istifadəçili tək server üçün adi praktika saatlıq backup-dır. Bu, imtahan günləri üçün planlaşdırılmış
+tez-tez backup-ı da əhatə edir: ayrıca imtahan cədvəli lazım deyil. Backup SQLite-ın onlayn backup API-si ilə
+(`Connection.backup`, bir addımda, bir oxuma tranzaksiyasında) alınır: işləyən WAL bazasının faylı heç vaxt kopyalanmır,
+yazılar dayanmır. Saatlıq üçün gecəlik sətrin yerinə:
+
+```cron
+17 * * * *  cd /opt/zeka && docker compose -f infra/compose.yml run --rm -T backup >> /var/log/zeka-backup.log 2>&1 || echo "zeka backup failed: $?" | mail -s "Zəka backup" ops@aztu.edu.az
+```
+
+və `infra/.env`-də `ZEKA_ALERT_BACKUP_HOURS=2` (aşağıda). İnkremental backup lazım deyil: tam dəst 10 saniyədən azdır.
+Baza bir neçə GB-a çatanda vaxt yenidən ölçülür.
+
+## Xəbərdarlıqlar
+
+`ops.check` işi (`backend/zeka/core/ops.py`) hər saat bu halları yoxlayır. Problem olarsa, hər aktiv administratora
+gündə bir dəfə portalda və e-poçtla bildiriş göndərilir (`outbox`). Eyni siyahı admin səhifəsindədir: İdarəetmə →
+«Serverin vəziyyəti» (`GET /api/admin/status`, `ops` sahəsi). İctimai `/healthz` bunların heç birini göstərmir.
+
+| Hal | Hədd (susmaya görə) | Dəyişən |
+|---|---|---|
+| Ən yeni dəst köhnədir; prod-da heç dəst yoxdur | 26 saat (saatlıq backup ilə 2) | `ZEKA_ALERT_BACKUP_HOURS` |
+| Məlumat və ya backup diskində boş yer azdır | 20% | `ZEKA_ALERT_DISK_PCT` |
+| Bir dövri iş son uğurlu icradan sonra ardıcıl uğursuz olub | 3 dəfə | `ZEKA_ALERT_JOB_FAILS` |
+| İş icraçısının icarəsi (`job_lease`) çoxdan bitib: icraçı işləmir | 10 dəqiqə | `ZEKA_ALERT_LEASE_MINUTES` |
+
+Backup qovluğu `BACKUP_DIR`-dir (Docker-də `app` konteyneri `zeka-backups` həcmini görür). İcraçı dayananda e-poçt
+növbəsi də dayanır. Buna görə eyni yoxlama hostun cron-undan da işlədilir: problem olarsa, kod 1 qaytarır.
+
+```cron
+47 * * * *  cd /opt/zeka && docker compose -f infra/compose.yml exec -T app python backend/manage.py jobs check >> /var/log/zeka-check.log 2>&1 || echo "zeka check: problem" | mail -s "Zəka xəbərdarlıq" ops@aztu.edu.az
 ```
 
 Çıxış kodları:

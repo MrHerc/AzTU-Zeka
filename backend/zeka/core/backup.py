@@ -12,9 +12,10 @@ Encryption: ``openssl enc -aes-256-cbc -pbkdf2 -iter 10000 -md sha256`` with ``-
 random line of at least 32 characters (``openssl rand -base64 48``); a weak passphrase is refused. Plaintext never
 leaves the private temporary directory, which is removed on success and on failure.
 
-Retention: the newest set of each of the last 7 days that have a set, and the newest set of each of the last 4 ISO
-weeks. Uploads no kept set needs are deleted. The second host (``BACKUP_REMOTE``) mirrors the directory: either a local
-path (a mounted disk of another machine) or ``user@host:/path`` over ssh (tar stream in, ``sha256sum -c`` there).
+Retention: the newest set of each of the last 7 days that have a set, the newest set of each of the last 4 ISO
+weeks, and the newest set of each hour of the 24 hours before the newest set (hourly backups). Uploads no kept set
+needs are deleted. The second host (``BACKUP_REMOTE``) mirrors the directory: either a local path (a mounted disk of
+another machine) or ``user@host:/path`` over ssh (tar stream in, ``sha256sum -c`` there).
 """
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ import subprocess  # nosec B404 - openssl and ssh with fixed argument lists, nev
 import tarfile
 import tempfile
 import zlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from . import clock
@@ -148,12 +149,19 @@ def table_counts(db: Path) -> dict[str, int]:
         c.close()
 
 
-def keep(stamps: list[datetime], daily: int = 7, weekly: int = 4) -> set[datetime]:
-    """The newest set of each of the last ``daily`` days and of each of the last ``weekly`` ISO weeks that have a set."""
+def keep(stamps: list[datetime], daily: int = 7, weekly: int = 4, hourly: int = 24) -> set[datetime]:
+    """The newest set of each of the last ``daily`` days and of each of the last ``weekly`` ISO weeks that have a set,
+    and the newest of each clock hour within ``hourly`` hours of the newest set (hourly backups: RPO one hour)."""
     out: set[datetime] = set()
     days: set = set()
     weeks: set = set()
+    hours: set = set()
+    newest = max(stamps, default=None)
     for s in sorted(stamps, reverse=True):
+        hour = s.replace(minute=0, second=0, microsecond=0)
+        if newest and newest - s < timedelta(hours=hourly) and hour not in hours:
+            hours.add(hour)
+            out.add(s)
         if s.date() not in days and len(days) < daily:
             days.add(s.date())
             out.add(s)

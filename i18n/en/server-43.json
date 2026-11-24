@@ -1,0 +1,8 @@
+{
+ "Diskdə boş yer {pct}% qalıb (hədd {limit}%)": "Free disk space is down to {pct}% (threshold {limit}%)",
+ "Dövri işlər ardıcıl uğursuz olur: {names}": "Periodic jobs keep failing: {names}",
+ "Dövri işlərin icraçısı heç işləməyib": "The periodic job runner has never run",
+ "Dövri işlərin icraçısı {n} dəqiqədir işləmir": {"one": "The periodic job runner has not been running for {n} minute", "other": "The periodic job runner has not been running for {n} minutes"},
+ "Ehtiyat nüsxə tapılmadı": "No backup found",
+ "Ən yeni ehtiyat nüsxə {age} saat əvvəl alınıb (hədd {limit} saat)": "The newest backup was taken {age} hours ago (threshold {limit} hours)"
+}

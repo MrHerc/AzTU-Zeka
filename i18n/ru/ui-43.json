@@ -1,0 +1,15 @@
+{
+ "Ən yeni ehtiyat nüsxə": "Последняя резервная копия",
+ "{h} saat əvvəl (hədd {limit} saat)": "{h} ч назад (порог {limit} ч)",
+ "Diskdə boş yer": "Свободное место на диске",
+ "{pct}% · {gb} GB (hədd {limit}%)": "{pct}% · {gb} ГБ (порог {limit}%)",
+ "Ardıcıl uğursuz olan dövri işlər": "Периодические задания с ошибками подряд",
+ "Yoxdur": "Нет",
+ "Dövri işlərin icraçısı": "Исполнитель периодических заданий",
+ "Heç işləməyib": "Ни разу не запускался",
+ "{n} dəqiqədir işləmir": {"one": "Не работает уже {n} минуту", "few": "Не работает уже {n} минуты", "many": "Не работает уже {n} минут"},
+ "Serverin vəziyyəti": "Состояние сервера",
+ "Problem aşkarlanarsa, administratorlara gündə bir dəfə portalda və e-poçtla bildiriş göndərilir. Hədlər mühit dəyişənləri ilə təyin edilir.": "При обнаружении проблемы администраторы получают уведомление раз в день на портале и по электронной почте. Пороги задаются переменными окружения.",
+ "Problem var": "Проблема",
+ "Qaydasındadır": "В порядке"
+}
