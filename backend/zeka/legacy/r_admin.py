@@ -9,6 +9,7 @@ from ..core.i18n import T3, num3
 from .r_learning import course_insights
 from .r_services import office_summary
 from .store import audit, row, rows, setting
+from ..core import ops
 from ..core.web import json_resp
 from ..modules.insight import service as insight
 
@@ -86,7 +87,8 @@ def admin_status(req):
                                                     "base_url": cfg.get("base_url", "—"), "configured": cfg["enabled"]},
             "limits": setting(c, "limits", {}), "counts": {t: row(c, f"SELECT COUNT(*) n FROM {t}")["n"] for t in tables},
             # Relative to the project folder: the UI must not reveal the host's absolute paths (user name, drive layout).
-            "db_path": _rel(store.DB_PATH), "uploads": _rel(store.UPLOADS)}
+            "db_path": _rel(store.DB_PATH), "uploads": _rel(store.UPLOADS),
+            "ops": ops.checks(c, store.DATA)}      # backup age, free disk, failing jobs, the runner (no paths); /healthz shows none of it
 
 
 def _rel(p):

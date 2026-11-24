@@ -63,6 +63,10 @@ Hər addım boş yerlərdən biri gələndən sonra mümkündür (mötərizədə
    - boş disk 20%-dən azdır;
    - backup 26 saatdan köhnədir;
    - göndərmə xətası var.
+
+   Backup yaşı, boş disk, ardıcıl uğursuz dövri iş və dayanmış iş icraçısı üçün xəbərdarlıq tətbiqdədir (`ops.check`,
+   `manage.py jobs check`: `docs/runbooks/backup.md`, «Xəbərdarlıqlar»). `/healthz` üçün kənar monitor:
+   `docs/runbooks/deploy.md`, «Kənar izləmə».
 7. **SEB (2, 3).** "Əl sınaqları" cədvəli doldurulur. İstinad fayl qoyulandan sonra
    `python -m pytest tests/unit/test_seb_config_key.py -q` keçir.
 8. **Keç və ya keçmə baxışı.** SPEC-in Success Criteria siyahısı üzrə aparılır. Sahib siyahını və buraxılış qərarını

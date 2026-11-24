@@ -59,6 +59,11 @@ Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_ho
 | `ZEKA_SECURITY_CONTACT` | `mailto:security@aztu.edu.az` | Zəifliyi bildirmə ünvanı, `/.well-known/security.txt`-də göstərilir (Task 41). `mailto:` və ya `https:` ilə başlayır. Boş olarsa fayl yoxdur |
 | `ZEKA_SECURITY_EXPIRES` | `2027-05-01` | Ünvanın yenidən yoxlanacağı tarix (İİİİ-AA-GG, ən çox bir il sonra): faylın `Expires` sahəsi. Boş, keçmiş və ya bir ildən uzaq olarsa fayl yoxdur. Tarixdən əvvəl ünvanı yoxlayın və tarixi yeniləyin |
 
+| `ZEKA_ALERT_BACKUP_HOURS` | `26` | Ən yeni backup bu qədər saatdan köhnədirsə, administratorlara xəbərdarlıq göndərilir. Saatlıq backup ilə `2` (`docs/runbooks/backup.md`, «Xəbərdarlıqlar») |
+| `ZEKA_ALERT_DISK_PCT` | `20` | Məlumat və ya backup diskində boş yer bu faizdən azdırsa, xəbərdarlıq göndərilir |
+| `ZEKA_ALERT_JOB_FAILS` | `3` | Dövri iş ardıcıl bu qədər dəfə uğursuz olarsa, xəbərdarlıq göndərilir |
+| `ZEKA_ALERT_LEASE_MINUTES` | `10` | İş icraçısının icarəsi bu qədər dəqiqədən çox əvvəl bitibsə, icraçı işləmir sayılır |
+
 `ZEKA_ACCESS_CODE` və `ZEKA_ALLOW_OPEN_DEMO` yalnız demo üçündür: prod-da istifadə olunmur.
 
 E-poçt `outbox` cədvəli ilə gedir: hər dəqiqə `outbox.send` işi vaxtı çatan məktubları alıcının dilində göndərir. Relə əlçatmazdırsa məktub itmir, 1, 2, 4 ... dəqiqədən sonra (ən çox 6 saat) yenidən cəhd olunur; 8 cəhddən sonra `failed` qalır. Vəziyyət: `python backend/manage.py jobs status` və `SELECT status, COUNT(*) FROM outbox GROUP BY status`.
@@ -111,6 +116,27 @@ Yeni versiya işləmirsə (başlamır, `/healthz` 200 vermir, əsas səhifə xə
    `manage.py export --kind grades|attendance|status-changes --since <yeniləmə anı>` ilə saxlayın və bərpadan sonra
    dekanlıqla yenidən daxil edin.
 3. Səbəb `docs/runbooks/incident.md` ilə qeydə alınır.
+
+## Kənar izləmə (sahibin əməliyyat addımı)
+
+Tətbiq öz dayanmasını özü bildirə bilmir: server, Docker və ya şəbəkə dayananda daxili xəbərdarlıqlar
+(`docs/runbooks/backup.md`, «Xəbərdarlıqlar») və e-poçt növbəsi də dayanır. Buna görə serverdən kənarda işləyən istənilən
+HTTP monitoru qurulur. Bu, sahibin və ya AzTU İT-in addımıdır, kodda dəyişiklik tələb etmir:
+
+| Parametr | Dəyər |
+|---|---|
+| Ünvan | `https://<SITE_ADDRESS>/healthz` |
+| Üsul və aralıq | `GET`, hər dəqiqə, cavab gözləmə müddəti 10 saniyə |
+| Uğurlu cavab | HTTP 200 (tətbiq cavab vermirsə, Caddy 502 qaytarır) |
+| Xəbərdarlıq | Ardıcıl 2 uğursuz yoxlamadan sonra (təxminən 2 dəqiqə), növbətçi adminə və sahibə e-poçt və ya SMS |
+| Bərpa bildirişi | Açıq; kəsilmənin müddəti insident jurnalına yazılır (`docs/runbooks/incident.md`) |
+| TLS | Sertifikatın bitməsinə 14 gün qalanda xəbərdarlıq (monitor bunu dəstəkləyirsə) |
+
+Monitor ikinci hostda (backup hostu) `cron` + `curl` ilə də qurula bilər: `curl -fsS -m 10 https://<ad>/healthz` iki
+dəfə ardıcıl alınmazsa, `mail` göndərilir. Hazır xidmət (UptimeRobot, Better Stack, Zabbix, Uptime Kuma və s.) seçimi
+sahibindir. `/healthz` yalnız bazanın cavab verdiyini, prosesi və saatı göstərir: backup, disk və iş icraçısının
+vəziyyəti orada yoxdur (onlar admin səhifəsində və `manage.py jobs check`-dədir). Qurulandan sonra bir dəfə sınanır:
+`docker compose -f infra/compose.yml stop app`, 2–3 dəqiqə ərzində xəbərdarlıq gəlməlidir, sonra `start app`.
 
 ## Yoxlama
 

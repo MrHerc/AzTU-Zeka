@@ -301,10 +301,22 @@ def test_retention_keeps_seven_days_and_four_weeks():
     kept = backup.keep(stamps)
     last = max(stamps)
     days = sorted({s.date() for s in kept})
-    assert all(s.hour == 14 for s in kept), "the newest set of a day is kept"
+    assert all(s.hour == 14 for s in kept if last - s >= timedelta(hours=24)), "the newest set of a day is kept"
     assert days[-7:] == [last.date() - timedelta(days=i) for i in range(6, -1, -1)]
-    assert len({s.isocalendar()[:2] for s in kept}) == 4 and len(kept) <= 11
+    assert len({s.isocalendar()[:2] for s in kept}) == 4 and len(kept) <= 12
     assert backup.keep([]) == set()
+
+
+def test_hourly_backups_keep_one_set_per_hour_of_the_last_day():
+    start = datetime(2026, 1, 1, 0, 7)
+    stamps = [start + timedelta(minutes=30 * i) for i in range(48 * 10)]       # every half hour for ten days
+    kept = backup.keep(stamps)
+    last = max(stamps)
+    recent = sorted(s for s in kept if last - s < timedelta(hours=24))
+    assert len(recent) == 24 and all(s.minute == 37 for s in recent), "the newest set of each of the last 24 hours"
+    assert len(kept) <= 24 + 7 + 4
+    daily = [start + timedelta(days=d) for d in range(30)]
+    assert len(backup.keep(daily)) == len(backup.keep(daily, hourly=0)), "a nightly schedule keeps what it kept before"
 
 
 @POSIX

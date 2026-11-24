@@ -67,7 +67,8 @@ def main(argv=None) -> int:
     xp.add_argument("--term", type=int, help="timetable: the term's id (default: the current term); its rows in force")
     xp.add_argument("--version", type=int, help="timetable: a builder version's id (draft or published); its placements")
     jb = sub.add_parser("jobs", help="periodic jobs (Task 36)")
-    jb.add_argument("action", choices=("status", "run"), help="status: each job's last run; run: run what is due now, once")
+    jb.add_argument("action", choices=("status", "run", "check"),
+                    help="status: each job's last run; run: run what is due now, once; check: the warning signs (exit 1 on a problem)")
     ev = sub.add_parser("exam-verify", help="check an exam's hash chain, its frozen answers and scores (Task 30)")
     ev.add_argument("exam_id", type=int)
     ev.add_argument("--root", help="the 64-character root from the closing protocol or e-mail")
@@ -323,6 +324,15 @@ def run_jobs(action: str) -> int:
     store.init()
     c = store.connect()
     try:
+        if action == "check":                    # host cron: still reports when the runner (and so the outbox) is down
+            from zeka.core import ops
+            bad = ops.problems(c, store.DATA)
+            for x in ops.checks(c, store.DATA):
+                print(f"{x['key']:<7} {'-' if x['ok'] is None else 'ok' if x['ok'] else 'PROBLEM'}  "
+                      + " ".join(f"{k}={v}" for k, v in x.items() if k not in ("key", "ok")))
+            print(periodic.ops_check(c))
+            c.commit()
+            return 1 if bad else 0
         if action == "run":
             for name, result in jobs.run_due(c, f"manage:{os.getpid()}"):
                 print(f"{name}: {result}")

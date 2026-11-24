@@ -33,6 +33,7 @@ Adlar və telefonlar bu cədvələ hədəf serverdə yazılır (Task 44). **Həl
    curl -s -o /dev/null -w '%{http_code}\n' https://<ad>/healthz
    $C ps && $C logs --tail 300 app
    $C exec app python backend/manage.py jobs status      # işlərin son icrası və xətası
+   $C exec app python backend/manage.py jobs check       # backup yaşı, boş disk, ardıcıl xətalar, icraçı (kod 1: problem var)
    df -h /var/lib/docker
    ```
 3. **Sərhədlə.**
@@ -59,6 +60,7 @@ Adlar və telefonlar bu cədvələ hədəf serverdə yazılır (Task 44). **Həl
 
 | Hal | Hərəkət |
 |---|---|
+| «Serverin vəziyyəti» bildirişi (`ops`) | Admin səhifəsində hansı yoxlamadır; hədlər və hərəkət `docs/runbooks/backup.md`, «Xəbərdarlıqlar» |
 | Disk dolub | Köhnə backup-lar ikinci hostdadırsa lokal `backups/`-dan köhnələri silin; `docker system prune` (həcmlər yox) |
 | `outbox` `failed` artır | `ZEKA_SMTP_*` və relə; `SELECT last_error, COUNT(*) FROM outbox WHERE status='failed' GROUP BY 1` |
 | Server başlamır: "checksum" | Tətbiq olunmuş miqrasiya faylı dəyişib. Əvvəlki teqə qayıdın (`docs/runbooks/deploy.md`, Geri qaytarma) |
