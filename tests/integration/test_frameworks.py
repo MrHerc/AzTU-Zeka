@@ -279,6 +279,37 @@ def test_bloom_and_eqf_are_built_in_with_working_translations(app_db):
     assert q("SELECT title, source_url, counts FROM frameworks WHERE key='eqf'")[0] == keep
 
 
+def test_a_corrected_builtin_text_replaces_the_old_row_and_the_outcome_maps_keep_their_items(app_db, course):
+    """A start after a text correction (content/frameworks/README.md): the stored item is rewritten in place by its code,
+    so its id, the outcome maps and a submitted version's frozen tags still point at it and show the new text."""
+    t = app_db.client("teacher", lang="en")
+    ids = [item_id("eqf", "2017", "7-K"), item_id("bloom", "2001", "understand")]
+    assert t.put(f"/api/syllabi/{course}/outcomes/N1/items", {"items": ids}).status == 200
+    before = q("SELECT outcome, item_id FROM outcome_items WHERE course_id=? ORDER BY item_id", (course,))
+    items = {code: text for code, _, _, _, text in frameworks.BUILTIN[1]["items"]} | \
+        {code: text for code, _, _, _, text in frameworks.BUILTIN[0]["items"]}
+    run("UPDATE framework_items SET text='köhnə mətn', title='köhnə ad' WHERE id IN (?, ?)", tuple(ids))   # an older release's rows
+    c = store.connect()
+    try:
+        frameworks.ensure_builtin(c)
+        c.commit()
+    finally:
+        c.close()
+    got = q("SELECT id, code, title, text FROM framework_items WHERE id IN (?, ?) ORDER BY id", tuple(ids))
+    assert [g["id"] for g in got] == sorted(ids) and all(g["text"] == items[g["code"]] for g in got)
+    assert q("SELECT outcome, item_id FROM outcome_items WHERE course_id=? ORDER BY item_id", (course,)) == before
+    tags = {x["code"]: x for x in t.get(f"/api/syllabi/{course}/frameworks").json["outcomes"]["N1"]}
+    assert tags["7-K"]["text"].startswith("Highly specialised knowledge, some of which is at the forefront of knowledge")
+    assert tags["understand"]["title"] == "Understand"
+    c = store.connect()
+    try:
+        frozen = frameworks.outcome_items(c, course, frozen=json.dumps({"N1": ids}))["N1"]
+    finally:
+        c.close()
+    assert {x["id"]: x["text"] for x in frozen} == {g["id"]: g["text"] for g in got}
+    assert t.put(f"/api/syllabi/{course}/outcomes/N1/items", {"items": []}).status == 200   # the shared course as it was
+
+
 def test_the_picker_searches_on_the_server_paged_and_scoped_to_a_work_role(app_db, sample):
     t = app_db.client("teacher")
     page = t.get(f"/api/frameworks/{sample}/items?kind=knowledge&size=10").json

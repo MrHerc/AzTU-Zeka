@@ -43,5 +43,27 @@ bağlı deyil.
 
 Bloom taksonomiyası (yenilənmiş, 2001) və Avropa Kvalifikasiyalar Çərçivəsinin (EQF, 2017) səviyyə
 təsvirləri fayl deyil: mətnləri `backend/zeka/modules/syllabus/frameworks.py`-dadır (`BUILTIN`) və hər işə
-salınmada bazaya yazılır (prod daxil). Azərbaycanca və rusca mətnlər işçi tərcümədir; EQF-in rəsmi mətni
-ingiliscədir (Şuranın 22 may 2017-ci il tövsiyəsi, 2017/C 189/03, II əlavə).
+salınmada bazaya yazılır (prod daxil). Mətn düzəldiləndə sətir öz kodu ilə yerində yenilənir: bəndin `id`-si,
+təlim nəticələrinin xəritələri və təqdim olunmuş versiyaların dondurulmuş teqləri eyni bəndə bağlı qalır və yeni
+mətni göstərir. Kod bəndin açarıdır, dəyişdirilmir.
+
+| Çərçivə | Mənbə | Yoxlanılıb |
+|---|---|---|
+| EQF, 8 səviyyə × bilik, bacarıq, məsuliyyət və müstəqillik | Şuranın 22 may 2017-ci il tövsiyəsi, II əlavə (2017/C 189/03; OJ C 189, 15.6.2017, s. 15); CELEX `32017H0615(01)`; https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32017H0615(01) | 2026-11-24, EUR-Lex-in HTML mətni ilə söz-söz; 24 təsvirin hamısı eynidir |
+| Bloom, 6 səviyyə | L. W. Anderson, D. R. Krathwohl (red.), *A Taxonomy for Learning, Teaching, and Assessing: A Revision of Bloom's Taxonomy of Educational Objectives*, Longman, 2001, s. 67–68 | 2026-11-24, kitabdan sitat gətirən nəşrlər üzrə; adlar: Remember, Understand, Apply, Analyze, Evaluate, Create |
+
+- **EQF, ingiliscə** rəsmi mətndir. EUR-Lex xananı kiçik hərflə başlayır ("The learning outcomes relevant to Level n
+  are …" cümləsinin davamıdır) və iki bəyanatlı xananı iki abzas yazır. Təsvir ayrıca göstəriləndə böyük hərflə
+  başlayır, iki abzas "; " ilə birləşir; Europass-ın "Description of the eight EQF levels" səhifəsi də belə göstərir.
+  Söz dəyişmir. `tests/unit/test_framework_texts.py` II əlavənin mətnini saxlayır və kataloqu onunla müqayisə edir.
+- **EQF, azərbaycanca** işçi tərcümədir. Azərbaycanın rəsmi sənədi — "Azərbaycan Respublikasının ömürboyu təhsil
+  üzrə Milli Kvalifikasiyalar Çərçivəsi" (AzMKÇ, Nazirlər Kabinetinin 18 iyul 2018-ci il tarixli 311 nömrəli qərarı,
+  https://e-qanun.az/framework/39622) — 8 səviyyəlidir, amma təsvirləri öz mətnidir ("Bilik və anlama",
+  "Bacarıqlar", "Müstəqillik və məsuliyyət"), EQF təsvirlərinin tərcüməsi deyil; 4.6-cı bənd yalnız AKÇ-yə
+  uyğunluğun nəzərə alındığını deyir. Ona görə AzMKÇ-nin mətni EQF bəndlərinə yazılmır. AzMKÇ ayrıca daxili
+  çərçivə kimi əlavə oluna bilər.
+- **EQF, rusca** işçi tərcümədir: rus dili Aİ-nin rəsmi dili deyil, EUR-Lex və Cedefop rusca mətn dərc etmir.
+  ETF-in saytında tövsiyənin rusca tərcüməsi var (`openspace.etf.europa.eu/system/files/2019-08/EQF_recommendations_RU.pdf`),
+  amma Rəsmi Jurnalın mətni deyil və 2026-11-24-də açılmadı.
+- **Bloom, ingiliscə** müəlliflərin tərifləridir, Böyük Britaniya yazılışı ilə (`i18n/BRIEF.md`: Analyse,
+  judgements, reorganise). Azərbaycanca və rusca mətnlər işçi tərcümədir.

@@ -41,8 +41,14 @@ KIND_LABEL = {"task": S_("Tapşırıq bəyanatı"), "knowledge": S_("Bilik"), "s
               "competency_area": S_("Səriştə sahəsi"), "category": S_("Kateqoriya"), "opm_code": S_("OPM kodu"),
               "sort": S_("Sıralama açarı"), "level": S_("Səviyyə"), "responsibility": S_("Məsuliyyət və müstəqillik")}
 
-# Built-in frameworks. The Azerbaijani and Russian texts are working translations (no official one exists); the EQF's
-# official text is the English one of the Council Recommendation of 22 May 2017 (2017/C 189/03), Annex II.
+# Built-in frameworks (content/frameworks/README.md). EQF: the English catalogue text is Annex II of the Council
+# Recommendation of 22 May 2017 (2017/C 189/03, OJ C 189, 15.6.2017, p. 15; CELEX 32017H0615(01), source_url below) word
+# for word, checked against EUR-Lex on 2026-11-24; shown alone, a descriptor starts with a capital and a cell's two
+# paragraphs are joined by "; ", as Europass shows them (tests/unit/test_framework_texts.py). Bloom: the six categories of
+# Anderson & Krathwohl (2001), pp. 67-68, UK spelling. The Azerbaijani and Russian texts are working translations: the EU
+# publishes the EQF in no Russian, and Azerbaijan's NQF (AzMKÇ, Cabinet of Ministers decision No 311 of 18 July 2018)
+# has descriptors of its own, not a translation of the EQF's. The code of an item is its key: an outcome map points at the
+# row, which ensure_builtin rewrites in place, so a corrected text never changes a code.
 _EQF = (
     (S_("Əsas ümumi bilik"),
      S_("Sadə tapşırıqları yerinə yetirmək üçün lazım olan əsas bacarıqlar"),
