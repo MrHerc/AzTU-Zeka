@@ -32,19 +32,21 @@ python backend/manage.py exam-verify ID [--root HEX]  # an exam's hash chain, fr
 python backend/manage.py import-routes --building EK --nodes N.csv --edges E.csv   # a building's route graph (Task 31)
 python backend/manage.py forma3-check FILE.xlsx [--json]   # a department's Forma №3 before upload: controls, counts, conflicts by cell (Task 47)
 python backend/manage.py import-framework --file content/frameworks/nice-components-2.2.0.json   # NICE as NIST published it; prints file/database counts per kind; a re-run changes nothing (Task 24)
+python backend/manage.py timetable-replay --version V   # a builder run's stored input and seed solved again: exit 0 same, 1 differs (each meeting), 2 no such version; audited (Task 48)
 python tests/fixtures/make_fixtures.py            # rewrites the synthetic Forma №3 and 10k-user fixtures
 
 python -m pip install -r requirements-dev.txt     # dev tools only: pytest, ruff, mypy (the app has no runtime deps)
-python -m pytest -q                               # 2056 tests, about 13 min; uses a temp database, never touches data/
+python -m pytest -q                               # 2138 tests, about 10 min; uses a temp database, never touches data/
 python -m pytest tests/unit/test_engine_quiz.py::test_name -q     # a single test
 ruff check . && mypy                              # lint and type check (config in pyproject.toml)
 for f in frontend/js/*.js; do node --check "$f"; done
+npm ci --prefix tests/e2e                         # axe-core and Playwright for the browser checks (test_a11y.py and the e2e wrappers skip without them)
 python tools/loadtest.py --scenario read --users 300 --seconds 30 --dataset faculty [--workers 4]   # docs/perf/baseline.md
 python tools/loadtest.py --scenario exam --users 300 --seconds 300 --dataset faculty [--burst]      # Task 27: lost answers must be 0
 python tools/queryplan.py --dataset university    # full scans of tables > 1 000 rows on the read routes and the timetable builder's (must be none)
 python tools/eval_assistant.py tests/eval/assistant_az.jsonl   # campus assistant: 50 questions, at least 45 right (Task 32)
 python tools/ttbench.py --units 1250 [--groups 300 --teachers 90 --rooms 60 --iters 50000]   # timetable solver timings (Task 48, docs/perf/timetable.md)
-python backend/manage.py jobs run                  # also one chunk of the oldest queued timetable builder run (job timetable.work, every 30 s; pages /admin/timetable/build, /dept/timetable, /office/timetable, /teacher/availability)
+python backend/manage.py jobs run                  # also one chunk of the oldest queued timetable builder run (job timetable.work, every 30 s; pages /admin/timetable/build, /dept/timetable, /office/timetable, /teacher/availability) and, daily, timetable.health
 
 python tools/i18n.py lint                 # user-visible strings not wrapped for translation (72 known: official documents are Azerbaijani)
 python tools/i18n.py extract              # refresh i18n/source/*, write untranslated keys to i18n/todo/*.json
@@ -182,6 +184,17 @@ rather than share it between, say, a load type and a tip label.
   the old version, its items and the outcome maps stay readable. A submitted syllabus version keeps its own tags
   (`syllabus_versions.tags`): the printed and published syllabus and the coverage report read those, never the
   working map. Bloom and EQF are built in (`BUILTIN`), written at every start, prod too.
+- **Syllabus copy, prerequisites, exam defaults (2026-11-24).** A copy source is a published version only: the same
+  code in an earlier term (`_earlier_offering`, which `published_for` also lets the author read: the read and the copy
+  must agree; the owner still has to confirm this, SEC-8D5-1) or a course the teacher teaches. A source version without
+  frozen tags brings the working map only when the author may read that course. Prerequisites are `{"code"}` of the
+  registry; old free text stays readable. A new exam's defaults are read live from the published version
+  (`/api/courses/{id}/exam-defaults`), never stored; an exam title is 2–200 characters, like a component name. The
+  approval queue answers `{items, total, page, pages}` with a constant number of queries per page.
+- **Accessibility (Task 42).** A screen built since Checkpoint F is in `SCREENS` of `tests/integration/test_a11y.py`
+  and `tests/e2e/a11y.js`: axe at 1280 and 390 px, light and dark, no violation of any impact (`EXCLUDED` is empty); the
+  10 core pages allow none serious or critical. Dark-theme text colours are tokens checked to 4.5:1; a table that
+  scrolls needs `tabindex="0"`, `role="region"` and a name. A closed menu gives the focus back to its button.
 - **No full scans on hot paths.** A new read route or query on a growing table needs an index; `tests/load/test_query_plans.py`
   fails on a scan of a table with more than 1 000 rows in the read scenario.
 - **Measured indicators (Task 39).** The leadership tiles and the accreditation evidence page (`/leader/evidence`) are
@@ -212,12 +225,19 @@ rather than share it between, say, a load type and a tip label.
   stored step and cursor with the term locked. A run's error is stored as JSON in every language (`_err`), a titled
   and named problem list goes to `progress.problems`. The weekly schedule (`/api/schedule`) reads the week's lessons
   (`timetable.service.week_of`), never a row's current time alone.
+- **Timetable health and repair (Task 48, 2026-11-24).** `timetable.health` (daily) checks each open term's published
+  version into `tt_versions.health` (`0485`) and tells each new problem once to the university-wide academic office
+  only (`repo.timetable_office`); it waits while an exam is open. A run of kind `repair` drafts from the published version and its scope; it places
+  only the weeks from today + notice days (`scope.from_week`), so its placements' weeks are future weeks: `publish_plan`
+  compares a repair's weeks inside that mask only, or every row would count as changed and be re-notified. The page's
+  `can_repair` (manages and covers the published scope) decides the button. A published version's hours report counts
+  its lessons (`repo.unit_lessons`, term dates), not its placements; `lessons_differ` names a gap that is not rounding.
 - **Time.** Use `store.now()` (naive Baku wall clock, `ZEKA_TZ`) or `clock.now()` (aware UTC); `datetime.now()` and
   `date.today()` fail lint outside `backend/zeka/core/clock.py`. `tests/conftest.py` anchors the suite's today at
   2026-11-19 10:00 Baku (the demo term is seeded around today); a test of another date patches `clock.now`, and a test
   never reads the real date.
 
-## Branch state (2026-11-23)
+## Branch state (2026-11-24)
 
 The working branch `claude/tender-meitner-avsvvh` contains `main` plus all five open PRs (#1 audit, #2 docs, #3 security,
 #4 Zəka Radar, #5 tests and CI), merged in the order #3, #5, #4, #2, #1 with their conflicts resolved, plus the spec, plan
@@ -225,9 +245,13 @@ and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Ch
 38–43, the owner's decisions of 2026-11-21, Task 47's Forma №3 reader, Task 48's timetable builder and the language
 change; Checkpoint F: `docs/review/checkpoint-f-2026-11-22.md`, every confirmed finding fixed), then Task 24 (the framework
 map and the NICE import, from NIST's own file), Task 48's hours report and timetable export and Checkpoint F's open
-checks (addendum: `docs/review/checkpoint-f-addendum-2026-11-23.md`; 28 confirmed findings fixed, OK-1 low open). Task 44 (release) waits
-for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's gate is not passed. `main` is unchanged and the five PRs are still open against it; they are
-superseded by this branch.
+checks (addendum: `docs/review/checkpoint-f-addendum-2026-11-23.md`; 28 confirmed findings fixed, OK-1 then left open).
+After the last push `main` on GitHub equals the working branch (`ab28551`); the five PRs are superseded by it. On top of
+it, `integrate-8d5` (not pushed) adds the syllabus audit gaps without an owner decision, the timetable health check and
+repair, `timetable-replay`, the Forma №3 department choice, the room boxes and the accessibility pass, reviewed in
+`docs/review/checkpoint-f-addendum-2026-11-24.md` (25 confirmed findings fixed; OK-1 closed; SEC-8D5-1 waits for the
+owner's confirmation). Task 44 (release) waits for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's
+gate is not passed.
 
 ## Product direction
 

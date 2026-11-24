@@ -607,6 +607,8 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 **Verification:**
 - [x] `python -m pytest tests/unit/test_syllabus_validation.py tests/integration/test_syllabus.py -q`
 
+**Qeyd (2026-11-24, `docs/review/checkpoint-f-addendum-2026-11-24.md`):** prerekvizitlər fənn reyestrinə bağlanıb: kodla saxlanır (`{"code"}`), ad reyestrdən oxunur, naməlum kod və fənnin özü 400; köhnə versiyanın sərbəst mətni oxunaqlı qalır (`0d14aa6`). Layihə dərc olunmuş sillabusdan köçürülə bilər: eyni kodlu fənnin əvvəlki semestri və ya müəllimin dərs verdiyi fənn; kontakt saatlar bu fənnin Forma №3-dən, davamiyyət həddi universitet həddinə endirilir, mənbə `syllabus_versions.source`-dadır (`0231`). Semestr icmalı (`/syllabi/overview`, CSV). Rəyin SEC-8D5-1 tapıntısı (a) yolu ilə düzəldilib, sahibin təsdiqini gözləyir (`51c9ec8`). Qalanlar (sahibin qərarı): sərbəst mətnli prerekvizitin rədd olunması və prerekvizitin qeydiyyatı bloklaması.
+
 **Dependencies:** Task 17
 **Files likely touched:** `backend/zeka/modules/syllabus/{domain,service,repo,routes}.py`, `backend/migrations/0230_syllabus.sql`, `frontend/js/academy.js`
 **Estimated scope:** M
@@ -645,6 +647,8 @@ Task 30-un protokolu və imtahan-qiymət cədvəli bu verilmə yolundan keçir.
 
 **Verification:**
 - [x] `python -m pytest tests/integration/test_syllabus_workflow.py -q`
+
+**Qeyd (2026-11-24, `docs/review/checkpoint-f-addendum-2026-11-24.md`):** imtahan planının ilkin dəyərləri dərc olunmuş versiyadan oxunur (plan A12): `GET /api/courses/{id}/exam-defaults` imtahan komponentinin adını, çəkisini və qiymətləndirdiyi nəticələri verir; adı boş imtahan komponentin adını alır, artıq yaradılmış imtahan öz adını və planını saxlayır; imtahanın adı 2–200 simvoldur (F4) (`0d14aa6`, `51c9ec8`). Təsdiq növbəsi səhifələnir (50 sətir), hər səhifədə sorğu sayı sabitdir, cavab `{items, total, page, pages}` (Checkpoint D-nin təxirə salınmış AR-11-i). Qalanlar (sahibin qərarı): müddət, imtahanın forması və nəticəyə görə sual sayı sillabusda yoxdur, imtahan suallarında nəticə sahəsi yoxdur, «nəticə → sual → nəticə» zənciri qurulmayıb.
 
 **Dependencies:** Task 23, Task 21
 **Files likely touched:** `backend/zeka/modules/syllabus/{service,routes}.py`, `backend/zeka/modules/journal/service.py`, `frontend/js/academy.js`, `frontend/js/student.js`
@@ -1027,6 +1031,8 @@ Tarixi yekun qiymətlər `results` idxal növü ilə gəlir (tələbə, fənn, s
 - [ ] `python -m pytest tests/load/test_query_plans.py -q`
 - [ ] Yük sınağından sonra `python backend/manage.py exam-verify <yük imtahanının id-si>` keçir
 
+Qeyd (2026-11-24): axe Checkpoint F-dən sonrakı 11 ekranda 1280 və 390 px-də, açıq və tünd temada heç bir pozuntu tapmır (`1af60d4`, `tests/integration/test_a11y.py`: 25 passed, axe-core ilə); 10 əsas səhifə ciddi və kritik pozuntusuzdur. CI-da işlədilməyib, ona görə ilk bənd işarələnmir.
+
 **Dependencies:** Task 30; Task 35 (kəsilməyibsə)
 **Files likely touched:** `tests/e2e/*.spec.js`, `tools/loadtest.py`, `tests/load/test_query_plans.py`, `docs/perf/`, `.github/workflows/ci.yml`
 **Estimated scope:** M
@@ -1131,6 +1137,8 @@ Qeyd (2026-11-22): rəy və təkzib iki mərhələdə keçib, təsdiqlənən hə
 
 Qeyd (2026-11-23): əlavə rəy (`docs/review/checkpoint-f-addendum-2026-11-23.md`) Task 24-ü, saat hesabatını və ixracı, CORR-F1-in yenidən ölçülməsini, axe yoxlamasını və dil yoxlamasını əhatə edir; 28 təsdiqlənən tapıntının hamısı testlə düzəldilib, yüksək təhlükəsizlik tapıntısı yoxdur; OK-1 (aşağı) açıqdır.
 
+Qeyd (2026-11-24): ikinci əlavə rəy (`docs/review/checkpoint-f-addendum-2026-11-24.md`) sillabus auditinin sahibsiz boşluqlarını, cədvəlin gündəlik yoxlamasını və bərpasını, `timetable-replay`-i, Forma №3-də kafedra seçimini, otaq qutularını və yeni ekranların əlçatanlığını əhatə edir; 25 təsdiqlənən tapıntının hamısı testlə düzəldilib, yüksək təhlükəsizlik tapıntısı yoxdur; OK-1 bağlanıb (`3e0ff28`). SEC-8D5-1 (aşağı) (a) yolu ilə düzəldilib, sahibin təsdiqini gözləyir. Tam dəst: 2 111 passed, 27 skipped. Qapının qalan üç bəndi dəyişməyib.
+
 ## Task 48: Semestr cədvəli qurucusu
 
 **Description:** Bu gün dərs cədvəlinin sətirləri yalnız əl ilə yazılır (Task 19); Forma №3-dən gələn tədris vahidləri (Task 47) özü cədvələ düşmür. Qurucu semestrin bütün girişlərini bir yerə yığır, toqquşmasız cədvəl layihəsini hesablayır, dekanlıq və kafedralar layihəyə baxır, tədris şöbəsi onu effektiv tarixdən dərc edir. Dizayn: Task 48-in son dizaynı (`f3work/tt-design.md`, repozitoriyadan kənarda; §13-də üç dilim).
@@ -1197,11 +1205,19 @@ Dilim 2: repo, servis, marşrutlar, `timetable.work` və `timetable.health` işl
 - [x] `manage.py export --kind timetable [--term T] [--version V]` və eyni ixrac ekranda; hər qrupa bir sətir, həftələr `week_text` ilə (`ab25a49`, `4dd8f6a`)
 - [x] Skor kartının saatları saat hesabatı kimi problemin bütün vahidlərini sayır (BR-T1, `4dd8f6a`)
 - [x] CORR-F1 real fayllarda yenidən ölçülüb: yazda həddən kənar vahid 183 → 12, fərq −1 062 → −534 saat; payızda 4 → 2; 0 sərt pozuntu (ölçmə repozitoriyadan kənarda)
-- [ ] Dərc olunmuş versiyanın saat hesabatı ləğv olunmuş dərsləri saymır: `builder.hours` dərsləri `domain.hours_report`-a ötürmür (OK-1, açıq, aşağı)
+- [x] Dərc olunmuş versiyanın saat hesabatı dərsləri sayır, ləğv olunmuş dərs saatı azaldır (OK-1, `3e0ff28`, 2026-11-24); dərslər yerləşdirmədən fərqlidirsə səbəb `lessons_differ`-dir, yuvarlaqlaşdırma yox (F2, `80d0aab`)
 
-**Acceptance criteria (dilim 3-dən sonraya qalanlar):** rəy və qeydlər səhifəsi, fakültənin QR sənədi və onun çapı, bloklar (təcrübə həftələri), kafedranın təsdiqi, otaqların «cədvələ açıq» və «ayrılmış» qutuları, idxalda kafedra seçimi, bələdçi səhifəsinin mətni. Görülüb (2026-11-23): hesabat «Saat hesabatı» (`ab25a49`).
+**Acceptance criteria (Checkpoint F-in ikinci əlavəsi, 2026-11-24, `docs/review/checkpoint-f-addendum-2026-11-24.md`):**
+- [x] `timetable.health` gündəlik işdir: açıq semestrin dərc olunmuş versiyası `domain.check` ilə yoxlanır, nəticə `tt_versions.health`-dədir (`0485`), hər yeni problem universitet üzrə tədris şöbəsinə bir dəfə bildirilir; açıq imtahanda gözləyir, yalnız açıq semestrlər; əhatəli istifadəçi yalnız öz vahidlərinin problemlərini görür (`91b0ea2`, `80d0aab`; `test_tt_builder.py`, `test_periodic_jobs.py`)
+- [x] «Bərpa» hesablaması dərc olunmuş versiyadan layihə hazırlayır: bu gün + bildiriş günlərindən əvvəlki həftələrə toxunulmur, semestrin sonundan sonra 409, dərc olunmuş versiya yoxdursa 409; dərc olunanda tərpənməyən sətir, onun dərsləri və bildirişi dəyişmir (F1); düymə yalnız versiyanın əhatəsini örtən idarəçiyə görünür, əhatəli istifadəçi 404 alır (F3) (`91b0ea2`, `80d0aab`; `test_tt_builder.py`, `test_tt_service_rules.py`, `test_tt_pages.py`)
+- [x] `manage.py timetable-replay --version V`: hesablamanın saxlanmış girişi və toxumu ilə; 0 eynidir, 1 fərqli iclaslarla, 2 versiya yoxdur; girişin SHA-256-ı, yerləşdirilməyənlər və itmiş yerləşdirmə tutuşdurulur, əl ilə köçürmələr sayılır; audit (`91b0ea2`, `80d0aab`)
+- [x] Forma №3 önizləməsində iki kafedranın keçdiyi fənni olan ştat üçün kafedra seçimi (susmaya görə faylın kafedrası); idxal onu tətbiq edir və audit jurnalına yazır, ştatın kafedralarından kənar seçim 400 (`91b0ea2`, `8c42851`; `test_import.py`, `test_tt_more_pages.py`)
+- [x] Otaq redaktorunda «Cədvəl qurucusu üçün açıqdır» və «Ayrılmış otaq» (`rooms.schedulable`, `rooms.dedicated`); canlı köçürmə yoxlaması, seçimlər və hesablama onlara riayət edir (`91b0ea2`)
+- [x] axe (WCAG 2.2 AA) qurucunun beş səhifəsində və saat hesabatında 1280 və 390 px-də, açıq və tünd temada heç bir pozuntu tapmır (`1af60d4`; `test_a11y.py` 25 passed)
 
-**Acceptance criteria (dilim 2-dən sonraya qalanlar):** rəy və qeydlər, fakültə üzrə rəsmi QR sənədi, çap vərəqləri, `timetable-replay`, `timetable.health` və təmir hesablaması, mövcud sətirlərin 0-cı versiya kimi qəbulu, bloklar və otaq məşğulluğu marşrutları, laboratoriyanın bölünməsi, kafedranın təsdiqi, əhatə, müqayisə və fərq marşrutları, Forma №3 idxalının nəticəsinin yazılması; dilim 3: səhifələr və brauzer testləri. Görülüb (2026-11-23): CSV və `manage.py export --kind timetable` (`ab25a49`).
+**Acceptance criteria (dilim 3-dən sonraya qalanlar):** rəy və qeydlər səhifəsi, fakültənin QR sənədi və onun çapı, bloklar (təcrübə həftələri), kafedranın təsdiqi, otaqların «cədvələ açıq» və «ayrılmış» qutuları, idxalda kafedra seçimi, bələdçi səhifəsinin mətni. Görülüb (2026-11-23): hesabat «Saat hesabatı» (`ab25a49`). Görülüb (2026-11-24): otaqların «cədvələ açıq» və «ayrılmış» qutuları, idxalda kafedra seçimi (`91b0ea2`).
+
+**Acceptance criteria (dilim 2-dən sonraya qalanlar):** rəy və qeydlər, fakültə üzrə rəsmi QR sənədi, çap vərəqləri, `timetable-replay`, `timetable.health` və təmir hesablaması, mövcud sətirlərin 0-cı versiya kimi qəbulu, bloklar və otaq məşğulluğu marşrutları, laboratoriyanın bölünməsi, kafedranın təsdiqi, əhatə, müqayisə və fərq marşrutları, Forma №3 idxalının nəticəsinin yazılması; dilim 3: səhifələr və brauzer testləri. Görülüb (2026-11-23): CSV və `manage.py export --kind timetable` (`ab25a49`). Görülüb (2026-11-24): `timetable-replay`, `timetable.health` və təmir hesablaması (`91b0ea2`, `80d0aab`).
 
 **Verification:**
 - [x] `python -m pytest tests/unit/test_tt_rules.py tests/unit/test_tt_props.py tests/unit/test_timetable_conflicts.py tests/unit/test_layers.py -q`

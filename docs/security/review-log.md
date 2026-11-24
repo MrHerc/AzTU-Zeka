@@ -20,6 +20,7 @@ same at every checkpoint:
 | E | Faza 5, Tasks 31–35, 37 · `afbfeae..777682f`; Task 46 · `4c63b4a` | 83: 66 confirmed, 13 partial, 4 refuted; Task 46: 11 confirmed, 1 partial, 2 refuted | `docs/review/checkpoint-e-2026-11-19.md` (per area, with the test of each fix) | No new finding ≥ 0.8; an older leak (OLD-1, an anonymous asker's id) fixed |
 | F | Faza 6, Tasks 38–43, 47, 48, the owner's decisions, the language change · `1bc85c8..3ea4371` | Round 2: 38 confirmed, 0 refuted (F1, SEC-TT-1..3, CORR-F1/F2, TE-F1..F11, M1, L1–L20); round 1 and the reviews held while the work was built: per report | `docs/review/checkpoint-f-2026-11-22.md` (round 2 table, with the commit and test of each fix) | Security lens of round 2: SEC-TT-1..3, all fixed, tested |
 | F addendum | Task 24, Task 48's hours report and export, Checkpoint F's open checks · `e02f1d6..1161c6b` | 28 confirmed, 0 refuted; one side claim (OK-1, low) left open | `docs/review/checkpoint-f-addendum-2026-11-23.md` | Security lens: SEC-FW-1..4, all fixed, tested |
+| F addendum 2 | Syllabus audit gaps, timetable health and repair, `timetable-replay`, Forma №3 department choice, room boxes, accessibility · `ab28551..80d0aab` | 25 confirmed (1 security, 4 correctness, 1 test order, 19 test gaps), 0 refuted outright, S12's half refuted; OK-1 closed (`3e0ff28`) | `docs/review/checkpoint-f-addendum-2026-11-24.md` | Security lens: SEC-8D5-1 (low), fixed as option (a), owner to confirm; five security-relevant test gaps (MUT-S23, S16, T05-T06, T09, T04) closed |
 
 ## High and medium security findings since the sprint began
 
@@ -38,6 +39,16 @@ same at every checkpoint:
 | SEC-FW-1 | Syllabus framework map (F addendum) | A teacher of any section changed the framework tags of an approved, published syllabus, and the student's page showed it with no approval | Confirmed, important | A submitted version keeps its own tags, `syllabus_versions.tags` (`0241`, `1b8d7a3`) · `test_frameworks.py` |
 
 Low security findings of Checkpoint F and its addendum, all fixed: SEC-TT-3 (a scoped office read every draft and its problem list), SEC-FW-2 (the coverage report showed another department's draft outcome texts), SEC-FW-3 (a relabelled NICE file skipped the SHA-256 check and became the default; now imported as unverified) and SEC-FW-4 (nit: a deeply nested file crashed the import). Each report lists its fix and test.
+
+Low security finding of the second addendum (2026-11-24): SEC-8D5-1. A teacher could copy the published syllabus of an
+earlier offering of the same code, which the read rule refused to show them, and, when that version had no frozen tags,
+the source course's unpublished working map. Fixed in `51c9ec8` with option (a): the author reads the earlier offering
+that the copy offers, and the working map is copied only when the author may read that course. The owner must confirm
+(a) or choose (b), a `may_read` condition on the copy source. Tests: `test_syllabus_registry.py`, shown failing with
+`git stash`. The same review closed five untested security checks with tests (each mutant now killed): the head's
+scope on the syllabus queue (MUT-S23), the object check of `exam-defaults` (MUT-S16), the scoped view of the timetable
+health check (MUT-T05-T06), `_covers_scope` on a repair run (MUT-T09) and the health notice going only to the
+university-wide academic office (MUT-T04).
 
 Refuted claims are kept with their refutation in each report, for example:
 - **CR-E9:** `/api/v1` responses do have `Cache-Control: no-store`.
