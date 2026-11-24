@@ -35,8 +35,8 @@ def to_utc(day: date, hhmm: str, zone: tzinfo | None) -> datetime:
 def exam_input(body, zone: tzinfo | None) -> tuple[dict, dict | None]:
     """title, kind, day (YYYY-MM-DD), start and end (HH:MM local), duration_min, plan, protection, allowed_cidrs."""
     title = " ".join(str(body.get("title") or "").split())
-    if not 3 <= len(title) <= 200:
-        return {}, E("İmtahanın adı 3–200 simvol olmalıdır")
+    if not 2 <= len(title) <= 200:                  # as short as a syllabus component name (F4)
+        return {}, E("İmtahanın adı 2–200 simvol olmalıdır")
     kind = body.get("kind") or "main"
     if kind not in KINDS:
         return {}, E("İmtahanın növü əsas, təkrar və ya fərdi vaxt olmalıdır")

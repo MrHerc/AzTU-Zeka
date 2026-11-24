@@ -2,7 +2,7 @@
  "Yalnız təsdiqlənmiş məşq sualları testə əlavə oluna bilər": "В тест можно добавить только утверждённые тренировочные вопросы",
  "Sualın təyinatı məşq və ya imtahan olmalıdır": "Вопрос должен быть предназначен для тренировки или экзамена",
  "Təsdiqlənmiş sualın təyinatı dəyişdirilə bilməz": "Назначение утверждённого вопроса изменить нельзя",
- "İmtahanın adı 3–200 simvol olmalıdır": "Название экзамена — от 3 до 200 символов",
+ "İmtahanın adı 2–200 simvol olmalıdır": "Название экзамена — от 2 до 200 символов",
  "İmtahanın növü əsas, təkrar və ya fərdi vaxt olmalıdır": "Вид экзамена: основной, пересдача или индивидуальное время",
  "Keçirilmə vaxtının başlanğıcı və sonu SS:DD formatında olmalı, son vaxt başlanğıcdan sonra olmalıdır": "Начало и конец времени проведения должны быть в формате ЧЧ:ММ, конец — позже начала",
  "Müddət 5 dəqiqə ilə imtahanın keçirilmə vaxtının uzunluğu ({n} dəq.) arasında olmalıdır": "Длительность — от 5 минут до длины окна ({n} мин)",

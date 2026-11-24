@@ -78,6 +78,11 @@ def copy_sources(c, cid: int, code: str, uid: int) -> list[dict]:
                    "ORDER BY t.teaching_start DESC, co.code, co.id", (uid, uid, cid, code, uid, uid))
 
 
+def authored(c, code: str, uid: int, other: int) -> list[int]:
+    """The other courses of this code the user heads."""
+    return [r["id"] for r in rows(c, "SELECT id FROM courses WHERE code=? AND teacher_id=? AND id<>?", (code, uid, other))]
+
+
 def replace_map(c, cid: int, pairs: list[tuple[str, int]], by: int, at: str):
     """The course's outcome map becomes ``pairs`` (outcome, item id): a copy brings its source's tags."""
     c.execute("DELETE FROM outcome_items WHERE course_id=?", (cid,))

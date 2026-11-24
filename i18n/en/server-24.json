@@ -2,7 +2,7 @@
  "Yalnız təsdiqlənmiş məşq sualları testə əlavə oluna bilər": "Only approved practice questions can be added to a test",
  "Sualın təyinatı məşq və ya imtahan olmalıdır": "A question's purpose must be practice or exam",
  "Təsdiqlənmiş sualın təyinatı dəyişdirilə bilməz": "An approved question's purpose cannot be changed",
- "İmtahanın adı 3–200 simvol olmalıdır": "An exam's title must be 3–200 characters",
+ "İmtahanın adı 2–200 simvol olmalıdır": "An exam's title must be 2–200 characters",
  "İmtahanın növü əsas, təkrar və ya fərdi vaxt olmalıdır": "The exam type must be main, retake or individual time",
  "Keçirilmə vaxtının başlanğıcı və sonu SS:DD formatında olmalı, son vaxt başlanğıcdan sonra olmalıdır": "The time window's start and end must be HH:MM, and the end must be after the start",
  "Müddət 5 dəqiqə ilə imtahanın keçirilmə vaxtının uzunluğu ({n} dəq.) arasında olmalıdır": "The duration must be between 5 minutes and the window's length ({n} min)",

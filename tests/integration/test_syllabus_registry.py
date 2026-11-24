@@ -81,13 +81,25 @@ def publish(w, cid, d):
 
 
 # ---------------------------------------------------------------- 1. a new exam's defaults (plan A12, Task 25)
-def test_publication_fills_a_new_exam_s_defaults_and_an_exam_already_set_keeps_its_plan(world):
-    t, cid = world["teacher"], world["course"]
+def other_teacher(world):
+    return q("SELECT id FROM users WHERE role='teacher' AND id<>? ORDER BY id LIMIT 1", (world["teacher"].user["id"],))[0]["id"]
+
+
+def exam_course(world, code):
+    """A course of the demo teacher of its own with exam questions (ORD-1: no test shares a course another publishes)."""
+    cid = course(code, f"İmtahan sınağı {code}", world["term"]["id"], world["teacher"].user["id"], world["dep"]["id"])
     for i in range(8):
         run("INSERT INTO questions(course_id,qtype,text,options,answer,unit,explanation,difficulty,topic,status,purpose,created_at) "
             "VALUES(?,'numeric',?,'[]',?,'','izah','Asan','Om','approved','exam','x')", (cid, f"Sual {i}", str(i)))
-    body = {"day": store.now().date().isoformat(), "start": "00:01", "end": "23:59", "duration_min": 60,
-            "plan": [{"difficulty": "Asan", "count": 3}]}
+    return cid
+
+
+EXAM = {"start": "00:01", "end": "23:59", "duration_min": 60, "plan": [{"difficulty": "Asan", "count": 3}]}
+
+
+def test_publication_fills_a_new_exam_s_defaults_and_an_exam_already_set_keeps_its_plan(world):
+    t, cid = world["teacher"], exam_course(world, "SR-102")
+    body = {**EXAM, "day": store.now().date().isoformat()}
     assert t.get(f"/api/courses/{cid}/exam-defaults").json == {"defaults": None}, "no published syllabus, no defaults"
     assert t.post(f"/api/courses/{cid}/exams", body).status == 400, "no title and nothing to take it from"
     old = t.post(f"/api/courses/{cid}/exams", {**body, "title": "Aralıq imtahan"})
@@ -99,7 +111,30 @@ def test_publication_fills_a_new_exam_s_defaults_and_an_exam_already_set_keeps_i
     assert new.status == 200 and new.json["title"] == "Yekun imtahan", new.text
     kept = t.get(f"/api/exams/{old.json['id']}/manage").json["exam"]
     assert kept["title"] == "Aralıq imtahan" and kept["plan"] == [{"difficulty": "Asan", "topic": None, "count": 3}], kept
+    own = t.post(f"/api/courses/{cid}/exams", {**body, "title": "Öz adım"})
+    assert own.status == 200 and own.json["title"] == "Öz adım", "MUT-S15: a title the teacher writes is not the syllabus's"
     assert world["student"].get(f"/api/courses/{cid}/exam-defaults").status == 403
+
+
+def test_exam_defaults_are_read_only_by_the_course_s_staff(world):
+    """MUT-S16: a teacher reads the exam defaults of a course they manage only: another teacher's published course is 404."""
+    cid = course("SR-103", "Başqasının imtahanı", world["term"]["id"], other_teacher(world), world["dep"]["id"])
+    version(cid, "published")
+    r = world["teacher"].get(f"/api/courses/{cid}/exam-defaults")
+    assert r.status == 404, r.text
+
+
+def test_an_exam_takes_a_two_letter_exam_component_s_name_as_its_title(world):
+    """F4: the syllabus allows a component name of 2 letters; an exam without a title takes it and is not refused."""
+    t, cid = world["teacher"], exam_course(world, "SR-104")
+    d = data()
+    d["assessment"][2]["name"] = "Ək"
+    publish(world, cid, d)
+    assert t.get(f"/api/courses/{cid}/exam-defaults").json["defaults"]["title"] == "Ək"
+    r = t.post(f"/api/courses/{cid}/exams", {**EXAM, "day": store.now().date().isoformat(), "title": ""})
+    assert r.status == 200 and r.json["title"] == "Ək", r.text
+    short = t.post(f"/api/courses/{cid}/exams", {**EXAM, "day": store.now().date().isoformat(), "title": "Ə"})
+    assert short.status == 400 and short.json["error"] == "İmtahanın adı 2–200 simvol olmalıdır", short.text
 
 
 # ---------------------------------------------------------------- 2. prerequisites from the registry
@@ -167,6 +202,87 @@ def test_a_draft_copies_an_earlier_offering_or_a_course_the_teacher_teaches(worl
     assert t.get(f"/api/syllabi/{src}/sources").status == 404, "only the course's author copies into it"
 
 
+def old_term(code, start="2023-09-15"):
+    y = int(start[:4])
+    return run("INSERT INTO academic_terms(code,name,teaching_start,teaching_end,exam_start,exam_end,active,created_at,updated_at) "
+               "VALUES(?,?,?,?,?,?,0,?,?)", (code, code, start, f"{y}-12-28", f"{y + 1}-01-05", f"{y + 1}-01-30", T, T))
+
+
+def test_a_copy_source_is_readable_to_the_author_and_brings_no_tags_the_source_did_not_publish(world):
+    """SEC-8D5-1: the earlier offering a draft may be copied from is readable to the course's author (the read and the
+    copy now agree); a published version without its own tags brings no tag of the source's unpublished working map; a
+    course without a term has no earlier offering; another teacher's course of another code stays unreadable."""
+    t, dep, me, other = world["teacher"], world["dep"]["id"], world["teacher"].user["id"], other_teacher(world)
+    old = old_term("2023-SC")
+    src = course("SC-501", "Mənbə sınağı", old, other, dep)
+    version(src, "published", data(description="Əvvəlki semestrin sillabusu"))          # no tags: a version from before Task 24
+    bloom = q("SELECT i.id FROM framework_items i JOIN frameworks f ON f.id=i.framework_id WHERE f.key='bloom' ORDER BY i.id LIMIT 1")[0]["id"]
+    run("INSERT INTO outcome_items(course_id,outcome,item_id,mapped_by,mapped_at) VALUES(?,?,?,?,?)", (src, "N1", bloom, other, T))
+    cid = course("SC-501", "Mənbə sınağı", world["term"]["id"], me, dep)
+    shown = t.get(f"/api/courses/{src}/syllabus")
+    assert shown.status == 200 and shown.json["published"]["data"]["description"] == "Əvvəlki semestrin sillabusu", shown.text
+    r = t.post(f"/api/syllabi/{cid}/copy", {"from": src})
+    assert r.status == 200 and r.json["latest"]["data"]["description"] == "Əvvəlki semestrin sillabusu", r.text
+    assert q("SELECT outcome FROM outcome_items WHERE course_id=?", (cid,)) == [], "the source's unpublished tags"
+    loose = course("SC-501", "Mənbə sınağı", None, me, dep)
+    assert src not in {x["course_id"] for x in t.get(f"/api/syllabi/{loose}/sources").json}, "no term, no earlier offering"
+    stranger = course("SC-502", "Başqasının fənni", old, other, dep)
+    version(stranger, "published")
+    assert t.get(f"/api/courses/{stranger}/syllabus").json["published"] is None
+
+
+def test_the_sources_of_a_copy_are_earlier_offerings_and_never_the_course_itself(world):
+    """MUT-S10, S12: another offering of the same course in the same term is not an earlier one; the course's own
+    publication is not a source."""
+    t, dep = world["teacher"], world["dep"]["id"]
+    same = course("SC-1010", "Paralel", world["term"]["id"], other_teacher(world), dep)
+    version(same, "published")
+    cid = course("SC-1010", "Paralel", world["term"]["id"], t.user["id"], dep)
+    version(cid, "published")
+    found = {x["course_id"] for x in t.get(f"/api/syllabi/{cid}/sources").json}
+    assert same not in found and cid not in found, found
+
+
+def test_a_copy_lowers_the_attendance_limit_and_drops_the_course_itself_from_its_prerequisites(world):
+    """MUT-S07, S09: a source's attendance limit above the university's comes down to it; a source that names this course
+    as its prerequisite does not make the course its own prerequisite."""
+    t, dep = world["teacher"], world["dep"]["id"]
+    src = course("SC-707", "Hədd", old_term("2023-S7"), other_teacher(world), dep)
+    version(src, "published", data(rules={"attendance_limit": 30, "ai_policy": "limited", "late_policy": "", "ai_note": ""}))
+    cid = course("SC-707", "Hədd", world["term"]["id"], t.user["id"], dep)
+    r = t.post(f"/api/syllabi/{cid}/copy", {"from": src})
+    assert r.status == 200 and r.json["latest"]["data"]["rules"]["attendance_limit"] == 25, r.text
+    a = course("SC-909A", "Mənim fənnim A", world["term"]["id"], t.user["id"], dep)
+    version(a, "published", data(prerequisites=[{"code": "SC-909B"}]))
+    b = course("SC-909B", "Mənim fənnim B", world["term"]["id"], t.user["id"], dep)
+    r = t.post(f"/api/syllabi/{b}/copy", {"from": a})
+    assert r.status == 200 and r.json["latest"]["data"]["prerequisites"] == [], r.text
+
+
+def test_a_unit_teacher_reads_a_course_but_may_not_copy_into_it(world):
+    """MUT-S14: the teacher of one of its units reads the course; the syllabus is its head's, so a copy answers 403."""
+    t = world["teacher"]
+    cid = course("SC-1414", "Başqasının", world["term"]["id"], other_teacher(world), world["dep"]["id"])
+    run("INSERT INTO teaching_units(course_id,kind,teacher_id,active,created_at,updated_at,hours,students) VALUES(?,'lab',?,1,?,?,15,20)",
+        (cid, t.user["id"], T, T))
+    src = course("SC-1415", "Mənim mənbəm", world["term"]["id"], t.user["id"], world["dep"]["id"])
+    version(src, "published")
+    r = t.post(f"/api/syllabi/{cid}/copy", {"from": src})
+    assert r.status == 403, r.text
+
+
+def test_prerequisites_are_kept_once_and_the_course_s_own_name_stays_text(world):
+    """MUT-S01, S05: a prerequisite named twice is kept once; the course's prerequisite field naming the course itself
+    stays text, never a registry reference to itself."""
+    t = world["teacher"]
+    cid = course("SC-0101", "Özünə istinad fənni", world["term"]["id"], t.user["id"], world["dep"]["id"])
+    run("UPDATE courses SET prereq=? WHERE id=?", ("Özünə istinad fənni", cid))
+    assert t.post(f"/api/syllabi/{cid}/draft").json["data"]["prerequisites"] == ["Özünə istinad fənni"]
+    riy = q("SELECT code FROM courses WHERE code='RİY-1101'")[0]["code"]
+    r = t.put(f"/api/syllabi/{cid}", {"data": data(prerequisites=[{"code": riy}, {"code": riy}, "Mətn", "Mətn"])})
+    assert r.status == 200 and len(r.json["latest"]["data"]["prerequisites"]) == 2, r.text
+
+
 # ---------------------------------------------------------------- 4. the overview of a term
 @pytest.fixture(scope="module")
 def overview(world):
@@ -213,6 +329,39 @@ def test_the_overview_csv_has_a_bom_and_no_cell_a_spreadsheet_would_run(world, o
     assert text.startswith("﻿Kafedra,Fənnin kodu,Fənn,"), text[:80]
     assert "'=HYPERLINK" in text and "\n=HYPERLINK" not in text and ",=HYPERLINK" not in text, text
     assert "OV-X" in text and "Sillabus yoxdur" in text
+
+
+def test_the_overview_counts_ignore_the_state_filter_and_a_faculty_lists_only_its_departments(world, overview):
+    """MUT-S19, S22: the counts follow the department and the search, not the state filter; the dean's office's list of
+    departments is its faculty's."""
+    reg = world["registrar"]
+    a = reg.get(f"/api/syllabi/overview?term={overview['term']}&q=OV-").json["counts"]
+    assert reg.get(f"/api/syllabi/overview?term={overview['term']}&q=OV-&state=none").json["counts"] == a
+    deps = world["office"].get(f"/api/syllabi/overview?term={overview['term']}").json["departments"]
+    assert deps and overview["far"] not in [d["id"] for d in deps], deps
+
+
+def _queue(client) -> list[dict]:
+    first = client.get("/api/syllabi/queue").json
+    return [i for p in range(1, first["pages"] + 1) for i in client.get(f"/api/syllabi/queue?page={p}").json["items"]]
+
+
+def test_a_department_head_s_queue_holds_only_the_courses_the_grant_covers(world, overview):
+    """MUT-S23: a version submitted in another faculty's department is not in the head's queue."""
+    mine = version(course("SC-2323A", "Öz təqdim", world["term"]["id"], world["teacher"].user["id"], world["dep"]["id"]), "submitted")
+    far = version(course("SC-2323B", "Uzaq təqdim", world["term"]["id"], world["teacher"].user["id"], overview["far"]), "submitted")
+    ids = {i["id"] for i in _queue(world["head"])}
+    assert mine in ids and far not in ids, ids
+
+
+def test_the_queue_compares_with_the_latest_publication(world):
+    """MUT-S26: an older publication keeps its status; the queue compares with the latest one."""
+    cid = course("SC-2626", "İki dərc", world["term"]["id"], world["teacher"].user["id"], world["dep"]["id"])
+    version(cid, "published", data(description="bir"), version=1)
+    v2 = version(cid, "published", data(description="iki"), version=2)
+    v3 = version(cid, "approved", data(description="iki"), version=3)
+    x = next(i for i in _queue(world["registrar"]) if i["id"] == v3)
+    assert x["published_id"] == v2 and x["changes"] == 0, x
 
 
 # ---------------------------------------------------------------- 5. the approval queue pages, a constant number of queries (AR-11)

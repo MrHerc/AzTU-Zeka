@@ -268,9 +268,17 @@ def published_for(c, user, cid: int) -> dict | None:
     if user["role"] == "student":
         if not repo.enrolled(c, cid, user["id"]):
             return None
-    elif not may_read(c, user, cid):
+    elif not may_read(c, user, cid) and not _earlier_offering(c, user, cid):
         return None
     return _version(c, repo.published(c, cid))
+
+
+def _earlier_offering(c, user, cid: int) -> bool:
+    """SEC-8D5-1: a course's author reads the published syllabus of an earlier offering of the same course, the one
+    ``sources`` offers to copy: what a copy brings into the draft is readable before it is copied."""
+    co = repo.course(c, cid) if user["role"] == "teacher" else None
+    return co is not None and any(any(x["course_id"] == cid for x in sources(c, user, m) or [])
+                                  for m in repo.authored(c, co["code"], user["id"], cid))
 
 
 def exam_defaults(c, cid: int) -> dict | None:
@@ -289,7 +297,7 @@ def sources(c, user, cid: int) -> list[dict] | None:
     start = repo.term_start(c, co["term_id"])
     return [{k: x[k] for k in ("course_id", "code", "name", "term", "version_id", "version", "decided_at")}
             for x in repo.copy_sources(c, cid, co["code"], user["id"])
-            if x["mine"] or not start or not x["teaching_start"] or x["teaching_start"] < start]
+            if x["mine"] or (start and x["teaching_start"] and x["teaching_start"] < start)]   # no term: nothing is earlier
 
 
 def copy_from(c, user, cid: int, body) -> tuple[str, object]:
@@ -316,7 +324,8 @@ def copy_from(c, user, cid: int, body) -> tuple[str, object]:
     status, value = _store(c, user, co, clean, source)
     if status != "ok":
         return status, value
-    tags = J(v["tags"], None) if v["tags"] else repo.live_map(c, found["course_id"])
+    # a version without its own tags: the source's working map, only for a course the author reads (SEC-8D5-1)
+    tags = J(v["tags"], None) if v["tags"] else repo.live_map(c, found["course_id"]) if may_read(c, user, found["course_id"]) else {}
     keep = {o["id"] for o in clean["outcomes"]}
     repo.replace_map(c, cid, [(o, i) for o, ids in (tags or {}).items() if o in keep for i in ids], user["id"], iso(now()))
     audit(c, user["id"], "syllabus_copied", "course", f"{co['code']} · v{repo.latest(c, cid)['version']} · {found['code']} v{found['version']}")
