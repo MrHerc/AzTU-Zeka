@@ -162,7 +162,14 @@ export async function refreshBadges() {
 
 function closeDropdowns() { $$(".dropdown").forEach((d) => d.remove()); }
 document.addEventListener("click", (e) => { if (!e.target.closest(".dropdown")) closeDropdowns(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDropdowns(); });
+// Escape from inside a menu gives the focus back to the button that opened it (it fell to the page's body)
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const dd = document.activeElement && document.activeElement.closest(".dropdown");
+  const opener = dd && dd.parentElement.querySelector(":scope > button");
+  closeDropdowns();
+  if (opener) opener.focus();
+});
 function dropdown(host, cls, htmlStr) {
   if (host.querySelector(".dropdown")) { closeDropdowns(); return null; }
   closeDropdowns();

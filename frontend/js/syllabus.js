@@ -48,11 +48,11 @@ function readOnly(d, tags = {}) {
   const rules = d.rules || {};
   return html`<div class="stack">
     ${d.description ? html`<div><b class="small">${t("Fənnin təsviri")}</b><p class="small syl-pre" style="margin:4px 0 0">${d.description}</p></div>` : ""}
-    <div><b class="small">${t("Təlim nəticələri")}</b><div class="table-wrap"><table class="table"><tbody>${d.outcomes.map((o) => html`<tr><td><b>${o.id}</b></td>
+    <div><b class="small">${t("Təlim nəticələri")}</b><div class="table-wrap" tabindex="0" role="region" aria-label="${t("Təlim nəticələri")}"><table class="table"><tbody>${d.outcomes.map((o) => html`<tr><td><b>${o.id}</b></td>
       <td>${o.text}${tagChips(tags[o.id] || [])}</td><td class="nowrap">${label(BLOOM, o.bloom)}</td></tr>`)}</tbody></table></div></div>
-    <div><b class="small">${t("Həftəlik plan")}</b><div class="table-wrap"><table class="table"><thead><tr><th>${t("Həftə")}</th><th>${t("Mövzu")}</th><th>${t("Nəticələr")}</th><th>${t("Fəaliyyət")}</th></tr></thead>
+    <div><b class="small">${t("Həftəlik plan")}</b><div class="table-wrap" tabindex="0" role="region" aria-label="${t("Həftəlik plan")}"><table class="table"><thead><tr><th>${t("Həftə")}</th><th>${t("Mövzu")}</th><th>${t("Nəticələr")}</th><th>${t("Fəaliyyət")}</th></tr></thead>
       <tbody>${d.plan.map((p) => html`<tr><td>${p.week}</td><td>${p.topic}</td><td class="nowrap">${p.outcomes.join(", ")}</td><td>${p.activity}</td></tr>`)}</tbody></table></div></div>
-    <div><b class="small">${t("Qiymətləndirmə")}</b><div class="table-wrap"><table class="table"><thead><tr><th>${t("Komponent")}</th><th>${t("Növ")}</th><th>${t("Çəki")}</th><th>${t("Nəticələr")}</th></tr></thead>
+    <div><b class="small">${t("Qiymətləndirmə")}</b><div class="table-wrap" tabindex="0" role="region" aria-label="${t("Qiymətləndirmə")}"><table class="table"><thead><tr><th>${t("Komponent")}</th><th>${t("Növ")}</th><th>${t("Çəki")}</th><th>${t("Nəticələr")}</th></tr></thead>
       <tbody>${d.assessment.map((a) => html`<tr><td>${a.name}</td><td>${label(KIND, a.kind)}</td><td>${a.weight}</td><td>${(a.outcomes || []).join(", ") || "—"}</td></tr>`)}</tbody></table></div></div>
     <div class="small">${t("Buraxılmış dərslərin həddi, %")}: <b>${rules.attendance_limit}</b> · ${t("Süni intellektdən istifadə")}: <b>${label(AI, rules.ai_policy)}</b></div>
     <div class="small"><b>${t("AI siyasətinin izahı")}</b>: <span class="syl-pre">${rules.ai_note || "—"}</span></div>
@@ -385,7 +385,7 @@ route("/syllabi", async (el) => {
   try { list = await api.get("/api/syllabi/queue"); } catch (err) { return mount(el, failed(err.message)); }
   const crumbs = [[t("Əsas"), HOME[S.user.role] || "/"], [t("Sillabus təsdiqi")]];
   mount(el, html`${pageHead(t("Sillabus təsdiqi"), t("Təsdiq gözləyən versiyalar: fərqə baxın, təsdiqləyin və ya şərhlə geri qaytarın."), "", crumbs)}
-    <div class="card">${list.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Fənn")}</th><th>${t("Versiya")}</th><th>${t("Müəllif")}</th>
+    <div class="card">${list.length ? html`<div class="table-wrap" tabindex="0" role="region" aria-label="${t("Sillabus təsdiqi")}"><table class="table"><thead><tr><th>${t("Fənn")}</th><th>${t("Versiya")}</th><th>${t("Müəllif")}</th>
       <th>${t("Status")}</th><th>${t("Forma №3")}</th><th>${t("Dəyişiklik")}</th><th></th></tr></thead><tbody>
       ${list.map((x) => html`<tr><td><b class="small">${x.code}</b> · ${x.name}</td><td>${x.version}</td><td>${x.author || "—"}</td><td>${badge(x.status)}</td>
         <td>${x.forma3.length ? html`<span class="badge b-amber">${t("{n} fərq", { n: x.forma3.length })}</span>` : html`<span class="tiny muted">—</span>`}</td>

@@ -60,7 +60,7 @@
 
 /* inline send-error card with retry */
 .msg.chat-error .bubble { border-color: var(--red); background: var(--red-50); }
-.msg.chat-error .avatar.ai { background: var(--red); }
+.msg.chat-error .avatar.ai { background: var(--red); } [data-theme="dark"] .msg.chat-error .avatar.ai { color: var(--bg); }
 
 /* locked tutor banner spacing */
 .chat-locked { align-items: flex-start; }

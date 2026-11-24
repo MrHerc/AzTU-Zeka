@@ -31,10 +31,11 @@
 }
 [data-theme="dark"] {
   --bg: #0b1024; --surface: #121a35; --surface-2: #0f1630; --surface-3: #1a2444; --border: #243055; --border-2: #2e3c66;
-  --text: #e8ecf8; --text-2: #c7cfe4; --muted: #8f9abb; --faint: #6b7596;
+  --text: #e8ecf8; --text-2: #c7cfe4; --muted: #8f9abb; --faint: #848eb0;
   --navy-50: #18214a; --navy-100: #1f2a5c; --blue-50: #13284a; --blue-100: #183460; --coral-50: #3a1c26;
-  --green-50: #0d2b22; --amber-50: #2f2410; --red-50: #35161b; --violet-50: #221d4a; --teal-50: #0d2a33; --link: #8fbde8; --focus: #8fbde8;
-  --green: #0e9f6e; --amber: #c27803; --red: #d64045; --teal: #0e8aa8; --coral-700: #c94b4e;     /* the light theme's darker ones are too dark here */
+  --green-50: #09211a; --amber-50: #2f2410; --red-50: #35161b; --violet-50: #221d4a; --teal-50: #0d2a33; --link: #8fbde8; --focus: #8fbde8;
+  --green: #0e9f6e; --amber: #ce9335; --red: #e07074; --teal: #0e8aa8; --coral-700: #c94b4e;     /* the light theme's darker ones are too dark here */
+  /* text colours reach 4.5:1 on the page, on surface-3 and on their own -50 background here too (axe at 1280 and 390 px, 2026-11-24) */
   --shadow: 0 1px 3px rgba(0, 0, 0, .3), 0 12px 30px -12px rgba(0, 0, 0, .55);
 }
 * { box-sizing: border-box; }
@@ -189,7 +190,7 @@ button { font: inherit; color: inherit; }
 .b-blue { background: var(--blue-50); color: var(--blue-700); } .b-navy { background: var(--navy-50); color: var(--navy); } .b-coral { background: var(--coral-50); color: var(--coral-700); }
 .b-green { background: var(--green-50); color: var(--green); } .b-amber { background: var(--amber-50); color: var(--amber); } .b-red { background: var(--red-50); color: var(--red); }
 .b-violet { background: var(--violet-50); color: var(--violet); } .b-gray { background: var(--surface-3); color: var(--muted); } .b-teal { background: var(--teal-50); color: var(--teal); }
-[data-theme="dark"] .b-navy { color: #c3cbef; }
+[data-theme="dark"] .b-navy { color: #c3cbef; } [data-theme="dark"] .b-blue { color: var(--link); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 99px; border: 1px solid var(--border-2); background: var(--surface);
   font-size: 13px; cursor: pointer; transition: all .15s; color: var(--text-2); font-weight: 550; }
@@ -339,7 +340,7 @@ button { font: inherit; color: inherit; }
 .wslot b { display: block; font-size: 12.5px; line-height: 1.3; margin: 2px 0; }
 .att-cell { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; font-size: 11px; font-weight: 700; }
 .att-cell.present { background: var(--green-50); color: var(--green); } .att-cell.absent { background: var(--red-50); color: var(--red); }
-.att-cell.excused { background: var(--blue-50); color: var(--blue-700); } .att-cell.late { background: var(--amber-50); color: var(--amber); }
+.att-cell.excused { background: var(--blue-50); color: var(--blue-700); } [data-theme="dark"] .att-cell.excused { color: var(--link); } .att-cell.late { background: var(--amber-50); color: var(--amber); }
 
 /* ---------- news */
 .news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px; }
@@ -425,7 +426,7 @@ mark { background: color-mix(in srgb, #ffd166 55%, transparent); color: inherit;
 .opt .l { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--surface-3); font-weight: 750; font-size: 12.5px; flex: none; }
 .opt.sel { border-color: var(--navy); background: var(--navy-50); } .opt.sel .l { background: var(--navy); color: #fff; }
 .opt.right { border-color: var(--green); background: var(--green-50); } .opt.right .l { background: var(--green); color: #fff; }
-.opt.wrong { border-color: var(--red); background: var(--red-50); } .opt.wrong .l { background: var(--red); color: #fff; }
+.opt.wrong { border-color: var(--red); background: var(--red-50); } .opt.wrong .l { background: var(--red); color: #fff; } [data-theme="dark"] .opt.wrong .l { color: var(--bg); }
 .review { border-left: 4px solid var(--border); padding: 14px 16px; border-radius: 0 12px 12px 0; background: var(--surface); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .review.ok { border-left-color: var(--green); } .review.no { border-left-color: var(--red); }
 .qcard { padding: 16px 18px; } .qcard .opts-mini { display: grid; gap: 6px; margin: 10px 0; }
