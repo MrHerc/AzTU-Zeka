@@ -922,12 +922,14 @@ def test_the_timetable_export_writes_a_version_or_the_terms_rows(office_ao, worl
 
 def test_the_scorecard_counts_the_hours_as_the_hours_report_does(office_ao, world, chain):
     """BR-T1: the versions' comparison and the hours page give one number for one version: a unit the run leaves out
-    (no groups) counts in both, with nothing planned."""
+    (no groups) counts in both, with nothing planned. A published version's report counts its lessons instead (OK-1),
+    so there only the units and their Forma №3 hours agree."""
     for vid in (world["draft"], _published_version()):
         card = office_ao.get(f"/api/timetable/versions/{vid}/scorecard").json["score"]["hours"]
         rep = office_ao.get(f"/api/timetable/versions/{vid}/hours").json
-        assert card == {"flagged": rep["flagged"], "form_h": rep["totals"]["form_h"], "planned_h": rep["totals"]["planned_h"]}, vid
-        assert world["lonely"] in {x["unit_id"] for x in rep["items"]}
+        if vid == world["draft"]:
+            assert card == {"flagged": rep["flagged"], "form_h": rep["totals"]["form_h"], "planned_h": rep["totals"]["planned_h"]}, vid
+        assert card["form_h"] == rep["totals"]["form_h"] and world["lonely"] in {x["unit_id"] for x in rep["items"]}
 
 
 def test_the_hours_report_pages_keep_their_totals_and_the_department_list(office_ao, world, chain, monkeypatch):
@@ -1010,4 +1012,28 @@ def test_the_http_export_takes_the_version_and_its_own_term_and_writes_canonical
     by_term = admin.get(f"/api/integration/export/timetable?term={other}")
     assert by_term.status == 200 and list(csv.DictReader(io.StringIO(by_term.text.lstrip("\ufeff")))) == [], "the short term has no rows"
     assert f"term {other}" in q("SELECT detail FROM audit WHERE action='export' AND entity='timetable' ORDER BY id DESC LIMIT 1")[0]["detail"]
+
+
+# ---------------------------------------------------------------- Checkpoint F addendum's open item and the deferred builder items
+def test_the_hours_report_of_a_published_version_counts_its_lessons(office_ao, world, chain):
+    """OK-1: a published version's hours are what its lessons give in the term; a cancelled lesson takes its hours off and
+    is named as the reason (the report read the placements only, so «cancelled» never appeared)."""
+    pub = _published_version()
+    term = q("SELECT * FROM academic_terms WHERE id=?", (TERM,))[0]
+    url = f"/api/timetable/versions/{pub}/hours?department_id={world['dep']}"
+
+    def held(u):
+        return sum(x["academic_hours"] or 0 for x in q("SELECT academic_hours FROM lessons WHERE unit_id=? AND status<>'cancelled' "
+                                                     "AND day BETWEEN ? AND ?", (u, term["teaching_start"], term["teaching_end"])))
+    before = {x["unit_id"]: x for x in office_ao.get(url).json["items"]}
+    one = q("SELECT l.id, l.unit_id, l.academic_hours, l.status FROM lessons l JOIN tt_placements p ON p.unit_id=l.unit_id "
+            "WHERE p.version_id=? AND l.status<>'cancelled' AND l.academic_hours>0 ORDER BY l.id LIMIT 1", (pub,))[0]
+    assert before[one["unit_id"]]["planned_h"] == held(one["unit_id"]) > 0
+    _write("UPDATE lessons SET status='cancelled' WHERE id=?", (one["id"],))
+    try:
+        after = {x["unit_id"]: x for x in office_ao.get(url).json["items"]}[one["unit_id"]]
+        assert after["planned_h"] == before[one["unit_id"]]["planned_h"] - one["academic_hours"] == held(one["unit_id"])
+        assert "cancelled" in [r["code"] for r in after["reasons"]] and all(r["title"] for r in after["reasons"])
+    finally:
+        _write("UPDATE lessons SET status=? WHERE id=?", (one["status"], one["id"]))
 

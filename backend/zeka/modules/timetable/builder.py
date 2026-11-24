@@ -975,7 +975,9 @@ def hours(c, user, vid: int, department_id: int | None, outside: bool, offset: i
         raise HTTPError(404, "Kafedra tapılmadı")
     problem, _ = snapshot(c, t, J(v["scope"], {"all": True}) or {"all": True})
     pls = [_as_meeting(p) for p in repo.placements(c, v["id"])]
-    rep = domain.hours_report(problem, pls, t, tenant.load(c)["calendar"]["holidays"])
+    # published: what the units' lessons give, so a cancelled lesson counts (OK-1); a draft has no lessons of its own
+    lessons = repo.unit_lessons(c, [u["id"] for u in problem["units"]], t["teaching_start"], t["teaching_end"]) if v["status"] == "published" else None
+    rep = domain.hours_report(problem, pls, t, tenant.load(c)["calendar"]["holidays"], lessons)
     units = {u["id"]: u for u in repo.units_by_id(c, [x["unit_id"] for x in rep["units"]])}
     mine = [x for x in rep["units"] if x["unit_id"] in units and covers(s, units[x["unit_id"]])]
     deps = sorted({units[x["unit_id"]]["department_id"] for x in mine if units[x["unit_id"]]["department_id"]})

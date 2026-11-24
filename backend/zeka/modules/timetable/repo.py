@@ -582,6 +582,15 @@ def drop_lessons_from(c, rid: int, day: str) -> int:
                      "AND NOT EXISTS (SELECT 1 FROM attendance a WHERE a.lesson_id=lessons.id)", (rid, day)).rowcount
 
 
+def unit_lessons(c, unit_ids: list[int], first: str, last: str) -> list[dict]:
+    """The lessons of units between two days (the hours a published version really gives, OK-1)."""
+    out: list[dict] = []
+    for part in _chunks(sorted(unit_ids)):
+        out += rows(c, f"SELECT unit_id, status, academic_hours FROM lessons WHERE unit_id IN ({_in(part)}) AND day BETWEEN ? AND ?",  # nosec B608
+                    (*part, first, last))
+    return out
+
+
 def students_of_groups(c, group_ids: list[int]) -> list[int]:
     out: set[int] = set()
     for part in _chunks(sorted(group_ids)):
