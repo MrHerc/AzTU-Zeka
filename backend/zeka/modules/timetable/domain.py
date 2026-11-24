@@ -669,9 +669,15 @@ def hours_report(problem: dict, placements: list[dict], term: dict, holidays: It
     real: dict[int, list[dict]] = {}
     for x in lessons or []:
         real.setdefault(x["unit_id"], []).append(x)
+    of_unit: dict[int, list[dict]] = {}                 # grouped once: a scan per unit made a term's report quadratic
+    for m in meetings:
+        of_unit.setdefault(m["unit_id"], []).append(m)
+    why_out: dict[int, str] = {}
+    for x in excluded:
+        why_out.setdefault(x["unit_id"], x["code"])
     lines = []
     for u in sorted(problem["units"], key=lambda x: x["id"]):
-        mine = [m for m in meetings if m["unit_id"] == u["id"]]
+        mine = of_unit.get(u["id"], [])
         reasons: list[str] = []
         planned = 0.0
         lost = False                                    # a meeting's week that falls on a holiday or outside the term
@@ -697,7 +703,7 @@ def hours_report(problem: dict, placements: list[dict], term: dict, holidays: It
         form = float(u.get("hours") or 0)
         delta = round(planned - form, 2)
         if not mine:
-            reasons.append(next((x["code"] for x in excluded if x["unit_id"] == u["id"]), "no_hours"))
+            reasons.append(why_out.get(u["id"], "no_hours"))
         elif delta and not reasons:
             if needs.get(u["id"], {}).get("pattern"):
                 reasons.append("pattern_override")

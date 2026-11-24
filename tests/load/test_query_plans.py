@@ -6,7 +6,10 @@ released exam of 1 200 students beside it, so every exam table is large), and th
 explains every statement the handlers ran. The leader's scans are reported, not failed: the dashboard counts every
 course's rows and the Radar page reads every student's records (docs/perf/task42.md). The timetable builder's read routes
 and a move run as the academic office over a term whose builder tables are all large (Task 48); the syllabus approval
-queue and a term's overview over more than 1 000 versions and courses (AR-11).
+queue and a term's overview over more than 1 000 versions and courses (AR-11). The screens of 2026-11-23/24 run as each
+of their callers (``screens:<role>``): the overview with every filter and its CSV, the queue pages, the hours report of a
+3 000-unit version and its CSV, a 300-course programme's coverage report and its CSV, the copy sources and the editor's
+prerequisite lookup (docs/perf/baseline.md).
 """
 import json
 import os
@@ -28,6 +31,10 @@ def test_the_mixed_and_exam_routes_never_scan_a_table_with_more_than_1000_rows()
     report = json.loads(run.stdout)
     assert report["statements"] > 50, report          # the routes really ran
     assert {"mixed", "exam", "leader", "timetable", "syllabus"} <= set(report["scenarios"]), report["scenarios"]
+    screens = {(s["role"], s["route"].split("?")[0]) for s in report["screens"]}
+    assert {("teacher", "GET /api/syllabi/N/prerequisites"), ("teacher", "GET /api/syllabi/N/sources"), ("leader", "GET /api/frameworks/coverage"),
+            ("academic_office", "GET /api/timetable/versions/N/hours"), ("dept_head", "GET /api/syllabi/queue"),
+            ("office", "GET /api/syllabi/overview")} <= screens, screens
     assert min(report["syllabus_rows"].values()) > 1000, report["syllabus_rows"]      # the syllabus queue and overview (AR-11)
     big = {t for t, n in report["exam_rows"].items() if n > 1000}      # Checkpoint F (TE-F6): a scan of these would show
     assert {"exam_answers", "exam_attempts", "exam_events", "exam_forms", "exam_roster"} <= big, report["exam_rows"]

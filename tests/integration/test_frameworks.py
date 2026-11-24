@@ -569,3 +569,40 @@ def test_the_read_queries_use_an_index_on_the_large_tables(app_db, sample, cours
     bad = {sql: plan for sql in dict.fromkeys(seen) if (plan := queryplan.scans(c, sql, big, 1000))}
     c.close()
     assert len(seen) > 10 and bad == {}, json.dumps(bad, indent=1)
+
+
+def test_the_coverage_report_costs_the_same_statements_whatever_the_programme_s_size(app_db, sample, course):
+    """2026-11-24 measurement: the report read each course's published version on its own (310 statements for a
+    programme of 300 courses); the published versions of the programme's courses are now one read per 500 courses."""
+    sid, user = programme(), {**app_db.client("admin").user, "role": "admin", "primary_role": "admin"}
+    gid = q("SELECT id FROM study_groups WHERE specialty_id=? ORDER BY id LIMIT 1", (sid,))[0]["id"]
+    body = json.dumps({"outcomes": [{"id": "N1", "text": "Yük nəticəsi"}], "plan": [], "assessment": []})
+
+    def statements():
+        seen: list[str] = []
+        c = store.connect()
+        c.set_trace_callback(seen.append)
+        try:
+            assert frameworks.coverage(c, user, sid, sample, None) is not None
+            assert frameworks.coverage_csv(c, user, sid, sample, "az") is not None
+        finally:
+            c.close()
+        return len(seen)
+
+    before = statements()
+    added = []
+    for k in range(12):
+        cid = run("INSERT INTO courses(code,name,credits,color,active,created_at,updated_at) VALUES(?,?,5,'#777',1,'2026-01-01','2026-01-01')",
+                  (f"FWN-{k}", f"Ölçü fənni {k}"))
+        unit = run("INSERT INTO teaching_units(course_id,kind,active,created_at,updated_at) VALUES(?,'lecture',1,'2026-01-01','2026-01-01')", (cid,))
+        run("INSERT INTO teaching_unit_groups(unit_id,group_id) VALUES(?,?)", (unit, gid))
+        run("INSERT INTO syllabus_versions(course_id,version,status,data,created_at,tags) VALUES(?,1,'published',?,'2026-01-01','{}')", (cid, body))
+        added.append((cid, unit))
+    try:
+        assert statements() == before
+    finally:
+        for cid, unit in added:
+            run("DELETE FROM syllabus_versions WHERE course_id=?", (cid,))
+            run("DELETE FROM teaching_unit_groups WHERE unit_id=?", (unit,))
+            run("DELETE FROM teaching_units WHERE id=?", (unit,))
+            run("DELETE FROM courses WHERE id=?", (cid,))

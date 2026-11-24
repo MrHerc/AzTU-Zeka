@@ -327,8 +327,9 @@ def _report(c, user, sid: int, fid: int | None):
     texts: dict[tuple[int, str], str] = {}
     maps: list[tuple[int, str, int]] = []
     live: list[int] = []
+    pubs = repo.published_of(c, [co["id"] for co in courses])
     for co in courses:
-        v = repo.published(c, co["id"])
+        v = pubs.get(co["id"])
         if v:
             maps += [(co["id"], o, i) for o, ids in J(v["tags"], {}).items() for i in ids]
         elif service.may_read(c, user, co["id"]):

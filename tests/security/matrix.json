@@ -1283,6 +1283,15 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/syllabi/{id:int}/prerequisites": {
+  "access": [
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/syllabi/{id:int}/sources": {
   "access": [
    "teacher"

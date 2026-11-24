@@ -226,7 +226,7 @@ route("/teacher/syllabus", async (el, p, q) => {
             <button class="btn btn-ghost btn-icon btn-sm" data-pre-del="${i}" aria-label="${t("Sil")}: ${preText(x)}">${ic("x", 12)}</button></span>`)}</div>`
             : html`<span class="small muted">${t("Prerekvizit yoxdur")}</span>`}
           ${s.prerequisites.some((x) => typeof x === "string") ? html`<div class="tiny muted">${t("Boz rəngli prerekvizitlər əvvəlki versiyada mətnlə yazılıb: onları reyestrdən seçilmiş fənlə əvəz edin.")}</div>` : ""}
-          <input class="input" id="pre-q" type="search" maxlength="100" placeholder="${t("Fənn reyestrində kod və ya ad üzrə axtarış")}" aria-label="${t("Prerekvizit fənni axtar")}">
+          <input class="input" id="pre-q" type="search" maxlength="100" placeholder="${t("Fənnin kodunun və ya adının əvvəlini yazın")}" aria-label="${t("Prerekvizit fənni axtar")}">
           <div class="list" id="pre-list" aria-live="polite"></div></div></div>
         <div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Ədəbiyyat")}</h3><button class="btn btn-sm" id="add-l">${ic("plus", 13)} ${t("Əlavə et")}</button></div><div class="card-b stack sm">
           ${s.literature.map((x, i) => html`<div class="row"><input class="input grow" data-l-title="${i}" value="${x.title}" aria-label="${t("Mənbə")}">
@@ -295,7 +295,7 @@ route("/teacher/syllabus", async (el, p, q) => {
   on(el, "click", "[data-p-del]", (e, b) => edit(() => s.plan.splice(+b.dataset.pDel, 1)));
   on(el, "click", "#add-a", () => edit(() => s.assessment.splice(Math.max(0, s.assessment.length - 1), 0, { name: "", kind: "component", weight: 5, outcomes: [] })));
   on(el, "click", "[data-a-del]", (e, b) => edit(() => s.assessment.splice(+b.dataset.aDel, 1)));
-  // prerequisites from the course registry (the directory's course list, which every staff member reads), kept by code
+  // prerequisites from the course registry, kept by code: the editor's own lookup (the start of a code or a name, code and name only)
   let preTimer = null;
   on(el, "input", "#pre-q", (e, n) => {
     clearTimeout(preTimer);
@@ -304,7 +304,7 @@ route("/teacher/syllabus", async (el, p, q) => {
       if (!box) return;
       if (q.length < 2) { mount(box, ""); return; }
       let r;
-      try { r = await api.get(`/api/directory/courses?q=${encodeURIComponent(q)}&active=1`); } catch (err) { toast(err.message, "err"); return; }
+      try { r = await api.get(`/api/syllabi/${co.id}/prerequisites?q=${encodeURIComponent(q)}`); } catch (err) { toast(err.message, "err"); return; }
       const have = new Set([co.code, ...s.prerequisites.filter((x) => typeof x !== "string").map((x) => x.code)]);
       const found = [...new Map(r.items.filter((x) => !have.has(x.code)).map((x) => [x.code, x])).values()].slice(0, 10);
       mount(box, found.length ? html`${found.map((x) => html`<div class="list-item"><div class="grow small"><b>${x.code}</b> · ${x.name}</div>

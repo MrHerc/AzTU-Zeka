@@ -14,7 +14,8 @@ def test_every_exam_request_and_the_leader_s_sign_in_is_a_step(monkeypatch):
     answers = {"/api/exams/3/enter": ("zeka_sid=sitting; Path=/; HttpOnly", b"{}"),
                "/api/exams/3/start": ("", json.dumps({"questions": [{"id": 11}, {"id": 12}]}).encode()),
                "/api/auth/demo": ("zeka_sid=leader; Path=/", b"{}"), "/api/me/role": ("zeka_sid=ao; Path=/", b"{}")}
-    tt = {"term": 1, "version": 2, "group": 3, "teacher": 4, "room": 5, "placement": {"id": 6, "weekday": 1, "period": 2, "room_id": 5}}
+    tt = {"term": 1, "version": 2, "group": 3, "teacher": 4, "room": 5, "placement": {"id": 6, "weekday": 1, "period": 2, "room_id": 5},
+          "programme": 8, "course": 9, "department": 10, "work_role": "DD-WRL-001"}
     steps, answer, seen = queryplan._routes("zeka_sid=student", [7], (3, ["zeka_sid=entry"], "zeka_sid=proctor"), tt), None, []
     while True:
         try:
@@ -23,6 +24,12 @@ def test_every_exam_request_and_the_leader_s_sign_in_is_a_step(monkeypatch):
             break
         seen.append(step)
         answer = answers.get(step[2], ("", b"{}"))
+    screens = [(name, method, path, cookie) for name, method, path, cookie, _ in seen if name.startswith("screens:")]
+    seen = [s for s in seen if not s[0].startswith("screens:")]
+    # the screens of 2026-11-23/24: each role signs in as a step of its own, then each GET carries that role's session
+    assert [x[:2] for x in screens[:6]] == [("screens:login", "POST")] * 6 and all(m == "GET" for _, m, _, _ in screens[6:]), screens
+    assert {n.split(":")[1] for n, *_ in screens[6:]} == {"academic_office", "office", "leader", "dept_head", "admin", "teacher"}
+    assert any(p.startswith("/api/syllabi/9/prerequisites?q=") for _, _, p, _ in screens) and len(screens) == 6 + 44, len(screens)
     later = [(name, method, re.sub(r"\d+", "N", path), cookie) for name, method, path, cookie, _ in seen if name != "mixed"]
     assert later == [
         ("exam", "POST", "/api/exams/N/enter", "zeka_sid=entry"), ("exam", "POST", "/api/exams/N/start", "zeka_sid=sitting"),

@@ -300,6 +300,15 @@ def sources(c, user, cid: int) -> list[dict] | None:
             if x["mine"] or (start and x["teaching_start"] and x["teaching_start"] < start)]   # no term: nothing is earlier
 
 
+def prerequisite_search(c, user, cid: int, q: str) -> list[dict] | None:
+    """The editor's prerequisite lookup: up to 10 registry courses whose code or name starts with ``q``, their code and
+    name only, never the course itself. None: not the course's author (the directory's full rows are not the editor's)."""
+    co = repo.course(c, cid)
+    if not co or not may_write(user, co):
+        return None
+    return repo.registry_search(c, domain.prefixes(q), co["code"], 10)
+
+
 def copy_from(c, user, cid: int, body) -> tuple[str, object]:
     """A new draft version from a source of ``sources``: its outcomes, plan, assessment, rules, prerequisites, literature
     and outcome tags; the contact hours from this course's Forma №3. ('ok', state) | ('missing'|'forbidden'|'invalid', …)."""

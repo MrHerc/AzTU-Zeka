@@ -10,7 +10,7 @@
  "Başqa sillabusdan köçür": "Скопировать из другого силлабуса",
  "Prerekvizit yoxdur": "Пререквизитов нет",
  "Boz rəngli prerekvizitlər əvvəlki versiyada mətnlə yazılıb: onları reyestrdən seçilmiş fənlə əvəz edin.": "Пререквизиты серого цвета введены текстом в предыдущей версии: замените их дисциплиной, выбранной из реестра.",
- "Fənn reyestrində kod və ya ad üzrə axtarış": "Поиск в реестре дисциплин по коду или названию",
+ "Fənnin kodunun və ya adının əvvəlini yazın": "Введите начало кода или названия дисциплины",
  "Prerekvizit fənni axtar": "Найти дисциплину-пререквизит",
  "Köçürülüb: {course}, {term}, versiya {n}": "Скопировано: {course}, {term}, версия {n}",
  "Reyestrdə belə fənn tapılmadı": "Такой дисциплины в реестре нет",

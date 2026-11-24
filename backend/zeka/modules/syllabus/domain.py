@@ -21,6 +21,7 @@ LITERATURE = ("main", "extra")
 WORKLOAD = ("lecture", "seminar", "lab", "independent")
 UNIT_WORKLOAD = {"lecture": "lecture", "seminar": "seminar", "lab": "lab"}      # teaching unit kind -> workload field
 OUTCOME_ID = re.compile(r"^N[1-9][0-9]?$", re.ASCII)
+AZ_UPPER = str.maketrans({"i": "İ", "ı": "I"})           # Python raises i to I
 
 
 def _text(v, lo: int, hi: int) -> str | None:
@@ -167,6 +168,16 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
             return {}, E("İş yükü saatları 0 ilə 2000 arasında olmalıdır")
         out["workload"][k] = round(v, 2)
     return out, None
+
+
+def prefixes(q: str) -> list[str]:
+    """The forms a typed start of a course's code or name is looked up in: as typed, with a capital first and in capitals
+    (a code), each the Azerbaijani way (i -> İ, RİY-1101) and the English way (INF-101). Fewer than 2 letters: none."""
+    q = " ".join(q.split())[:100]
+    if len(q) < 2:
+        return []
+    az = q.translate(AZ_UPPER)
+    return list(dict.fromkeys((q, az[0].upper() + q[1:], q[0].upper() + q[1:], az.upper(), q.upper())))
 
 
 def prereq_codes(data: dict) -> list[str]:

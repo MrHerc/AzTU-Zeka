@@ -3,6 +3,7 @@ defaults (plan A12, Task 25), prerequisites are registry courses kept by code, a
 published syllabus, the term overview for the academic office, the dean's office and leadership (with a CSV), and the
 approval queue pages without a query per row (AR-11)."""
 import json
+import urllib.parse
 
 import pytest
 
@@ -281,6 +282,39 @@ def test_prerequisites_are_kept_once_and_the_course_s_own_name_stays_text(world)
     riy = q("SELECT code FROM courses WHERE code='RİY-1101'")[0]["code"]
     r = t.put(f"/api/syllabi/{cid}", {"data": data(prerequisites=[{"code": riy}, {"code": riy}, "Mətn", "Mətn"])})
     assert r.status == 200 and len(r.json["latest"]["data"]["prerequisites"]) == 2, r.text
+
+
+def test_the_editor_looks_a_prerequisite_up_by_the_start_of_a_code_or_name_and_reads_code_and_name_only(world):
+    """The measurement of 2026-11-24: the editor searched the directory, whose answer is the full course row to any staff
+    member, by a scan of the whole registry. Its own lookup is the course author's: the start of a code or a name, through
+    the code and name indexes (0231, 0232), code and name only, never the course itself."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+    import queryplan
+    from zeka.modules.syllabus import domain, repo
+    t, cid = world["teacher"], world["course"]
+    url = f"/api/syllabi/{cid}/prerequisites?q="
+    for typed in ("riy-11", "RİY-1101", "ali riy", "Ali riyaziyyat"):
+        r = t.get(url + urllib.parse.quote(typed))
+        assert r.status == 200 and {"code": "RİY-1101", "name": "Ali riyaziyyat I"} in r.json["items"], (typed, r.text)
+        assert all(set(x) == {"code", "name"} for x in r.json["items"]), r.json
+    assert "SR-101" not in [x["code"] for x in t.get(url + "sr-1").json["items"]], "the course itself"
+    assert t.get(url + "r").json["items"] == [] and t.get(url + "%25").json["items"] == []
+    other = course("SC-2424", "Başqasının fənni", world["term"]["id"], other_teacher(world), world["dep"]["id"])
+    assert t.get(f"/api/syllabi/{other}/prerequisites?q=ri").status == 404, "only the course's author"
+    for who in ("head", "registrar", "office", "leader", "student"):
+        assert world[who].get(url + "ri").status == 403, who
+    seen: list[str] = []
+    c = store.connect()
+    c.set_trace_callback(seen.append)
+    try:
+        repo.registry_search(c, domain.prefixes("ali riy"), "SR-101", 10)
+    finally:
+        c.set_trace_callback(None)
+    bad = {sql: plan for sql in seen if (plan := queryplan.scans(c, sql, {"courses": 10 ** 6}, 1000))}
+    c.close()
+    assert len(seen) == 1 and bad == {}, bad
 
 
 # ---------------------------------------------------------------- 4. the overview of a term

@@ -10,7 +10,7 @@
  "Başqa sillabusdan köçür": "Copy from another syllabus",
  "Prerekvizit yoxdur": "No prerequisites",
  "Boz rəngli prerekvizitlər əvvəlki versiyada mətnlə yazılıb: onları reyestrdən seçilmiş fənlə əvəz edin.": "The prerequisites in grey were typed as text in an earlier version: replace them with a course chosen from the registry.",
- "Fənn reyestrində kod və ya ad üzrə axtarış": "Search the course registry by code or name",
+ "Fənnin kodunun və ya adının əvvəlini yazın": "Type the start of the course code or name",
  "Prerekvizit fənni axtar": "Search for a prerequisite course",
  "Köçürülüb: {course}, {term}, versiya {n}": "Copied from: {course}, {term}, version {n}",
  "Reyestrdə belə fənn tapılmadı": "No such course in the registry",
