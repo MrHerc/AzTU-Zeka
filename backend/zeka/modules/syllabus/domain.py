@@ -8,6 +8,7 @@ attendance limit may only be lowered (``core/tenant.py``). Every save is a new v
 """
 from __future__ import annotations
 
+import copy
 import math
 import re
 
@@ -130,10 +131,19 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
         return {}, E("Qayda mətni 1000 simvoldan uzun olmamalıdır")
     out["rules"] = {"attendance_limit": limit, "late_policy": late, "ai_policy": ai, "ai_note": note}
 
+    # a prerequisite is a course of the registry, kept by its code ({"code": ...}; the service checks that it exists);
+    # the free text of a version saved before the registry link stays readable and may stay in a new one
     pre = data.get("prerequisites") or []
-    if not isinstance(pre, list) or len(pre) > 20 or any(_text(x, 1, 200) is None for x in pre):
+    if not isinstance(pre, list) or len(pre) > 20 or any(_text(x, 1, 200) is None for x in pre if not isinstance(x, dict)):
         return {}, E("Ən çox 20 prerekvizit göstərilə bilər, hər biri 200 simvola qədər")
-    out["prerequisites"] = [_text(x, 1, 200) for x in pre]
+    out["prerequisites"] = []
+    for x in pre:
+        code = _text(x.get("code"), 1, 40) if isinstance(x, dict) else None
+        if isinstance(x, dict) and code is None:
+            return {}, E("Prerekvizit fənnin kodu düzgün deyil")
+        item = {"code": code} if code else _text(x, 1, 200)
+        if item not in out["prerequisites"]:
+            out["prerequisites"].append(item)
 
     lit = data.get("literature") or []
     if not isinstance(lit, list) or len(lit) > 50:
@@ -159,6 +169,43 @@ def validate(data, rules: dict) -> tuple[dict, dict | None]:
     return out, None
 
 
+def prereq_codes(data: dict) -> list[str]:
+    """The registry codes among a syllabus's prerequisites."""
+    return [x["code"] for x in data.get("prerequisites", []) if isinstance(x, dict)]
+
+
+def copied(data: dict, imported: dict[str, float], ceiling: float) -> dict:
+    """A first draft from another course's published syllabus: its outcomes, plan, assessment, rules, prerequisites and
+    literature; the contact hours are this course's Forma №3 hours when it has them, and an attendance limit above the
+    university's limit of today comes down to it (the copy is checked like any save)."""
+    out = copy.deepcopy(data)
+    if imported:
+        out["workload"] = {**out.get("workload", {}), **{k: float(imported.get(k, 0)) for k in UNIT_WORKLOAD.values()}}
+    out.setdefault("rules", {})["attendance_limit"] = min(float(out["rules"].get("attendance_limit") or ceiling), ceiling)
+    return out
+
+
+def exam_defaults(data: dict) -> dict:
+    """What a published syllabus sets for a new exam of its course (plan A12, Task 25): the exam component's name as the
+    title, its weight (the course's grading already takes it) and the outcomes it assesses. The duration, the form and a
+    question count per outcome are not in a syllabus, and exam questions carry no outcome: the teacher sets those."""
+    exam = next((a for a in data.get("assessment", []) if a.get("kind") == "exam"), None)
+    if not exam:
+        return {}
+    outcomes = {o["id"]: o for o in data.get("outcomes", [])}
+    return {"title": exam["name"], "weight": exam["weight"],
+            "outcomes": [outcomes[i] for i in exam.get("outcomes", []) if i in outcomes]}
+
+
+# the overview of a term (the academic office, the dean's office, leadership): a course's state is its latest version's
+OVERVIEW = ("none", "draft", "submitted", "approved", "published")
+
+
+def overview_state(latest_status: str | None) -> str:
+    """A course with no version has none; a returned version is back with its author, as a draft is."""
+    return "none" if not latest_status else "draft" if latest_status == "returned" else latest_status
+
+
 def workload_from_units(units: list[dict]) -> dict[str, float]:
     """Contact hours of a term by kind from the course's teaching units (Forma №3, Task 16). A student sits in one
     lecture stream and one group, so a kind's hours are those of its largest unit, not the sum over groups."""
@@ -176,7 +223,7 @@ def workload_diff(workload: dict, imported: dict) -> list[dict]:
             if k in imported and round(float(workload.get(k, 0)), 2) != round(float(imported[k]), 2)]
 
 
-def initial(generated: dict, rules: dict, imported: dict, prerequisites: list[str]) -> dict:
+def initial(generated: dict, rules: dict, imported: dict, prerequisites: list) -> dict:
     """A first draft from the syllabus assistant's output (``r_academy.build_syllabus``, or a syllabus saved before
     Task 23 in the same shape): outcomes get codes, the assessment follows the university's scheme, the workload
     starts from Forma №3 when the course has it. The teacher edits it before the first save."""
@@ -200,7 +247,7 @@ def initial(generated: dict, rules: dict, imported: dict, prerequisites: list[st
     total, given = float(w.get("total") or 0), sum(contact.values())
     return {"description": str(generated.get("description") or "")[:4000], "outcomes": outcomes, "plan": plan, "assessment": assessment,
             "rules": {"attendance_limit": float(rules["attendance"]["limit_percent"]), "ai_policy": "limited", "late_policy": "", "ai_note": ""},
-            "prerequisites": [p[:200] for p in prerequisites if p][:20], "literature": literature,
+            "prerequisites": [p if isinstance(p, dict) else p[:200] for p in prerequisites if p][:20], "literature": literature,
             "workload": {**{k: 0.0 for k in WORKLOAD}, **contact, "independent": max(total - given, 0.0)}}
 
 
@@ -233,6 +280,14 @@ def course_grading(data: dict, grading: dict) -> dict:
              for a in data["assessment"] if a["kind"] != "exam"]
     exam = next(a for a in data["assessment"] if a["kind"] == "exam")
     return {"components": comps, "exam": {"name": exam["name"], "max": exam["weight"], "min": grading["exam"]["min"]}}
+
+
+def answered_return(decided: list[dict], version: int) -> dict | None:
+    """The latest returned version before ``version``: what a resubmission answers. A return that an approval or a
+    publication has answered since is not (F3). ``decided``: the course's returned, approved and published versions."""
+    floor = max((d["version"] for d in decided if d["version"] < version and d["status"] in ("approved", "published")), default=0)
+    back = [d for d in decided if d["status"] == "returned" and floor < d["version"] < version]
+    return max(back, key=lambda d: d["version"]) if back else None
 
 
 def tutor_modes(ai_policy: str) -> tuple[tuple[str, ...], int]:

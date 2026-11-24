@@ -310,6 +310,16 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/courses/{id:int}/exam-defaults": {
+  "access": [
+   "dept_head",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/courses/{id:int}/exam-results": {
   "access": [
    "academic_office",
@@ -1206,6 +1216,17 @@
   "perm": null,
   "slow": false
  },
+ "GET /api/syllabi/overview": {
+  "access": [
+   "academic_office",
+   "leader",
+   "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
  "GET /api/syllabi/queue": {
   "access": [
    "academic_office",
@@ -1255,6 +1276,15 @@
    "leader",
    "office",
    "proctor",
+   "teacher"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "GET /api/syllabi/{id:int}/sources": {
+  "access": [
    "teacher"
   ],
   "audit_read": null,
@@ -2596,6 +2626,15 @@
   "access": [
    "admin",
    "office"
+  ],
+  "audit_read": null,
+  "demo": false,
+  "perm": null,
+  "slow": false
+ },
+ "POST /api/syllabi/{id:int}/copy": {
+  "access": [
+   "teacher"
   ],
   "audit_read": null,
   "demo": false,

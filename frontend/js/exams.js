@@ -24,8 +24,16 @@ export async function teacherExams(tgt, c) {
         ${e.status === "closed" || e.status === "released" ? html`<button class="btn btn-sm" data-results="${e.id}">${t("Nəticələr")}</button>
           <button class="btn btn-sm" data-analysis="${e.id}">${t("Təhlil")}</button>` : ""}</td></tr>`)}</tbody></table></div>`
       : html`<div class="card-b">${empty("shield", t("Hələ imtahan yoxdur"), t("İmtahan yalnız «imtahan sualı» kimi təsdiqlənmiş suallardan tərtib olunur: bu suallar məşqdə, tutorda və testlərdə istifadə edilmir."))}</div>`}</div>`);
-  on(tgt, "click", "#ex-new", () => modal({ title: t("Yeni imtahan"), size: "lg", body: html`<div class="stack">
-      <div class="field"><label class="label" for="ex-title">${t("Ad")}</label><input class="input" id="ex-title" maxlength="200"></div>
+  on(tgt, "click", "#ex-new", async () => {
+    // the course's published syllabus names the exam and says what it weighs and assesses (plan A12); no syllabus, no defaults
+    let d = null;
+    try { d = (await api.get(`/api/courses/${c.id}/exam-defaults`)).defaults; } catch { /* the form starts empty */ }
+    modal({ title: t("Yeni imtahan"), size: "lg", body: html`<div class="stack">
+      ${d ? html`<div class="notice" data-exam-defaults>${ic("layers", 16)}<div class="stack sm">
+        <div class="small">${t("Dərc olunmuş sillabusa görə: «{name}», çəkisi {weight} bal.", { name: d.title, weight: d.weight })}</div>
+        ${d.outcomes.length ? html`<div class="small">${t("Qiymətləndirdiyi nəticələr")}:</div><ul class="small" style="margin:0">${d.outcomes.map((o) => html`<li><b>${o.id}</b> ${o.text}</li>`)}</ul>` : ""}
+        <div class="tiny muted">${t("Müddəti, formanı və sual planını sillabus müəyyən etmir: onları siz təyin edirsiniz.")}</div></div></div>` : ""}
+      <div class="field"><label class="label" for="ex-title">${t("Ad")}</label><input class="input" id="ex-title" maxlength="200" value="${d ? d.title : ""}"></div>
       <div class="row wrap"><div class="field"><label class="label" for="ex-kind">${t("Növ")}</label><select class="input" id="ex-kind">${Object.entries(KIND()).map(([k, l]) => html`<option value="${k}">${l}</option>`)}</select></div>
         <div class="field"><label class="label" for="ex-day">${t("Tarix")}</label><input class="input" id="ex-day" type="date"></div>
         <div class="field"><label class="label" for="ex-start">${t("Başlanğıc")}</label><input class="input" id="ex-start" type="time" value="10:00"></div>
@@ -50,7 +58,8 @@ export async function teacherExams(tgt, c) {
           allowed_cidrs: w.querySelector("#ex-cidrs").value.split(/[\s,]+/).filter(Boolean), protection: w.querySelector("#ex-prot").value });
         toast(t("Saxlanıldı"), "ok"); teacherExams(tgt, c);
       } catch (err) { toast(err.message, "err"); return false; }
-    } }] }));
+    } }] });
+  });
   on(tgt, "click", "[data-open]", async (e, b) => {
     try { await api.post(`/api/exams/${b.dataset.open}/open`); toast(t("İmtahan açıldı: siyahı jurnal əsasında tərtib edildi"), "ok"); teacherExams(tgt, c); }
     catch (err) { toast(err.message, "err"); }

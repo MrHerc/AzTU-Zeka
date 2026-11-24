@@ -37,5 +37,8 @@ def test_every_exam_request_and_the_leader_s_sign_in_is_a_step(monkeypatch):
         "/api/timetable/versions/N/grid?teacher_id=N", "/api/timetable/versions/N/grid?room_id=N", "/api/timetable/versions/N/unplaced",
         "/api/timetable/versions/N/scorecard", "/api/timetable/versions/N/hours", "/api/timetable/versions/N/placements/N/options",
         "/api/timetable/settings")] + [
-        ("timetable", "POST", "/api/timetable/versions/N/placements/N/move", "zeka_sid=ao")]
+        ("timetable", "POST", "/api/timetable/versions/N/placements/N/move", "zeka_sid=ao")] + [
+        ("syllabus", "GET", x, "zeka_sid=ao") for x in ("/api/syllabi/queue", "/api/syllabi/queue?page=N", "/api/syllabi/overview?term=N",
+                                                       "/api/syllabi/overview?term=N&state=none&format=csv")] + [
+        ("syllabus", "POST", "/api/auth/demo", ""), ("syllabus", "GET", "/api/syllabi/overview?term=N&q=QP", "zeka_sid=leader")]
     assert len(seen) - len(later) == 5, "the mixed scenario's read and write routes"

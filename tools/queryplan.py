@@ -8,7 +8,9 @@ each: every route of the mixed scenario (READ and WRITE) as a student; the exam 
 answer, view, submit) and the proctor board as the course's teacher; as a leader, the leadership dashboard (its one
 request, /api/analytics: its Radar line and card are the periodic job's summary), the accreditation evidence (Task 39) and
 the Radar page (/api/radar, the live campus-wide analysis); and as the academic office, the timetable builder's read
-routes and one move (Task 48) over a term whose builder tables all hold more than --min-rows rows (``bulk_timetable``). Records each SQL statement the handlers run and prints, as
+routes and one move (Task 48) over a term whose builder tables all hold more than --min-rows rows (``bulk_timetable``), then
+the syllabus approval queue and the term overview over large syllabus and course tables (``bulk_syllabus``, AR-11).
+Records each SQL statement the handlers run and prints, as
 JSON, every statement whose EXPLAIN QUERY PLAN scans a table that has more than --min-rows rows, by scenario, and the
 slowest routes. Exit 1 when a read, mixed or exam route scans one; the leader's routes are reported, not failed: the
 dashboard counts every course's rows and the Radar page reads every student's records by design (docs/perf/task42.md).
@@ -94,6 +96,12 @@ def _routes(student: str, news: list[int], exam: tuple[int, list[str], str], tt:
     p = tt["placement"]
     yield "timetable", "POST", f"{v}/placements/{p['id']}/move", ao, {"weekday": p["weekday"], "period": p["period"],
                                                                       "room_id": p["room_id"], "rev": 0}
+    # the syllabus approval queue a page at a time (AR-11) and a term's overview, over bulk_syllabus's versions
+    for path in ("/api/syllabi/queue", "/api/syllabi/queue?page=2", f"/api/syllabi/overview?term={term}",
+                 f"/api/syllabi/overview?term={term}&state=none&format=csv"):
+        yield "syllabus", "GET", path, ao, None
+    back, _ = yield "syllabus", "POST", "/api/auth/demo", "", {"role": "office"}
+    yield "syllabus", "GET", f"/api/syllabi/overview?term={term}&q=QP", _sid(back, "syllabus: dean's office"), None
 
 
 BULK = 1200
@@ -173,6 +181,28 @@ def bulk_timetable(data: Path, n: int = 3000) -> dict:
         db.close()
 
 
+def bulk_syllabus(data: Path, n: int = 1200) -> None:
+    """Syllabus versions above --min-rows: every course bulk_timetable made has a published, a returned and an approved
+    version (the academic office's queue, more than a page), and ``n`` courses of an earlier term a published one each,
+    so the courses table is large too. Ids and codes only, no real name."""
+    db = sqlite3.connect(data / "campus.db")
+    try:
+        t = "2026-09-01T09:00:00"
+        old = db.execute("INSERT INTO academic_terms(code,name,teaching_start,teaching_end,exam_start,exam_end,active,created_at,updated_at) "
+                         "VALUES('QP-OLD','Yük semestri','2020-09-15','2020-12-28','2021-01-05','2021-01-30',0,?,?)", (t, t)).lastrowid
+        db.executemany("INSERT INTO courses(code,name,credits,color,term_id,active,created_at,updated_at) VALUES(?,?,5,'#777',?,1,?,?)",
+                       [(f"QS-{k}", f"Köhnə fənn {k}", old, t, t) for k in range(n)])
+        qp = [r[0] for r in db.execute("SELECT id FROM courses WHERE code LIKE 'QP-%' ORDER BY id")]
+        qs = [r[0] for r in db.execute("SELECT id FROM courses WHERE code LIKE 'QS-%' ORDER BY id")]
+        body = json.dumps({"workload": {"lecture": 30}, "outcomes": [], "plan": [], "assessment": []})
+        db.executemany("INSERT INTO syllabus_versions(course_id,version,status,data,created_at,tags) VALUES(?,?,?,?,?,'{}')",
+                       [(cid, k + 1, status, body, t) for cid in qp for k, status in enumerate(("published", "returned", "approved"))]
+                       + [(cid, 1, "published", body, t) for cid in qs])
+        db.commit()
+    finally:
+        db.close()
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--dataset", choices=sorted(loadtest.SIZES), default="university")
@@ -185,6 +215,7 @@ def main(argv=None) -> int:
         exam = loadtest.exam_setup(data, 1)
         bulk_exam(data, exam[0])
         tt = bulk_timetable(data)
+        bulk_syllabus(data)
         from zeka.core import web
         from zeka.legacy import api, store
         seen: list[str] = []
@@ -234,7 +265,8 @@ def main(argv=None) -> int:
     timing.sort(key=lambda r: -r["ms"])
     print(json.dumps({"dataset": args.dataset, "statements": len(set(seen)), "scenarios": sorted({r["scenario"] for r in timing}),
                       "exam_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("exam")},
-                      "tt_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("tt_")}, "scans": bad, "slowest": timing[:8]},
+                      "tt_rows": {t: n for t, n in sorted(sizes.items()) if t.startswith("tt_")},
+                      "syllabus_rows": {t: sizes[t] for t in ("courses", "syllabus_versions")}, "scans": bad, "slowest": timing[:8]},
                      ensure_ascii=False, indent=1))
     return 1 if any(k != "leader" for k in bad) else 0
 

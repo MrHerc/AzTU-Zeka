@@ -144,10 +144,10 @@ def test_the_queues_hold_what_waits_for_each_role(app_db, actors):
     t, head, reg = actors["teacher"], actors["head"], actors["registrar"]
     vid = version(actors, lambda d: d.update(description="Növbə üçün"))
     assert step(t, actors, vid, "submit").status == 200
-    assert vid in [x["id"] for x in head.get("/api/syllabi/queue").json]
-    assert vid not in [x["id"] for x in reg.get("/api/syllabi/queue").json]
+    assert vid in [x["id"] for x in head.get("/api/syllabi/queue").json["items"]]
+    assert vid not in [x["id"] for x in reg.get("/api/syllabi/queue").json["items"]]
     assert step(head, actors, vid, "approve").status == 200
-    assert vid in [x["id"] for x in reg.get("/api/syllabi/queue").json]
+    assert vid in [x["id"] for x in reg.get("/api/syllabi/queue").json["items"]]
     other = app_db.client("teacher")
     assert other.get("/api/syllabi/queue").status == 403
 
@@ -163,6 +163,6 @@ def test_an_older_version_is_not_published_over_a_newer_one(app_db, actors):
     publish = {"override": True, "note": "Kafedranın qərarı №14"}      # earlier tests of this module wrote scores
     assert step(reg, actors, new, "publish", **publish).status == 200
     assert step(reg, actors, old, "publish", **publish).status == 403
-    queued = {x["id"] for x in reg.get("/api/syllabi/queue").json}
+    queued = {x["id"] for x in reg.get("/api/syllabi/queue").json["items"]}
     assert q("SELECT attendance_limit FROM courses WHERE id=?", (actors["course"],))[0]["attendance_limit"] == 15
     assert new not in queued

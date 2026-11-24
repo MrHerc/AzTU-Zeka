@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from ...legacy.store import row, rows
 
-META = "v.id, v.course_id, v.version, v.status, v.created_at, v.note, v.decided_at, u.full_name author"
+META = "v.id, v.course_id, v.version, v.status, v.created_at, v.note, v.decided_at, v.source, u.full_name author"
 
 
 def course(c, cid: int):
@@ -31,11 +31,80 @@ def published(c, cid: int):
     return row(c, "SELECT * FROM syllabus_versions WHERE course_id=? AND status='published' ORDER BY version DESC LIMIT 1", (cid,))
 
 
-def add_version(c, cid: int, data: str, author: int, at: str) -> int:
+def add_version(c, cid: int, data: str, author: int, at: str, source: str | None = None) -> int:
     """The next version number in the same statement: two saves at once cannot take one number."""
-    return c.execute("INSERT INTO syllabus_versions(course_id,version,status,data,author_id,created_at) "
-                     "SELECT ?, COALESCE(MAX(version), 0) + 1, 'draft', ?, ?, ? FROM syllabus_versions WHERE course_id=?",
-                     (cid, data, author, at, cid)).lastrowid
+    return c.execute("INSERT INTO syllabus_versions(course_id,version,status,data,author_id,created_at,source) "
+                     "SELECT ?, COALESCE(MAX(version), 0) + 1, 'draft', ?, ?, ?, ? FROM syllabus_versions WHERE course_id=?",
+                     (cid, data, author, at, source, cid)).lastrowid
+
+
+# ---------------------------------------------------------------- the course registry (prerequisites, copies)
+def _marks(n: int) -> str:
+    return ",".join("?" * n)
+
+
+def registry_names(c, codes: list[str]) -> dict[str, str]:
+    """{code: name} of the registry's courses with these codes (the latest offering's name)."""
+    out: dict[str, str] = {}
+    for k in range(0, len(codes), 500):
+        part = codes[k:k + 500]
+        out |= {r["code"]: r["name"] for r in rows(c, f"SELECT code, name FROM courses WHERE code IN ({_marks(len(part))}) "  # nosec B608
+                                                      "ORDER BY id", tuple(part))}
+    return out
+
+
+def registry_match(c, texts: list[str]) -> dict[str, str]:
+    """{text: code} for free-text prerequisites that name a registry course exactly, by its code or its name."""
+    if not texts:
+        return {}
+    found = rows(c, f"SELECT code, name FROM courses WHERE code IN ({_marks(len(texts))}) OR name IN ({_marks(len(texts))}) "  # nosec B608
+                    "ORDER BY id", (*texts, *texts))
+    return {r["name"]: r["code"] for r in found} | {r["code"]: r["code"] for r in found}
+
+
+def term_start(c, term_id: int | None) -> str | None:
+    t = row(c, "SELECT teaching_start FROM academic_terms WHERE id=?", (term_id,)) if term_id else None
+    return t["teaching_start"] if t else None
+
+
+def copy_sources(c, cid: int, code: str, uid: int) -> list[dict]:
+    """The latest published version of every other course with this code, or that this user heads or teaches a unit of
+    (``mine``)."""
+    mine = "(co.teacher_id=? OR co.id IN (SELECT course_id FROM teaching_units WHERE teacher_id=? AND active=1))"
+    return rows(c, f"SELECT co.id course_id, co.code, co.name, t.name term, t.teaching_start, v.id version_id, v.version, v.decided_at, "  # nosec B608
+                   f"{mine} mine FROM syllabus_versions v JOIN courses co ON co.id=v.course_id LEFT JOIN academic_terms t ON t.id=co.term_id "
+                   f"WHERE v.status='published' AND co.id<>? AND (co.code=? OR {mine}) "
+                   "AND v.version=(SELECT MAX(x.version) FROM syllabus_versions x WHERE x.course_id=co.id AND x.status='published') "
+                   "ORDER BY t.teaching_start DESC, co.code, co.id", (uid, uid, cid, code, uid, uid))
+
+
+def replace_map(c, cid: int, pairs: list[tuple[str, int]], by: int, at: str):
+    """The course's outcome map becomes ``pairs`` (outcome, item id): a copy brings its source's tags."""
+    c.execute("DELETE FROM outcome_items WHERE course_id=?", (cid,))
+    c.executemany("INSERT OR IGNORE INTO outcome_items(course_id,outcome,item_id,mapped_by,mapped_at) VALUES(?,?,?,?,?)",
+                  [(cid, o, i, by, at) for o, i in pairs])
+
+
+def live_map(c, cid: int) -> dict[str, list[int]]:
+    out: dict[str, list[int]] = {}
+    for r in rows(c, "SELECT outcome, item_id FROM outcome_items WHERE course_id=? ORDER BY outcome, item_id", (cid,)):
+        out.setdefault(r["outcome"], []).append(r["item_id"])
+    return out
+
+
+# ---------------------------------------------------------------- the overview of a term
+def terms(c) -> list[dict]:
+    return rows(c, "SELECT id, code, name FROM academic_terms ORDER BY teaching_start DESC, id DESC")
+
+
+def term_courses(c, term_id: int) -> list[dict]:
+    """Every active course of a term with its department, head and the state of its syllabus (indexed lookups per course)."""
+    return rows(c, "SELECT co.id, co.id course_id, co.code, co.name, co.department_id, d.faculty_id, d.name department, "
+                   "u.full_name teacher, (SELECT v.status FROM syllabus_versions v WHERE v.course_id=co.id ORDER BY v.version DESC LIMIT 1) status, "
+                   "(SELECT MAX(v.version) FROM syllabus_versions v WHERE v.course_id=co.id) latest, "
+                   "(SELECT MAX(v.version) FROM syllabus_versions v WHERE v.course_id=co.id AND v.status='published') published "
+                   "FROM courses co LEFT JOIN departments d ON d.id=co.department_id LEFT JOIN users u ON u.id=co.teacher_id "
+                   "WHERE co.term_id=? AND co.active=1 ORDER BY co.code, co.id", (term_id,))
 
 
 def legacy(c, cid: int):
@@ -66,18 +135,34 @@ def publish_course(c, cid: int, grading: str, limit: float, modes: str, locked: 
     c.execute("UPDATE courses SET grading=?, attendance_limit=?, tutor_modes=?, tutor_locked=? WHERE id=?", (grading, limit, modes, locked, cid))
 
 
-def pending(c, status: str) -> list[dict]:
-    return rows(c, "SELECT v.id, v.course_id, v.version, v.status, v.created_at, v.data, co.code, co.name, co.department_id, "
-                   "u.full_name author FROM syllabus_versions v JOIN courses co ON co.id=v.course_id LEFT JOIN users u ON u.id=v.author_id "
-                   "WHERE v.status=? ORDER BY v.created_at", (status,))
+def pending(c, statuses: tuple[str, ...]) -> list[dict]:
+    """The versions waiting in these statuses, without their data: the queue reads the data of one page only (AR-11)."""
+    return rows(c, "SELECT v.id, v.course_id, v.version, v.status, v.created_at, co.code, co.name, co.teacher_id, co.department_id, "  # nosec B608
+                   "d.faculty_id, u.full_name author FROM syllabus_versions v JOIN courses co ON co.id=v.course_id "
+                   "LEFT JOIN departments d ON d.id=co.department_id LEFT JOIN users u ON u.id=v.author_id "
+                   f"WHERE v.status IN ({_marks(len(statuses))}) ORDER BY v.created_at, v.id", statuses)
 
 
-def returned_before(c, cid: int, version: int):
-    """The latest returned version before ``version``: what a resubmission answers. A return that an approval or a
-    publication has answered since is not (F3)."""
-    return row(c, "SELECT id, version, note, data FROM syllabus_versions WHERE course_id=? AND status='returned' AND version<? "
-                  "AND version > (SELECT COALESCE(MAX(version), 0) FROM syllabus_versions WHERE course_id=? AND version<? "
-                  "AND status IN ('approved','published')) ORDER BY version DESC LIMIT 1", (cid, version, cid, version))
+def decided(c, cids: list[int]) -> list[dict]:
+    """The returned, approved and published versions of these courses, without data: a queue page's published versions
+    and the returns its resubmissions answer."""
+    if not cids:
+        return []
+    return rows(c, "SELECT id, course_id, version, status, note FROM syllabus_versions "  # nosec B608 (placeholders)
+                   f"WHERE course_id IN ({_marks(len(cids))}) AND status IN ('returned','approved','published')", tuple(cids))
+
+
+def data_of(c, ids: list[int]) -> dict[int, str]:
+    if not ids:
+        return {}
+    return {r["id"]: r["data"] for r in rows(c, f"SELECT id, data FROM syllabus_versions WHERE id IN ({_marks(len(ids))})", tuple(ids))}  # nosec B608
+
+
+def units_of(c, cids: list[int]) -> list[dict]:
+    if not cids:
+        return []
+    return rows(c, f"SELECT course_id, kind, hours, students FROM teaching_units WHERE course_id IN ({_marks(len(cids))}) AND active=1",  # nosec B608
+                tuple(cids))
 
 
 def enrolled(c, cid: int, uid: int) -> bool:

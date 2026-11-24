@@ -79,8 +79,50 @@ def give_back(req):
 
 @R("GET", "/api/syllabi/queue", roles=("dept_head", "academic_office", "admin"))
 def queue(req):
+    """``?page=``: a page of the waiting versions (AR-11)."""
     req.raw_i18n = True
-    return service.queue(req.db, req.user)
+    return service.queue(req.db, req.user, req.qint("page", 1, lo=1, hi=100000))
+
+
+@R("GET", "/api/syllabi/overview", roles=service.OVERVIEW_ROLES)
+def overview(req):
+    """A term's courses by the state of their syllabus: ``?term=&state=&department=&q=&page=``; ``&format=csv`` for every
+    filtered course as a spreadsheet. An unknown term is 404."""
+    req.raw_i18n = True                                 # course names and people are as written
+    args = (req.qint("term", 0, lo=0) or None, req.query.get("state") or None, req.qint("department", 0, lo=0) or None,
+            (req.query.get("q") or "")[:100] or None)
+    if req.query.get("format") == "csv":
+        out = service.overview_csv(req.db, req.user, *args, req.lang)
+        if out is None:
+            raise HTTPError(404, "Semestr tapılmadı")
+        return Response(out[1], 200, "text/csv; charset=utf-8",
+                        [("Content-Disposition", f'attachment; filename="{out[0]}"'), ("Cache-Control", "private, no-store")])
+    rep = service.overview(req.db, req.user, *args, req.qint("page", 1, lo=1, hi=100000))
+    if rep is None:
+        raise HTTPError(404, "Semestr tapılmadı")
+    return rep
+
+
+@R("GET", "/api/syllabi/{id:int}/sources", roles=("teacher",))
+def copy_sources(req):
+    """The published syllabi a new draft of this course can be copied from."""
+    req.raw_i18n = True
+    out = service.sources(req.db, req.user, req.params["id"])
+    if out is None:
+        raise HTTPError(404, "Fənn tapılmadı")
+    return out
+
+
+@R("POST", "/api/syllabi/{id:int}/copy", roles=("teacher",))
+def copy(req):
+    """``{"from": <course id>}``: a new draft version copied from that course's published syllabus."""
+    req.raw_i18n = True
+    status, value = service.copy_from(req.db, req.user, req.params["id"], req.json())
+    if status == "missing":
+        raise HTTPError(404, "Fənn tapılmadı")
+    if status in ("forbidden", "invalid"):
+        raise HTTPError({"forbidden": 403, "invalid": 400}[status], value)
+    return value
 
 
 @R("GET", "/api/syllabi/{id:int}/diff", roles=STAFF_ROLES)

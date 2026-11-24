@@ -28,6 +28,13 @@ def create(req):
     return _answer(*service.create(req.db, req.user, req.params["id"], req.json()), missing="Fənn tapılmadı")
 
 
+@R("GET", "/api/courses/{id:int}/exam-defaults", roles=MANAGERS)
+def exam_defaults(req):
+    """What the course's published syllabus sets for a new exam (plan A12): ``{"defaults": {...} | null}``."""
+    req.raw_i18n = True                                 # the component's name and the outcomes are the teacher's text
+    return _answer(*service.defaults(req.db, req.user, req.params["id"]), missing="Fənn tapılmadı")
+
+
 @R("GET", "/api/courses/{id:int}/exams")
 def list_exams(req):
     out = service.list_for(req.db, req.user, req.params["id"])

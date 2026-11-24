@@ -68,7 +68,7 @@ def published(w):
 
 
 def queued(w, vid):
-    return next(x for x in w["head"].get("/api/syllabi/queue").json if x["id"] == vid)
+    return next(x for x in w["head"].get("/api/syllabi/queue").json["items"] if x["id"] == vid)
 
 
 def lab(hours):
@@ -94,7 +94,7 @@ def test_the_demo_courses_have_forma3_hours_so_a_draft_is_prefilled_and_a_change
     assert {k: d["workload"][k] for k in ("lecture", "seminar", "lab")} == st["imported"]
     vid = save(walk, lambda d: d["workload"].update(lab=24))
     assert step(t, walk, vid, "submit").status == 200
-    mine = next(x for x in walk["head"].get("/api/syllabi/queue").json if x["id"] == vid)
+    mine = next(x for x in walk["head"].get("/api/syllabi/queue").json["items"] if x["id"] == vid)
     assert mine["forma3"] == [{"kind": "lab", "imported": 30.0, "syllabus": 24.0}]
     assert step(walk["head"], walk, vid, "return", note="Laboratoriya saatlarını Forma №3-ə uyğunlaşdırın").status == 200
 
@@ -167,7 +167,7 @@ def test_a_literature_title_of_superscript_digits_does_not_break_the_queue(walk)
     published(walk)
     vid = submitted(walk, lambda d: d.update(literature=[{"title": "²³⁴", "kind": "main"}]))
     r = walk["head"].get("/api/syllabi/queue")
-    assert r.status == 200 and any(x["id"] == vid and x["changes"] is not None for x in r.json), r.text
+    assert r.status == 200 and any(x["id"] == vid and x["changes"] is not None for x in r.json["items"]), r.text
     dup = walk["teacher"].put(f"/api/syllabi/{walk['course']}", {"data": {**walk["teacher"].get(f"/api/syllabi/{walk['course']}").json["latest"]["data"],
                                                                          "literature": [{"title": "Kitab", "kind": "main"}, {"title": "Kitab", "kind": "extra"}]}})
     assert dup.status == 400 and dup.json["error"] == "Ədəbiyyat siyahısında eyni adlı iki mənbə ola bilməz", "audit SYL-D2"

@@ -18,6 +18,8 @@ const CHANGE = () => ({ added: [t("əlavə olunub"), "b-green"], removed: [t("ç
 const STEP = () => ({ submit: t("Təsdiqə göndər"), approve: t("Təsdiqlə"), publish: t("Dərc et"), return: t("Geri qaytar") });
 const badge = (status) => { const [l, c] = STATUS()[status] || [status, "b-gray"]; return html`<span class="badge ${c}">${l}</span>`; };
 const label = (list, k) => (list().find(([x]) => x === k) || [k, k])[1];
+// a prerequisite is a registry course ({code, name}); an older version's free text is shown as written
+const preText = (x) => (typeof x === "string" ? x : [x.code, x.name].filter(Boolean).join(" · "));
 
 // What changed between two versions, section by section (Task 25).
 function diffList(changes) {
@@ -57,7 +59,7 @@ function readOnly(d, tags = {}) {
     <div class="small">${t("Buraxılmış dərslərin həddi, %")}: <b>${rules.attendance_limit}</b> · ${t("Süni intellektdən istifadə")}: <b>${label(AI, rules.ai_policy)}</b></div>
     <div class="small"><b>${t("AI siyasətinin izahı")}</b>: <span class="syl-pre">${rules.ai_note || "—"}</span></div>
     <div class="small"><b>${t("Gecikmiş işlər")}</b>: <span class="syl-pre">${rules.late_policy || "—"}</span></div>
-    <div class="small"><b>${t("Prerekvizitlər")}</b>: ${(d.prerequisites || []).join(", ") || "—"}</div>
+    <div class="small"><b>${t("Prerekvizitlər")}</b>: ${(d.prerequisites || []).map(preText).join(", ") || "—"}</div>
     <div><b class="small">${t("Ədəbiyyat")}</b>${(d.literature || []).length ? html`<ul class="small" style="margin:4px 0 0">${d.literature.map((x) => html`<li>${x.title} <span class="badge b-gray">${label(LIT, x.kind)}</span></li>`)}</ul>` : html` <span class="small">—</span>`}</div>
     <div class="small">${t("İş yükü, saat")}: ${WORK().map(([k, l]) => html`${l} <b>${d.workload[k]}</b> `)}</div></div>`;
 }
@@ -167,7 +169,8 @@ route("/teacher/syllabus", async (el, p, q) => {
     const total = Math.round(sum() * 100) / 100, imported = st.imported || {};
     mount(el, html`${pageHead(t("Sillabus"), t("Strukturlaşdırılmış sillabus: hər saxlama yeni versiyadır, dərc olunmuş versiya dəyişmir."),
         html`<select class="select" id="cs" style="width:auto" aria-label="${t("Fənn")}">${cs.map((x) => html`<option value="${x.id}" ${x.id === co.id ? "selected" : ""}>${x.name}</option>`)}</select>
-        ${st.can_edit ? html`<button class="btn btn-ai" id="gen">${ic("sparkles", 15)} ${s ? t("Yeni layihə") : t("Layihə hazırla")}</button>` : ""}`, crumbs)}
+        ${st.can_edit ? html`<button class="btn" id="copy-from">${ic("copy", 15)} ${t("Başqa sillabusdan köçür")}</button>
+          <button class="btn btn-ai" id="gen">${ic("sparkles", 15)} ${s ? t("Yeni layihə") : t("Layihə hazırla")}</button>` : ""}`, crumbs)}
       ${!s ? html`<div class="card">${empty("layers", t("Sillabus hələ yoxdur"), st.can_edit ? t("«Layihə hazırla» materiallarınızdan və Forma №3-dən ilkin variant qurur.") : t("Fənnin müəllimi sillabusu hələ saxlamayıb."),
           st.can_edit ? { label: t("Layihə hazırla"), id: "gen-empty", icon: "sparkles" } : undefined)}</div>` : html`
       ${st.latest && st.latest.status === "returned" && st.steps.length ? html`<div class="notice warn mb">${ic("alert", 16)}<div>
@@ -218,18 +221,25 @@ route("/teacher/syllabus", async (el, p, q) => {
             ${imported[k] != null ? html`<span class="tiny ${+imported[k] !== +s.workload[k] ? "badge b-amber" : "muted"}">${t("Forma №3: {n}", { n: imported[k] })}</span>` : ""}
             <input class="input" id="w-${k}" type="number" min="0" step="0.5" style="width:90px" data-w="${k}" value="${s.workload[k]}"></span></div>`)}
           ${Object.keys(imported).length ? html`<div class="tiny muted">${t("Forma №3-dən fərqlənən saatlar təsdiq zamanı kafedra müdirinə fərq kimi göstərilir.")}</div>` : html`<div class="tiny muted">${t("Bu fənn üçün Forma №3 idxal olunmayıb.")}</div>`}</div></div>
-        <div class="card"><div class="card-h"><h3>${ic("list", 17)} ${t("Prerekvizitlər")}</h3></div><div class="card-b">
-          <textarea class="textarea" data-pre style="min-height:60px" aria-label="${t("Prerekvizitlər")}" placeholder="${t("Hər sətirdə bir fənn")}">${s.prerequisites.join("\n")}</textarea></div></div>
+        <div class="card"><div class="card-h"><h3>${ic("list", 17)} ${t("Prerekvizitlər")}</h3></div><div class="card-b stack sm" data-pre-box>
+          ${s.prerequisites.length ? html`<div class="chips">${s.prerequisites.map((x, i) => html`<span class="badge ${typeof x === "string" ? "b-gray" : "b-navy"}" data-pre-item>${preText(x)}
+            <button class="btn btn-ghost btn-icon btn-sm" data-pre-del="${i}" aria-label="${t("Sil")}: ${preText(x)}">${ic("x", 12)}</button></span>`)}</div>`
+            : html`<span class="small muted">${t("Prerekvizit yoxdur")}</span>`}
+          ${s.prerequisites.some((x) => typeof x === "string") ? html`<div class="tiny muted">${t("Boz rəngli prerekvizitlər əvvəlki versiyada mətnlə yazılıb: onları reyestrdən seçilmiş fənlə əvəz edin.")}</div>` : ""}
+          <input class="input" id="pre-q" type="search" maxlength="100" placeholder="${t("Fənn reyestrində kod və ya ad üzrə axtarış")}" aria-label="${t("Prerekvizit fənni axtar")}">
+          <div class="list" id="pre-list" aria-live="polite"></div></div></div>
         <div class="card"><div class="card-h"><h3>${ic("file", 17)} ${t("Ədəbiyyat")}</h3><button class="btn btn-sm" id="add-l">${ic("plus", 13)} ${t("Əlavə et")}</button></div><div class="card-b stack sm">
           ${s.literature.map((x, i) => html`<div class="row"><input class="input grow" data-l-title="${i}" value="${x.title}" aria-label="${t("Mənbə")}">
             <select class="select" data-l-kind="${i}" style="width:auto" aria-label="${t("Növ")}">${opts(LIT(), x.kind)}</select>
             <button class="btn btn-ghost btn-icon" data-l-del="${i}" aria-label="${t("Sil")}">${ic("x", 14)}</button></div>`)}</div></div>
         <div class="card"><div class="card-h"><h3>${ic("layers", 17)} ${t("Versiyalar")}</h3></div><div class="card-b list">
-          ${st.versions.length ? st.versions.map((v) => html`<div class="list-item"><div class="grow"><b class="small">${t("Versiya {n}", { n: v.version })}</b>
+          ${st.versions.length ? st.versions.map((v) => html`<div class="list-item" style="flex-wrap:wrap"><div class="grow"><b class="small">${t("Versiya {n}", { n: v.version })}</b>
             <div class="tiny muted">${fmtDate(v.created_at)}${v.author ? " · " + v.author : ""}</div></div>
             <span class="badge ${(STATUS()[v.status] || ["", "b-gray"])[1]}">${(STATUS()[v.status] || [v.status])[0]}</span>
             ${st.versions.find((x) => x.version === v.version - 1) ? html`<button class="btn btn-ghost btn-sm" data-diff="${v.id}" data-prev="${st.versions.find((x) => x.version === v.version - 1).id}">${t("Fərq")}</button>` : ""}
-            ${st.can_edit ? html`<button class="btn btn-sm" data-from="${v.id}">${t("Bundan davam et")}</button>` : ""}</div>`) : html`<span class="small muted">${t("Hələ versiya yoxdur")}</span>`}</div></div>
+            ${st.can_edit ? html`<button class="btn btn-sm" data-from="${v.id}">${t("Bundan davam et")}</button>` : ""}
+            ${v.source ? html`<div class="tiny muted" style="flex-basis:100%" data-source>${t("Köçürülüb: {course}, {term}, versiya {n}", { course: `${v.source.code} · ${v.source.name}`, term: v.source.term || "—", n: v.source.version })}</div>` : ""}</div>`)
+            : html`<span class="small muted">${t("Hələ versiya yoxdur")}</span>`}</div></div>
       </div></div>`}`);
     drawChecks();
     el.querySelectorAll(".syl-text").forEach(fit);
@@ -251,7 +261,6 @@ route("/teacher/syllabus", async (el, p, q) => {
       const b = el.querySelector("#asum"), sm = Math.round(sum() * 100) / 100;
       if (b) { b.textContent = t("Cəmi: {n}", { n: sm }); b.className = `badge ${sm === 100 ? "b-green" : "b-red"}`; }
     } else if (d.r !== undefined && d.r !== "ai_policy") s.rules[d.r] = d.r === "attendance_limit" ? +v : v;
-    else if (d.pre !== undefined) s.prerequisites = v.split("\n").map((x) => x.trim()).filter(Boolean);
     else if (d.lTitle !== undefined) s.literature[+d.lTitle].title = v;
     else if (d.w) s.workload[d.w] = +v;
     else return;
@@ -286,6 +295,46 @@ route("/teacher/syllabus", async (el, p, q) => {
   on(el, "click", "[data-p-del]", (e, b) => edit(() => s.plan.splice(+b.dataset.pDel, 1)));
   on(el, "click", "#add-a", () => edit(() => s.assessment.splice(Math.max(0, s.assessment.length - 1), 0, { name: "", kind: "component", weight: 5, outcomes: [] })));
   on(el, "click", "[data-a-del]", (e, b) => edit(() => s.assessment.splice(+b.dataset.aDel, 1)));
+  // prerequisites from the course registry (the directory's course list, which every staff member reads), kept by code
+  let preTimer = null;
+  on(el, "input", "#pre-q", (e, n) => {
+    clearTimeout(preTimer);
+    preTimer = setTimeout(async () => {
+      const box = el.querySelector("#pre-list"), q = n.value.trim();
+      if (!box) return;
+      if (q.length < 2) { mount(box, ""); return; }
+      let r;
+      try { r = await api.get(`/api/directory/courses?q=${encodeURIComponent(q)}&active=1`); } catch (err) { toast(err.message, "err"); return; }
+      const have = new Set([co.code, ...s.prerequisites.filter((x) => typeof x !== "string").map((x) => x.code)]);
+      const found = [...new Map(r.items.filter((x) => !have.has(x.code)).map((x) => [x.code, x])).values()].slice(0, 10);
+      mount(box, found.length ? html`${found.map((x) => html`<div class="list-item"><div class="grow small"><b>${x.code}</b> · ${x.name}</div>
+        <button class="btn btn-sm" data-pre-add="${x.code}" data-pre-name="${x.name}">${ic("plus", 13)} ${t("Əlavə et")}</button></div>`)}`
+        : html`<span class="small muted">${t("Reyestrdə belə fənn tapılmadı")}</span>`);
+    }, 300);
+  });
+  on(el, "click", "[data-pre-add]", (e, b) => edit(() => s.prerequisites.push({ code: b.dataset.preAdd, name: b.dataset.preName })));
+  on(el, "click", "[data-pre-del]", (e, b) => edit(() => s.prerequisites.splice(+b.dataset.preDel, 1)));
+  // a new draft from another course's published syllabus: the same course in an earlier term, or one the teacher teaches
+  on(el, "click", "#copy-from", async () => {
+    let list;
+    try { list = await api.get(`/api/syllabi/${co.id}/sources`); } catch (err) { toast(err.message, "err"); return; }
+    const w = modal({ title: t("Başqa sillabusdan köçür"), size: "lg", body: list.length ? html`<div class="stack sm">
+        <p class="small muted" style="margin:0">${t("Nəticələr, plan, qiymətləndirmə, qaydalar, prerekvizitlər, ədəbiyyat və çərçivə bəndləri köçürülür. Saatlar bu fənnin Forma №3 məlumatından götürülür. Köçürmə yeni qaralama versiyası kimi saxlanılır.")}</p>
+        <div class="list">${list.map((x) => html`<div class="list-item"><div class="grow"><b class="small">${x.code} · ${x.name}</b>
+          <div class="tiny muted">${x.term || "—"} · ${t("Versiya {n}", { n: x.version })}</div></div>
+          <button class="btn btn-sm btn-primary" data-copy-from="${x.course_id}">${t("Köçür")}</button></div>`)}</div></div>`
+      : empty("layers", t("Köçürmək üçün sillabus yoxdur"), t("Bu fənnin əvvəlki semestrlərində və tədris etdiyiniz fənlərdə dərc olunmuş sillabus yoxdur.")) });
+    on(w.el, "click", "[data-copy-from]", async (e, b) => {
+      if (dirty && !(await confirmBox(t("Yadda saxlanılmamış dəyişikliklər"), t("Redaktordakı saxlanılmamış dəyişikliklər itəcək. Saxlanılmış versiyalar qalır."), t("Davam et"), true))) return;
+      b.disabled = true;
+      try {
+        st = await api.post(`/api/syllabi/${co.id}/copy`, { from: +b.dataset.copyFrom });
+        tags = (await api.get(`/api/syllabi/${co.id}/frameworks`)).outcomes;
+        s = clone(st.latest.data); dirty = false; w.close(); draw();
+        toast(t("Sillabus köçürüldü: versiya {n}", { n: st.latest.version }), "ok");
+      } catch (err) { toast(err.message, "err"); b.disabled = false; }
+    });
+  });
   on(el, "click", "#add-l", () => edit(() => s.literature.push({ title: "", kind: "main" })));
   on(el, "click", "[data-l-del]", (e, b) => edit(() => s.literature.splice(+b.dataset.lDel, 1)));
   on(el, "change", "#cs", async (e, n) => {
@@ -379,10 +428,16 @@ route("/frameworks/coverage", async (el, p, qs) => {
 
 // The approval queue (Task 25): a department head approves or returns submitted versions of the courses the grant
 // covers, the academic office publishes or returns approved ones. Publication configures the course.
-route("/syllabi", async (el) => {
+// A page at a time (AR-11): the server reads one page's data, whatever the length of the queue.
+const pager = (r) => (r.pages > 1 ? html`<div class="row between wrap mt" data-pager><span class="small muted">${t("Səhifə {p} / {n} · cəmi {total}", { p: r.page, n: r.pages, total: r.total })}</span>
+  <span class="row"><button class="btn btn-sm" data-page="${r.page - 1}" ${r.page <= 1 ? "disabled" : ""}>${t("Əvvəlki")}</button>
+  <button class="btn btn-sm" data-page="${r.page + 1}" ${r.page >= r.pages ? "disabled" : ""}>${t("Növbəti")}</button></span></div>` : "");
+
+route("/syllabi", async (el, p, qs) => {
   mount(el, loading());
-  let list;
-  try { list = await api.get("/api/syllabi/queue"); } catch (err) { return mount(el, failed(err.message)); }
+  let r;
+  try { r = await api.get(`/api/syllabi/queue?page=${+qs.page || 1}`); } catch (err) { return mount(el, failed(err.message)); }
+  const list = r.items;
   const crumbs = [[t("Əsas"), HOME[S.user.role] || "/"], [t("Sillabus təsdiqi")]];
   mount(el, html`${pageHead(t("Sillabus təsdiqi"), t("Təsdiq gözləyən versiyalar: fərqə baxın, təsdiqləyin və ya şərhlə geri qaytarın."), "", crumbs)}
     <div class="card">${list.length ? html`<div class="table-wrap"><table class="table"><thead><tr><th>${t("Fənn")}</th><th>${t("Versiya")}</th><th>${t("Müəllif")}</th>
@@ -392,7 +447,9 @@ route("/syllabi", async (el) => {
         <td>${x.changes == null ? html`<span class="tiny muted">${t("ilk dərc")}</span>` : x.changes}
           ${x.returned_id ? html`<div class="tiny muted">${t("Geri qaytarılmış versiyadan fərq: {c}", { c: x.changes_returned })}</div>` : ""}</td>
         <td><button class="btn btn-sm" data-open="${x.id}">${t("Bax")}</button></td></tr>`)}</tbody></table></div>`
-      : html`<div class="card-b">${empty("check", t("Təsdiq gözləyən sillabus yoxdur"), t("Müəllim versiyanı təqdim etdikdə burada görünür."))}</div>`}</div>`);
+      : html`<div class="card-b">${empty("check", t("Təsdiq gözləyən sillabus yoxdur"), t("Müəllim versiyanı təqdim etdikdə burada görünür."))}</div>`}</div>
+    ${pager(r)}`);
+  on(el, "click", "[data-page]", (e, b) => go(`/syllabi?page=${b.dataset.page}`));
   on(el, "click", "[data-open]", async (e, b) => {
     const x = list.find((y) => y.id === Number(b.dataset.open));
     let v, diff = [], back = [];
@@ -430,4 +487,41 @@ route("/syllabi", async (el) => {
         ...(x.actions.includes("publish") ? [{ label: STEP().publish, cls: "btn-primary", onClick: (w) => act("publish", w, { override: w.querySelector("#sv-ok").checked }) }] : []),
       ] });
   });
+});
+
+// A term's courses by the state of their syllabus (the audit of 2026-11-23): the academic office and the dean's office
+// within their scope, leadership read only. Counts, filters and a CSV of the filtered courses.
+const OV_STATE = () => ({ none: [t("Sillabus yoxdur"), "b-red"], draft: [t("Qaralama"), "b-gray"], submitted: [t("Təqdim olunub"), "b-blue"],
+  approved: [t("Kafedra təsdiqləyib"), "b-amber"], published: [t("Dərc olunub"), "b-green"] });
+route("/syllabi/overview", async (el, p, qs) => {
+  mount(el, loading());
+  const query = (patch = {}) => new URLSearchParams(Object.entries({ term: qs.term || "", state: qs.state || "", department: qs.department || "",
+    q: qs.q || "", ...patch }).filter(([, v]) => v !== "" && v != null));
+  let r;
+  try { r = await api.get(`/api/syllabi/overview?${query({ page: qs.page || "" })}`); } catch (err) { return mount(el, failed(err.message)); }
+  const crumbs = [[t("Əsas"), HOME[S.user.role] || "/"], [t("Sillabus icmalı")]];
+  const to = (patch) => go(`/syllabi/overview?${query({ term: r.term.id, ...patch })}`);
+  const all = Object.values(r.counts).reduce((a, n) => a + n, 0);
+  mount(el, html`${pageHead(t("Sillabus icmalı"), t("Semestrin fənləri sillabusun vəziyyətinə görə: sillabusu olmayan, qaralama, təqdim olunmuş, kafedranın təsdiqlədiyi və dərc olunmuş."),
+      html`<a class="btn" href="/api/syllabi/overview?${query({ term: r.term.id, format: "csv", lang: LANG })}" download>${ic("download", 15)} CSV</a>`, crumbs)}
+    <div class="row wrap mb">
+      <select class="select" id="ov-term" style="width:auto" aria-label="${t("Semestr")}">${r.terms.map((x) => html`<option value="${x.id}" ${x.id === r.term.id ? "selected" : ""}>${x.name}</option>`)}</select>
+      <select class="select" id="ov-dep" style="width:auto" aria-label="${t("Kafedra")}"><option value="">${t("Bütün kafedralar")}</option>
+        ${r.departments.map((x) => html`<option value="${x.id}" ${x.id === +qs.department ? "selected" : ""}>${x.name}</option>`)}</select>
+      <input class="input grow" id="ov-q" type="search" maxlength="100" value="${qs.q || ""}" placeholder="${t("Fənnin kodu və ya adı")}" aria-label="${t("Axtar")}"></div>
+    <div class="row wrap mb" role="group" aria-label="${t("Vəziyyət")}">
+      <button class="btn btn-sm ${qs.state ? "" : "btn-primary"}" data-ov-state="" aria-pressed="${!qs.state}">${t("Hamısı")} <span class="badge b-gray">${all}</span></button>
+      ${Object.entries(OV_STATE()).map(([k, [l, c]]) => html`<button class="btn btn-sm ${qs.state === k ? "btn-primary" : ""}" data-ov-state="${k}" aria-pressed="${qs.state === k}">${l} <span class="badge ${c}" data-count="${k}">${r.counts[k]}</span></button>`)}</div>
+    <div class="card">${r.items.length ? html`<div class="table-wrap"><table class="table" data-overview><thead><tr><th>${t("Fənn")}</th><th>${t("Kafedra")}</th><th>${t("Müəllim")}</th>
+      <th>${t("Vəziyyət")}</th><th>${t("Son versiya")}</th><th>${t("Dərc olunmuş versiya")}</th></tr></thead><tbody>
+      ${r.items.map((x) => html`<tr><td><b class="small">${x.code}</b> · ${x.name}</td><td class="small">${x.department || "—"}</td><td class="small">${x.teacher || "—"}</td>
+        <td><span class="badge ${OV_STATE()[x.state][1]}">${OV_STATE()[x.state][0]}</span>${x.status === "returned" ? html` <span class="tiny muted">${t("geri qaytarılıb")}</span>` : ""}</td>
+        <td>${x.latest || "—"}</td><td>${x.published || "—"}</td></tr>`)}</tbody></table></div>`
+      : html`<div class="card-b">${empty("layers", t("Fənn tapılmadı"), t("Seçilmiş semestrdə bu filtrə uyğun fənn yoxdur."))}</div>`}</div>
+    ${pager(r)}`);
+  on(el, "change", "#ov-term", (e, n) => go(`/syllabi/overview?${new URLSearchParams({ term: n.value })}`));
+  on(el, "change", "#ov-dep", (e, n) => to({ department: n.value, page: "" }));
+  on(el, "change", "#ov-q", (e, n) => to({ q: n.value.trim(), page: "" }));
+  on(el, "click", "[data-ov-state]", (e, b) => to({ state: b.dataset.ovState, page: "" }));
+  on(el, "click", "[data-page]", (e, b) => to({ page: b.dataset.page }));
 });

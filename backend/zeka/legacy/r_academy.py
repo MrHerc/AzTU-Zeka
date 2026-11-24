@@ -295,6 +295,8 @@ def syllabus_page(req):
                   f"<td>{e(', '.join(a.get('outcomes', [])) or '—')}</td></tr>" for a in d.get("assessment", []))   # F8
     r = d.get("rules", {})
     lit = d.get("literature", [])
+    # a registry course by its code and name (the audit of 2026-11-23); the free text of an older version as written
+    pre = [" · ".join(filter(None, (x["code"], x.get("name")))) if isinstance(x, dict) else str(x) for x in d.get("prerequisites", [])]
     state = (f"Versiya {e(str(v['version']))} · {e(STATUS_AZ.get(v['status'], v['status']))} · {e(v['created_at'][:10])}" if v
              else "Saxlanmamış ilk layihə")
     body = f"""<div class="toolbar no-print"{' hidden' if req.query.get('embed') == '1' else ''}><button id="print-btn">🖨 Çap et / PDF kimi saxla</button></div>
@@ -303,7 +305,7 @@ def syllabus_page(req):
 <h1>{e(co['name'])}</h1>
 <table class="meta"><tr><th>Fənnin kodu</th><td>{e(co['code'])}</td><th>Kredit (AKTS)</th><td>{e(str(co['credits']))}</td></tr>
 <tr><th>Müəllim</th><td>{e(teacher['full_name'] if teacher else '')}</td><th>Davamiyyət həddi</th><td>{e(_num(r.get('attendance_limit')))}%</td></tr>
-<tr><th>Prerekvizitlər</th><td>{e(', '.join(d.get('prerequisites', [])) or '—')}</td><th>İş yükü</th><td>{e(work)}</td></tr></table>
+<tr><th>Prerekvizitlər</th><td>{e(', '.join(pre) or '—')}</td><th>İş yükü</th><td>{e(work)}</td></tr></table>
 <h3>Fənnin təsviri</h3><p>{e(d.get('description', ''))}</p>
 <h3>Təlim nəticələri</h3><table class="grades"><tr><th>Kod</th><th>Nəticə</th><th>Bloom səviyyəsi</th><th>Çərçivə bəndləri</th></tr>{outcomes}</table>
 <h3>Həftəlik plan</h3><table class="grades"><tr><th>Həftə</th><th>Mövzu</th><th>Nəticələr</th><th>Fəaliyyət</th></tr>{plan}</table>

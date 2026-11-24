@@ -57,10 +57,25 @@ def _public_exam(e: dict) -> dict:
     return {k: e[k] for k in ("id", "course_id", "kind", "title", "opens_at", "closes_at", "duration_min", "protection", "status", "attempt_no")}
 
 
+def _syllabus_defaults(c, cid: int) -> dict | None:
+    from ..syllabus import service as syllabus           # here: the syllabus module loads after this one
+    return syllabus.exam_defaults(c, cid)
+
+
+def defaults(c, user, cid: int) -> tuple[str, object]:
+    """A new exam's defaults from the course's published syllabus (plan A12, Task 25): the exam component's name and
+    weight and the outcomes it assesses. An exam already set keeps its own title and plan."""
+    if not repo.course(c, cid) or not may_manage(c, user, cid):
+        return "missing", None
+    return "ok", {"defaults": _syllabus_defaults(c, cid)}
+
+
 def create(c, user, cid: int, body) -> tuple[str, object]:
     co = repo.course(c, cid)
     if not co or not may_manage(c, user, cid):
         return "missing", None
+    if not str(body.get("title") or "").strip() and (d := _syllabus_defaults(c, cid)):
+        body = {**body, "title": d["title"]}            # the published syllabus names the exam when the teacher does not
     v, problem = domain.exam_input(body, clock.ZONE)
     if problem:
         return "invalid", problem
