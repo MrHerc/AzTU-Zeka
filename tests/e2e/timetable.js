@@ -10,7 +10,7 @@
 // Prints one JSON line: { <step>: {...what was seen} } and, for a step that threw, { <step>: {error} }.
 const { chromium } = require("playwright");
 
-const [base, today] = process.argv.slice(2);
+const [base, today, only] = process.argv.slice(2);          // only = "repair": the repair offer step alone (F3)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let browser;
 
@@ -58,6 +58,23 @@ async function runEnds(p, ms = 120000) {
 (async () => {
   browser = await chromium.launch();
   const out = {};
+  if (only === "repair") {                         // F3: the published version has a problem; who is offered the repair
+    await run("repair", async () => {
+      const seen = {};
+      for (const [login, role] of [["office", "academic_office"], ["teacher", "academic_office"]]) {
+        const { ctx, p, S } = await as(login, role);
+        await open(p, "/admin/timetable/build?tab=versions");
+        await p.waitForSelector(".tt-health");
+        seen[login] = { problems: Number(await p.$eval(".tt-health", (x) => x.dataset.problems)), button: await p.$$eval("#tb-repair", (xs) => xs.length),
+          errors: S.errors };
+        await ctx.close();
+      }
+      return seen;
+    }, out);
+    await browser.close();
+    console.log(JSON.stringify(out));
+    return;
+  }
 
   await run("plan", async () => {
     const { ctx, p, S } = await as("office", "academic_office");

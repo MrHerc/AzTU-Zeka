@@ -182,3 +182,25 @@ def test_the_draft_is_published_after_a_wrong_unplaced_number_is_refused(seen):
     vid = int(seen["build"]["url"].rsplit("/", 1)[1])
     assert q("SELECT status FROM tt_versions WHERE id=?", (vid,))[0]["status"] == "published"
     assert q("SELECT COUNT(*) n FROM timetable WHERE version_id=? AND active=1", (vid,))[0]["n"] > 0
+
+
+def test_the_repair_is_offered_only_to_the_university_wide_office(seen, app_db):
+    """F3: with a problem in the published version, the unscoped academic office sees «Bərpa layihəsi hazırla»; the
+    faculty-scoped one sees the problem of its faculty's units but no button (its repair was always refused)."""
+    pub = q("SELECT id FROM tt_versions WHERE term_id=1 AND status='published' ORDER BY id DESC LIMIT 1")[0]["id"]
+    p = q("SELECT p.weekday, p.period, u.teacher_id FROM tt_placements p JOIN teaching_units u ON u.id=p.unit_id "
+          "WHERE p.version_id=? AND u.teacher_id IS NOT NULL ORDER BY p.id LIMIT 1", (pub,))[0]
+    c = store.connect()
+    try:
+        c.execute("INSERT INTO tt_availability(term_id,subject_type,subject_id,weekday,period,weeks,level,updated_by,updated_at) "
+                  "VALUES(1,'teacher',?,?,?,'all','unavailable',1,?)", (p["teacher_id"], p["weekday"], p["period"], TODAY))
+        c.commit()
+        assert jobs.run_due(c, "tt-pages-health", now=datetime(2030, 1, 1, tzinfo=timezone.utc), names=["timetable.health"]) == [("timetable.health", "ok")]
+    finally:
+        c.close()
+    r = subprocess.run([shutil.which("node"), str(SCRIPT), app_db.url, TODAY, "repair"], capture_output=True, text=True, timeout=300)
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    assert "fatal" not in out, out
+    s = got(out, "repair")
+    assert s["office"]["problems"] >= 1 and s["office"]["button"] == 1 and not s["office"]["errors"], s
+    assert s["teacher"]["problems"] >= 1 and s["teacher"]["button"] == 0 and not s["teacher"]["errors"], s

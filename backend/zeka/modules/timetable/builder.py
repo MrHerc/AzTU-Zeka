@@ -318,6 +318,8 @@ def start_page(c, user, tid: int) -> dict:
     run = repo.active_run(c, tid) if manages(user) else None
     return {"term": {k: t[k] for k in ("id", "code", "name", "teaching_start", "teaching_end")}, "weeks": domain.term_weeks(t),
             "manages": manages(user), "can_publish": perms.has(user["role"], "timetable.publish") and scope_of(c, user)["all"],
+            # F3: a repair takes the published version's scope, so only a holder covering it may start one
+            "can_repair": manages(user) and bool(pub) and _covers_scope(c, s, J(pub["scope"], {"all": True}) or {"all": True}),
             "notice_days": settings(c)["notice_days"], "term_confirmed": J((repo.tt_term(c, tid) or {}).get("confirmed"), []) or [],
             "dues": r["dues"], "run_blocked": r["run_blocked"], "publish_blocked": r["publish_blocked"],
             "warnings": sum(1 for x in r["lines"] if x["level"] == "warn"), "versions": len(vs), "published_id": pub["id"] if pub else None,
@@ -633,7 +635,7 @@ def start_run(c, user, tid: int, body) -> dict:
     if kind not in RUN_KINDS:
         raise HTTPError(400, "Hesablamanın növü düzgün deyil")
     deps = body.ids("departments", 500) if body.get("departments") is not None else None
-    if deps is None and not s["all"]:
+    if deps is None and not s["all"] and kind != "repair":        # a repair takes the published version's scope
         raise HTTPError(400, "Hesablamaya daxil olan kafedraları seçin")
     for d in deps or []:
         if not _covers_department(c, s, d):
@@ -1058,6 +1060,7 @@ HOURS_REASONS = {   # why a unit's hours differ from Forma №3 (domain.hours_re
     "unplaced": S_("Dərslərin bir hissəsi yerləşdirilməyib"),
     "holidays": S_("Bəzi həftələrdə dərs günü bayrama və ya semestrin dərs dövründən kənara düşür"),
     "cancelled": S_("Ləğv olunmuş dərslər var"),
+    "lessons_differ": S_("Dərslər yerləşdirmədən fərqlənir: dərc tarixindən əvvəlki həftələrdə dərs olmayıb, dərs köçürülüb və ya əlavə edilib"),
     "pattern_override": S_("Saatların həftələrə bölgüsü əl ilə müəyyən edilib"),
     "fortnight_rounding": S_("Saatın qalığı iki həftədən bir keçirilən dərsə yuvarlaqlaşdırılıb"),
     "block_rounding": S_("Saatın qalığı ardıcıl həftələr blokuna yuvarlaqlaşdırılıb"),
@@ -1360,7 +1363,8 @@ def _p_check(c, r: dict) -> str:
     # a unit with hand-written rows was kept out of the run: its builder rows are obstacles and stay (design §16.4)
     published = [x for x in trows if x["meeting_key"] and x["unit_id"] in units_ and x["unit_id"] not in set(kept)
                  and covers(s, units_[x["unit_id"]])]
-    plan = domain.publish_plan(published, wanted)                                 # type: ignore[arg-type]
+    plan = domain.publish_plan(published, wanted, problem["weeks"],               # type: ignore[arg-type]
+                               domain.future_mask(problem) if problem.get("repair") else 0)
     replaced = {x["id"] for x in plan["update"]} | set(plan["deactivate"])
     slots = [{"id": f"k:{w['meeting_key']}", "weekday": w["weekday"], "start": w["start"], "end": w["end"], "weeks": w["weeks"],
               "room": f"#{w['room_id']}" if w["room_id"] else None, "teacher_id": units_[w["unit_id"]]["teacher_id"] if w["unit_id"] in units_ else None,

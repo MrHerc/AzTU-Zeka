@@ -1173,3 +1173,209 @@ def test_the_daily_health_check_tells_a_new_problem_once_and_a_repair_moves_only
     health_job(3)
     assert json.loads(q("SELECT health FROM tt_versions WHERE id=?", (pub,))[0]["health"])["count"] == 0
 
+
+
+def _conflict(world):
+    """A published lesson's teacher becomes unavailable at its slot: the daily check's teacher_unavailable problem."""
+    pub = _published_version()
+    p = q("SELECT p.*, u.teacher_id FROM tt_placements p JOIN teaching_units u ON u.id=p.unit_id WHERE p.version_id=? AND p.locked=0 "
+          "AND u.teacher_id=? ORDER BY p.id LIMIT 1", (pub, world["teachers"][2]))[0]
+    cell = _write("INSERT INTO tt_availability(term_id,subject_type,subject_id,weekday,period,weeks,level,updated_by,updated_at) "
+                  "VALUES(?,'teacher',?,?,?,'all','unavailable',1,?)", (TERM, p["teacher_id"], p["weekday"], p["period"], "2026-11-19"))
+    return pub, p, cell
+
+
+def _health(pub):
+    return json.loads(q("SELECT health FROM tt_versions WHERE id=?", (pub,))[0]["health"] or "null")
+
+
+def _faculty_office(app_db):
+    """The demo leader as an academic office of another faculty (the grant of the SEC-TT-3 test above)."""
+    ao2 = app_db.client("leader")
+    assert ao2.post("/api/me/role", {"role": "academic_office"}).status == 200
+    return ao2
+
+
+def _cancel(office_ao, r):
+    if r.status == 200 and r.json.get("id"):
+        office_ao.post(f"/api/timetable/runs/{r.json['id']}/cancel", {})
+        run_jobs()
+
+
+def test_the_daily_check_tells_and_shows_a_scoped_office_only_its_own_problems(app_db, office_ao, world, chain):
+    """MUT-T04, T05, T06 (SEC-TT-3): an academic office of another faculty is not the timetable office, so it is not
+    told of a new problem; its builder page shows neither the problems nor their count."""
+    ao2 = _faculty_office(app_db)
+    pub, _, cell = _conflict(world)
+
+    def told():
+        return q("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND title LIKE ?", (ao2.user["id"], "%yeni problem%"))[0]["n"]
+    before = told()
+    try:
+        health_job(10)
+        assert _health(pub)["count"] >= 1 and told() == before
+        page = ao2.get(B).json["health"]
+        assert page["problems"] == [] and page["count"] == 0, page
+    finally:
+        _write("DELETE FROM tt_availability WHERE id=?", (cell,))
+        health_job(11)
+
+
+def test_the_daily_check_waits_while_an_exam_is_open_and_reads_only_open_terms(office_ao, world, chain, monkeypatch):
+    """MUT-T02, T03: a check longer than an open exam allows waits for it; a term outside its teaching period is not
+    checked. Either way the stored result stays as it was."""
+    from zeka.modules.exam import service as exam
+    pub, _, cell = _conflict(world)
+    try:
+        at = _health(pub)
+        real = builder.settings
+        monkeypatch.setattr(exam, "open_count", lambda c: 1)
+        monkeypatch.setattr(builder, "settings", lambda c: {**real(c), "solver": {**real(c)["solver"], "atomic_exam_max_s": 0}})
+        health_job(12)
+        assert _health(pub) == at, "an open exam postpones the check"
+        monkeypatch.undo()
+        monkeypatch.setattr(builder, "_today", lambda: "2031-01-01")
+        health_job(13)
+        assert _health(pub) == at, "a term outside its teaching period"
+    finally:
+        monkeypatch.undo()
+        _write("DELETE FROM tt_availability WHERE id=?", (cell,))
+        health_job(14)
+
+
+def test_a_repair_needs_a_publication_it_covers_and_a_week_left_after_the_notice(app_db, office_ao, world, chain, monkeypatch):
+    """MUT-T07, T08, T09, T17: a repair starts at the first week the notice period leaves free; none is left after the
+    term's last week (409); a holder of another faculty may not repair the university's publication (404); without a
+    publication there is nothing to repair (409, not a 400 from a missing version)."""
+    real = builder.settings
+    monkeypatch.setattr(builder, "settings", lambda c: {**real(c), "notice_days": 14})
+    r = office_ao.post(f"{B}/runs", {"kind": "repair", "budget": 50})
+    assert r.status == 200, r.text
+    _cancel(office_ao, r)
+    term = q("SELECT * FROM academic_terms WHERE id=?", (TERM,))[0]
+    assert r.json["scope"]["from_week"] == domain.week_no(store.now().date() + timedelta(days=14), date.fromisoformat(term["teaching_start"]))
+    monkeypatch.undo()
+    monkeypatch.setattr(builder, "now", lambda: datetime(2027, 8, 1, 10, 0))
+    r = office_ao.post(f"{B}/runs", {"kind": "repair", "budget": 50})
+    monkeypatch.undo()
+    _cancel(office_ao, r)
+    assert r.status == 409 and r.json["error"] == "Semestrin dəyişdirilə bilən həftəsi qalmayıb", r.text
+    d2 = q("SELECT id FROM departments WHERE code='D2X'")[0]["id"]
+    for body in ({"kind": "repair", "budget": 50, "departments": [d2]}, {"kind": "repair", "budget": 50}):
+        r = _faculty_office(app_db).post(f"{B}/runs", body)
+        _cancel(office_ao, r)
+        assert r.status == 404, (body, r.text)
+    pub = _published_version()
+    _write("UPDATE tt_versions SET status='superseded' WHERE id=?", (pub,))
+    try:
+        r = office_ao.post(f"{B}/runs", {"kind": "repair", "budget": 50})
+    finally:
+        _write("UPDATE tt_versions SET status='published' WHERE id=?", (pub,))
+    _cancel(office_ao, r)
+    assert r.status == 409 and "dərc olunmuş cədvəli yoxdur" in r.json["error"], r.text
+
+
+def test_only_a_holder_covering_the_publication_is_offered_a_repair(app_db, office_ao, world, chain):
+    """F3: the builder's page offers the repair to whom it is allowed: the university-wide office, not an academic
+    office of a faculty (its repair was always refused)."""
+    scoped = app_db.client("teacher")
+    assert scoped.post("/api/me/role", {"role": "academic_office"}).status == 200
+    mine = scoped.get(B).json
+    assert mine["manages"] and mine["can_repair"] is False, mine
+    assert office_ao.get(B).json["can_repair"] is True
+
+
+def _replay(vid):
+    c = store.connect()
+    try:
+        return builder.replay(c, vid)
+    finally:
+        c.close()
+
+
+def test_timetable_replay_finds_a_changed_input_a_vanished_placement_and_a_foreign_unplaced_one(office_ao, world, chain):
+    """MUT-T11, T12, T13: a stored input that no longer matches its SHA-256, a placement the run wrote that is gone, and
+    an unplaced meeting the run did not leave each make the replay differ."""
+    run = _solve(office_ao, 37)
+    vid = run["version_id"]
+    assert _replay(vid)["same"]
+    rid, sha = q("SELECT id, input_sha256 FROM tt_runs WHERE id=?", (run["id"],))[0].values()
+    _write("UPDATE tt_runs SET input_sha256=? WHERE id=?", ("0" * 64, rid))
+    try:
+        assert not _replay(vid)["same"], "a changed input hash"
+    finally:
+        _write("UPDATE tt_runs SET input_sha256=? WHERE id=?", (sha, rid))
+    pl = q("SELECT * FROM tt_placements WHERE version_id=? AND origin='solver' ORDER BY id LIMIT 1", (vid,))[0]
+    _write("DELETE FROM tt_placements WHERE id=?", (pl["id"],))
+    try:
+        r = _replay(vid)
+        assert pl["meeting_key"] in r["differ"] and not r["same"], r
+    finally:
+        _write(f"INSERT INTO tt_placements({','.join(pl)}) VALUES({','.join('?' * len(pl))})", tuple(pl.values()))
+    _write("INSERT INTO tt_unplaced(version_id,meeting_key,unit_id,reasons) VALUES(?,?,?,'[]')", (vid, "999999:1", pl["unit_id"]))
+    try:
+        assert not _replay(vid)["same"], "an unplaced meeting the run did not leave"
+    finally:
+        _write("DELETE FROM tt_unplaced WHERE version_id=? AND meeting_key='999999:1'", (vid,))
+
+
+def test_the_published_hours_count_only_the_term_s_lessons_and_name_lessons_not_rounding(office_ao, world, chain):
+    """MUT-T16, F2: a lesson outside the term is not counted; a unit whose lessons began with a publication after the
+    term started says so (lessons_differ), never that the hours were rounded."""
+    pub = _published_version()
+    url = f"/api/timetable/versions/{pub}/hours?department_id={world['dep']}"
+    items = office_ao.get(url).json["items"]
+    codes = [{r["code"] for r in x["reasons"]} for x in items]
+    assert not [c for c in codes if c & {"fortnight_rounding", "block_rounding"}], codes
+    assert any("lessons_differ" in c for c in codes) and all(r["title"] != r["code"] for x in items for r in x["reasons"]), codes
+    one = q("SELECT l.* FROM lessons l JOIN tt_placements p ON p.unit_id=l.unit_id WHERE p.version_id=? AND l.status<>'cancelled' "
+            "AND l.academic_hours>0 ORDER BY l.id LIMIT 1", (pub,))[0]
+    before = {x["unit_id"]: x["planned_h"] for x in items}[one["unit_id"]]
+    extra = {k: v for k, v in one.items() if k != "id"} | {"day": "2027-08-02", "slot_day": "2027-08-02"}
+    lid = _write(f"INSERT INTO lessons({','.join(extra)}) VALUES({','.join('?' * len(extra))})", tuple(extra.values()))
+    try:
+        assert {x["unit_id"]: x["planned_h"] for x in office_ao.get(url).json["items"]}[one["unit_id"]] == before
+    finally:
+        _write("DELETE FROM lessons WHERE id=?", (lid,))
+
+
+def test_a_repair_s_publication_rewrites_and_tells_only_what_it_moves(app_db, office_ao, world, chain):
+    """F1: a repair places only the weeks left after the notice period, so its placements' weeks differ from every
+    published row's; its publication still leaves an unmoved row as it is (its weeks, its lessons) and tells only the
+    people of the moved lessons' units. Last here: it changes the term's publication."""
+    pub, p, cell = _conflict(world)
+    try:
+        started = office_ao.post(f"{B}/runs", {"kind": "repair", "budget": 500})
+        assert started.status == 200, started.text
+        run_jobs()
+        draft = office_ao.get(f"/api/timetable/runs/{started.json['id']}").json["version_id"]
+        was = {x["meeting_key"]: (x["weekday"], x["period"], x["room_id"]) for x in q("SELECT * FROM tt_placements WHERE version_id=?", (pub,))}
+        now_ = {x["meeting_key"]: (x["weekday"], x["period"], x["room_id"]) for x in q("SELECT * FROM tt_placements WHERE version_id=?", (draft,))}
+        moved = {k for k in now_ if now_[k] != was.get(k)}
+        assert p["meeting_key"] in moved and len(moved) <= 3, moved
+        rows = {x["meeting_key"]: (x["id"], x["weeks"]) for x in q("SELECT * FROM timetable WHERE active=1 AND meeting_key IS NOT NULL")
+                if x["meeting_key"] in was}
+        lessons = {x["id"]: x["unit_id"] for x in q(f"SELECT id, unit_id FROM lessons WHERE timetable_id IN ({','.join('?' * len(rows))})",
+                                                    tuple(i for i, _ in rows.values()))}
+        notice = office_ao.get("/api/timetable/settings").json["timetable"]["notice_days"]
+        eff = max(store.now().date() + timedelta(days=notice),
+                  date.fromisoformat(q("SELECT effective_from FROM tt_versions WHERE id=?", (pub,))[0]["effective_from"]))
+        eff += timedelta(days=(8 - eff.isoweekday()) % 7)
+        told = q("SELECT COUNT(*) n FROM notifications WHERE link='/student/schedule'")[0]["n"]
+        rid = _publish(office_ao, draft, eff.isoformat())
+        run_jobs(200)
+        done = q("SELECT status, progress FROM tt_runs WHERE id=?", (rid,))[0]
+        counts = json.loads(done["progress"])["counts"]
+        assert done["status"] == "done" and counts["update"] + counts["insert"] <= len(moved), counts
+        assert counts["unchanged"] >= len(rows) - len(moved), counts
+        kept = {x["meeting_key"]: (x["id"], x["weeks"]) for x in q("SELECT * FROM timetable WHERE active=1 AND meeting_key IS NOT NULL "
+                                                                    f"AND meeting_key IN ({','.join('?' * len(rows))})", tuple(rows))}
+        assert all(kept[k] == rows[k] for k in rows if k not in moved), "an unmoved row keeps its weeks"
+        left = {x["id"] for x in q(f"SELECT id FROM lessons WHERE id IN ({','.join('?' * len(lessons))})", tuple(lessons))}
+        unmoved = {int(k.split(":")[0]) for k in rows} - {int(k.split(":")[0]) for k in moved}
+        assert unmoved and all(i in left for i, u in lessons.items() if u in unmoved), "their lessons are not remade"
+        students = sum(len(v) for v in world["students"].values())
+        new_notes = q("SELECT COUNT(*) n FROM notifications WHERE link='/student/schedule'")[0]["n"] - told
+        assert 0 < new_notes < students, (new_notes, students)
+    finally:
+        _write("DELETE FROM tt_availability WHERE id=?", (cell,))

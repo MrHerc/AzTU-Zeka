@@ -203,9 +203,14 @@ def test_the_hours_report_names_the_reason_of_every_difference():
     assert by[4]["reasons"] == ["no_groups"]
     assert {x["id"]: x["planned_h"] for x in rep["teachers"]} == {200: 44, 201: 0}
     assert {x["id"]: x["form_h"] for x in rep["groups"]} == {10: 45, 11: 60}
-    real = domain.hours_report(p, placements, term, [], lessons=[{"unit_id": 1, "status": "held", "academic_hours": 2}] * 6
+    real = domain.hours_report(p, placements, term, [], lessons=[{"unit_id": 1, "status": "held", "academic_hours": 2}] * 7
                                + [{"unit_id": 1, "status": "cancelled", "academic_hours": 2}])
-    assert {x["unit_id"]: (x["planned_h"], x["reasons"]) for x in real["units"]}[1] == (12, ["cancelled"])
+    assert {x["unit_id"]: (x["planned_h"], x["reasons"]) for x in real["units"]}[1] == (14, ["cancelled"])
+    # F2: lessons only from a later publication's date (or moved, or extra) are named as such, never as a rounding
+    late = domain.hours_report(p, placements, term, [], lessons=[{"unit_id": 1, "status": "held", "academic_hours": 2}] * 3
+                               + [{"unit_id": 3, "status": "held", "academic_hours": 2}])
+    by = {x["unit_id"]: (x["planned_h"], x["reasons"]) for x in late["units"]}
+    assert by[1] == (6, ["lessons_differ"]) and by[2] == (0, ["lessons_differ"]) and by[3] == (2, ["unplaced", "lessons_differ"]), by
     # published (acceptance on the real files): the lessons skip the holiday, and the reason is still the holiday, never
     # a rounding of the weekly pattern
     held = domain.hours_report(p, placements, term, ["2026-09-15"], lessons=[{"unit_id": 2, "status": "scheduled", "academic_hours": 2}] * 14)

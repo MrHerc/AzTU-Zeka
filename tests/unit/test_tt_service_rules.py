@@ -104,6 +104,24 @@ def test_the_publication_plan_matches_rows_by_meeting():
     assert domain.publish_plan(published, wanted[:1])["deactivate"] == [2]          # the manual row is never touched
 
 
+def test_a_repair_s_publication_plan_compares_only_the_weeks_a_repair_may_change():
+    """F1: a repair places no past week, so its placements' weeks are the future ones only; a row whose future weeks
+    are the same is unchanged (no rewrite, no new lessons, no notice), a moved one is updated."""
+    n, times = 16, domain.DEFAULT_TIMES
+    future = domain.future_mask({"weeks": n, "from_week": 10})
+    row = {"start": "09:00", "end": "10:20", "room_id": 3, "academic_hours": 2, "period": 1}
+    published = [{"id": 1, "meeting_key": "5:0", "unit_id": 5, "weekday": 1, "weeks": "odd", **row},
+                 {"id": 2, "meeting_key": "6:0", "unit_id": 6, "weekday": 2, "weeks": "all", **row}]
+
+    def want(key, unit, weekday, weeks):
+        return domain.published_row({"meeting_key": key, "unit_id": unit, "weekday": weekday, "period": 1, "duration": 1, "room_id": 3,
+                                     "weeks": domain.week_text(domain.week_mask(weeks, n) & future, n)}, times, 2)
+    wanted = [want("5:0", 5, 1, "odd"), want("6:0", 6, 3, "all")]
+    plan = domain.publish_plan(published, wanted, n, future)
+    assert plan["unchanged"] == [1] and [x["id"] for x in plan["update"]] == [2], plan
+    assert [x["id"] for x in domain.publish_plan(published, wanted)["update"]] == [1, 2], "without the repair's weeks: all differ"
+
+
 def _problem():
     st = {**ST, "days": [1, 2]}
     return {"weeks": 4, "lesson_times": domain.DEFAULT_TIMES[:3], "settings": st,

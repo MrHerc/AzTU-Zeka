@@ -141,7 +141,7 @@ route(ROOT, async (el, p, q) => {
     if (!h) return "";
     return html`<div class="card mb tt-health" data-problems="${h.count}"><div class="card-h wrap"><h3>${ic("activity", 17)} ${t("Dərc olunmuş cədvəlin gündəlik yoxlanışı")}</h3>
       <span class="badge ${h.count ? "b-red" : "b-green"}">${h.count ? t("Problem: {n}", { n: h.count }) : t("Problem yoxdur")}</span>
-      ${start.manages && h.count ? html`<button class="btn btn-sm btn-primary" id="tb-repair">${ic("wand", 15)} ${t("Bərpa layihəsi hazırla")}</button>` : ""}</div>
+      ${start.can_repair && h.count ? html`<button class="btn btn-sm btn-primary" id="tb-repair">${ic("wand", 15)} ${t("Bərpa layihəsi hazırla")}</button>` : ""}</div>
       <div class="card-b stack"><p class="small muted" style="margin:0">${t("Son yoxlama: {at}. Bərpa dərc olunmuş cədvəli dəyişmir: problemləri aradan qaldıran ən az köçürmə ilə layihə hazırlayır, keçmiş həftələrə toxunmur.",
         { at: fmtDateTime(h.at) })}</p>${h.problems.length ? listOf(h.problems) : ""}</div></div>`;
   };

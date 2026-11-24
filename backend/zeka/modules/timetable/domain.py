@@ -684,11 +684,14 @@ def hours_report(problem: dict, placements: list[dict], term: dict, holidays: It
             mask, gone = week_mask(p["weeks"], n), lost_of[p["weekday"]] if 1 <= p["weekday"] <= 7 else 0
             planned += (mask & ~gone).bit_count() * st["pair_hours"] * m["duration"]
             lost = lost or bool(mask & gone)
-        if u["id"] in real:                             # published: the lessons themselves; the placements still say why
-            done = [x for x in real[u["id"]] if x["status"] != "cancelled"]
-            planned = float(sum(x.get("academic_hours") or 0 for x in done))
-            if len(done) < len(real[u["id"]]):
+        if lessons is not None:                         # published: the lessons themselves; the placements still say why
+            had = real.get(u["id"], [])
+            done = [x for x in had if x["status"] != "cancelled"]
+            if len(done) < len(had):
                 reasons.append("cancelled")
+            if float(sum(x.get("academic_hours") or 0 for x in had)) != planned:
+                reasons.append("lessons_differ")        # F2: weeks before the publication, a moved or an extra lesson: no rounding
+            planned = float(sum(x.get("academic_hours") or 0 for x in done))
         if lost:
             reasons.append("holidays")
         form = float(u.get("hours") or 0)
@@ -944,9 +947,15 @@ def published_row(p: dict, times: list[list[str]], pair_hours: int) -> dict | No
 PUBLISHED_COLS = ("weekday", "period", "start", "end", "weeks", "room_id", "academic_hours")
 
 
-def publish_plan(published: list[dict], wanted: list[dict]) -> dict:
+def publish_plan(published: list[dict], wanted: list[dict], n: int = 0, future: int = 0) -> dict:
     """Rows to keep, update, deactivate and insert, matched by meeting_key (manual rows, without a key, are never in it).
-    ``published``: the active rows {id, meeting_key, ...PUBLISHED_COLS}; ``wanted``: published_row values. Sorted by key."""
+    ``published``: the active rows {id, meeting_key, ...PUBLISHED_COLS}; ``wanted``: published_row values. Sorted by key.
+    ``future``: a repair's weeks (``future_mask`` over ``n`` weeks): a repair never places a past week, so a row is
+    unchanged when its weeks agree in these weeks (F1); otherwise every row of the term would be rewritten."""
+    def same(h: dict, w: dict, col: str) -> bool:
+        if col == "weeks" and future:
+            return week_mask(h.get(col), n) & future == week_mask(w.get(col), n) & future
+        return h.get(col) == w.get(col)
     have = {r["meeting_key"]: r for r in published if r.get("meeting_key")}
     want = {w["meeting_key"]: w for w in wanted}
     out: dict[str, list] = {"unchanged": [], "update": [], "deactivate": [], "insert": []}
@@ -956,7 +965,7 @@ def publish_plan(published: list[dict], wanted: list[dict]) -> dict:
             out["insert"].append(w)
         elif w is None:
             out["deactivate"].append(h["id"])
-        elif any(h.get(c) != w.get(c) for c in PUBLISHED_COLS) or h.get("unit_id") != w["unit_id"]:
+        elif not all(same(h, w, c) for c in PUBLISHED_COLS) or h.get("unit_id") != w["unit_id"]:
             out["update"].append({**w, "id": h["id"]})
         else:
             out["unchanged"].append(h["id"])
