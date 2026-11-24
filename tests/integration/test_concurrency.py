@@ -154,6 +154,19 @@ def test_the_load_tool_reopens_a_keep_alive_connection_the_server_closed():
     assert sum(1 for r in out if r[3]) == len(out) - 2, "every request after a user's first went again on a new connection"
 
 
+def test_a_closed_keep_alive_connection_on_windows_is_reopened_too(monkeypatch):
+    """Windows reports the send on a connection the server closed as ConnectionAbortedError (WinError 10053), not as a
+    reset or a broken pipe (CI, windows-latest)."""
+    def call(conn, method, path, body, headers):
+        if getattr(conn, "answered", False):
+            raise ConnectionAbortedError(10053, "An established connection was aborted by the software in your host machine")
+        conn.answered = True
+        return 200
+    monkeypatch.setattr(loadtest, "call", call)
+    out = loadtest.client((1, 1, 0.2, "read", ["zeka_sid=x"], [1], 0, 0))
+    assert len(out) > 2 and {r[1] for r in out} == {200} and all(r[3] for r in out[1:])
+
+
 def test_the_load_tool_counts_a_request_never_answered_and_does_not_send_it_again(monkeypatch):
     """Task 42: only a reused connection closed before any answer is sent again, as a browser does. A request the server
     did not answer within the client's timeout is a connection error, sent once (POST /api/news/{id}/save toggles).

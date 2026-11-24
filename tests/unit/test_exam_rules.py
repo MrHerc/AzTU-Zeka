@@ -1,7 +1,6 @@
 """The exam core's rules (tasks/todo.md, Task 26): the window in UTC, forms by seed and plan, what a student sees."""
 from datetime import date, datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
-
+from zeka.core import clock
 from zeka.modules.exam import domain
 
 POOL = [{"id": i, "qtype": "mcq" if i % 2 else "numeric", "text": f"S{i}", "options": ["a", "b", "c", "d"] if i % 2 else [],
@@ -10,7 +9,7 @@ PLAN = [{"difficulty": "Asan", "topic": None, "count": 6}, {"difficulty": "Orta"
 
 
 def test_a_window_entered_in_baku_time_opens_in_utc():
-    baku = ZoneInfo("Asia/Baku")
+    baku = clock._zone("Asia/Baku")                 # the tz database, or the fixed +04:00 without one (Windows)
     assert domain.to_utc(date(2026, 12, 10), "10:00", baku).isoformat() == "2026-12-10T06:00:00+00:00"
     v, problem = domain.exam_input({"title": "Yekun imtahan", "day": "2026-12-10", "start": "10:00", "end": "12:00", "duration_min": 90,
                                     "plan": PLAN}, baku)

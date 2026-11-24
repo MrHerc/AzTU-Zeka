@@ -68,11 +68,11 @@ def main():
     exposed = args.host not in LOOPBACK
     if config.MODE not in config.MODES:
         ap.error(f"ZEKA_MODE={config.MODE}: yalnız demo və ya prod ola bilər")
+    if clock.ZONE is None:
+        ap.error(f"ZEKA_TZ={clock.TZ_NAME}: saat qurşağı tapılmadı (məs. Asia/Baku; Windows-da tzdata paketi lazımdır)")
     if config.prod():
         if args.reset:
             ap.error("prod rejimində --reset qadağandır: məlumat heç vaxt silinmir")
-        if clock.ZONE is None:
-            ap.error(f"ZEKA_TZ={clock.TZ_NAME}: saat qurşağı tapılmadı (məs. Asia/Baku; Windows-da tzdata paketi lazımdır)")
         if exposed and not public:
             ap.error("prod rejimində şəbəkədə PUBLIC_URL təyin edin (məs. https://zeka.aztu.edu.az): sənədlərin QR kodları, "
                      "Secure cookie və HSTS ondan asılıdır")

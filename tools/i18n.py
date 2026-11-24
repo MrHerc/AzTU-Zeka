@@ -758,10 +758,10 @@ def rename(mapping_path, apply=False):
         hits = [h for h in hits if h not in single]       # a one-word test literal may be unrelated (a sheet name, a value)
         if new != old and (hits or (not only and any(old in f["d"] for lg in LANGS for f in tr[lg]))):
             if single:
-                print(f"  NOTE test literal left as it is: {', '.join(f'{files[i][0].relative_to(ROOT)}:{_line(files[i][2], files[i][3][j][0])}' for i, j in single[:4])}")
+                print(f"  NOTE test literal left as it is: {', '.join(f'{files[i][0].relative_to(ROOT).as_posix()}:{_line(files[i][2], files[i][3][j][0])}' for i, j in single[:4])}")
             bad = [(i, j) for i, j in hits if files[i][3][j][3] == "other"]
             if bad:
-                where = ", ".join(f"{files[i][0].relative_to(ROOT)}:{_line(files[i][2], files[i][3][j][0])}" for i, j in bad[:4])
+                where = ", ".join(f"{files[i][0].relative_to(ROOT).as_posix()}:{_line(files[i][2], files[i][3][j][0])}" for i, j in bad[:4])
                 print(f"REFUSED {old[:70]!r}: also an unrelated literal at {where}")
                 total["refused"] += 1
                 continue
@@ -775,9 +775,9 @@ def rename(mapping_path, apply=False):
             total["code"] += ncode
             total["tests"] += len(hits) - ncode
             total["renamed"] += 1
-            places = sorted({str(files[i][0].relative_to(ROOT)) for i, _ in hits})
+            places = sorted({files[i][0].relative_to(ROOT).as_posix() for i, _ in hits})
             print(f"RENAME {old[:60]!r} -> {new[:60]!r}: {ncode} in code, {len(hits) - ncode} in tests ({', '.join(places[:5])})")
-            inside = sorted({str(f.relative_to(ROOT)) for i, (f, _, text, _) in enumerate(files)
+            inside = sorted({f.relative_to(ROOT).as_posix() for i, (f, _, text, _) in enumerate(files)
                              if len(old) >= 8 and old in text and all(i != a for a, _ in hits)})
             if inside:
                 print(f"  NOTE inside other text, not rewritten: {', '.join(inside[:6])}")

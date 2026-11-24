@@ -46,7 +46,9 @@ def test_next_lesson_follows_the_university_clock(seeded, los_angeles_server_at_
 
 
 @pytest.mark.slow
-def test_prod_refuses_an_unknown_timezone():
-    env = {"PATH": "/usr/bin:/bin", "PYTHONIOENCODING": "utf-8", "ZEKA_MODE": "prod", "ZEKA_TZ": "Mars/Olympus_Mons"}
+@pytest.mark.parametrize("mode", ["prod", "demo"])       # the demo too: no silent fall back to the OS time (2026-11-24)
+def test_an_unknown_timezone_is_refused(mode, tmp_path):
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "ZEKA_MODE": mode, "ZEKA_TZ": "Mars/Olympus_Mons",
+           "ZEKA_DATA": str(tmp_path)}
     p = subprocess.run([sys.executable, str(ROOT / "backend" / "run.py")], env=env, capture_output=True, timeout=120)
     assert p.returncode == 2 and "ZEKA_TZ=Mars/Olympus_Mons" in p.stderr.decode("utf-8", "replace")

@@ -186,7 +186,8 @@ def client(args) -> list[tuple[float, int, str, bool]]:
                 except (OSError, http.client.HTTPException) as e:
                     conn.close()
                     conn, used = http.client.HTTPConnection("127.0.0.1", port, timeout=TIMEOUT), False
-                    reopened = again and isinstance(e, (BrokenPipeError, ConnectionResetError))   # RemoteDisconnected is one
+                    # RemoteDisconnected is a ConnectionResetError; Windows reports the send as ConnectionAbortedError
+                    reopened = again and isinstance(e, (BrokenPipeError, ConnectionResetError, ConnectionAbortedError))
                     if not reopened:
                         break
             mine.append((time.perf_counter() - t, status, f"{method} {path}", reopened))

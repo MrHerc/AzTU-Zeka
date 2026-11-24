@@ -40,7 +40,7 @@ Ssh ilə backup üçün `infra/secrets/ssh/`-ə `id_ed25519` (600) və `known_ho
 | `PUBLIC_URL` | `https://zeka.aztu.edu.az` | Portalın ictimai ünvanı: sənədlərin QR kodları bura yönəlir, cookie-lər `Secure` olur, tətbiq HSTS göndərir. `SITE_ADDRESS` ilə eyni host olmalıdır |
 | `ZEKA_MODE` | `prod` | Prod rejimi: demo girişi və demo marşrutları yoxdur, insanlar toxum kimi yaradılmır, baza heç vaxt silinmir, `--reset` qadağandır |
 | `ZEKA_PROXY_HOPS` | `1` | Tətbiqin qabağındakı etibarlı proksilərin sayı. Caddy birdir. Müştəri ünvanı `X-Forwarded-For`-un sağdan 1-ci elementindən götürülür |
-| `ZEKA_TZ` | `Asia/Baku` | Universitetin saat qurşağı: dərs cədvəli, son tarixlər və jurnal vaxtları. Tanınmayan qurşaqla prod başlamır |
+| `ZEKA_TZ` | `Asia/Baku` | Universitetin saat qurşağı: dərs cədvəli, son tarixlər və jurnal vaxtları. Tanınmayan qurşaqla server (prod da, demo da) başlamır. tz bazası olmayan Windows-da `Asia/Baku` və `UTC` sabit ofsetlə işləyir (Bakı 2016-dan bəri yay vaxtına keçmir: UTC+04:00); başqa qurşaq üçün `pip install tzdata` |
 | `ZEKA_WORKERS` | `2` | Eyni portu paylaşan proseslər. Nüvə sayından çox olmasın. İndeks bir dəfə qurulur və proseslər onu paylaşır (`docs/perf/baseline.md`) |
 | `BACKUP_REMOTE` | `zeka-backup@backup.aztu.edu.az:/srv/zeka-backups` | Ölkə daxilində ikinci host (ssh) və ya qoşulmuş qovluq. Prod-da boş olarsa `infra/backup.sh` 4 kodu ilə bitir |
 | `BACKUP_KEY_FILE` | `/run/secrets/backup_key` | Backup açarı. `compose` onu `infra/secrets/backup.key`-dən sirr kimi qoşur. Dəyəri dəyişməyin |

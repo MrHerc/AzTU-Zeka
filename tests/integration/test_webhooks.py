@@ -164,6 +164,15 @@ def raw_server(answer: bytes):
             with conn:
                 conn.recv(65536)
                 conn.sendall(answer)
+                # close only after the client has: closing with its body unread resets the connection, and Windows then
+                # drops the answer it had already received (ConnectionResetError instead of BadStatusLine)
+                conn.shutdown(socket.SHUT_WR)
+                conn.settimeout(5)
+                try:
+                    while conn.recv(65536):
+                        pass
+                except OSError:
+                    pass
     threading.Thread(target=serve, daemon=True).start()
     return srv, f"http://127.0.0.1:{srv.getsockname()[1]}/hook"
 

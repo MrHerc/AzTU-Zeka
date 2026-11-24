@@ -3,7 +3,9 @@
 The tests back up a copy of the seeded demo database plus a few uploads into temporary directories; the second host is
 either a directory or ``host:/path`` over a fake ``ssh`` that runs the command here.
 """
+import errno
 import hashlib
+import io
 import json
 import os
 import secrets
@@ -109,6 +111,19 @@ def test_a_failure_while_encrypting_leaves_no_plaintext_behind(data, key, tmp_pa
         make(data, tmp_path / "backups", key)
     left = [p for p in (tmp_path / "backups").rglob("*") if p.is_file()]
     assert left == [], left
+
+
+def test_openssl_gone_on_windows_is_a_backup_error_too(data, key, tmp_path, monkeypatch):
+    """Windows reports a write to a pipe whose reader exited as OSError EINVAL, not BrokenPipeError (CI, windows-latest)."""
+    class WindowsPipe(io.BytesIO):
+        def write(self, b):
+            raise OSError(errno.EINVAL, "Invalid argument")
+
+    monkeypatch.setattr(backup, "CIPHER", ["-no-such-cipher"])
+    monkeypatch.setattr(backup.gzip, "GzipFile", lambda fileobj, **kw: WindowsPipe())
+    with pytest.raises(backup.BackupError):
+        make(data, tmp_path / "backups", key)
+    assert [p for p in (tmp_path / "backups").rglob("*") if p.is_file()] == []
 
 
 def test_a_backup_under_a_commit_every_20_ms_is_not_restarted(data, key, tmp_path, ticking):

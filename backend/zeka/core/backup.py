@@ -18,7 +18,7 @@ path (a mounted disk of another machine) or ``user@host:/path`` over ssh (tar st
 """
 from __future__ import annotations
 
-import contextlib
+import errno
 import gzip
 import hashlib
 import hmac
@@ -81,6 +81,11 @@ def _need(tool: str) -> None:
         raise BackupError(f"the {tool} command is not installed")
 
 
+def _pipe_gone(ex: OSError) -> bool:
+    """A write to a pipe whose reader exited: BrokenPipeError on POSIX, OSError EINVAL on Windows."""
+    return isinstance(ex, BrokenPipeError) or ex.errno == errno.EINVAL
+
+
 def encrypt(src: Path, dst: Path, key_file) -> None:
     """gzip + openssl, streamed: no compressed plaintext is written to disk."""
     _need("openssl")
@@ -92,11 +97,16 @@ def encrypt(src: Path, dst: Path, key_file) -> None:
                 try:
                     with gzip.GzipFile(fileobj=p.stdin, mode="wb", mtime=0) as z:
                         shutil.copyfileobj(f, z, CHUNK)
-                except BrokenPipeError:
+                except OSError as ex:
+                    if not _pipe_gone(ex):
+                        raise
                     broken = True                          # openssl stopped reading: its message follows
                 finally:
-                    with contextlib.suppress(BrokenPipeError):
+                    try:
                         p.stdin.close()                    # type: ignore[union-attr]
+                    except OSError as ex:
+                        if not _pipe_gone(ex):
+                            raise
             err = p.stderr.read()                          # type: ignore[union-attr]
             p.wait()
         except BaseException:

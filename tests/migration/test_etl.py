@@ -70,7 +70,7 @@ def reconcile(wave, folder, by=True):
 
 
 def load(wave, kind, name, text, folder):
-    (folder / name).write_text(text, encoding="utf-8")
+    (folder / name).write_bytes(text.encode())        # the very bytes loaded below (write_text gives CRLF on Windows)
     c = store.connect()
     try:
         return migration.load(c, wave, SOURCE, kind, name, text.encode(), exported_at=EXPORTED)
