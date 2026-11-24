@@ -460,7 +460,7 @@ route("/timetable/hours/:id", async (el, p, q) => {
         <label class="row small"><input type="checkbox" id="hr-outside" ${outside ? "checked" : ""}> ${t("Yalnız yol verilən həddən kənar olanlar")}</label>
         ${r.departments.length > 1 || dep ? html`<select class="input input-sm" id="hr-dep" aria-label="${t("Kafedra")}"><option value="">${t("Bütün kafedralar")}</option>
           ${r.departments.map((d) => html`<option value="${d.id}" ${String(d.id) === String(dep) ? "selected" : ""}>${d.name}</option>`)}</select>` : ""}</div>
-        ${r.items.length ? html`<div class="table-wrap"><table class="table" id="hr-table"><thead><tr><th>${t("Fənn")}</th><th>${t("Növ")}</th><th>${t("Qrup")}</th><th>${t("Müəllim")}</th>
+        ${r.items.length ? html`<div class="table-wrap" tabindex="0" role="region" aria-label="${t("Tədris vahidləri")}"><table class="table" id="hr-table"><thead><tr><th>${t("Fənn")}</th><th>${t("Növ")}</th><th>${t("Qrup")}</th><th>${t("Müəllim")}</th>
           <th>${t("Forma №3 üzrə saat")}</th><th>${t("Cədvəl üzrə saat")}</th><th>${t("Saat fərqi")}</th><th>${t("Səbəb")}</th></tr></thead><tbody>
           ${r.items.map((x) => html`<tr data-unit="${x.unit_id}" class="${x.flagged ? "tt-flagged" : ""}"><td>${x.course}${r.departments.length > 1 ? html`<div class="tiny muted">${x.department}</div>` : ""}</td>
             <td>${KIND()[x.kind] || x.kind}${x.subgroup ? " · " + x.subgroup : ""}</td><td>${x.groups.join(", ") || "—"}</td><td>${x.teacher || html`<span class="badge b-amber">${t("Vakansiya")}</span>`}</td>
