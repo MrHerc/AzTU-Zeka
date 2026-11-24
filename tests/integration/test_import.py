@@ -519,3 +519,16 @@ def test_forma3_the_office_chooses_the_department_of_a_post_two_departments_teac
     assert alq and {got[a]["course_id"] for a in alq} == {courses[1]}, "the post's units of that subject go to the chosen department"
     detail = q("SELECT detail FROM audit WHERE action='import_department' ORDER BY id DESC LIMIT 1")[0]["detail"]
     assert post["ref"] in detail and str(deps[1]) in detail
+
+
+def test_forma3_offers_a_department_choice_only_for_a_subject_two_departments_teach(app_db, load_world):
+    """MUT-I06: a subject only one department teaches gives its post no choice of department."""
+    admin = app_db.client("admin")
+    fid = admin.get("/api/directory/faculties").json["items"][0]["id"]
+    dep = admin.post("/api/directory/departments", {"faculty_id": fid, "code": "F3ONE", "name": "Tək kafedra"}).json["id"]
+    for k, name in enumerate(("Verilənlər bazaları", "Elektronika", "Fizika", "Siqnalların emalı", "Alqoritmlər")):
+        assert admin.post("/api/directory/courses", {"code": f"F3-ONE-{k}", "name": name, "credits": 5, "department_id": dep}).status == 200
+    pre = admin.post("/api/admin/import", {"kind": "teaching-load", "source": "f3-one", "filename": "f.xlsx",
+                                           "content_b64": b64((FIX / "forma3_blocks.xlsx").read_bytes()), "dry_run": True}).json["forma3"]
+    offered = [p["departments"] for p in pre["posts"] if p.get("departments")]
+    assert all(len(d) >= 2 for d in offered), offered
