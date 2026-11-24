@@ -186,7 +186,7 @@ rather than share it between, say, a load type and a tip label.
   working map. Bloom and EQF are built in (`BUILTIN`), written at every start, prod too.
 - **Syllabus copy, prerequisites, exam defaults (2026-11-24).** A copy source is a published version only: the same
   code in an earlier term (`_earlier_offering`, which `published_for` also lets the author read: the read and the copy
-  must agree; the owner still has to confirm this, SEC-8D5-1) or a course the teacher teaches. A source version without
+  must agree; the owner's decision of 2026-11-24, SEC-8D5-1: a published syllabus is an open document, as in common practice) or a course the teacher teaches. A source version without
   frozen tags brings the working map only when the author may read that course. Prerequisites are `{"code"}` of the
   registry; old free text stays readable. A new exam's defaults are read live from the published version
   (`/api/courses/{id}/exam-defaults`), never stored; an exam title is 2–200 characters, like a component name. The
@@ -246,11 +246,11 @@ and research, then Faza 1 (Tasks 1–9, Checkpoint A), Faza 2 (Tasks 10–17, Ch
 change; Checkpoint F: `docs/review/checkpoint-f-2026-11-22.md`, every confirmed finding fixed), then Task 24 (the framework
 map and the NICE import, from NIST's own file), Task 48's hours report and timetable export and Checkpoint F's open
 checks (addendum: `docs/review/checkpoint-f-addendum-2026-11-23.md`; 28 confirmed findings fixed, OK-1 then left open).
-After the last push `main` on GitHub equals the working branch (`ab28551`); the five PRs are superseded by it. On top of
-it, `integrate-8d5` (not pushed) adds the syllabus audit gaps without an owner decision, the timetable health check and
-repair, `timetable-replay`, the Forma №3 department choice, the room boxes and the accessibility pass, reviewed in
-`docs/review/checkpoint-f-addendum-2026-11-24.md` (25 confirmed findings fixed; OK-1 closed; SEC-8D5-1 waits for the
-owner's confirmation). Task 44 (release) waits for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's
+Then the syllabus audit gaps without an owner decision, the timetable health check and repair, `timetable-replay`, the
+Forma №3 department choice, the room boxes and the accessibility pass, reviewed in
+`docs/review/checkpoint-f-addendum-2026-11-24.md` (25 confirmed findings fixed; OK-1 closed; SEC-8D5-1 decided by the
+owner on 2026-11-24: option (a)). Since 2026-11-24 the owner keeps `main` on GitHub equal to the working branch after each
+green full run (Render deploys `main`); the five PRs are superseded. Task 44 (release) waits for the owner's inputs (`docs/runbooks/release-v1.md`): Checkpoint F's
 gate is not passed.
 
 ## Product direction

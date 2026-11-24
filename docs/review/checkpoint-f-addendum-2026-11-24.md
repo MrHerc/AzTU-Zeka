@@ -160,7 +160,9 @@ Before the fixes, on the merged branch (`9d32346`):
 
 ## Remaining risk
 
-- **SEC-8D5-1** runs on option (a) until the owner confirms it.
+- **SEC-8D5-1** is closed: the owner chose on 2026-11-24 what common practice does (option (a)). A published syllabus
+  is an open document inside the university, and starting from the previous offering of the same course is the usual
+  "copy course" step of learning platforms.
 - The queue's answer changed from a list to `{items, total, page, pages}`. An outside client of that route would break.
   None is known.
 - Free-text prerequisites are still accepted in new versions, and enrolment is not blocked by a prerequisite.
@@ -175,8 +177,6 @@ Before the fixes, on the merged branch (`9d32346`):
 
 ## Owner-dependent gaps still open
 
-- **SEC-8D5-1:** confirm (a), the author reads an earlier offering's published syllabus, or choose (b), a copy source
-  must pass `may_read`.
 - **Plan A12:** the exam's duration, form and question count per outcome are not in the syllabus, and exam questions
   carry no outcome. The outcome → question → outcome chain needs a decision on whether the syllabus holds them.
 - Whether a free-text prerequisite should be refused, and whether a prerequisite should block enrolment.
