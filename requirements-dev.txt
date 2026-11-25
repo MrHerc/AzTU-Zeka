@@ -3,7 +3,9 @@ pytest>=8,<10
 ruff==0.16.9
 mypy==2.3.1
 # Independent QR decoder for tests/unit/test_qr.py (the test is skipped when these are missing).
-zxing-cpp>=2.2
+# 3.2.0 (2026-11-24) ships no wheel for Python 3.10 and its source build fails in CI: 3.10 keeps the 3.1 line.
+zxing-cpp>=2.2,<3.2; python_version < "3.11"
+zxing-cpp>=2.2; python_version >= "3.11"
 numpy>=1.26
 # The IANA time zone database for Windows, which has none (zoneinfo). The app itself needs it only for a ZEKA_TZ other
 # than Asia/Baku or UTC (backend/zeka/core/clock.py FIXED).
