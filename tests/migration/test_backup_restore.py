@@ -211,7 +211,9 @@ def test_the_second_host_mirrors_the_kept_sets_and_a_bad_copy_is_sent_again(data
         real(src, dst)
         with open(dst, "r+b") as f:
             f.seek(20)
-            f.write(b"\0")
+            b = f.read(1)[0]
+            f.seek(20)
+            f.write(bytes([b ^ 0xFF]))          # always a different byte: writing \0 was a no-op 1 time in 256
 
     monkeypatch.setattr(backup.shutil, "copyfile", damaged)
     m = make(data, dest, key)
